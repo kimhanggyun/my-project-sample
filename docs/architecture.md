@@ -234,6 +234,10 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CorpsView`, `SoldierView` | 3D 모델 표시, 애니메이션 |
 | `SoldierPool` | 병사 오브젝트 재사용 (성능) |
 | `BattleCameraController` | 드래그 이동, 핀치 확대, 연출 클로즈업 |
+| `BattleInputController` | 터치 입력을 받아 터치·드래그·핀치로 구분 (`GestureRecognizer`) |
+| `CorpsPicker` | 터치 지점에서 군단 찾기. 부대원 위치를 감싼 영역 + 여유 반경으로 판정, 겹치면 우선순위 적용. 병사마다 충돌체를 두지 않고 Model의 위치 데이터로 계산해 성능 확보 |
+| `SelectionService` | 선택된 아군·적 군단(과 강조할 소부대)을 한 곳에서 관리. 변경 이벤트를 HUD·카드·3D 표시가 함께 구독 |
+| `SelectionHighlightView` | 선택된 군단 부대원 발밑 링 표시 |
 | `MinimapView` | 탭하면 펼치는 미니맵 |
 | `BattleHUD` | 전투명, 군단 선택, 사기·예비 병력 게이지 |
 | `CommandPanel`, `FormationPanel` | 명령 6개 + 위임, 진형 선택 |
@@ -271,3 +275,4 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - `BattleSimulation`: 고정 시드로 같은 입력 → 같은 결과
 - **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
 - `CommandAuthority`: 규율·용맹 값에 따른 반응 지연·독자 행동 확률
+- `CorpsPicker`: 겹친 군단, 여유 반경 경계, 같은 자리 재터치 순환
