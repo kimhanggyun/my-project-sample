@@ -49,7 +49,7 @@
 - 결정 순서: **스텝 JSON 값 → 맵 데이터 값 → 기본값(3)** 중 먼저 있는 값을 쓴다.
 - 맵의 출현 지점 수보다 많을 수는 없다. 맵 데이터에 지점을 넉넉히 두거나, 지점 하나에 여러 군단을 배치한다.
 - 아군과 적군을 따로 정할 수 있다 (`maxCorps.player`, `maxCorps.enemy`).
-- 아군 출전 군단은 지금은 스텝 JSON에서 정한다. 나중에 편성 화면이나 전략 화면이 붙으면 그 안에서 플레이어가 고른다.
+- 아군 출전 군단은 **부대 편성 탭**에서 정한 편성을 쓴다. 스텝 JSON은 출전 가능한 군단 수와 출현 지점만 정한다.
 
 ### 2.1 명령 (군단 단위)
 
@@ -458,7 +458,7 @@
 ### 2.14 진형·스킬 습득
 
 - 전투에서 쓸 수 있는 진형과 스킬은 **장수 키우기·부대 키우기에서 배운 것만** 나온다.
-- 키우기 탭이 TO-BE인 동안에는 **스텝 데이터가 사용 가능한 진형·스킬을 지정**한다. 키우기 탭이 생기면 배운 목록으로 바뀐다 (전투 코드는 "사용 가능 목록"만 받으므로 수정 없음).
+- 키우기 탭이 TO-BE인 동안에는 **초기 지급으로 배운 진형·스킬 + 스토리 보상으로 얻은 것**을 쓴다. 키우기 탭이 생기면 거기서 배운 것이 더해진다 (전투 코드는 "사용 가능 목록"만 받으므로 수정 없음).
 - 전장 안개 같은 맵 조건은 **스텝별 맵 데이터에 포함**한다 (2.10).
 
 ### 2.15 군량 (전투 길이)
@@ -637,20 +637,13 @@ Data/
   "battleType": "field",
   "map": "anyi_field",
   "supply": { "enemy": 105000 },
-  "availableFormations": ["fishScale", "craneWing"],
-  "availableSkills": ["ambush"],
   "fogOfWar": true,
   "maxCorps": { "player": 3, "enemy": 4 },
   "victory": [{ "type": "defeatCommander" }],
   "defeat":  [{ "type": "commanderDefeated" }, { "type": "supplyExhausted" }],
   "player": {
-    "commander": "liubei",
-    "corps": [
-      { "name": "장비군", "general": "zhangfei", "troops": 6000,
-        "formation": "wedge", "spawn": "P1",
-        "units": { "vanguard": "cavalry", "center": "cavalry", "leftWing": "infantry",
-                   "rightWing": "infantry", "leftGuard": "archer", "rightGuard": "archer" } }
-    ]
+    "source": "formation",
+    "spawns": ["P1", "P2", "P3"]
   },
   "enemy": {
     "commander": "xiahouyuan",
@@ -664,7 +657,7 @@ Data/
     { "trigger": "start", "dialogue": "step01_start" },
     { "trigger": "corpsRetreat", "corps": "하후연군", "dialogue": "step01_enemy_retreat" }
   ],
-  "rewards": { "exp": 300 },
+  "rewards": { "exp": 300, "unlockFormations": ["craneWing"], "unlockSkills": ["ambush"] },
   "overrides": { "retreatThreshold": 0.1 }
 }
 ```

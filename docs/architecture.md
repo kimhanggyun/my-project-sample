@@ -112,7 +112,7 @@ Assets/
 | `BattleClock` | 일시정지, 배속(1~3배), 제한 시간 |
 | `BattleContext` | 시스템들이 공유하는 상태·규칙·난수·이벤트 버스 |
 | `BattleEventBus` | Model → View 알림 (교전 시작, 병사 사망, 군단 퇴각, 대사 …) |
-| `BattleFactory` | `StepData`(또는 전략 화면) → `BattleSetup` → `BattleState` 생성 |
+| `BattleFactory` | `StepData`(적군·맵) + 플레이어 편성 → `BattleSetup` → `BattleState` 생성 |
 
 ### 3.3 시스템 (각각 `IBattleSystem` 구현)
 
@@ -243,6 +243,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CaptivityTimerService` | 구출 기한, 등용 재시도 대기시간 계산 |
 | `IRecruitRule` | 등용 가능 여부(`recruitable`)와 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
 | `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
+| `StartingKitService` | 새 게임 시 `startingKit.json`대로 장수 3명·군단·진형·스킬·군량·기본 편성 지급 |
+| `FormationPresetStore` | 상황별 편성(야전·공성·공격·수비) 저장·조회 |
+| `UnlockService` | 배운 진형·스킬 목록 (초기 지급 + 스토리 보상 + 나중에 키우기) |
 
 ## 4.6 Game.Economy (자원·결제)
 
@@ -335,7 +338,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `TitleScreen`, `SettingsScreen`, `ResultScreen` | 각 화면 (설정은 상단 톱니바퀴에서 여는 팝업) |
 | `MainScreen` | 상단 바(군량·충전·설정) + 띠 배너 자리 + 탭 화면 영역 + 하단 탭 바. 시작 시 탭 목록의 첫 번째 탭을 연다 |
 | `MainTabRegistry` | `mainTabs.json`을 읽어 탭 목록·순서·상태(사용/TO-BE/숨김)·해금 조건 관리 |
-| `IMainTab` | 탭 화면 모듈 인터페이스. 구현: `StoryTab`(이번 범위), `GeneralGrowthTab`·`TroopGrowthTab`·`FormationTab`(TO-BE), `ComingSoonTab` |
+| `IMainTab` | 탭 화면 모듈 인터페이스. 구현: `StoryTab`·`FormationTab`(이번 범위), `GeneralGrowthTab`·`TroopGrowthTab`(TO-BE), `ComingSoonTab` |
+| `FormationTab` | 보유 장수 → 군단 슬롯 배치, 소부대 병종, 진형 선택, 상황별 편성 저장 |
+| `SortiePrepScreen` | 출진 준비: 전장 유형에 맞는 편성 자동 선택·변경, 군량 조정 |
 | `StoryTab` | 스텝 목록, 해금 상태, 스텝 선택 → 대사 → 전투 |
 | `BadgeService` | 탭 알림 표시(빨간 점) |
 
