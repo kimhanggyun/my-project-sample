@@ -279,7 +279,13 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `AdConsentService` | 아이폰 추적 허용 요청(ATT), 지역별 광고 동의 |
 
 - 서버 도입 후에는 광고 보상 **서버 검증**(광고망이 서버로 보상 완료를 알려주는 방식)으로 바꿔 부정 보상을 막는다.
-- 광고 제거 구매 시 `IBannerAdService`를 끈다.
+- 광고 제거 구매 시 배너를 끈다. 배너 표시 규칙·광고 제거 상품은 [ads.md](ads.md) 참고.
+
+| 추가 클래스 | 역할 |
+|---|---|
+| `BannerVisibilityController` | 현재 화면·광고 제거 상태로 배너 표시 결정 (탭 화면에서만 노출) |
+| `AdRemovalEntitlement` | 광고 제거 권한: 영구 / 만료 시각 (30일 이용권, 중복 시 기간 연장) |
+| `PurchaseHandler` | 구매 완료 → `products.json` 효과 적용, 구매 복원 |
 
 ## 5. Game.Core
 
