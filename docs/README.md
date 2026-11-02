@@ -9,7 +9,7 @@
 | [flow.md](flow.md) | **전체 플로우**: 앱 시작부터 전투·결과까지의 흐름, 단계별 담당 문서, 교체 단위 |
 | [planning-notes.md](planning-notes.md) | 논의·결정 기록, 미결 사항, 다음 단계 |
 | [architecture.md](architecture.md) | Unity 코드 구조, 모듈·클래스, 확장 지점 |
-| [theme.md](theme.md) | 테마 교체 원칙 (삼국지 → 판타지 등) |
+| [theme.md](theme.md) | 테마 교체 원칙 (옛날 전투 → 판타지 등) |
 | [review.md](review.md) | 전투 기획 검토 메모 |
 
 ## 컨텐츠별 (content/)

@@ -10,7 +10,7 @@
 1. **시스템 하나 = 클래스 하나.** 각 시스템은 자기 책임만 가진다 (사기, 보충, 진형 …).
 2. **규칙과 화면 분리.** 전투 규칙(Model)은 Unity에 의존하지 않는 순수 C#. 화면(View)은 Model의 상태와 이벤트를 받아 그리기만 한다.
 3. **데이터 주도.** 숫자·이름·종류는 JSON. 코드는 규칙만 가진다.
-3-1. **테마 분리.** 데이터 키는 영문 id, 화면 문구·그림은 테마 팩 ([theme.md](theme.md)). 삼국지 → 판타지 교체 시 규칙 코드는 그대로.
+3-1. **테마 분리.** 데이터 키는 영문 id, 화면 문구·그림은 테마 팩 ([theme.md](theme.md)). 옛날 전투 → 판타지 교체 시 규칙 코드는 그대로.
 4. **확장은 "추가"로.** 새 명령·진형·승리 조건·전장 유형은 기존 코드를 고치지 않고 클래스나 데이터를 추가해 붙인다 (인터페이스 + 등록표).
 5. **테스트 가능.** Model은 고정 시드 난수로 결정적으로 돌아가며, Unity 에디터 없이 단위 테스트한다.
 
@@ -192,7 +192,7 @@ public interface ISubUnitBehavior {
 | 클래스 | 역할 |
 |---|---|
 | `BattleSetup` | 전투 시작에 필요한 모든 값. 지금은 스텝 JSON에서, 나중에는 전략 화면에서 만든다 |
-| `BattleResult` | 승패, 군단별 남은 병력, 장수 상태, 공적(격파 수·생존·승리 기여) |
+| `BattleResult` | 승패, 군단별 남은 병력·**사망·부상 수**, 장수 상태(퇴각·포로), 공적(격파 수·생존·승리 기여), 포획 군량 |
 | `BattleResultBuilder` | 종료 시점의 `BattleState` → `BattleResult` |
 
 ---
@@ -246,6 +246,8 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CaptivityTimerService` | 구출 기한, 등용 재시도 대기시간 계산 |
 | `IRecruitRule` | 등용 가능 여부(`recruitable`)와 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
 | `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
+| `TroopManagementService` | 군단 병력 한도(통솔 기반 5,000~20,000), 징병·모병(군량), 치료(절반 비용), 부상병 시간 회복 |
+| `CorpsTroopState` | 세이브되는 군단 병력: 출전 가능 / 부상병(회복 시각) / 한도 |
 | `StartingKitService` | 새 게임 시 `startingKit.json`대로 장수 3명·군단·진형·스킬·군량·기본 편성 지급 |
 | `FormationPresetStore` | 상황별 편성(야전·공성·공격·수비) 저장·조회 |
 | `UnlockService` | 배운 진형·스킬 목록 (초기 지급 + 스토리 보상 + 나중에 키우기) |
