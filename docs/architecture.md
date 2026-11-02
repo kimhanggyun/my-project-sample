@@ -119,16 +119,18 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | 시스템 | 책임 |
 |---|---|
 | `CommandSystem` | 군단의 명령 예약(`CorpsOrderQueue`)을 순서대로 실행 |
-| `FormationSystem` | 진형에 따라 소부대 목표 위치 계산, 진형 변경 |
+| `FormationSystem` | 장수 위치·방향 기준으로 소부대 진형 자리 계산, 진형 변경·회전, 좁은 길에서 종대 전환 |
 | `SubUnitAISystem` | 소부대마다 행동 후보 점수를 매겨 가장 높은 행동 선택 (능력치 기반 자율 판단) |
 | `TargetingSystem` | 선택된 행동에 따라 병사 단위 공격 대상 선정 |
-| `MovementSystem` | 지형 비용을 반영한 이동 |
+| `CorpsNavigator` | 장수 기준 군단 경로 탐색 (지형 비용, 다른 군단은 움직이는 장애물) |
+| `MovementSystem` | 소부대는 진형 자리를, 병사는 소부대를 따라 이동. 병사 간 밀어내기 회피 |
 | `CombatSystem` | 교전 판정, 병력 숫자에 피해 적용 (`DamageCalculator` 사용) |
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
 | `VisionSystem` | 소부대별 시야 계산 → 진영별 보임 격자, 군단별 인지 정보(본 적 + 공유받은 적, 마지막 목격 위치) 갱신. 일정 주기로 실행 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
-| `MoraleSystem` | 손실·기습·문관 피격·일기토 결과로 사기 증감 |
-| `RetreatSystem` | 사기·예비 병력 기준과 장수 성향으로 자동 퇴각 판정 |
+| `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
+| `RetreatSystem` | 퇴각 판정(사기·병력 기준 + 장수 성향, 후퇴 명령), 퇴각 이동, 전장 이탈 처리 |
+| `CaptureSystem` | 장수 포위 판정(방향 비율·주변 아군 병력), 포로 확률 누적, 무력 기반 탈출, 포로 시 군단 궤멸 |
 | `SkillSystem` | 스킬 사용 조건 확인, 비용·대기시간 관리, 효과 실행 (위임 시 자동 사용) |
 | `InfluenceSystem` | 장수 능력치를 영향표·지휘 범위에 따라 소부대 보정으로 변환 |
 | `AISystem` | 적 군단과 위임 상태의 아군 군단에 **군단 명령**을 내림 |
@@ -301,7 +303,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - `StatCalculator`, `ExpCalculator`, `LevelUpService`: 레벨·경험치 계산
 - `DamageCalculator`: 보정 가산, 상·하한, 보정 내역
 - `TroopRepresentation`: 비율 계산, 손실 누적 시 병사 쓰러짐
-- `MoraleSystem`, `RetreatSystem`: 기준값에서 퇴각 발생
+- `MoraleSystem`, `RetreatSystem`: 기준값에서 퇴각 발생, 성향별 퇴각 시점
+- `CaptureSystem`: 포위 비율 경계값, 무력에 따른 탈출 확률
+- `FormationSystem`: 좁은 길 종대 전환과 복귀
 - `BalanceResolver`: 스텝 덮어쓰기 병합
 - `BattleSimulation`: 고정 시드로 같은 입력 → 같은 결과
 - **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
