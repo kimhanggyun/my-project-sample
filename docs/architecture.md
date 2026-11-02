@@ -233,11 +233,11 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CampaignState` | 스텝 해금 상태, 장수 상태 목록, 열려 있는 구출 전투 |
 | `GeneralStatus` | 장수 상태: 출전 가능 / 포로(수용소 id) / 등용됨 |
 | `PrisonCampData` | 수용소: id, 이름, 소속 세력, 구출 전투 데이터(맵·수비 병력) |
-| `CaptivityService` | 아군 장수 포로 처리 → 수용소 배정, 구출 기한(기본 30일) 설정, 구출 전투 생성, 구출 성공 시 복귀 |
+| `CaptivityService` | 아군 장수 포로 처리 → 수용소 배정, 구출 기한(기본 30일) 설정, 구출 전투 생성, 구출 성공 또는 기한 경과(자동 석방) 시 복귀 |
 | `PrisonerDecisionService` | 적 장수 포로 처리: 등용(성공률 계산, 실패 시 감금 유지·재시도 대기시간) / 해방(보상 지급) |
 | `ITimeProvider` | 현재 시각 조회 한 곳 (기기 시계 → 나중에 서버 시간으로 교체) |
 | `CaptivityTimerService` | 구출 기한, 등용 재시도 대기시간 계산 |
-| `IRecruitRule` | 등용 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
+| `IRecruitRule` | 등용 가능 여부(`recruitable`)와 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
 | `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
 
 ## 5. Game.Core
