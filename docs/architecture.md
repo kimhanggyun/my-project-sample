@@ -85,7 +85,8 @@ Assets/
 |---|---|
 | `BattleState` | 전투 전체 상태 (시간, 양측, 전장) |
 | `Side` | 진영: 대장, 군단 목록 |
-| `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 현재 명령 |
+| `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 군단 명령, 명령 예약(`CorpsOrderQueue`) |
+| `CorpsOrderQueue` | 순서대로 실행할 명령 목록 (예: 이동 → 스킬) |
 | `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 능력치(`SubUnitStats`), 현재 행동, 화면 병사 목록 |
 | `SubUnitStats` | 소부대 최종 능력치. `StatBlock` 기반이라 항목이 늘어나도 클래스 수정 없음 |
 | `StatModifier` | 보정 1개: 출처, 대상 능력치, 더하기/곱하기 값 |
@@ -114,7 +115,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 
 | 시스템 | 책임 |
 |---|---|
-| `CommandSystem` | 군단에 내려진 명령을 실행 상태로 반영 |
+| `CommandSystem` | 군단의 명령 예약(`CorpsOrderQueue`)을 순서대로 실행 |
 | `FormationSystem` | 진형에 따라 소부대 목표 위치 계산, 진형 변경 |
 | `SubUnitAISystem` | 소부대마다 행동 후보 점수를 매겨 가장 높은 행동 선택 (능력치 기반 자율 판단) |
 | `TargetingSystem` | 선택된 행동에 따라 병사 단위 공격 대상 선정 |
@@ -142,11 +143,13 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | 인터페이스 | 구현 예 | JSON 키 |
 |---|---|---|
 | `ICorpsCommand` | Charge, Attack, HoldFormation, Wall, Defend, Retreat | 명령 id |
+| `ICorpsOrder` | MoveOrder(지점 이동), AttackOrder(대상 적 군단), SkillOrder(스킬 사용), ApproachThenSkill(접근 후 사용) | 입력에서 생성 |
+| `ISkillTargeting` | Self, AllyCorps, EnemyCorps, Point, Area, Direction | `skills.json`의 `target.type` |
 | `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형 상성, 진형 돌파력, 용맹, 사기 | `balance.json`에서 on/off·배율 |
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
 | `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver | `"victory"`, `"defeat"` |
-| `ISkillEffect` | Damage, Buff, Debuff, Morale, Disrupt(진형 혼란), Move … | `skills.json`의 `effects[].type` |
+| `ISkillEffect` | Damage, Buff, Debuff, Morale, Disrupt(진형 혼란), Move, Stealth(매복), SurpriseAttack(기습) … | `skills.json`의 `effects[].type` |
 | `ISkillCondition` | StatAtLeast(지략 ≥ 70), LevelAtLeast, TroopTag … | `skills.json`의 `requires` |
 | `IBattleTypeRules` | FieldRules(야전), SiegeRules(성새전), NavalRules(수상전) | `"battleType"` |
 
@@ -238,6 +241,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CorpsPicker` | 터치 지점에서 군단 찾기. 부대원 위치를 감싼 영역 + 여유 반경으로 판정, 겹치면 우선순위 적용. 병사마다 충돌체를 두지 않고 Model의 위치 데이터로 계산해 성능 확보 |
 | `SelectionService` | 선택된 아군·적 군단(과 강조할 소부대)을 한 곳에서 관리. 변경 이벤트를 HUD·카드·3D 표시가 함께 구독 |
 | `SelectionHighlightView` | 선택된 군단 부대원 발밑 링 표시 |
+| `OrderInputController` | 선택 상태에서 터치를 명령으로 변환: 적 → 공격, 빈 땅 → 이동 |
+| `SkillTargetingController` | 스킬 지정 모드: 사거리·범위 미리보기, 대상 검증, 지점 스킬의 "이동만 / 도착 후 사용" 선택 |
+| `OrderMarkerView` | 예약된 명령의 경로선과 목적지 표식 |
 | `MinimapView` | 탭하면 펼치는 미니맵 |
 | `BattleHUD` | 전투명, 군단 선택, 사기·예비 병력 게이지 |
 | `CommandPanel`, `FormationPanel` | 명령 6개 + 위임, 진형 선택 |
@@ -276,3 +282,4 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
 - `CommandAuthority`: 규율·용맹 값에 따른 반응 지연·독자 행동 확률
 - `CorpsPicker`: 겹친 군단, 여유 반경 경계, 같은 자리 재터치 순환
+- `CorpsOrderQueue`: 이동 → 스킬 순서 실행, 사거리 밖 자동 접근, 대상 소실 시 처리
