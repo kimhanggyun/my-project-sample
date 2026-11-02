@@ -31,6 +31,7 @@ Game.Tests ─────────────────┘
 | Game.Data | JSON과 1:1 데이터 클래스, 덮어쓰기 병합 | 없음 |
 | Game.Battle.Model | 전투 규칙, 시스템, AI, 결과 계산 | **없음** |
 | Game.Progression | 경험치·레벨·능력치 계산 | 없음 |
+| Game.Campaign | 스텝 진행, 장수 상태, 포로·구출·등용 | 없음 |
 | Game.Core | 부트, 씬 전환, 세이브, 설정, 데이터 로딩 | 있음 |
 | Game.Battle.View | 3D 표시, 카메라, 병사 풀링, 입력 | 있음 |
 | Game.UI | 타이틀, 설정, HUD, 결과 화면 | 있음 |
@@ -156,7 +157,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
 | `IVisionModifier` | 병종, 장수, 지형(언덕·숲), 진형·명령, 날씨 | 보정 목록으로 시야·탐지에 적용 |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
-| `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver | `"victory"`, `"defeat"` |
+| `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver, HoldZone(구역 점령), DestroyStructure(수용소 파괴) | `"victory"`, `"defeat"` |
 | `ISkillEffect` | Damage, Buff, Debuff, Morale, Disrupt(진형 혼란), Move, Stealth(매복), SurpriseAttack(기습) … | `skills.json`의 `effects[].type` |
 | `ISkillCondition` | StatAtLeast(지략 ≥ 70), LevelAtLeast, TroopTag … | `skills.json`의 `requires` |
 | `IBattleTypeRules` | FieldRules(야전), SiegeRules(성새전), NavalRules(수상전) | `"battleType"` |
@@ -222,6 +223,20 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 
 ---
 
+## 4.5 Game.Campaign (전투 밖 진행 상태)
+
+전투 결과를 받아 스토리 진행·장수 상태를 관리한다. 전투 모듈은 결과만 넘기고, 이후 처리는 여기서 한다.
+
+| 클래스 | 역할 |
+|---|---|
+| `CampaignState` | 스텝 해금 상태, 장수 상태 목록, 열려 있는 구출 전투 |
+| `GeneralStatus` | 장수 상태: 출전 가능 / 포로(수용소 id) / 등용됨 |
+| `PrisonCampData` | 수용소: id, 이름, 소속 세력, 구출 전투 데이터(맵·수비 병력) |
+| `CaptivityService` | 아군 장수 포로 처리 → 수용소 배정, 구출 전투 생성, 구출 성공 시 복귀 |
+| `PrisonerDecisionService` | 적 장수 포로 처리: 등용(성공률 계산) / 해방 |
+| `IRecruitRule` | 등용 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
+| `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
+
 ## 5. Game.Core
 
 | 클래스 | 역할 |
@@ -230,7 +245,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `GameServices` | 서비스 묶음 (간단한 의존성 주입 지점) |
 | `IDataRepository` / `JsonDataRepository` | StreamingAssets JSON 로딩·캐시 |
 | `ISaveService` / `JsonSaveService` | 세이브 슬롯 저장·불러오기 |
-| `SaveData` | 현재 스텝, 장수별 `GeneralProgress`, 플레이 기록 |
+| `SaveData` | 현재 스텝, 장수별 `GeneralProgress`, `CampaignState`(장수 상태·포로·구출 전투), 플레이 기록 |
 | `SettingsService` | 사운드, 배속 기본값, 언어 |
 | `SceneFlow` | 씬 전환 (타이틀 → 메인 → 전투 → 결과 → 메인) |
 | `StepFlow` | 스텝 진행 순서 관리. 나중에 전략 화면이 이 자리를 대신하거나 감싼다 |
@@ -263,6 +278,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `SubUnitCardBar` | 소부대 6개 카드 |
 | `SpeedControl` | 일시정지, 배속 |
 | `DialoguePopup` | 초상화 + 대사 |
+| `PrisonerScreen` | 결과 화면 다음, 잡은 적 장수별 등용·해방 선택 |
 | `TitleScreen`, `SettingsScreen`, `ResultScreen` | 각 화면 (설정은 상단 톱니바퀴에서 여는 팝업) |
 | `MainScreen` | 상단 영역(설정 버튼) + 하단 탭 바 + 탭 화면 영역. 시작 시 탭 목록의 첫 번째 탭을 연다 |
 | `MainTabRegistry` | `mainTabs.json`을 읽어 탭 목록·순서·상태(사용/TO-BE/숨김)·해금 조건 관리 |
