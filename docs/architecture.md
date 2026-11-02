@@ -132,7 +132,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `RangedAttackSystem` | 사거리(능력치 + 보정) 안의 보이는 적에게 원거리 공격, 곡사, 오사 옵션 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
 | `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
-| `SupplySystem` | 군단 군량 소비(병력 × 시간당 소비량, 게임 시간 기준), 바닥 시 사기 하락 보정 |
+| `SupplySystem` | 군단 군량 소비(병력 × 병종 하루 소비량 × 경과 일수, 1분 = 7일, 게임 시간 기준), 바닥 시 사기 하락 → 퇴각, 종료 시 포획 가능 군량 집계 |
 | `RetreatSystem` | 퇴각 판정(사기·병력 기준 + 장수 성향, 후퇴 명령), 퇴각 이동, 전장 이탈 처리 |
 | `CaptureSystem` | 장수 포위 판정(방향 비율·주변 아군 병력), 포로 확률 누적, 무력 기반 탈출, 포로 시 군단 궤멸 |
 | `SkillSystem` | 스킬 사용 조건 확인, 비용·대기시간 관리, 효과 실행 (위임 시 자동 사용) |
@@ -247,7 +247,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | 클래스 | 역할 |
 |---|---|
 | `Wallet` | 보유 자원 (군량 등). 자원 종류는 데이터로 정의해 추가 가능 |
-| `SupplyService` | 출진 군량 자동 계산(기본 3분 분량)·증감, 차감, 전투 후 남은 군량 반환, 시간 회복, 승리 보상 |
+| `SupplyService` | 출진 군량 자동 계산(기본 3분 분량)·증감, 차감, 전투 후 남은 군량 반환, 적 군량 포획분 지급, 패키지 보유 시 시간 회복 |
 | `IStoreService` | 앱 결제 추상화. 구현: `UnityIapStoreService` (Google Play). 테스트용 `FakeStoreService` |
 | `IReceiptValidator` | 결제 영수증 검증. 처음에는 기기 검증, 나중에 서버 검증으로 교체 |
 
