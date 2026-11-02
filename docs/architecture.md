@@ -262,7 +262,8 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `IAuthService` | 로그인 추상화: 자동 로그인, 게스트 로그인, 계정 연동, 로그아웃 |
 | `LocalGuestAuthService` | 서버 없는 동안 쓰는 기기 게스트 계정 (Step 1) |
 | `UgsAuthService` | 서버 도입 후: Unity Gaming Services 인증 (게스트 + 연동) |
-| `IPlatformSignIn` | 플랫폼 로그인. 구현: `GooglePlayGamesSignIn`, `GameCenterSignIn`, `AppleSignIn` |
+| `IPlatformSignIn` | 로그인 수단. 출시 구현: `GooglePlayGamesSignIn`, `GameCenterSignIn`, `AppleSignIn`. 나중에 `KakaoSignIn` 등을 추가 |
+| `SignInProviderRegistry` | 플랫폼별로 보여줄 로그인 버튼 목록 (데이터). 새 로그인 수단은 구현 추가 + 목록 등록 |
 | `AccountLinkService` | 게스트 계정에 구글/Apple 계정 연동 |
 
 ## 5. Game.Core
