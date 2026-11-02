@@ -58,12 +58,13 @@ Assets/
 | `TroopTypeData` | 병종: 속도, 상성 배율 |
 | `FormationData` | 진형: 6개 슬롯 상대 위치, 공격·방어·속도 보정 |
 | `TerrainData` | 지형 부품: 이동속도, 방어 보너스, 통과 가능 |
-| `MapData` | 맵: 크기, 지형 배치, 출현 지점(P1, E1 …) |
+| `MapData` | 맵: 크기, 지형 배치, 출현 지점(P1, E1 …), 맵별 군단 수(선택) |
 | `BalanceData` | 공통 수치: 데미지 공식 상수, 퇴각 기준, 일기토 조건, 화면 병사 상한 |
 | `LevelTableData` | 레벨별 필요 경험치, 레벨 상한 |
 | `StepData` | 스텝별 전투 설정 (전투명, 세력, 맵, 군단, 이벤트, 보상, 덮어쓰기) |
 | `DialogueData` | 대사 목록 |
 | `BalanceResolver` | `BalanceData` + `StepData.overrides` → 그 스텝에 적용할 최종 수치 |
+| `CorpsLimitResolver` | 군단 수 결정: 스텝 값 → 맵 값 → 기본값(3), 출현 지점 수로 상한 |
 
 ---
 
