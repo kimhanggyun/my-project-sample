@@ -247,7 +247,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | 클래스 | 역할 |
 |---|---|
 | `Wallet` | 보유 자원 (군량 등). 자원 종류는 데이터로 정의해 추가 가능 |
-| `SupplyService` | 출진 시 군량 확인·차감, 전투 후 남은 군량 반환 |
+| `SupplyService` | 출진 군량 자동 계산(기본 3분 분량)·증감, 차감, 전투 후 남은 군량 반환, 시간 회복, 승리 보상 |
 | `IStoreService` | 앱 결제 추상화. 구현: `UnityIapStoreService` (Google Play). 테스트용 `FakeStoreService` |
 | `IReceiptValidator` | 결제 영수증 검증. 처음에는 기기 검증, 나중에 서버 검증으로 교체 |
 
