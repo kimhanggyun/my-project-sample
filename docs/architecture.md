@@ -46,7 +46,7 @@ Assets/
 │   ├─ Core/
 │   └─ UI/
 ├─ Tests/
-├─ Scenes/          Boot, Title, Story, Battle, Result
+├─ Scenes/          Boot, Title, Main(하단 탭), Battle, Result
 └─ StreamingAssets/Data/
 ```
 
@@ -160,7 +160,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 
 `DamageCalculator`는 등록된 `IDamageModifier`들을 순서대로 곱해 최종 피해를 만든다. 새 보정 요소는 Modifier 하나를 추가하면 된다.
 
-### 3.6 소부대 자율 판단 구조
+### 3.5 소부대 자율 판단 구조
 
 ```csharp
 public interface ISubUnitBehavior {
@@ -175,7 +175,7 @@ public interface ISubUnitBehavior {
 - 군단 명령은 `SubUnitStats`에 보정을 거는 방식으로만 영향을 준다. 그래서 명령과 행동이 서로 독립적이다.
 - 새 행동은 `ISubUnitBehavior` 구현 클래스를 추가하고 등록하면 된다.
 
-### 3.5 입구와 출구
+### 3.6 입구와 출구
 
 | 클래스 | 역할 |
 |---|---|
@@ -229,7 +229,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `ISaveService` / `JsonSaveService` | 세이브 슬롯 저장·불러오기 |
 | `SaveData` | 현재 스텝, 장수별 `GeneralProgress`, 플레이 기록 |
 | `SettingsService` | 사운드, 배속 기본값, 언어 |
-| `SceneFlow` | 씬 전환 (타이틀 → 스토리 → 전투 → 결과 → 다음 스텝) |
+| `SceneFlow` | 씬 전환 (타이틀 → 메인 → 전투 → 결과 → 메인) |
 | `StepFlow` | 스텝 진행 순서 관리. 나중에 전략 화면이 이 자리를 대신하거나 감싼다 |
 
 ---
@@ -257,7 +257,12 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `SubUnitCardBar` | 소부대 6개 카드 |
 | `SpeedControl` | 일시정지, 배속 |
 | `DialoguePopup` | 초상화 + 대사 |
-| `TitleScreen`, `SettingsScreen`, `StoryScreen`, `ResultScreen` | 각 화면 |
+| `TitleScreen`, `SettingsScreen`, `ResultScreen` | 각 화면 (설정은 상단 톱니바퀴에서 여는 팝업) |
+| `MainScreen` | 상단 영역(설정 버튼) + 하단 탭 바 + 탭 화면 영역. 시작 시 탭 목록의 첫 번째 탭을 연다 |
+| `MainTabRegistry` | `mainTabs.json`을 읽어 탭 목록·순서·상태(사용/TO-BE/숨김)·해금 조건 관리 |
+| `IMainTab` | 탭 화면 모듈 인터페이스. 구현: `StoryTab`(이번 범위), `GeneralGrowthTab`·`TroopGrowthTab`·`FormationTab`(TO-BE), `ComingSoonTab` |
+| `StoryTab` | 스텝 목록, 해금 상태, 스텝 선택 → 대사 → 전투 |
+| `BadgeService` | 탭 알림 표시(빨간 점) |
 
 ---
 
@@ -268,6 +273,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | 새 스텝 | `Steps/stepNN.json` + 대사 파일 | 없음 |
 | 새 장수 | `generals.json`에 항목 추가 | 없음 |
 | 새 진형 | `formations.json`에 항목 추가 | 없음 |
+| 새 메인 탭 | `IMainTab` 구현 + `mainTabs.json` 등록 | 없음 |
 | 새 능력치 | `stats.json` 추가 + 사용하는 규칙 추가 | 없음 |
 | 새 스킬 | `skills.json` 추가 (새 효과 종류면 `ISkillEffect` 구현) | 없음 |
 | 새 병종·특화 | `troopTypes.json` 추가 (태그로 상성 자동 적용) | 없음 |
