@@ -92,7 +92,8 @@ Assets/
 | `StatModifier` | 보정 1개: 출처, 대상 능력치, 더하기/곱하기 값 |
 | `CommandAuthority` | 장수 능력치 → 규율·용맹 계산, 지휘 범위, 반응 지연, 독자 행동 확률 |
 | `StatModifierPipeline` | 기본 능력치에 `StatModifier` 목록(장수 영향·진형·명령·특성·스킬)을 순서대로 적용 |
-| `Soldier` | 화면 병사 1명: 위치, 체력, 목표 |
+| `Soldier` | 화면 병사 1명: 위치, 목표, 전열/후열 위치. **체력 없음** (전투는 병력 숫자로 계산) |
+| `TroopRepresentation` | 병력 ↔ 화면 병사 비율(N), 손실 누적에 따른 병사 쓰러짐 처리 |
 | `BattleGeneral` | 전투 중 장수: 레벨 반영된 최종 능력치, 상태(정상·퇴각·부상·포로) |
 | `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스, 시야 보정) |
 | `VisibilityGrid` | 진영별 격자 칸의 상태: 미탐색 / 탐색됨 / 보임 |
@@ -122,7 +123,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `SubUnitAISystem` | 소부대마다 행동 후보 점수를 매겨 가장 높은 행동 선택 (능력치 기반 자율 판단) |
 | `TargetingSystem` | 선택된 행동에 따라 병사 단위 공격 대상 선정 |
 | `MovementSystem` | 지형 비용을 반영한 이동 |
-| `CombatSystem` | 교전 판정, 피해 적용 (`DamageCalculator` 사용) |
+| `CombatSystem` | 교전 판정, 병력 숫자에 피해 적용 (`DamageCalculator` 사용) |
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
 | `VisionSystem` | 소부대별 시야 계산 → 진영별 보임 격자, 군단별 인지 정보(본 적 + 공유받은 적, 마지막 목격 위치) 갱신. 일정 주기로 실행 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
@@ -149,7 +150,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ICorpsCommand` | Charge, Attack, HoldFormation, Wall, Defend, Retreat | 명령 id |
 | `ICorpsOrder` | MoveOrder(지점 이동), AttackOrder(대상 적 군단), SkillOrder(스킬 사용), ApproachThenSkill(접근 후 사용) | 입력에서 생성 |
 | `ISkillTargeting` | Self, AllyCorps, EnemyCorps, Point, Area, Direction | `skills.json`의 `target.type` |
-| `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형 상성, 진형 돌파력, 용맹, 사기 | `balance.json`에서 on/off·배율 |
+| `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형 상성, 진형 돌파력, 용맹, 사기 | `balance.json`에서 on/off·보정값(%p) |
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
 | `IVisionModifier` | 병종, 장수, 지형(언덕·숲), 진형·명령, 날씨 | 보정 목록으로 시야·탐지에 적용 |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
@@ -158,7 +159,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ISkillCondition` | StatAtLeast(지략 ≥ 70), LevelAtLeast, TroopTag … | `skills.json`의 `requires` |
 | `IBattleTypeRules` | FieldRules(야전), SiegeRules(성새전), NavalRules(수상전) | `"battleType"` |
 
-`DamageCalculator`는 등록된 `IDamageModifier`들을 순서대로 곱해 최종 피해를 만든다. 새 보정 요소는 Modifier 하나를 추가하면 된다.
+`DamageCalculator`는 등록된 `IDamageModifier`들의 보정값(%p)을 **더한 뒤** 상·하한을 적용하고, 기본 피해에 한 번만 곱한다 (가산 방식). 새 보정 요소는 Modifier 하나를 추가하면 된다. 결과와 함께 보정 내역(어떤 요소가 몇 %p)을 반환해 조정 패널과 시뮬레이터에서 볼 수 있게 한다.
 
 ### 3.5 소부대 자율 판단 구조
 
@@ -241,6 +242,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `BattleController` | Model과 View 연결: 틱 구동, 입력 → 명령, 이벤트 → 연출 |
 | `CorpsView`, `SoldierView` | 3D 모델 표시, 애니메이션 |
 | `SoldierPool` | 병사 오브젝트 재사용 (성능) |
+| `QualityBudget` | 기기 품질 단계별 화면 병사 예산, 첫 몇 초 프레임 측정으로 자동 조정 |
+| `SoldierLodRenderer` | 거리별 단순 모델, GPU 인스턴싱으로 대량 병사 표시 |
+| `DebugTuningPanel` | (개발 빌드 전용) 전투 중 보정값 실시간 변경 |
 | `BattleCameraController` | 드래그 이동, 핀치 확대, 연출 클로즈업 |
 | `BattleInputController` | 터치 입력을 받아 터치·드래그·핀치로 구분 (`GestureRecognizer`) |
 | `CorpsPicker` | 터치 지점에서 군단 찾기. 부대원 위치를 감싼 영역 + 여유 반경으로 판정, 겹치면 우선순위 적용. 병사마다 충돌체를 두지 않고 Model의 위치 데이터로 계산해 성능 확보 |
@@ -287,8 +291,16 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 
 ## 8. 테스트 계획
 
+### 밸런스 시뮬레이터 (`Game.Tools.BalanceSim`)
+- Model만 사용해 화면 없이 전투를 빠르게 실행하는 도구.
+- 입력: 스텝 JSON 또는 조건 조합. 출력: 승률, 평균 손실, 평균 전투 시간, 보정 요소별 기여도.
+- 수치 변경 시 자동 실행해 이전 결과와 비교한다.
+
+### 단위 테스트
+
 - `StatCalculator`, `ExpCalculator`, `LevelUpService`: 레벨·경험치 계산
-- `DamageCalculator`: 상성·방향·지형 배율
+- `DamageCalculator`: 보정 가산, 상·하한, 보정 내역
+- `TroopRepresentation`: 비율 계산, 손실 누적 시 병사 쓰러짐
 - `MoraleSystem`, `RetreatSystem`: 기준값에서 퇴각 발생
 - `BalanceResolver`: 스텝 덮어쓰기 병합
 - `BattleSimulation`: 고정 시드로 같은 입력 → 같은 결과
