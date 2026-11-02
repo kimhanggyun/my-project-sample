@@ -5,7 +5,7 @@
 
 ## 원칙
 
-0. **수치는 실수(float).** 능력치 1~100, 소수점 허용. 화면 표시는 정수.
+0. **수치는 실수(float).** 능력치 1~100, 소수점 허용. 화면 표시는 정수. **능력치 항목은 데이터로 정의**하고 코드는 이름으로 조회한다.
 
 1. **시스템 하나 = 클래스 하나.** 각 시스템은 자기 책임만 가진다 (사기, 보충, 진형 …).
 2. **규칙과 화면 분리.** 전투 규칙(Model)은 Unity에 의존하지 않는 순수 C#. 화면(View)은 Model의 상태와 이벤트를 받아 그리기만 한다.
@@ -56,8 +56,13 @@ Assets/
 
 | 클래스 | 역할 |
 |---|---|
-| `GeneralData` | 장수 기본 능력치(무력·통솔·지력, 1~100 실수), 성향, 성장률, 자동 전술 id, 특성 태그, 숙련 진형 |
-| `TroopTypeData` | 병종: 속도, 상성 배율 |
+| `StatDefinition` | 능력치 정의: id, 표시 이름, 최소·최대, 기본값 (`stats.json`) |
+| `StatBlock` | 이름-값 목록으로 된 능력치 묶음. 장수·소부대·병종 공통 |
+| `GeneralData` | 장수 능력치(`StatBlock`: 통솔·무력·지략 …), 성향, 성장률, 스킬 목록, 특성 태그, 숙련 진형 |
+| `SkillData` | 스킬: 요구 능력치, 비용, 재사용 대기, 대상, 효과 목록 |
+| `InfluenceRuleData` | 장수 능력치 → 소부대 능력치 영향 계수 |
+| `TroopTypeData` | 병종: 단계, 상위 병종, 승급 조건, 태그, 기본 능력치(`StatBlock`) |
+| `TroopMatchupData` | 태그 간 상성 배율 |
 | `FormationData` | 진형: 6개 슬롯 상대 위치, 특성치(정면 폭·돌파력·측면 방어·이동 속도·응집력·전환 시간) |
 | `FormationMatchupData` | 진형 상성표와 배율 |
 | `TraitData` | 장수 특성 태그별 보정치 |
@@ -82,9 +87,10 @@ Assets/
 | `Side` | 진영: 대장, 군단 목록 |
 | `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 현재 명령 |
 | `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 능력치(`SubUnitStats`), 현재 행동, 화면 병사 목록 |
-| `SubUnitStats` | 공격, 방어, 속도, 인지 반경, 판단력, 추격 거리 (1~100 실수, + 명령·장수·진형 보정 적용값) |
+| `SubUnitStats` | 소부대 최종 능력치. `StatBlock` 기반이라 항목이 늘어나도 클래스 수정 없음 |
+| `StatModifier` | 보정 1개: 출처, 대상 능력치, 더하기/곱하기 값 |
 | `CommandAuthority` | 장수 능력치 → 규율·용맹 계산, 지휘 범위, 반응 지연, 독자 행동 확률 |
-| `StatModifierPipeline` | 기본 능력치에 명령·장수·진형·특성 보정을 순서대로 적용 |
+| `StatModifierPipeline` | 기본 능력치에 `StatModifier` 목록(장수 영향·진형·명령·특성·스킬)을 순서대로 적용 |
 | `Soldier` | 화면 병사 1명: 위치, 체력, 목표 |
 | `BattleGeneral` | 전투 중 장수: 레벨 반영된 최종 능력치, 상태(정상·퇴각·부상·포로) |
 | `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스) |
@@ -117,7 +123,8 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
 | `MoraleSystem` | 손실·기습·문관 피격·일기토 결과로 사기 증감 |
 | `RetreatSystem` | 사기·예비 병력 기준과 장수 성향으로 자동 퇴각 판정 |
-| `TacticSystem` | 책사 자동 전술(버프) 발동 |
+| `SkillSystem` | 스킬 사용 조건 확인, 비용·대기시간 관리, 효과 실행 (위임 시 자동 사용) |
+| `InfluenceSystem` | 장수 능력치를 영향표·지휘 범위에 따라 소부대 보정으로 변환 |
 | `AISystem` | 적 군단과 위임 상태의 아군 군단에 **군단 명령**을 내림 |
 | `EventTriggerSystem` | 스텝 JSON의 이벤트(대사, 증원) 조건 감시 |
 | `VictorySystem` | 승리·패배 조건 판정 → 종료 |
@@ -139,7 +146,8 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
 | `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver | `"victory"`, `"defeat"` |
-| `ITacticSkill` | 사기 회복, 공격 버프 … | 장수의 자동 전술 id |
+| `ISkillEffect` | Damage, Buff, Debuff, Morale, Disrupt(진형 혼란), Move … | `skills.json`의 `effects[].type` |
+| `ISkillCondition` | StatAtLeast(지략 ≥ 70), LevelAtLeast, TroopTag … | `skills.json`의 `requires` |
 | `IBattleTypeRules` | FieldRules(야전), SiegeRules(성새전), NavalRules(수상전) | `"battleType"` |
 
 `DamageCalculator`는 등록된 `IDamageModifier`들을 순서대로 곱해 최종 피해를 만든다. 새 보정 요소는 Modifier 하나를 추가하면 된다.
@@ -179,6 +187,8 @@ public interface ISubUnitBehavior {
 | `StatCalculator` | 기본 능력치 + 성장률 × 레벨 (+ 스텝 배율) → 최종 능력치 |
 | `ExpCalculator` | `BattleResult`의 공적 + 스텝 보상 배율 → 장수별 획득 경험치 |
 | `LevelUpService` | 경험치 반영, 레벨업 처리, 레벨 상한 적용, 레벨업 내역 반환 |
+| `TroopProgress` | 세이브되는 소부대 성장 상태: 병종, 숙련도 |
+| `PromotionService` | 승급 조건 확인 → 상위 병종으로 승급 |
 | `ProgressionReport` | 결과 화면에 보여줄 장수별 경험치·레벨업·능력치 변화 |
 
 스텝별로 설정할 수 있는 값 (`StepData`):
@@ -241,6 +251,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | 새 스텝 | `Steps/stepNN.json` + 대사 파일 | 없음 |
 | 새 장수 | `generals.json`에 항목 추가 | 없음 |
 | 새 진형 | `formations.json`에 항목 추가 | 없음 |
+| 새 능력치 | `stats.json` 추가 + 사용하는 규칙 추가 | 없음 |
+| 새 스킬 | `skills.json` 추가 (새 효과 종류면 `ISkillEffect` 구현) | 없음 |
+| 새 병종·특화 | `troopTypes.json` 추가 (태그로 상성 자동 적용) | 없음 |
 | 새 명령 | `ICorpsCommand` 구현 + 등록 + 버튼 | 없음 |
 | 새 소부대 행동 | `ISubUnitBehavior` 구현 + 등록 | 없음 |
 | 새 승리 조건 | `IVictoryCondition` 구현 + 등록 | 없음 |
