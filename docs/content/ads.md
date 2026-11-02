@@ -1,7 +1,7 @@
 # 광고·광고 제거 기획
 
 > 상태: 기획 중 (구현 전)
-> 관련 문서: [main-screen.md](main-screen.md), [architecture.md](architecture.md) 4.6 Game.Economy · 4.8 Game.Ads
+> 관련 문서: [main-screen.md](main-screen.md), [architecture.md](../architecture.md) 4.6 Game.Economy · 4.8 Game.Ads
 
 ---
 
