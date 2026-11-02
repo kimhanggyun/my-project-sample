@@ -34,6 +34,7 @@ Game.Tests ─────────────────┘
 | Game.Campaign | 스텝 진행, 장수 상태, 포로·구출·등용 | 없음 |
 | Game.Economy | 군량 등 자원, 앱 결제 (Google Play / App Store) | 결제 구현부만 있음 |
 | Game.Auth | 로그인, 게스트, 계정 연동 | 플랫폼 로그인 구현부만 있음 |
+| Game.Ads | 보상형 광고, 띠 배너, 광고 동의 | 광고 SDK 구현부만 있음 |
 | Game.Core | 부트, 씬 전환, 세이브, 설정, 데이터 로딩 | 있음 |
 | Game.Battle.View | 3D 표시, 카메라, 병사 풀링, 입력 | 있음 |
 | Game.UI | 타이틀, 설정, HUD, 결과 화면 | 있음 |
@@ -266,6 +267,20 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `SignInProviderRegistry` | 플랫폼별로 보여줄 로그인 버튼 목록 (데이터). 새 로그인 수단은 구현 추가 + 목록 등록 |
 | `AccountLinkService` | 게스트 계정에 구글/Apple 계정 연동 |
 
+## 4.8 Game.Ads (광고)
+
+| 클래스 | 역할 |
+|---|---|
+| `IAdService` | 광고 추상화: 초기화, 동의 상태 반영 |
+| `IRewardedAdService` | 보상형 광고 보기 → 끝까지 본 경우만 보상 콜백. 구현: LevelPlay / AdMob, 테스트용 `FakeRewardedAd` |
+| `IBannerAdService` | 띠 배너 표시·숨김, 배너 높이 알려주기 (화면 배치 조정용) |
+| `AdRewardService` | 보상 지급(군량), 하루 최대 횟수, 재시청 대기시간 관리 (`ITimeProvider` 사용) |
+| `AdPlacementData` | 광고 위치·보상량·횟수 제한 데이터 (`ads.json`) |
+| `AdConsentService` | 아이폰 추적 허용 요청(ATT), 지역별 광고 동의 |
+
+- 서버 도입 후에는 광고 보상 **서버 검증**(광고망이 서버로 보상 완료를 알려주는 방식)으로 바꿔 부정 보상을 막는다.
+- 광고 제거 구매 시 `IBannerAdService`를 끈다.
+
 ## 5. Game.Core
 
 | 클래스 | 역할 |
@@ -312,7 +327,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `DialoguePopup` | 초상화 + 대사 |
 | `PrisonerScreen` | 결과 화면 다음, 잡은 적 장수별 등용·해방 선택 |
 | `TitleScreen`, `SettingsScreen`, `ResultScreen` | 각 화면 (설정은 상단 톱니바퀴에서 여는 팝업) |
-| `MainScreen` | 상단 영역(설정 버튼) + 하단 탭 바 + 탭 화면 영역. 시작 시 탭 목록의 첫 번째 탭을 연다 |
+| `MainScreen` | 상단 바(군량·충전·설정) + 띠 배너 자리 + 탭 화면 영역 + 하단 탭 바. 시작 시 탭 목록의 첫 번째 탭을 연다 |
 | `MainTabRegistry` | `mainTabs.json`을 읽어 탭 목록·순서·상태(사용/TO-BE/숨김)·해금 조건 관리 |
 | `IMainTab` | 탭 화면 모듈 인터페이스. 구현: `StoryTab`(이번 범위), `GeneralGrowthTab`·`TroopGrowthTab`·`FormationTab`(TO-BE), `ComingSoonTab` |
 | `StoryTab` | 스텝 목록, 해금 상태, 스텝 선택 → 대사 → 전투 |
