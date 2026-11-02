@@ -320,10 +320,10 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `UnitSnapshot` | 부대 등록용 복사본: 병종·병력·훈련도·부대 능력치·익힌 진형. 버전 번호 |
 | `IListingService` | 내 장수·부대 등록(가격·지불 자원 지정)·갱신·해제, 등록 목록 검색·정렬 |
 | `HirePriceAdvisor` | 전투력으로 추천 가격 계산, 최대 가격 제한 확인 |
-| `IHireService` | 장수 고용 / 부대 고용(비용 지불), 고용분을 출진 준비 편성에 넣기(부대는 장수 병력 한도 안에서), 하루 한도·대기시간 |
+| `IHireService` | 장수 고용 / 부대 고용(인원 지정, 고용자 군량으로 감당할 수 있는 인원·장수 병력 한도 확인, 1명당 가격 × 인원 지불), 출진 편성에 넣기, 하루 한도·대기시간 |
 | `IBattleRecordService` | 전투 입력(시드·편성·명령 기록) 제출, 확정 결과 조회, 장수별 이력 조회 |
 | `MercenaryHistory` | 장수·부대별 이력: 고용 횟수, 승·패·퇴각·포로, 평균 격파·손실, 최근 전투 (부대는 이끈 장수별 성적 포함) |
-| `OwnerRewardService` | 등록자 보상 수령 |
+| `OwnerRewardService` | 등록자 보상 수령 (부대는 고용 인원 비례) |
 | `BattleReplayVerifier` (서버) | 같은 C# Model로 전투 입력을 재현해 결과 확정 (조작 방지) |
 
 - 전투 Model이 Unity에 의존하지 않는 순수 C#이고 결정적(고정 시드)이라, 서버에서 그대로 재현할 수 있다.
