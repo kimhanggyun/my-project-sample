@@ -94,7 +94,9 @@ Assets/
 | `StatModifierPipeline` | 기본 능력치에 `StatModifier` 목록(장수 영향·진형·명령·특성·스킬)을 순서대로 적용 |
 | `Soldier` | 화면 병사 1명: 위치, 체력, 목표 |
 | `BattleGeneral` | 전투 중 장수: 레벨 반영된 최종 능력치, 상태(정상·퇴각·부상·포로) |
-| `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스) |
+| `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스, 시야 보정) |
+| `VisibilityGrid` | 진영별 격자 칸의 상태: 미탐색 / 탐색됨 / 보임 |
+| `CorpsKnowledge` | 군단이 알고 있는 적 목록과 마지막 목격 위치 (AI 판단에 사용) |
 | `SlotPosition` (enum) | Vanguard, Center, LeftWing, RightWing, LeftGuard, RightGuard |
 
 ### 3.2 진행
@@ -122,6 +124,8 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `MovementSystem` | 지형 비용을 반영한 이동 |
 | `CombatSystem` | 교전 판정, 피해 적용 (`DamageCalculator` 사용) |
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
+| `VisionSystem` | 소부대별 시야 계산 → 진영별 보임 격자, 군단별 인지 정보(본 적 + 공유받은 적, 마지막 목격 위치) 갱신. 일정 주기로 실행 |
+| `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
 | `MoraleSystem` | 손실·기습·문관 피격·일기토 결과로 사기 증감 |
 | `RetreatSystem` | 사기·예비 병력 기준과 장수 성향으로 자동 퇴각 판정 |
 | `SkillSystem` | 스킬 사용 조건 확인, 비용·대기시간 관리, 효과 실행 (위임 시 자동 사용) |
@@ -147,6 +151,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ISkillTargeting` | Self, AllyCorps, EnemyCorps, Point, Area, Direction | `skills.json`의 `target.type` |
 | `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형 상성, 진형 돌파력, 용맹, 사기 | `balance.json`에서 on/off·배율 |
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
+| `IVisionModifier` | 병종, 장수, 지형(언덕·숲), 진형·명령, 날씨 | 보정 목록으로 시야·탐지에 적용 |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
 | `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver | `"victory"`, `"defeat"` |
 | `ISkillEffect` | Damage, Buff, Debuff, Morale, Disrupt(진형 혼란), Move, Stealth(매복), SurpriseAttack(기습) … | `skills.json`의 `effects[].type` |
@@ -244,7 +249,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `OrderInputController` | 선택 상태에서 터치를 명령으로 변환: 적 → 공격, 빈 땅 → 이동 |
 | `SkillTargetingController` | 스킬 지정 모드: 사거리·범위 미리보기, 대상 검증, 지점 스킬의 "이동만 / 도착 후 사용" 선택 |
 | `OrderMarkerView` | 예약된 명령의 경로선과 목적지 표식 |
-| `MinimapView` | 탭하면 펼치는 미니맵 |
+| `MinimapView` | 탭하면 펼치는 미니맵 (안개 반영) |
+| `FogOfWarView` | 보임 격자를 텍스처로 그려 3단계(미탐색·탐색됨·보임) 표시 |
+| `LastKnownMarkerView` | 안 보이게 된 적의 마지막 목격 위치 흐린 표시 |
 | `BattleHUD` | 전투명, 군단 선택, 사기·예비 병력 게이지 |
 | `CommandPanel`, `FormationPanel` | 명령 6개 + 위임, 진형 선택 |
 | `SubUnitCardBar` | 소부대 6개 카드 |
@@ -282,4 +289,5 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
 - `CommandAuthority`: 규율·용맹 값에 따른 반응 지연·독자 행동 확률
 - `CorpsPicker`: 겹친 군단, 여유 반경 경계, 같은 자리 재터치 순환
+- `VisionSystem`: 지형·병종 보정, 공유 범위, 은신 탐지
 - `CorpsOrderQueue`: 이동 → 스킬 순서 실행, 사거리 밖 자동 접근, 대상 소실 시 처리
