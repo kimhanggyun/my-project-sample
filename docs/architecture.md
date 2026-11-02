@@ -98,7 +98,7 @@ Assets/
 | `BattleGeneral` | 전투 중 장수: 레벨 반영된 최종 능력치, 상태(정상·퇴각·부상·포로) |
 | `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스, 시야 보정) |
 | `VisibilityGrid` | 진영별 격자 칸의 상태: 미탐색 / 탐색됨 / 보임 |
-| `CorpsKnowledge` | 군단이 알고 있는 적 목록과 마지막 목격 위치 (AI 판단에 사용) |
+| `SideKnowledge` | 진영이 알고 있는 적 목록과 마지막 목격 위치 (아군 전체 공유, AI 판단에 사용) |
 | `SlotPosition` (enum) | Vanguard, Center, LeftWing, RightWing, LeftGuard, RightGuard |
 
 ### 3.2 진행
@@ -127,7 +127,8 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `MovementSystem` | 소부대는 진형 자리를, 병사는 소부대를 따라 이동. 병사 간 밀어내기 회피 |
 | `CombatSystem` | 교전 판정, 병력 숫자에 피해 적용 (`DamageCalculator` 사용) |
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
-| `VisionSystem` | 소부대별 시야 계산 → 진영별 보임 격자, 군단별 인지 정보(본 적 + 공유받은 적, 마지막 목격 위치) 갱신. 일정 주기로 실행 |
+| `VisionSystem` | 소부대별 시야 계산 → 진영별 보임 격자(아군 전체 공유), 마지막 목격 위치 갱신. 일정 주기로 실행 |
+| `RangedAttackSystem` | 사거리(능력치 + 보정) 안의 보이는 적에게 원거리 공격, 곡사, 오사 옵션 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
 | `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
 | `RetreatSystem` | 퇴각 판정(사기·병력 기준 + 장수 성향, 후퇴 명령), 퇴각 이동, 전장 이탈 처리 |
@@ -327,5 +328,6 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
 - `CommandAuthority`: 규율·용맹 값에 따른 반응 지연·독자 행동 확률
 - `CorpsPicker`: 겹친 군단, 여유 반경 경계, 같은 자리 재터치 순환
-- `VisionSystem`: 지형·병종 보정, 공유 범위, 은신 탐지
+- `VisionSystem`: 지형·병종 보정, 진영 공유, 은신 탐지
+- `RangedAttackSystem`: 사거리 보정 합산, 안 보이는 적 제외
 - `CorpsOrderQueue`: 이동 → 스킬 순서 실행, 사거리 밖 자동 접근, 대상 소실 시 처리
