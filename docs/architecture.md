@@ -37,6 +37,7 @@ Game.Tests ─────────────────┘
 | Game.Auth | 로그인, 게스트, 계정 연동 | 플랫폼 로그인 구현부만 있음 |
 | Game.Ads | 보상형 광고, 띠 배너, 광고 동의 | 광고 SDK 구현부만 있음 |
 | Game.Theme | 테마 선택, 문자열, 테마 에셋 | 에셋 로딩부만 있음 |
+| Game.Online | 용병 등록·고용, 이력, 전투 기록 제출 | 없음 (서버 통신은 인터페이스 뒤) |
 | Game.Core | 부트, 씬 전환, 세이브, 설정, 데이터 로딩 | 있음 |
 | Game.Battle.View | 3D 표시, 카메라, 병사 풀링, 입력 | 있음 |
 | Game.UI | 타이틀, 설정, HUD, 결과 화면 | 있음 |
@@ -114,6 +115,7 @@ Assets/
 | `BattleSimulation` | 고정 간격 틱(`Tick(dt)`)으로 시스템들을 순서대로 실행 |
 | `BattleClock` | 일시정지, 배속(1~3배), 제한 시간 |
 | `BattleContext` | 시스템들이 공유하는 상태·규칙·난수·이벤트 버스 |
+| `CommandLog` | 플레이어·AI 명령을 틱 번호와 함께 기록 (서버 재현·리플레이용) |
 | `BattleEventBus` | Model → View 알림 (교전 시작, 병사 사망, 군단 퇴각, 대사 …) |
 | `BattleFactory` | `StepData`(적군·맵) + 플레이어 편성 → `BattleSetup` → `BattleState` 생성 |
 
@@ -307,6 +309,23 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `RuleDataMerger` | 공통 규칙 데이터 + 테마별 덮어쓰기 병합 (`BalanceResolver`와 같은 방식) |
 
 - 규칙 코드(전투·성장·경제)는 영문 id만 다루고, 화면 문구·그림은 항상 이 모듈을 거친다.
+
+## 4.10 Game.Online (용병 등록·고용)
+
+기획: [content/hiring.md](content/hiring.md). 서버 필수.
+
+| 클래스 | 역할 |
+|---|---|
+| `MercenarySnapshot` | 등록용 복사본: 장수 능력치·레벨·특성, 군단 병력·병종·진형·스킬. 버전 번호 |
+| `IListingService` | 내 장수 등록·갱신·해제, 등록 목록 검색·정렬 |
+| `IHireService` | 고용(비용 지불), 고용 장수를 출진 준비 편성에 넣기, 하루 한도·대기시간 |
+| `IBattleRecordService` | 전투 입력(시드·편성·명령 기록) 제출, 확정 결과 조회, 장수별 이력 조회 |
+| `MercenaryHistory` | 이력: 고용 횟수, 승·패·퇴각·포로, 평균 격파·손실, 최근 전투 |
+| `OwnerRewardService` | 등록자 보상 수령 |
+| `BattleReplayVerifier` (서버) | 같은 C# Model로 전투 입력을 재현해 결과 확정 (조작 방지) |
+
+- 전투 Model이 Unity에 의존하지 않는 순수 C#이고 결정적(고정 시드)이라, 서버에서 그대로 재현할 수 있다.
+- 명령 입력을 시간 순서대로 기록하는 `CommandLog`를 전투 Model에 둔다.
 
 ## 5. Game.Core
 

@@ -23,6 +23,11 @@ flowchart TD
     G --> T3[부대 키우기 · TO-BE]
     G --> T4[부대 편성]
     G --> T5[군량 충전<br/>광고 · 결제]
+    G --> T6[고용 탭<br/>서버 도입 후]
+    T2 --> R[서버에 등록]
+    T3 --> R
+    R --> T6
+    T6 --> S3
 
     T1 --> S1[스텝 선택]
     S1 --> S2[대사 · 전]
@@ -42,6 +47,7 @@ flowchart TD
 메인:     상단(군량·충전·설정) / 띠 배너 / 하단 탭(스토리·장수·부대·편성)
 진행 루프: 스텝 선택 → 대사 → 출진 준비 → 전투 → 결과 → 포로 처리 → 대사 → 저장 → 메인
 성장 루프: 결과(경험치·해금) → (키우기 탭, TO-BE) → 편성 → 다음 출진
+온라인 루프: 키우기 → 서버 등록 → 다른 유저가 이력 보고 고용 → 등록자 보상 → 다시 키우기 (서버 도입 후)
 ```
 
 ---
@@ -61,7 +67,8 @@ flowchart TD
 | 9 | 부대 키우기 | 병종 승급, 진형 해금 | [content/troop-growth.md](content/troop-growth.md) | TO-BE |
 | 10 | 군량·결제 | 군량 획득·소비, 결제 상품 | [content/economy.md](content/economy.md) | 표시 Step 1, 결제 이후 |
 | 11 | 광고 | 띠 배너, 보상형 광고, 광고 제거 | [content/ads.md](content/ads.md) | 이후 |
-| 12 | 서버 | 결제 검증, 서버 시간, 클라우드 세이브 | [planning-notes.md](planning-notes.md) 8장 | 출시 전 |
+| 12 | 고용 | 장수·부대 등록, 이력 열람, 고용, 등록자 보상 | [content/hiring.md](content/hiring.md) | 서버 도입 후 |
+| 13 | 서버 | 결제 검증, 서버 시간, 클라우드 세이브, **고용·이력·전투 검증** | [planning-notes.md](planning-notes.md) 8장 | 출시 전 |
 
 ---
 
@@ -76,6 +83,7 @@ flowchart TD
 | 포로 처리 | 등용된 장수 추가, 감금 중인 적 장수, 구출 전투 생성 |
 | 스텝 클리어 | 다음 스텝 해금, 보상(진형·스킬) |
 | 광고·결제 | 군량, 광고 제거 권한 |
+| 등록·고용 (서버) | 등록 스냅샷, 고용 기록, 이력, 등록자 보상 |
 | 시간 경과 | 구출 기한 → 자동 석방, 등용 재시도 가능, (패키지) 군량 회복 |
 
 ---
@@ -134,6 +142,7 @@ docs/
     ├─ captivity.md      포로·구출·등용
     ├─ general-growth.md 장수 키우기 (TO-BE)
     ├─ troop-growth.md   부대 키우기 (TO-BE)
+    ├─ hiring.md         용병 등록·고용 (온라인)
     ├─ economy.md        군량·결제
     └─ ads.md            광고
 ```

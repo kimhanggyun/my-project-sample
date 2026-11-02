@@ -24,5 +24,6 @@
 | [captivity.md](content/captivity.md) | 포로·구출·등용 | 확정 |
 | [economy.md](content/economy.md) | 군량·결제 | 확정 (상품 일부 미결) |
 | [ads.md](content/ads.md) | 광고(띠 배너, 보상형), 광고 제거 상품 | 확정 |
-| [general-growth.md](content/general-growth.md) | 장수 키우기 | TO-BE |
+| [hiring.md](content/hiring.md) | 용병 등록·고용, 전투 이력 (온라인) | 기획 중 · 서버 필수 |
+| [general-growth.md](content/general-growth.md) | 장수 키우기 (목적: 고용될 장수 만들기) | TO-BE |
 | [troop-growth.md](content/troop-growth.md) | 부대 키우기 | TO-BE |
