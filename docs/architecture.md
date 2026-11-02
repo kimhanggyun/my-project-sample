@@ -5,6 +5,8 @@
 
 ## 원칙
 
+0. **수치는 실수(float).** 능력치 1~100, 소수점 허용. 화면 표시는 정수.
+
 1. **시스템 하나 = 클래스 하나.** 각 시스템은 자기 책임만 가진다 (사기, 보충, 진형 …).
 2. **규칙과 화면 분리.** 전투 규칙(Model)은 Unity에 의존하지 않는 순수 C#. 화면(View)은 Model의 상태와 이벤트를 받아 그리기만 한다.
 3. **데이터 주도.** 숫자·이름·종류는 JSON. 코드는 규칙만 가진다.
@@ -54,9 +56,11 @@ Assets/
 
 | 클래스 | 역할 |
 |---|---|
-| `GeneralData` | 장수 기본 능력치(무력·통솔·지력), 성향, 성장률, 자동 전술 id |
+| `GeneralData` | 장수 기본 능력치(무력·통솔·지력, 1~100 실수), 성향, 성장률, 자동 전술 id, 특성 태그, 숙련 진형 |
 | `TroopTypeData` | 병종: 속도, 상성 배율 |
-| `FormationData` | 진형: 6개 슬롯 상대 위치, 공격·방어·속도 보정 |
+| `FormationData` | 진형: 6개 슬롯 상대 위치, 특성치(정면 폭·돌파력·측면 방어·이동 속도·응집력·전환 시간) |
+| `FormationMatchupData` | 진형 상성표와 배율 |
+| `TraitData` | 장수 특성 태그별 보정치 |
 | `TerrainData` | 지형 부품: 이동속도, 방어 보너스, 통과 가능 |
 | `MapData` | 맵: 크기, 지형 배치, 출현 지점(P1, E1 …), 맵별 군단 수(선택) |
 | `BalanceData` | 공통 수치: 데미지 공식 상수, 퇴각 기준, 일기토 조건, 화면 병사 상한 |
@@ -78,7 +82,9 @@ Assets/
 | `Side` | 진영: 대장, 군단 목록 |
 | `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 현재 명령 |
 | `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 능력치(`SubUnitStats`), 현재 행동, 화면 병사 목록 |
-| `SubUnitStats` | 공격, 방어, 속도, 인지 반경, 판단력, 추격 거리 (+ 군단 명령 보정 적용값) |
+| `SubUnitStats` | 공격, 방어, 속도, 인지 반경, 판단력, 추격 거리 (1~100 실수, + 명령·장수·진형 보정 적용값) |
+| `CommandAuthority` | 장수 능력치 → 규율·용맹 계산, 지휘 범위, 반응 지연, 독자 행동 확률 |
+| `StatModifierPipeline` | 기본 능력치에 명령·장수·진형·특성 보정을 순서대로 적용 |
 | `Soldier` | 화면 병사 1명: 위치, 체력, 목표 |
 | `BattleGeneral` | 전투 중 장수: 레벨 반영된 최종 능력치, 상태(정상·퇴각·부상·포로) |
 | `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스) |
@@ -129,7 +135,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | 인터페이스 | 구현 예 | JSON 키 |
 |---|---|---|
 | `ICorpsCommand` | Charge, Attack, HoldFormation, Wall, Defend, Retreat | 명령 id |
-| `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형, 사기 | `balance.json`에서 on/off·배율 |
+| `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형 상성, 진형 돌파력, 용맹, 사기 | `balance.json`에서 on/off·배율 |
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
 | `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver | `"victory"`, `"defeat"` |
@@ -250,3 +256,5 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - `MoraleSystem`, `RetreatSystem`: 기준값에서 퇴각 발생
 - `BalanceResolver`: 스텝 덮어쓰기 병합
 - `BattleSimulation`: 고정 시드로 같은 입력 → 같은 결과
+- **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
+- `CommandAuthority`: 규율·용맹 값에 따른 반응 지연·독자 행동 확률
