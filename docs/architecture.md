@@ -32,7 +32,8 @@ Game.Tests ─────────────────┘
 | Game.Battle.Model | 전투 규칙, 시스템, AI, 결과 계산 | **없음** |
 | Game.Progression | 경험치·레벨·능력치 계산 | 없음 |
 | Game.Campaign | 스텝 진행, 장수 상태, 포로·구출·등용 | 없음 |
-| Game.Economy | 군량 등 자원, 앱 결제 | 결제 구현부만 있음 |
+| Game.Economy | 군량 등 자원, 앱 결제 (Google Play / App Store) | 결제 구현부만 있음 |
+| Game.Auth | 로그인, 게스트, 계정 연동 | 플랫폼 로그인 구현부만 있음 |
 | Game.Core | 부트, 씬 전환, 세이브, 설정, 데이터 로딩 | 있음 |
 | Game.Battle.View | 3D 표시, 카메라, 병사 풀링, 입력 | 있음 |
 | Game.UI | 타이틀, 설정, HUD, 결과 화면 | 있음 |
@@ -48,7 +49,7 @@ Assets/
 │   ├─ Core/
 │   └─ UI/
 ├─ Tests/
-├─ Scenes/          Boot, Title, Main(하단 탭), Battle, Result
+├─ Scenes/          Boot(스플래시·로그인), Title, Main(하단 탭), Battle, Result
 └─ StreamingAssets/Data/
 ```
 
@@ -248,17 +249,29 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 |---|---|
 | `Wallet` | 보유 자원 (군량 등). 자원 종류는 데이터로 정의해 추가 가능 |
 | `SupplyService` | 출진 군량 자동 계산(기본 3분 분량)·증감, 차감, 전투 후 남은 군량 반환, 적 군량 포획분 지급, 패키지 보유 시 시간 회복 |
-| `IStoreService` | 앱 결제 추상화. 구현: `UnityIapStoreService` (Google Play). 테스트용 `FakeStoreService` |
+| `IStoreService` | 앱 결제 추상화. 구현: `UnityIapStoreService` (Google Play + App Store). 테스트용 `FakeStoreService` |
 | `IReceiptValidator` | 결제 영수증 검증. 처음에는 기기 검증, 나중에 서버 검증으로 교체 |
 
 - 결제 상품 목록은 데이터(`products.json`)로 둔다.
 - 결제 연동과 서버 검증은 추후 단계. 지금은 인터페이스 자리만 둔다.
 
+## 4.7 Game.Auth (로그인)
+
+| 클래스 | 역할 |
+|---|---|
+| `IAuthService` | 로그인 추상화: 자동 로그인, 게스트 로그인, 계정 연동, 로그아웃 |
+| `LocalGuestAuthService` | 서버 없는 동안 쓰는 기기 게스트 계정 (Step 1) |
+| `UgsAuthService` | 서버 도입 후: Unity Gaming Services 인증 (게스트 + 연동) |
+| `IPlatformSignIn` | 플랫폼 로그인. 구현: `GooglePlayGamesSignIn`, `GameCenterSignIn`, `AppleSignIn` |
+| `AccountLinkService` | 게스트 계정에 구글/Apple 계정 연동 |
+
 ## 5. Game.Core
 
 | 클래스 | 역할 |
 |---|---|
-| `GameBootstrap` | 최초 실행: 서비스 생성, 데이터 로딩, 타이틀로 이동 |
+| `GameBootstrap` | 최초 실행: 서비스 생성, 데이터 로딩 후 `StartupFlow` 실행 |
+| `StartupFlow` | 앱 시작 순서: 스플래시 → 버전 확인(`IVersionCheck`, 서버 전까지 건너뜀) → 로그인 → 약관 동의 → 타이틀 → 메인 |
+| `ConsentService` | 첫 실행 약관 동의 기록 |
 | `GameServices` | 서비스 묶음 (간단한 의존성 주입 지점) |
 | `IDataRepository` / `JsonDataRepository` | StreamingAssets JSON 로딩·캐시 |
 | `ISaveService` / `JsonSaveService` | 세이브 슬롯 저장·불러오기 |
