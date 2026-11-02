@@ -246,7 +246,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CaptivityTimerService` | 구출 기한, 등용 재시도 대기시간 계산 |
 | `IRecruitRule` | 등용 가능 여부(`recruitable`)와 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
 | `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
-| `TroopManagementService` | 군단 병력 한도(통솔 기반 5,000~20,000), 징병·모병(군량), 치료(절반 비용), 부상병 시간 회복 |
+| `TroopManagementService` | 군단 병력 한도(통솔 기반 5,000~20,000), 징병(군량)·모병(돈), 치료(절반 비용), 부상병 시간 회복 |
 | `CorpsTroopState` | 세이브되는 군단 병력: 출전 가능 / 부상병(회복 시각) / 한도 |
 | `StartingKitService` | 새 게임 시 `startingKit.json`대로 장수 3명·군단·진형·스킬·군량·기본 편성 지급 |
 | `FormationPresetStore` | 상황별 편성(야전·공성·공격·수비) 저장·조회 |
@@ -256,7 +256,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 
 | 클래스 | 역할 |
 |---|---|
-| `Wallet` | 보유 자원 (군량 등). 자원 종류는 데이터로 정의해 추가 가능 |
+| `Wallet` | 보유 자원 (군량 `supply`, 돈 `gold` …). 자원 종류는 데이터로 정의해 추가 가능 |
 | `SupplyService` | 출진 군량 자동 계산(기본 3분 분량)·증감, 차감, 전투 후 남은 군량 반환, 적 군량 포획분 지급, 패키지 보유 시 시간 회복 |
 | `IStoreService` | 앱 결제 추상화. 구현: `UnityIapStoreService` (Google Play + App Store). 테스트용 `FakeStoreService` |
 | `IReceiptValidator` | 결제 영수증 검증. 처음에는 기기 검증, 나중에 서버 검증으로 교체 |
