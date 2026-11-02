@@ -32,6 +32,7 @@ Game.Tests ─────────────────┘
 | Game.Battle.Model | 전투 규칙, 시스템, AI, 결과 계산 | **없음** |
 | Game.Progression | 경험치·레벨·능력치 계산 | 없음 |
 | Game.Campaign | 스텝 진행, 장수 상태, 포로·구출·등용 | 없음 |
+| Game.Economy | 군량 등 자원, 앱 결제 | 결제 구현부만 있음 |
 | Game.Core | 부트, 씬 전환, 세이브, 설정, 데이터 로딩 | 있음 |
 | Game.Battle.View | 3D 표시, 카메라, 병사 풀링, 입력 | 있음 |
 | Game.UI | 타이틀, 설정, HUD, 결과 화면 | 있음 |
@@ -131,6 +132,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `RangedAttackSystem` | 사거리(능력치 + 보정) 안의 보이는 적에게 원거리 공격, 곡사, 오사 옵션 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
 | `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
+| `SupplySystem` | 군단 군량 소비(병력 × 시간당 소비량, 게임 시간 기준), 바닥 시 사기 하락 보정 |
 | `RetreatSystem` | 퇴각 판정(사기·병력 기준 + 장수 성향, 후퇴 명령), 퇴각 이동, 전장 이탈 처리 |
 | `CaptureSystem` | 장수 포위 판정(방향 비율·주변 아군 병력), 포로 확률 누적, 무력 기반 탈출, 포로 시 군단 궤멸 |
 | `SkillSystem` | 스킬 사용 조건 확인, 비용·대기시간 관리, 효과 실행 (위임 시 자동 사용) |
@@ -158,7 +160,7 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
 | `IVisionModifier` | 병종, 장수, 지형(언덕·숲), 진형·명령, 날씨 | 보정 목록으로 시야·탐지에 적용 |
 | `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
-| `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver, HoldZone(구역 점령), DestroyStructure(수용소 파괴) | `"victory"`, `"defeat"` |
+| `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver, SupplyExhausted(군량 소진), HoldZone(구역 점령), DestroyStructure(수용소 파괴) | `"victory"`, `"defeat"` |
 | `ISkillEffect` | Damage, Buff, Debuff, Morale, Disrupt(진형 혼란), Move, Stealth(매복), SurpriseAttack(기습) … | `skills.json`의 `effects[].type` |
 | `ISkillCondition` | StatAtLeast(지략 ≥ 70), LevelAtLeast, TroopTag … | `skills.json`의 `requires` |
 | `IBattleTypeRules` | FieldRules(야전), SiegeRules(성새전), NavalRules(수상전) | `"battleType"` |
@@ -240,6 +242,18 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `IRecruitRule` | 등용 가능 여부(`recruitable`)와 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
 | `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
 
+## 4.6 Game.Economy (자원·결제)
+
+| 클래스 | 역할 |
+|---|---|
+| `Wallet` | 보유 자원 (군량 등). 자원 종류는 데이터로 정의해 추가 가능 |
+| `SupplyService` | 출진 시 군량 확인·차감, 전투 후 남은 군량 반환 |
+| `IStoreService` | 앱 결제 추상화. 구현: `UnityIapStoreService` (Google Play). 테스트용 `FakeStoreService` |
+| `IReceiptValidator` | 결제 영수증 검증. 처음에는 기기 검증, 나중에 서버 검증으로 교체 |
+
+- 결제 상품 목록은 데이터(`products.json`)로 둔다.
+- 결제 연동과 서버 검증은 추후 단계. 지금은 인터페이스 자리만 둔다.
+
 ## 5. Game.Core
 
 | 클래스 | 역할 |
@@ -270,6 +284,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CorpsPicker` | 터치 지점에서 군단 찾기. 부대원 위치를 감싼 영역 + 여유 반경으로 판정, 겹치면 우선순위 적용. 병사마다 충돌체를 두지 않고 Model의 위치 데이터로 계산해 성능 확보 |
 | `SelectionService` | 선택된 아군·적 군단(과 강조할 소부대)을 한 곳에서 관리. 변경 이벤트를 HUD·카드·3D 표시가 함께 구독 |
 | `SelectionHighlightView` | 선택된 군단 부대원 발밑 링 표시 |
+| `SoldierStatusVisuals` | 사기·버프·디버프·은신 상태를 병사 몸 색·테두리(셰이더 값)와 자세·동작으로 표시 |
 | `OrderInputController` | 선택 상태에서 터치를 명령으로 변환: 적 → 공격, 빈 땅 → 이동 |
 | `SkillTargetingController` | 스킬 지정 모드: 사거리·범위 미리보기, 대상 검증, 지점 스킬의 "이동만 / 도착 후 사용" 선택 |
 | `OrderMarkerView` | 예약된 명령의 경로선과 목적지 표식 |
