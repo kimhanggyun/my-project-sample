@@ -77,7 +77,8 @@ Assets/
 | `BattleState` | 전투 전체 상태 (시간, 양측, 전장) |
 | `Side` | 진영: 대장, 군단 목록 |
 | `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 현재 명령 |
-| `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 화면 병사 목록 |
+| `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 능력치(`SubUnitStats`), 현재 행동, 화면 병사 목록 |
+| `SubUnitStats` | 공격, 방어, 속도, 인지 반경, 판단력, 추격 거리 (+ 군단 명령 보정 적용값) |
 | `Soldier` | 화면 병사 1명: 위치, 체력, 목표 |
 | `BattleGeneral` | 전투 중 장수: 레벨 반영된 최종 능력치, 상태(정상·퇴각·부상·포로) |
 | `Battlefield` | 지형 격자 조회 (이동 비용, 방어 보너스) |
@@ -103,14 +104,15 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 |---|---|
 | `CommandSystem` | 군단에 내려진 명령을 실행 상태로 반영 |
 | `FormationSystem` | 진형에 따라 소부대 목표 위치 계산, 진형 변경 |
-| `TargetingSystem` | 병사·소부대의 공격 대상 선정 |
+| `SubUnitAISystem` | 소부대마다 행동 후보 점수를 매겨 가장 높은 행동 선택 (능력치 기반 자율 판단) |
+| `TargetingSystem` | 선택된 행동에 따라 병사 단위 공격 대상 선정 |
 | `MovementSystem` | 지형 비용을 반영한 이동 |
 | `CombatSystem` | 교전 판정, 피해 적용 (`DamageCalculator` 사용) |
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
 | `MoraleSystem` | 손실·기습·문관 피격·일기토 결과로 사기 증감 |
 | `RetreatSystem` | 사기·예비 병력 기준과 장수 성향으로 자동 퇴각 판정 |
 | `TacticSystem` | 책사 자동 전술(버프) 발동 |
-| `AISystem` | 적 군단과 위임 상태의 아군 군단 지휘 |
+| `AISystem` | 적 군단과 위임 상태의 아군 군단에 **군단 명령**을 내림 |
 | `EventTriggerSystem` | 스텝 JSON의 이벤트(대사, 증원) 조건 감시 |
 | `VictorySystem` | 승리·패배 조건 판정 → 종료 |
 
@@ -129,11 +131,27 @@ JSON에 적힌 문자열 id로 구현 클래스를 찾는다. 새 종류는 클�
 | `ICorpsCommand` | Charge, Attack, HoldFormation, Wall, Defend, Retreat | 명령 id |
 | `IDamageModifier` | 병종 상성, 측면·배후, 지형, 진형, 사기 | `balance.json`에서 on/off·배율 |
 | `ICorpsAI` | Aggressive, Defensive, DefendWall, Delegate | `"ai"` |
+| `ISubUnitBehavior` | HoldFormation(진형 위치 유지), EngageNearest(반경 내 최근접 처리), EngageFavorable(유리한 상대), FillGap(빈 곳 메우기), SupportAlly(아군 지원), Flank(측면·배후), Retreat | 행동 목록·가중치는 `balance.json` |
 | `IVictoryCondition` | DefeatCommander, CaptureCastle, Survive, TimeOver | `"victory"`, `"defeat"` |
 | `ITacticSkill` | 사기 회복, 공격 버프 … | 장수의 자동 전술 id |
 | `IBattleTypeRules` | FieldRules(야전), SiegeRules(성새전), NavalRules(수상전) | `"battleType"` |
 
 `DamageCalculator`는 등록된 `IDamageModifier`들을 순서대로 곱해 최종 피해를 만든다. 새 보정 요소는 Modifier 하나를 추가하면 된다.
+
+### 3.6 소부대 자율 판단 구조
+
+```csharp
+public interface ISubUnitBehavior {
+    string Id { get; }
+    float Score(SubUnit unit, BattleContext ctx);   // 지금 이 행동이 얼마나 적절한가
+    void Execute(SubUnit unit, BattleContext ctx, float dt);
+}
+```
+
+- `SubUnitAISystem`이 매 판단 주기마다 각 행동의 `Score`를 계산하고 가장 높은 행동을 실행한다.
+- 점수에는 소부대 능력치가 반영된다. 예: `FillGap`은 판단력이 낮으면 점수가 거의 0이라 기본 부대는 고르지 않는다.
+- 군단 명령은 `SubUnitStats`에 보정을 거는 방식으로만 영향을 준다. 그래서 명령과 행동이 서로 독립적이다.
+- 새 행동은 `ISubUnitBehavior` 구현 클래스를 추가하고 등록하면 된다.
 
 ### 3.5 입구와 출구
 
@@ -218,6 +236,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | 새 장수 | `generals.json`에 항목 추가 | 없음 |
 | 새 진형 | `formations.json`에 항목 추가 | 없음 |
 | 새 명령 | `ICorpsCommand` 구현 + 등록 + 버튼 | 없음 |
+| 새 소부대 행동 | `ISubUnitBehavior` 구현 + 등록 | 없음 |
 | 새 승리 조건 | `IVictoryCondition` 구현 + 등록 | 없음 |
 | 성새전·수상전 | `IBattleTypeRules` 구현 + 지형 부품 + 맵 | 없음 |
 | 전략(국가 경영) 화면 | 새 모듈이 `BattleSetup` 생성, `BattleResult` 반영 | 없음 |
