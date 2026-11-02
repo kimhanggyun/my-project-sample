@@ -209,7 +209,7 @@ public interface ISubUnitBehavior {
 | `StatCalculator` | 기본 능력치 + 성장률 × 레벨 (+ 스텝 배율) → 최종 능력치 |
 | `ExpCalculator` | `BattleResult`의 공적 + 스텝 보상 배율 → 장수별 획득 경험치 |
 | `LevelUpService` | 경험치 반영, 레벨업 처리, 레벨 상한 적용, 레벨업 내역 반환 |
-| `TroopProgress` | 세이브되는 소부대 성장 상태: 병종, 숙련도 |
+| `TroopProgress` | 세이브되는 부대 성장 상태: 병종, 병력, **훈련도** |
 | `PromotionService` | 승급 조건 확인 → 상위 병종으로 승급 |
 | `ProgressionReport` | 결과 화면에 보여줄 장수별 경험치·레벨업·능력치 변화 |
 
@@ -316,11 +316,12 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 
 | 클래스 | 역할 |
 |---|---|
-| `MercenarySnapshot` | 등록용 복사본: 장수 능력치·레벨·특성, 군단 병력·병종·진형·스킬. 버전 번호 |
+| `GeneralSnapshot` | 장수 등록용 복사본: 능력치·레벨·특성·스킬·진형 숙련. 버전 번호 |
+| `UnitSnapshot` | 부대 등록용 복사본: 병종·병력·훈련도·부대 능력치·익힌 진형. 버전 번호 |
 | `IListingService` | 내 장수 등록·갱신·해제, 등록 목록 검색·정렬 |
-| `IHireService` | 고용(비용 지불), 고용 장수를 출진 준비 편성에 넣기, 하루 한도·대기시간 |
+| `IHireService` | 장수 고용 / 부대 고용(비용 지불), 고용분을 출진 준비 편성에 넣기(부대는 장수 병력 한도 안에서), 하루 한도·대기시간 |
 | `IBattleRecordService` | 전투 입력(시드·편성·명령 기록) 제출, 확정 결과 조회, 장수별 이력 조회 |
-| `MercenaryHistory` | 이력: 고용 횟수, 승·패·퇴각·포로, 평균 격파·손실, 최근 전투 |
+| `MercenaryHistory` | 장수·부대별 이력: 고용 횟수, 승·패·퇴각·포로, 평균 격파·손실, 최근 전투 (부대는 이끈 장수별 성적 포함) |
 | `OwnerRewardService` | 등록자 보상 수령 |
 | `BattleReplayVerifier` (서버) | 같은 C# Model로 전투 입력을 재현해 결과 확정 (조작 방지) |
 
