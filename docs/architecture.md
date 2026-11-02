@@ -132,7 +132,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `RangedAttackSystem` | 사거리(능력치 + 보정) 안의 보이는 적에게 원거리 공격, 곡사, 오사 옵션 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
 | `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
-| `SupplySystem` | 군단 군량 소비(병력 × 병종 하루 소비량 × 경과 일수, 1분 = 7일, 게임 시간 기준), 바닥 시 사기 하락 → 퇴각, 종료 시 포획 가능 군량 집계 |
+| `SupplySystem` | 군단 군량 소비(병력 × 병종 하루 소비량 × 경과 일수, 1분 = 7일, 게임 시간 기준), 바닥 시 사기 하락 → 퇴각, 종료 시 포획 가능 군량 집계 (궤멸·포로 군단 전량, 퇴각 군단은 생존 병력 비율만큼 제외) |
 | `RetreatSystem` | 퇴각 판정(사기·병력 기준 + 장수 성향, 후퇴 명령), 퇴각 이동, 전장 이탈 처리 |
 | `CaptureSystem` | 장수 포위 판정(방향 비율·주변 아군 병력), 포로 확률 누적, 무력 기반 탈출, 포로 시 군단 궤멸 |
 | `SkillSystem` | 스킬 사용 조건 확인, 비용·대기시간 관리, 효과 실행 (위임 시 자동 사용) |
