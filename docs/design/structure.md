@@ -41,7 +41,7 @@
 |---|---|---|---|
 | **Data** | 데이터 읽기, 공통 기본값 + 스텝·테마·규칙 세트 덮어쓰기 병합, **규칙 스위치** | 데이터 파일 | 규칙에 쓸 최종 값·스위치 |
 | **Battle** | 전투 규칙 전체 (실시간 시뮬레이션) | `BattleSetup` | `BattleResult`, 상태·이벤트, 명령 기록 |
-| **Progression** | 경험치·레벨·능력치 계산, 승급·해금 | `BattleResult`, 성장 입력 | 장수·부대 성장 상태 |
+| **Progression** | 장수 레벨(성장률)·능력치 계산, 부대 결속·훈련도, 승급·해금 | `BattleResult`, 키우기 입력 | 장수·부대 성장 상태 |
 | **Campaign** | 스텝 진행, 장수 상태(포로 등), 구출·등용, 병력 관리 | `BattleResult`, 시간 | 진행 상태 |
 | **Economy** | 자원(군량·돈), 출진 군량, 징병·모병·치료, 결제 상품 효과 | 행동, 결제 결과 | 자원 변화 |
 | **Online** | 장수·부대 등록·고용, 이력, 전투 기록 제출, (확장) 유저 대전 매칭·랭킹·실시간 명령 중계 | 스냅샷, 명령 기록 | 고용 결과, 이력, 대전 결과 |
@@ -139,7 +139,7 @@ BattleSetup  ──▶  전투  ──▶  BattleResult
 
 | 모듈 | 주요 단위 | 규칙 문서 |
 |---|---|---|
-| Progression | 경험치 계산, 레벨업, 능력치 계산(아군·적 공통), 승급, 해금 목록 | [battle.md](content/battle.md), [general-growth.md](content/general-growth.md), [troop-growth.md](content/troop-growth.md) |
+| Progression | 레벨업(성장률, 전투 레벨업은 스위치), 능력치 계산(아군·적 공통), **부대 결속**(승리 시 증가), 훈련도, 승급, 해금 목록 | [battle.md](content/battle.md), [general-growth.md](content/general-growth.md), [troop-growth.md](content/troop-growth.md) |
 | Campaign | 진행 상태, 장수 상태, 수용소·구출, 등용(규칙 추가형), 보유 장수 목록, 초기 지급, 편성 저장, 병력 관리(한도·징병·모병·치료·부상 회복) | [story.md](content/story.md), [formation.md](content/formation.md), [captivity.md](content/captivity.md) |
 | Economy | 지갑(자원 종류는 데이터), 출진 군량, 결제 상품 효과, 구매 복원 | [economy.md](content/economy.md) |
 | Online | 장수·부대 스냅샷, 등록·검색, 고용(인원·군량 한도), 추천 가격, 이력, 등록자 보상, 서버 재현 검증 | [hiring.md](content/hiring.md) |

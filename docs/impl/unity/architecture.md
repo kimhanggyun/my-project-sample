@@ -211,9 +211,10 @@ public interface ISubUnitBehavior {
 |---|---|
 | `GeneralProgress` | 세이브되는 장수 성장 상태: 레벨, 경험치 |
 | `StatCalculator` | 기본 능력치 + 성장률 × 레벨 (+ 스텝 배율) → 최종 능력치 |
-| `ExpCalculator` | `BattleResult`의 공적 + 스텝 보상 배율 → 장수별 획득 경험치 |
+| `ExpCalculator` | `BattleResult`의 공적 + 스텝 보상 배율 → 장수별 획득 경험치. 스위치 `battleLevelUp`이 켜졌을 때만, 낮은 배율로 |
 | `LevelUpService` | 경험치 반영, 레벨업 처리, 레벨 상한 적용, 레벨업 내역 반환 |
-| `TroopProgress` | 세이브되는 부대 성장 상태: 병종, 병력, **훈련도** |
+| `TroopProgress` | 세이브되는 부대 성장 상태: 병종, 병력, **훈련도**, **결속** |
+| `CohesionService` | 승리·패배 시 결속 증감 (스위치 `cohesionGain`), 결속 → 상태이상 회복·저항 보정 |
 | `PromotionService` | 승급 조건 확인 → 상위 병종으로 승급 |
 | `ProgressionReport` | 결과 화면에 보여줄 장수별 경험치·레벨업·능력치 변화 |
 
