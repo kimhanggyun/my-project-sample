@@ -66,7 +66,8 @@ Assets/
 |---|---|
 | `StatDefinition` | 능력치 정의: id, 표시 이름, 최소·최대, 기본값 (`stats.json`) |
 | `StatBlock` | 이름-값 목록으로 된 능력치 묶음. 장수·소부대·병종 공통 |
-| `GeneralData` | 장수 능력치(`StatBlock`: 통솔·무력·지략 …), 성향, 성장률, 스킬 목록, 특성 태그, 숙련 진형 |
+| `GeneralData` | 장수 능력치(`StatBlock`: 통솔·무력·지략 …), **등급**, 성향, 성장률, **기본 스킬**, 스킬 칸, 특성 태그, 숙련 진형, 뽑기 목록 |
+| `GachaPoolData` | 뽑기 목록·등급별·장수별 확률, 보장·천장 규칙 (확률 표시 화면이 그대로 읽음) |
 | `SkillData` | 스킬: 요구 능력치, 비용, 재사용 대기, 대상, 효과 목록 |
 | `InfluenceRuleData` | 장수 능력치 → 소부대 능력치 영향 계수 |
 | `TroopTypeData` | 병종: 단계, 상위 병종, 승급 조건, 태그, 기본 능력치(`StatBlock`) |
@@ -333,6 +334,8 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `IHireService` | 장수 고용 / 부대 고용(인원 지정, 고용자 군량으로 감당할 수 있는 인원·장수 병력 한도 확인, 1명당 가격 × 인원 지불), 출진 편성에 넣기, 하루 한도·대기시간 |
 | `IBattleRecordService` | 전투 입력(시드·편성·명령 기록) 제출, 확정 결과 조회, 장수별 이력 조회 |
 | `MercenaryHistory` | 장수·부대별 이력: 고용 횟수, 승·패·퇴각·포로, 평균 격파·손실, 최근 전투 (부대는 이끈 장수별 성적 포함) |
+| `IGachaService` | 뽑기 (서버 결정, 개발용 로컬 구현) |
+| `SkillBookService` | 스킬북 사용 → 요구 능력치 확인 → 스킬 칸에 습득 |
 | `OwnerRewardService` | 등록자 보상 수령 (부대는 고용 인원 비례) |
 | `BattleReplayVerifier` (서버) | 같은 C# Model로 전투 입력을 재현해 결과 확정 (조작 방지) |
 
