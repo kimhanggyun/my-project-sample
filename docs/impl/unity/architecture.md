@@ -217,7 +217,7 @@ public interface ISubUnitBehavior {
 | `StatCalculator` | 기본 능력치 + 성장률 × 레벨 (+ 스텝 배율) → 최종 능력치 |
 | `ExpCalculator` | `BattleResult`의 공적 + 스텝 보상 배율 → 장수별 획득 경험치. 스위치 `battleLevelUp`이 켜졌을 때만, 낮은 배율로 |
 | `LevelUpService` | 경험치 반영, 레벨업 처리, 레벨 상한 적용, 레벨업 내역 반환 |
-| `TroopProgress` | 세이브되는 부대 성장 상태: 병종, 병력, **훈련도**, **결속** |
+| `TroopProgress` | 부대 성장 처리 (`UnitRoster`의 부대에 대해): 승급, 훈련도, 결속 |
 | `CohesionService` | 승리·패배 시 결속 증감 (스위치 `cohesionGain`), 결속 → 상태이상 회복·저항 보정 |
 | `PromotionService` | 승급 조건 확인 → 상위 병종으로 승급 |
 | `GrowthCounterStore` | 장수·부대별 기록 카운터 (일기토 승·패·연승, 전투 승리 수 등) |
@@ -260,7 +260,8 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `IRecruitRule` | 등용 가능 여부(`recruitable`)와 성공률 계산 규칙 (성향·충성 등). 규칙 추가로 확장 |
 | `RosterService` | 출전 가능한 장수 목록 (포로 제외, 등용 장수 포함) |
 | `TroopManagementService` | 군단 병력 한도(통솔 기반 5,000~20,000), 징병(군량)·모병(돈), 치료(절반 비용), 부상병 시간 회복 |
-| `CorpsTroopState` | 세이브되는 군단 병력: 출전 가능 / 부상병(회복 시각) / 한도 |
+| `UnitRoster` | 세이브되는 **보유 부대 목록**. 부대마다 병종·병력·부상병(회복 시각)·훈련도·결속·익힌 진형 |
+| `CorpsComposition` | 편성: 장수 + 소부대 칸 6개 → 부대 id. 합계 ≤ 장수 통솔 한도, 한 부대는 한 군단에만 |
 | `StartingKitService` | 새 게임 시 `startingKit.json`대로 장수 3명·군단·진형·스킬·군량·기본 편성 지급 |
 | `FormationPresetStore` | 상황별 편성(야전·공성·공격·수비) 저장·조회 |
 | `UnlockService` | 배운 진형·스킬 목록 (초기 지급 + 스토리 보상 + 나중에 키우기) |

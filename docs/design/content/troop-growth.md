@@ -3,6 +3,10 @@
 > 상태: **TO-BE** — 하단 탭에 "준비 중"으로 표시. 컨텐츠는 나중에 구성한다.
 > 전체 흐름: [../flow.md](../flow.md) · 관련 규칙: [battle.md](battle.md) 2.2.1(진형), 2.3(병종과 성장) · 구조: [../structure.md](../structure.md)(../structure.md) Progression 모듈
 
+## 0. 대상
+
+이 탭이 키우는 것은 **보유 부대**다 (장수와 따로 보유, [formation.md](formation.md) 2장).
+
 ## 1. 목적
 
 부대(병종)를 특화 병종으로 성장시키고, 새 전술 진형을 늘린다.

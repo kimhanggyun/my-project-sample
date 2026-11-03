@@ -141,7 +141,7 @@ BattleSetup  ──▶  전투  ──▶  BattleResult
 | 모듈 | 주요 단위 | 규칙 문서 |
 |---|---|---|
 | Progression | **기록 카운터 + 보상 규칙 엔진**(일기토 전적 등), 레벨업(성장률, 전투 레벨업은 스위치), 능력치 계산(아군·적 공통), **부대 결속**(승리 시 증가), 훈련도, 승급, 해금 목록 | [battle.md](content/battle.md), [general-growth.md](content/general-growth.md), [troop-growth.md](content/troop-growth.md) |
-| Campaign | 진행 상태, 장수 상태, 수용소·구출, 등용(규칙 추가형), 보유 장수 목록, 초기 지급, 편성 저장, 병력 관리(한도·징병·모병·치료·부상 회복) | [story.md](content/story.md), [formation.md](content/formation.md), [captivity.md](content/captivity.md) |
+| Campaign | 진행 상태, **보유 장수·보유 부대 목록**, 장수 상태, 수용소·구출, 등용(규칙 추가형), 보유 장수 목록, 초기 지급, 편성 저장, 병력 관리(한도·징병·모병·치료·부상 회복) | [story.md](content/story.md), [formation.md](content/formation.md), [captivity.md](content/captivity.md) |
 | Economy | 지갑(자원 종류는 데이터), 출진 군량, 결제 상품 효과, 구매 복원 | [economy.md](content/economy.md) |
 | Online | 장수·부대 스냅샷, 등록·검색, 고용(인원·군량 한도), 추천 가격, 이력, 등록자 보상, 서버 재현 검증 | [hiring.md](content/hiring.md) |
 | Replay | 녹화 저장(설정·명령 기록·버전), 재생(배속·카메라·시점·안개 끄기), 공략 공유·검색·추천 | [replay.md](content/replay.md) |
