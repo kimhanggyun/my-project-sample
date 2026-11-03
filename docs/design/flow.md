@@ -48,6 +48,7 @@ flowchart TD
 진행 루프: 스텝 선택 → 대사 → 출진 준비 → 전투 → 결과 → 포로 처리 → 대사 → 저장 → 메인
 성장 루프: 결과(경험치·해금) → (키우기 탭, TO-BE) → 편성 → 다음 출진
 온라인 루프: 키우기 → 서버 등록 → 다른 유저가 이력 보고 고용 → 등록자 보상 → 다시 키우기 (서버 도입 후)
+대전 루프 (확장): 편성 → 매칭 → 1:1 · N:N 대전 → 랭킹·보상
 ```
 
 ---
@@ -69,6 +70,7 @@ flowchart TD
 | 11 | 광고 | 띠 배너, 보상형 광고, 광고 제거 | [content/ads.md](content/ads.md) | 이후 |
 | 12 | 고용 | 장수·부대 등록, 이력 열람, 고용, 등록자 보상 | [content/hiring.md](content/hiring.md) | 서버 도입 후 |
 | 13 | 서버 | 결제 검증, 서버 시간, 클라우드 세이브, **고용·이력·전투 검증** | [planning-notes.md](planning-notes.md) 8장 | 출시 전 |
+| 14 | 유저 대전 | 1:1 · N:N (비동기 → 실시간) | [content/pvp.md](content/pvp.md) | 확장 예정 |
 
 ---
 
@@ -137,7 +139,7 @@ docs/
 │   └─ content/              단계·탭별 컨텐츠 규칙
 │       ├─ startup.md, main-screen.md, story.md, formation.md
 │       ├─ battle.md, captivity.md, economy.md, ads.md
-│       ├─ hiring.md
+│       ├─ hiring.md, pvp.md (확장)
 │       └─ general-growth.md, troop-growth.md (TO-BE)
 └─ impl/                     구현 선택 (엔진별)
     └─ unity/
