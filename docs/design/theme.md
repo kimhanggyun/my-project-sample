@@ -25,7 +25,7 @@
 |---|---|---|---|
 | 지휘관 | `general` | 장수 | 영웅 |
 | 능력치 | `leadership` / `might` / `intellect` | 통솔 / 무력 / 지략 | 지휘 / 힘 / 마력 |
-| 병종 | `infantry` / `spearman` / `archer` / `cavalry` / `scout` | 보병 / 창병 / 궁병 / 기병 / 척후병 | 검사 / 창기사 / 궁수 / 기사 / 정찰병 |
+| 병종 | `infantry` / `spearman` / `archer` / `cavalry` / `scout` (전체 목록: [content/troops.md](content/troops.md)) | 보병 / 창병 / 궁병 / 기병 / 첨병 | 검사 / 창기사 / 궁수 / 기사 / 정찰병 |
 | 진형 | `fishScale`, `craneWing` … | 어린, 학익 … | 쐐기 대형, 포위 대형 … |
 | 스킬 | `ambush`, `fireAttack` … | 복병, 화계 … | 매복, 화염구 … |
 | 자원 | `supply` | 군량 | 식량 / 보급품 |
