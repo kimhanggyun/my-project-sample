@@ -95,7 +95,7 @@ Assets/
 | `BattleState` | 전투 전체 상태 (시간, 양측, 전장) |
 | `Side` | 진영: 대장, 군단 목록 |
 | `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 군단 명령, 명령 예약(`CorpsOrderQueue`) |
-| `CorpsOrderQueue` | 순서대로 실행할 명령 목록 (예: 이동 → 스킬) |
+| `CorpsOrderQueue` | 순서대로 실행할 명령 목록 (예: 이동 → 스킬). 항목: 이동·경유지·공격·스킬·진형·대기(시간·조건)·신호 대기·퇴각 경로, 항목별 교전 방식 |
 | `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 능력치(`SubUnitStats`), 현재 행동, 화면 병사 목록 |
 | `SubUnitStats` | 소부대 최종 능력치. `StatBlock` 기반이라 항목이 늘어나도 클래스 수정 없음 |
 | `StatModifier` | 보정 1개: 출처, 대상 능력치, 더하기/곱하기 값 |
@@ -369,6 +369,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `SelectionService` | 선택된 아군·적 군단(과 강조할 소부대)을 한 곳에서 관리. 변경 이벤트를 HUD·카드·3D 표시가 함께 구독 |
 | `SelectionHighlightView` | 선택된 군단 부대원 발밑 링 표시 |
 | `SoldierStatusVisuals` | 사기·버프·디버프·은신 상태를 병사 몸 색·테두리(셰이더 값)와 자세·동작으로 표시 |
+| `ControlModeProfile` | 기본 / 전문가 조작별 입력 매핑과 화면 구성 (같은 명령 시스템 사용) |
 | `OrderInputController` | 선택 상태에서 터치를 명령으로 변환: 적 → 공격, 빈 땅 → 이동 |
 | `SkillTargetingController` | 스킬 지정 모드: 사거리·범위 미리보기, 대상 검증, 지점 스킬의 "이동만 / 도착 후 사용" 선택 |
 | `OrderMarkerView` | 예약된 명령의 경로선과 목적지 표식 |
