@@ -222,6 +222,7 @@ public interface ISubUnitBehavior {
 | `CohesionService` | 승리·패배 시 결속 증감 (스위치 `cohesionGain`), 결속 → 상태이상 회복·저항 보정 |
 | `PromotionService` | 승급 조건 확인 → 상위 병종으로 승급 |
 | `GrowthCounterStore` | 장수·부대별 기록 카운터 (일기토 승·패·연승, 전투 승리 수 등) |
+| `SecretRewardService` | 숨은 보상 조건 판정 (전투 결과·명령 기록·카운터), 계정당 1회 기록, 발견 연출 요청 (`secrets.json`) |
 | `GrowthRuleEngine` | `growthTracks.json`의 조건 → 보상 적용 (능력치, 스킬·진형, 특성, 칭호, 자원) |
 | `ProgressionReport` | 결과 화면에 보여줄 장수별 경험치·레벨업·능력치 변화 |
 

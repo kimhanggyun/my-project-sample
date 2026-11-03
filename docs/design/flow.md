@@ -143,7 +143,7 @@ docs/
 │   ├─ review.md             검토 메모
 │   └─ content/              단계·탭별 컨텐츠 규칙
 │       ├─ startup.md, main-screen.md, story.md, formation.md
-│       ├─ generals.md, traits.md, battle.md, troops.md, formations.md, skills.md, ai.md, maps.md, captivity.md, economy.md, ads.md
+│       ├─ generals.md, traits.md, secrets.md, battle.md, troops.md, formations.md, skills.md, ai.md, maps.md, captivity.md, economy.md, ads.md
 │       ├─ hiring.md, replay.md, pvp.md (확장)
 │       └─ general-growth.md, troop-growth.md (TO-BE)
 └─ impl/                     구현 선택 (엔진별)
