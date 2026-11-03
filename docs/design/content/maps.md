@@ -20,7 +20,7 @@
 
 ## 2. 지형 부품
 
-↑ 유리 · ↓ 불리. 병종별 세부 규칙은 [battle.md](battle.md) 2.16 규칙표, [troops.md](troops.md) 5장.
+↑ 유리 · ↓ 불리. 병종별 이동 규칙은 [battle.md](battle.md) 2.16 규칙표, **지형별 병종 전투 보정은 2.16.1**, 특화 병종은 [troops.md](troops.md) 5장.
 
 ### 2.1 기본 지형
 
