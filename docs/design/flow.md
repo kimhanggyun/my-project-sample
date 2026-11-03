@@ -35,6 +35,7 @@ flowchart TD
     S3 --> S4[전투]
     S4 --> S5[결과<br/>경험치 · 레벨업 · 군량 포획]
     S5 --> S6[포로 처리<br/>등용 · 해방 / 구출 전투 생성]
+    S5 -.-> RP[녹화 저장 · 공략 공유]
     S6 --> S7[대사 · 후]
     S7 --> S8[저장 · 다음 스텝 해금]
     S8 --> G
@@ -48,6 +49,7 @@ flowchart TD
 진행 루프: 스텝 선택 → 대사 → 출진 준비 → 전투 → 결과 → 포로 처리 → 대사 → 저장 → 메인
 성장 루프: 결과(경험치·해금) → (키우기 탭, TO-BE) → 편성 → 다음 출진
 온라인 루프: 키우기 → 서버 등록 → 다른 유저가 이력 보고 고용 → 등록자 보상 → 다시 키우기 (서버 도입 후)
+공략 루프: 결과 → 녹화 공유 → 다른 유저가 스텝 정보에서 공략 보기 → 출진
 대전 루프 (확장): 편성 → 매칭 → 1:1 · N:N 대전 → 랭킹·보상
 ```
 
@@ -69,6 +71,7 @@ flowchart TD
 | 10 | 군량·결제 | 군량 획득·소비, 결제 상품 | [content/economy.md](content/economy.md) | 표시 Step 1, 결제 이후 |
 | 11 | 광고 | 띠 배너, 보상형 광고, 광고 제거 | [content/ads.md](content/ads.md) | 이후 |
 | 12 | 고용 | 장수·부대 등록, 이력 열람, 고용, 등록자 보상 | [content/hiring.md](content/hiring.md) | 서버 도입 후 |
+| 15 | 녹화·공략 | 전투 녹화, 재생, 공략 공유 | [content/replay.md](content/replay.md) | 녹화 Step 2, 공유는 서버 후 |
 | 13 | 서버 | 결제 검증, 서버 시간, 클라우드 세이브, **고용·이력·전투 검증** | [planning-notes.md](planning-notes.md) 8장 | 출시 전 |
 | 14 | 유저 대전 | 1:1 · N:N (비동기 → 실시간) | [content/pvp.md](content/pvp.md) | 확장 예정 |
 
@@ -84,6 +87,8 @@ flowchart TD
 | 전투 종료 | 장수 경험치·레벨, 남은 지참 군량 반환 + 포획 군량, 장수 상태(포로) |
 | 포로 처리 | 등용된 장수 추가, 감금 중인 적 장수, 구출 전투 생성 |
 | 스텝 클리어 | 다음 스텝 해금, 보상(진형·스킬) |
+| 전투 종료 (승패 무관) | 그 스텝의 탐색 기억(확보한 시야) |
+| 녹화 저장 | 내 녹화 목록 |
 | 광고·결제 | 군량, 광고 제거 권한 |
 | 등록·고용 (서버) | 등록 스냅샷, 고용 기록, 이력, 등록자 보상 |
 | 시간 경과 | 구출 기한 → 자동 석방, 등용 재시도 가능, (패키지) 군량 회복 |
@@ -139,7 +144,7 @@ docs/
 │   └─ content/              단계·탭별 컨텐츠 규칙
 │       ├─ startup.md, main-screen.md, story.md, formation.md
 │       ├─ battle.md, captivity.md, economy.md, ads.md
-│       ├─ hiring.md, pvp.md (확장)
+│       ├─ hiring.md, replay.md, pvp.md (확장)
 │       └─ general-growth.md, troop-growth.md (TO-BE)
 └─ impl/                     구현 선택 (엔진별)
     └─ unity/

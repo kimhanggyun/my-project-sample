@@ -116,6 +116,9 @@ Assets/
 | `BattleClock` | 일시정지, 배속(1~3배), 제한 시간 |
 | `BattleContext` | 시스템들이 공유하는 상태·규칙·난수·이벤트 버스 |
 | `CommandLog` | 플레이어·AI 명령을 틱 번호와 함께 기록 (서버 재현·리플레이용) |
+| `ReplayRecord` | 전투 설정 + 시드 + `CommandLog` + 규칙·데이터 버전 (녹화 파일) |
+| `ReplayPlayer` | 녹화를 같은 Model로 다시 돌려 재생 (배속, 카메라, 시점, 안개 끄기) |
+| `ExplorationMemory` | 스텝별 확보한 시야 저장, 재도전 시 초기 보임 상태로 적용 |
 | `BattleEventBus` | Model → View 알림 (교전 시작, 병사 사망, 군단 퇴각, 대사 …) |
 | `BattleFactory` | `StepData`(적군·맵) + 플레이어 편성 → `BattleSetup` → `BattleState` 생성 |
 

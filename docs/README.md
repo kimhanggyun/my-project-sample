@@ -32,6 +32,7 @@
 | [economy.md](design/content/economy.md) | 군량·돈·결제 | 확정 (상품 일부 미결) |
 | [ads.md](design/content/ads.md) | 광고, 광고 제거 상품 | 확정 |
 | [hiring.md](design/content/hiring.md) | 장수·부대 등록과 고용, 전투 이력 (온라인) | 확정 (보상 미결) |
+| [replay.md](design/content/replay.md) | 전투 녹화·재생, 공략 공유 | 기획 중 |
 | [pvp.md](design/content/pvp.md) | 유저 대전 1:1 · N:N | 확장 예정 (구조만 대비) |
 | [general-growth.md](design/content/general-growth.md) | 장수 키우기 | TO-BE |
 | [troop-growth.md](design/content/troop-growth.md) | 부대 키우기 | TO-BE |
