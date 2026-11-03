@@ -15,6 +15,7 @@
 |---|---|
 | [flow.md](design/flow.md) | 전체 플로우, 단계별 담당 문서, 교체 단위 |
 | [structure.md](design/structure.md) | 모듈 구조 (책임·입출력·확장 지점), 엔진 무관 |
+| [verification.md](design/verification.md) | **검증 예시**: 규칙 예시(R) + 수치 예시(N), 기준 전투. 누가 구현해도 같은 답인지 확인 |
 | [theme.md](design/theme.md) | 테마 교체 원칙 (옛날 전투 → 판타지 등) |
 | [planning-notes.md](design/planning-notes.md) | 논의·결정 기록, 미결 사항, 다음 단계 |
 | [review.md](design/review.md) | 전투 기획 검토 메모 |

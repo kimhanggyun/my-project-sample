@@ -138,6 +138,7 @@ docs/
 ├─ design/                   ★ 설계 뼈대 (엔진 무관, 계속 보관)
 │   ├─ flow.md               ← 이 문서 (전체 흐름)
 │   ├─ structure.md          모듈 구조 (입력·출력·책임·확장 지점)
+│   ├─ verification.md       검증 예시 (규칙 R, 수치 N, 기준 전투)
 │   ├─ theme.md              테마 교체 원칙
 │   ├─ planning-notes.md     논의·결정 기록
 │   ├─ review.md             검토 메모
