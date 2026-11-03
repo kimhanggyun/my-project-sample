@@ -9,6 +9,12 @@
 
 처음 읽는 순서: **design/flow.md → design/planning-notes.md → design/content/ → design/structure.md → impl/unity/**
 
+## 개발 규칙
+
+| 문서 | 내용 |
+|---|---|
+| [dev-rules.md](dev-rules.md) | **개발 규칙**: 모듈·의존 방향, 캡슐화, 이식성, 외부 서비스 켜고 끄기, 확장성, 부작용 방지(테스트·변경 관리), Git, 완료 기준 |
+
 ## 설계 뼈대 (design/)
 
 | 문서 | 내용 |
