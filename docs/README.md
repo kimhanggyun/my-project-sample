@@ -28,6 +28,7 @@
 | [story.md](design/content/story.md) | 스토리 탭, 스텝, 대사, 출진 준비 | 확정 |
 | [formation.md](design/content/formation.md) | 부대 편성, 초기 지급, 병력 관리 | 확정 |
 | [battle.md](design/content/battle.md) | 전투 (실시간 군단 지휘) | 확정 (수치 미결) |
+| [formations.md](design/content/formations.md) | 진형 체계: 특성치, 10종, 상성, 병종·지형 궁합, 습득 단계 | 뼈대 확정 (수치 미정) |
 | [troops.md](design/content/troops.md) | 병종 체계: 뼈대, 태그, 계열별 트리(T1~T3), 상성, 개발 순서 | 뼈대 확정 (수치 미정) |
 | [captivity.md](design/content/captivity.md) | 포로·구출·등용 | 확정 |
 | [economy.md](design/content/economy.md) | 군량·돈·결제 | 확정 (상품 일부 미결) |
