@@ -156,7 +156,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 
 | 클래스 | 책임 |
 |---|---|
-| `ContestEngine` | 대결 공통 엔진: 일기토·설전 (행동·결과표는 `contests.json`). 발생 판정, 라운드 진행, 결과 → 사기·책략 점수·혼란·포로 |
+| `ContestEngine` | 대결 공통 엔진: 일기토·논쟁 (행동·결과표는 `contests.json`). 발생 판정, 라운드 진행, 결과 → 사기·책략 점수·혼란·포로 |
 
 ### 3.4 확장 지점 (인터페이스 + 등록표)
 
