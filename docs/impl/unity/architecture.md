@@ -95,7 +95,7 @@ Assets/
 | `BattleState` | 전투 전체 상태 (시간, 양측, 전장) |
 | `Side` | 진영: 대장, 군단 목록 |
 | `Corps` | 군단: 장수, 총병력, 예비 병력, 사기, 진형, 군단 명령, 명령 예약(`CorpsOrderQueue`) |
-| `CorpsOrderQueue` | 순서대로 실행할 명령 목록 (예: 이동 → 스킬). 항목: 이동·경유지·공격·스킬·진형·대기(시간·조건)·신호 대기·퇴각 경로, 항목별 교전 방식 |
+| `CorpsOrderQueue` | 순서대로 실행할 명령 목록 (예: 이동 → 스킬). 항목: 진군·이동·강행·공격 이동·경유·스킬·진형·휴식·협공 대기·후퇴 |
 | `SubUnit` | 소부대: 슬롯(`SlotPosition`), 병종, 능력치(`SubUnitStats`), 현재 행동, 화면 병사 목록 |
 | `SubUnitStats` | 소부대 최종 능력치. `StatBlock` 기반이라 항목이 늘어나도 클래스 수정 없음 |
 | `StatModifier` | 보정 1개: 출처, 대상 능력치, 더하기/곱하기 값 |
@@ -143,6 +143,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `RangedAttackSystem` | 사거리(능력치 + 보정) 안의 보이는 적에게 원거리 공격, 곡사, 오사 옵션 |
 | `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
 | `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
+| `WeatherSystem` | 바람(방향·세기, 사거리·이동 보정)과 날씨(무더위·혹한·비·안개·강풍) 보정, 변화 이벤트 |
 | `SupplySystem` | 군단 군량 소비(병력 × 병종 하루 소비량 × 경과 일수, 1분 = 7일, 게임 시간 기준), 바닥 시 사기 하락 → 퇴각, 종료 시 포획 가능 군량 집계 (궤멸·포로 군단 전량, 퇴각 군단은 생존 병력 비율만큼 제외) |
 | `RetreatSystem` | 퇴각 판정(사기·병력 기준 + 장수 성향, 후퇴 명령), 퇴각 이동, 전장 이탈 처리 |
 | `CaptureSystem` | 장수 포위 판정(방향 비율·주변 아군 병력), 포로 확률 누적, 무력 기반 탈출, 포로 시 군단 궤멸 |
@@ -369,7 +370,9 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `SelectionService` | 선택된 아군·적 군단(과 강조할 소부대)을 한 곳에서 관리. 변경 이벤트를 HUD·카드·3D 표시가 함께 구독 |
 | `SelectionHighlightView` | 선택된 군단 부대원 발밑 링 표시 |
 | `SoldierStatusVisuals` | 사기·버프·디버프·은신 상태를 병사 몸 색·테두리(셰이더 값)와 자세·동작으로 표시 |
-| `ControlModeProfile` | 기본 / 전문가 조작별 입력 매핑과 화면 구성 (같은 명령 시스템 사용) |
+| `CorpsRadialMenu` | 군단 원형 메뉴 (진군·대기·이동·스킬·진형·후퇴·위임), 이동 방식 선택 (이동·강행·공격·경유·스킬) |
+| `AllAdvanceButton` | 전군 진군: 모든 군단을 기본 진군 목표로 |
+| `CollapsiblePanel` | ③④ 패널 접기·펴기 |
 | `OrderInputController` | 선택 상태에서 터치를 명령으로 변환: 적 → 공격, 빈 땅 → 이동 |
 | `SkillTargetingController` | 스킬 지정 모드: 사거리·범위 미리보기, 대상 검증, 지점 스킬의 "이동만 / 도착 후 사용" 선택 |
 | `OrderMarkerView` | 예약된 명령의 경로선과 목적지 표식 |
