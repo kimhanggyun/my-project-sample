@@ -74,7 +74,8 @@ Assets/
 | `TroopMatchupData` | 태그 간 상성 배율 |
 | `FormationData` | 진형: 6개 슬롯 상대 위치, 특성치(정면 폭·돌파력·측면 방어·이동 속도·응집력·전환 시간) |
 | `FormationMatchupData` | 진형 상성표와 배율 |
-| `TraitData` | 장수 특성 태그별 보정치 |
+| `TraitData` | 특성: 계열, 희귀도, 조건부 보정 목록, 중첩 그룹 (`traits.json`) |
+| `TemperamentData` | 성향: 퇴각 기준, 대결 응답·행동 경향, AI 경향 |
 | `TerrainData` | 지형 부품: 이동속도, 방어 보너스, 통과 가능 |
 | `MapData` | 맵: 크기, 규칙 격자(지형 부품·높이), 오브젝트, 출현 지점, 목표 구역, 바람·날씨·안개 기본값, 테마 화면 참조 |
 | `TerrainPartData` | 지형 부품: 이동 비용, 방어, 시야, 은신, 높이, 통과, 폭, 상태 변화 |

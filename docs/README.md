@@ -34,6 +34,7 @@
 | [formations.md](design/content/formations.md) | 진형 체계: 특성치, 10종, 상성, 병종·지형 궁합, 습득 단계 | 뼈대 확정 (수치 미정) |
 | [troops.md](design/content/troops.md) | 병종 체계: 뼈대, 태그, 계열별 트리(T1~T3), 상성, 개발 순서 | 뼈대 확정 (수치 미정) |
 | [generals.md](design/content/generals.md) | 장수: 획득(뽑기·등용·초기), 등급제, 데이터, 기본 스킬·스킬북, 확률 공개 | 기획 중 |
+| [traits.md](design/content/traits.md) | 장수 성향 7종, 특성 약 40종(계열별), 특성 칸·획득·데이터 | 뼈대 확정 (수치 미정) |
 | [captivity.md](design/content/captivity.md) | 포로·구출·등용 | 확정 |
 | [economy.md](design/content/economy.md) | 군량·돈·결제 | 확정 (상품 일부 미결) |
 | [ads.md](design/content/ads.md) | 광고, 광고 제거 상품 | 확정 |
