@@ -80,6 +80,7 @@ Assets/
 | `LevelTableData` | 레벨별 필요 경험치, 레벨 상한 |
 | `StepData` | 스텝별 전투 설정 (전투명, 세력, 맵, 군단, 이벤트, 보상, 덮어쓰기) |
 | `DialogueData` | 대사 목록 |
+| `RuleFlags` | 규칙 스위치(true/false) 묶음. 공통 → 스텝 → 규칙 세트 순으로 병합. 각 시스템은 실행 전에 자기 스위치를 확인 |
 | `BalanceResolver` | `BalanceData` + `StepData.overrides` → 그 스텝에 적용할 최종 수치 |
 | `CorpsLimitResolver` | 군단 수 결정: 스텝 값 → 맵 값 → 기본값(3), 출현 지점 수로 상한 |
 
