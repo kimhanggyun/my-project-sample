@@ -373,6 +373,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `CorpsRadialMenu` | 군단 원형 메뉴 (진군·대기·이동·스킬·진형·후퇴·위임), 이동 방식 선택 (이동·강행·공격·경유·스킬) |
 | `AllAdvanceButton` | 전군 진군: 모든 군단을 기본 진군 목표로 |
 | `CollapsiblePanel` | ③④ 패널 접기·펴기 |
+| `GeneralReportNotifier` | 장수 알림: 군단 카드 색 강조 + 말풍선 + 빠른 선택 버튼, 응답 제한 시간 후 기본 동작 실행 (협공 대기 초과 등) |
 | `OrderInputController` | 선택 상태에서 터치를 명령으로 변환: 적 → 공격, 빈 땅 → 이동 |
 | `SkillTargetingController` | 스킬 지정 모드: 사거리·범위 미리보기, 대상 검증, 지점 스킬의 "이동만 / 도착 후 사용" 선택 |
 | `OrderMarkerView` | 예약된 명령의 경로선과 목적지 표식 |
