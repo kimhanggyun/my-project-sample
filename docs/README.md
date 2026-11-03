@@ -1,29 +1,43 @@
-# 기획 문서
+# 문서
 
-처음 읽는 순서: **flow.md → planning-notes.md → content/ 각 문서 → architecture.md**
+두 층으로 나뉜다.
 
-## 전체
+| 층 | 폴더 | 내용 | 보관 |
+|---|---|---|---|
+| **설계 뼈대** | [design/](design/) | 무엇을 만드는가: 흐름, 규칙, 데이터, 모듈 구조. **엔진·언어와 무관** | 계속 보관 (`design-v1` 태그 예정) |
+| **구현 선택** | [impl/](impl/) | 어떻게 만드는가: 엔진·버전·아트·SDK·클래스 구조 | 엔진별 폴더 |
+
+처음 읽는 순서: **design/flow.md → design/planning-notes.md → design/content/ → design/structure.md → impl/unity/**
+
+## 설계 뼈대 (design/)
 
 | 문서 | 내용 |
 |---|---|
-| [flow.md](flow.md) | **전체 플로우**: 앱 시작부터 전투·결과까지의 흐름, 단계별 담당 문서, 교체 단위 |
-| [planning-notes.md](planning-notes.md) | 논의·결정 기록, 미결 사항, 다음 단계 |
-| [architecture.md](architecture.md) | Unity 코드 구조, 모듈·클래스, 확장 지점 |
-| [theme.md](theme.md) | 테마 교체 원칙 (옛날 전투 → 판타지 등) |
-| [review.md](review.md) | 전투 기획 검토 메모 |
+| [flow.md](design/flow.md) | 전체 플로우, 단계별 담당 문서, 교체 단위 |
+| [structure.md](design/structure.md) | 모듈 구조 (책임·입출력·확장 지점), 엔진 무관 |
+| [theme.md](design/theme.md) | 테마 교체 원칙 (옛날 전투 → 판타지 등) |
+| [planning-notes.md](design/planning-notes.md) | 논의·결정 기록, 미결 사항, 다음 단계 |
+| [review.md](design/review.md) | 전투 기획 검토 메모 |
 
-## 컨텐츠별 (content/)
+### 컨텐츠 (design/content/)
 
 | 문서 | 내용 | 상태 |
 |---|---|---|
-| [startup.md](content/startup.md) | 스플래시·로그인·약관 | 확정 |
-| [main-screen.md](content/main-screen.md) | 메인 화면: 상단 바, 띠 배너, 하단 탭 | 확정 |
-| [story.md](content/story.md) | 스토리 탭, 스텝, 대사, 출진 준비 | 확정 |
-| [formation.md](content/formation.md) | 부대 편성, 새 게임 초기 지급 | 확정 (일부 미결) |
-| [battle.md](content/battle.md) | 전투 (와룡전 스타일 실시간 군단 지휘) | 확정 (수치 미결) |
-| [captivity.md](content/captivity.md) | 포로·구출·등용 | 확정 |
-| [economy.md](content/economy.md) | 군량·결제 | 확정 (상품 일부 미결) |
-| [ads.md](content/ads.md) | 광고(띠 배너, 보상형), 광고 제거 상품 | 확정 |
-| [hiring.md](content/hiring.md) | 용병 등록·고용, 전투 이력 (온라인) | 기획 중 · 서버 필수 |
-| [general-growth.md](content/general-growth.md) | 장수 키우기 (목적: 고용될 장수 만들기) | TO-BE |
-| [troop-growth.md](content/troop-growth.md) | 부대 키우기 | TO-BE |
+| [startup.md](design/content/startup.md) | 스플래시·로그인·약관 | 확정 |
+| [main-screen.md](design/content/main-screen.md) | 메인 화면: 상단 바, 띠 배너, 하단 탭 | 확정 |
+| [story.md](design/content/story.md) | 스토리 탭, 스텝, 대사, 출진 준비 | 확정 |
+| [formation.md](design/content/formation.md) | 부대 편성, 초기 지급, 병력 관리 | 확정 |
+| [battle.md](design/content/battle.md) | 전투 (실시간 군단 지휘) | 확정 (수치 미결) |
+| [captivity.md](design/content/captivity.md) | 포로·구출·등용 | 확정 |
+| [economy.md](design/content/economy.md) | 군량·돈·결제 | 확정 (상품 일부 미결) |
+| [ads.md](design/content/ads.md) | 광고, 광고 제거 상품 | 확정 |
+| [hiring.md](design/content/hiring.md) | 장수·부대 등록과 고용, 전투 이력 (온라인) | 확정 (보상 미결) |
+| [general-growth.md](design/content/general-growth.md) | 장수 키우기 | TO-BE |
+| [troop-growth.md](design/content/troop-growth.md) | 부대 키우기 | TO-BE |
+
+## 구현 선택 (impl/)
+
+| 문서 | 내용 |
+|---|---|
+| [impl/unity/decisions.md](impl/unity/decisions.md) | Unity 버전·렌더링·3D 아트·SDK·백엔드 후보 (잠정, 설계 후 확정) |
+| [impl/unity/architecture.md](impl/unity/architecture.md) | Unity·C# 클래스·폴더 구조 |

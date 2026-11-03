@@ -61,7 +61,7 @@ flowchart TD
 | 3 | 메인 화면 | 상단 바, 띠 배너, 하단 탭, 설정 | [content/main-screen.md](content/main-screen.md) | Step 1 |
 | 4 | 스토리 탭 | 스텝 목록, 대사, 출진 준비 | [content/story.md](content/story.md) | Step 1~2 |
 | 5 | 부대 편성 탭 | 군단 구성, 상황별 편성 | [content/formation.md](content/formation.md) | Step 1~2 |
-| 6 | 전투 | 실시간 군단 지휘 | [content/battle.md](content/battle.md) | Step 2 (웹 2D 검증 후 Unity) |
+| 6 | 전투 | 실시간 군단 지휘 | [content/battle.md](content/battle.md) | Step 2 |
 | 7 | 결과·포로 처리 | 경험치·레벨업, 군량 포획, 등용·해방, 구출 | [content/captivity.md](content/captivity.md), [content/economy.md](content/economy.md) | Step 2 |
 | 8 | 장수 키우기 | 능력치·스킬 성장 | [content/general-growth.md](content/general-growth.md) | TO-BE |
 | 9 | 부대 키우기 | 병종 승급, 진형 해금 | [content/troop-growth.md](content/troop-growth.md) | TO-BE |
@@ -127,22 +127,20 @@ flowchart TD
 
 ```
 docs/
-├─ README.md            문서 목록
-├─ flow.md              ← 이 문서 (전체 흐름)
-├─ planning-notes.md    논의·결정 기록
-├─ architecture.md      코드 구조 (Unity)
-├─ theme.md             테마 교체 원칙
-├─ review.md            검토 메모
-└─ content/             단계·탭별 컨텐츠
-    ├─ startup.md        앱 시작·로그인
-    ├─ main-screen.md    메인 화면
-    ├─ story.md          스토리 탭·출진
-    ├─ formation.md      부대 편성·초기 지급
-    ├─ battle.md         전투
-    ├─ captivity.md      포로·구출·등용
-    ├─ general-growth.md 장수 키우기 (TO-BE)
-    ├─ troop-growth.md   부대 키우기 (TO-BE)
-    ├─ hiring.md         용병 등록·고용 (온라인)
-    ├─ economy.md        군량·결제
-    └─ ads.md            광고
+├─ README.md                 문서 목록
+├─ design/                   ★ 설계 뼈대 (엔진 무관, 계속 보관)
+│   ├─ flow.md               ← 이 문서 (전체 흐름)
+│   ├─ structure.md          모듈 구조 (입력·출력·책임·확장 지점)
+│   ├─ theme.md              테마 교체 원칙
+│   ├─ planning-notes.md     논의·결정 기록
+│   ├─ review.md             검토 메모
+│   └─ content/              단계·탭별 컨텐츠 규칙
+│       ├─ startup.md, main-screen.md, story.md, formation.md
+│       ├─ battle.md, captivity.md, economy.md, ads.md
+│       ├─ hiring.md
+│       └─ general-growth.md, troop-growth.md (TO-BE)
+└─ impl/                     구현 선택 (엔진별)
+    └─ unity/
+        ├─ decisions.md      Unity 버전·아트·SDK 등 (잠정)
+        └─ architecture.md   Unity 코드 구조 (클래스·폴더)
 ```

@@ -1,7 +1,7 @@
 # 광고·광고 제거 기획
 
 > 상태: 기획 중 (구현 전)
-> 관련 문서: [main-screen.md](main-screen.md), [architecture.md](../architecture.md) 4.6 Game.Economy · 4.8 Game.Ads
+> 관련 문서: [main-screen.md](main-screen.md), [architecture.md](../structure.md) Economy 모듈 · Ads 모듈
 
 ---
 
@@ -187,7 +187,7 @@
 | `PurchaseHandler` | 구매 완료 → 상품 효과 적용 (`products.json`의 `effect`) |
 | `AdConsentService` | ATT, 지역별 광고 동의 |
 
-광고 서비스(LevelPlay 또는 AdMob)는 위 인터페이스 뒤에 숨겨서, 나중에 바꿔도 다른 코드는 그대로 둔다.
+광고 서비스(후보: [../../impl/unity/decisions.md](../../impl/unity/decisions.md))는 위 경계 뒤에 숨겨서, 나중에 바꿔도 다른 코드는 그대로 둔다.
 
 ---
 
@@ -197,5 +197,5 @@
 - [x] 한 달 상품 형태 → 30일 이용권, 자동 갱신 없음
 - [ ] 설정 팝업에서 배너 유지 여부 (제안: 유지)
 - [ ] 출진 준비 화면 배너 (제안: 숨김)
-- [ ] 광고 서비스 선택 (LevelPlay / AdMob)
+- [ ] 광고 서비스 선택 (구현 단계)
 - [ ] 만료 알림 여부

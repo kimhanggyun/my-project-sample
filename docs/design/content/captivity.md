@@ -1,7 +1,7 @@
 # 포로 · 구출 · 등용
 
 > 상태: 기획 확정 (구현 전) · 범위: Step 2
-> 전체 흐름: [../flow.md](../flow.md) · 전투 중 포로 발생 규칙: [battle.md](battle.md) 2.5.1 · 코드: [../architecture.md](../architecture.md) 4.5 Game.Campaign
+> 전체 흐름: [../flow.md](../flow.md) · 전투 중 포로 발생 규칙: [battle.md](battle.md) 2.5.1 · 구조: [../structure.md](../structure.md)(../structure.md) Campaign 모듈
 
 ## 1. 규칙
 

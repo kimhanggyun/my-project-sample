@@ -1,7 +1,7 @@
-# 코드 구조 설계 (Unity)
+# Unity 구현: 코드 구조
 
-> 상태: 설계 중 (구현 전)
-> 관련 문서: [content/battle.md](content/battle.md)
+> 상태: **구현 선택 (잠정)** — 엔진 무관 설계는 [../../design/structure.md](../../design/structure.md), 구현 후보는 [decisions.md](decisions.md).
+> 이 문서는 설계 뼈대를 Unity·C#으로 옮길 때의 클래스·폴더 구조다.
 
 ## 원칙
 
@@ -10,7 +10,7 @@
 1. **시스템 하나 = 클래스 하나.** 각 시스템은 자기 책임만 가진다 (사기, 보충, 진형 …).
 2. **규칙과 화면 분리.** 전투 규칙(Model)은 Unity에 의존하지 않는 순수 C#. 화면(View)은 Model의 상태와 이벤트를 받아 그리기만 한다.
 3. **데이터 주도.** 숫자·이름·종류는 JSON. 코드는 규칙만 가진다.
-3-1. **테마 분리.** 데이터 키는 영문 id, 화면 문구·그림은 테마 팩 ([theme.md](theme.md)). 옛날 전투 → 판타지 교체 시 규칙 코드는 그대로.
+3-1. **테마 분리.** 데이터 키는 영문 id, 화면 문구·그림은 테마 팩 ([theme.md](../../design/theme.md)). 옛날 전투 → 판타지 교체 시 규칙 코드는 그대로.
 4. **확장은 "추가"로.** 새 명령·진형·승리 조건·전장 유형은 기존 코드를 고치지 않고 클래스나 데이터를 추가해 붙인다 (인터페이스 + 등록표).
 5. **테스트 가능.** Model은 고정 시드 난수로 결정적으로 돌아가며, Unity 에디터 없이 단위 테스트한다.
 
@@ -289,7 +289,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `AdConsentService` | 아이폰 추적 허용 요청(ATT), 지역별 광고 동의 |
 
 - 서버 도입 후에는 광고 보상 **서버 검증**(광고망이 서버로 보상 완료를 알려주는 방식)으로 바꿔 부정 보상을 막는다.
-- 광고 제거 구매 시 배너를 끈다. 배너 표시 규칙·광고 제거 상품은 [ads.md](content/ads.md) 참고.
+- 광고 제거 구매 시 배너를 끈다. 배너 표시 규칙·광고 제거 상품은 [ads.md](../../design/content/ads.md) 참고.
 
 | 추가 클래스 | 역할 |
 |---|---|
@@ -299,7 +299,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 
 ## 4.9 Game.Theme (테마)
 
-원칙은 [theme.md](theme.md).
+원칙은 [theme.md](../../design/theme.md).
 
 | 클래스 | 역할 |
 |---|---|
@@ -312,7 +312,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 
 ## 4.10 Game.Online (용병 등록·고용)
 
-기획: [content/hiring.md](content/hiring.md). 서버 필수.
+기획: [content/hiring.md](../../design/content/hiring.md). 서버 필수.
 
 | 클래스 | 역할 |
 |---|---|

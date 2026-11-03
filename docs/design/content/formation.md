@@ -1,7 +1,7 @@
 # 부대 편성 · 초기 지급
 
 > 상태: 기획 확정 (구현 전) · 범위: Step 1~2
-> 전체 흐름: [../flow.md](../flow.md) · 관련: [story.md](story.md)(출진 준비), [battle.md](battle.md)(군단 구조·진형) · 코드: [../architecture.md](../architecture.md) 4.5 Game.Campaign, 6 Game.UI
+> 전체 흐름: [../flow.md](../flow.md) · 관련: [story.md](story.md)(출진 준비), [battle.md](battle.md)(군단 구조·진형) · 구조: [../structure.md](../structure.md)(../structure.md) Campaign 모듈, UI 모듈
 
 ## 1. 장수·부대 능력치가 바뀌는 경로
 

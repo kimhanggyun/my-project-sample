@@ -1,7 +1,7 @@
 # 용병 등록 · 고용 (온라인)
 
 > 상태: 기획 중 (구현 전) · **서버 필수**
-> 전체 흐름: [../flow.md](../flow.md) · 관련: [general-growth.md](general-growth.md), [troop-growth.md](troop-growth.md), [formation.md](formation.md), [economy.md](economy.md) · 코드: [../architecture.md](../architecture.md) 4.10 Game.Online
+> 전체 흐름: [../flow.md](../flow.md) · 관련: [general-growth.md](general-growth.md), [troop-growth.md](troop-growth.md), [formation.md](formation.md), [economy.md](economy.md) · 구조: [../structure.md](../structure.md)(../structure.md) Online 모듈
 
 ---
 
@@ -111,8 +111,8 @@
 
 - 전투 규칙(Model)은 **고정 시드로 같은 입력이면 같은 결과**가 나오게 만든다 (이미 설계에 있음).
 - 기기는 결과 대신 **전투 입력**(시드, 편성, 명령 기록)을 서버에 보낸다.
-- 서버가 같은 C# 규칙 코드로 **다시 계산(재현)**해서 결과를 확정하고, 그 결과로 이력·보상을 기록한다.
-  - Unity Gaming Services의 Cloud Code(C#) 또는 별도 서버에서 같은 Model 코드를 실행한다.
+- 서버가 **같은 규칙 코드로 다시 계산(재현)**해서 결과를 확정하고, 그 결과로 이력·보상을 기록한다.
+  - 서버에서 같은 전투 규칙 코드를 실행한다 (구현 방식: [../../impl/unity/decisions.md](../../impl/unity/decisions.md)).
 - 재현 결과와 기기 결과가 다르면 기록하지 않는다.
 
 ---

@@ -1,7 +1,7 @@
 # 앱 시작 (스플래시·로그인·약관)
 
 > 상태: 기획 확정 (구현 전) · 범위: Step 1
-> 전체 흐름: [../flow.md](../flow.md) · 코드: [../architecture.md](../architecture.md) 4.7 Game.Auth, 5 Game.Core
+> 전체 흐름: [../flow.md](../flow.md) · 구조: [../structure.md](../structure.md)(../structure.md) Auth 모듈, Core 모듈
 
 ## 1. 흐름
 
@@ -26,7 +26,7 @@
 
 ## 3. 서버가 없는 동안 (Step 1)
 - ②는 건너뛰고, ③은 **게스트(기기 저장)**로 바로 진행한다.
-- 서버(Unity Gaming Services 등)를 붙이면 같은 자리에 실제 로그인이 들어간다. 다른 코드는 바꾸지 않는다.
+- 서버(백엔드 서비스)를 붙이면 같은 자리에 실제 로그인이 들어간다. 다른 코드는 바꾸지 않는다.
 
 
 ## 4. 교체·확장 포인트

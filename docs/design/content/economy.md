@@ -1,7 +1,7 @@
 # 군량 · 돈 · 결제 (경제)
 
 > 상태: 기획 확정 (구현 전) · 범위: Step 1(표시·보유), Step 2(소비·포획), 결제·광고는 이후
-> 전체 흐름: [../flow.md](../flow.md) · 전투 중 소비 규칙: [battle.md](battle.md) 2.15 · 광고: [ads.md](ads.md) · 코드: [../architecture.md](../architecture.md) 4.6 Game.Economy
+> 전체 흐름: [../flow.md](../flow.md) · 전투 중 소비 규칙: [battle.md](battle.md) 2.15 · 광고: [ads.md](ads.md) · 구조: [../structure.md](../structure.md)(../structure.md) Economy 모듈
 
 ## 1. 자원 종류
 

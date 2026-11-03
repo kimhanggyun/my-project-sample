@@ -1,7 +1,7 @@
 # 메인 화면 (상단 바·하단 탭)
 
 > 상태: 기획 확정 (구현 전) · 범위: Step 1
-> 전체 흐름: [../flow.md](../flow.md) · 코드: [../architecture.md](../architecture.md) 6 Game.UI
+> 전체 흐름: [../flow.md](../flow.md) · 구조: [../structure.md](../structure.md)(../structure.md) UI 모듈
 
 ## 1. 화면 구성
 
