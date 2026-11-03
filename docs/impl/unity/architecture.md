@@ -149,7 +149,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `CaptureSystem` | 장수 포위 판정(방향 비율·주변 아군 병력), 포로 확률 누적, 무력 기반 탈출, 포로 시 군단 궤멸 |
 | `SkillSystem` | 스킬 사용 조건 확인, 책략 점수(= 지략)·비용·전투당 횟수 관리, 준비 시간, 효과 실행 (위임 시 자동 사용) |
 | `InfluenceSystem` | 장수 능력치를 영향표·지휘 범위에 따라 소부대 보정으로 변환 |
-| `AISystem` | 적 군단과 위임 상태의 아군 군단에 **군단 명령**을 내림 |
+| `AISystem` | 적 군단과 위임 상태의 아군 군단에 **군단 명령**을 내림. 내부: `CommanderAI`(작전 방침·페이즈·역할·협공), `CorpsAI`(성향별 행동 점수), `GeneralDecision`(스킬·대결·퇴각), `AIDifficultyProfile`, `StepScriptRunner`(스텝 연출) |
 | `EventTriggerSystem` | 스텝 JSON의 이벤트(대사, 증원) 조건 감시 |
 | `VictorySystem` | 승리·패배 조건 판정 → 종료 |
 
