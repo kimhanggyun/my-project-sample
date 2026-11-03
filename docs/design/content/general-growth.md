@@ -28,6 +28,7 @@
 | 통솔 | 통솔 성장 | 컨텐츠 추후 |
 | 스킬 | 스킬 습득·강화 | 컨텐츠 추후 |
 | **일기토** | **일기토 전적에 따른 보상** (2.2) | 규칙 확정, 보상 수치 추후 |
+| **설전** | 설전(지략 대결) 전적에 따른 보상 (예: 100승마다 지략 +1) | 제안, 보상 수치 추후 |
 
 - 항목 목록은 `growthTracks.json`. 항목을 늘리거나 빼는 것은 데이터로 한다.
 
@@ -61,6 +62,12 @@
   "rules": [
     { "counter": "duelWins",        "every": 100, "reward": { "stat": "might", "add": 1 } },
     { "counter": "duelWinLossDiff", "atLeast": 50, "once": true, "reward": { "trait": "fierce" } }
+  ]
+},
+{
+  "track": "debate",
+  "rules": [
+    { "counter": "debateWins", "every": 100, "reward": { "stat": "intellect", "add": 1 } }
   ]
 }
 ```

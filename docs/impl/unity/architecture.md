@@ -156,7 +156,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 
 | 클래스 | 책임 |
 |---|---|
-| `DuelResolver` | 일기토 발생 판정과 결과 (야전 시작 직전) |
+| `ContestEngine` | 대결 공통 엔진: 일기토·설전 (행동·결과표는 `contests.json`). 발생 판정, 라운드 진행, 결과 → 사기·책략 점수·혼란·포로 |
 
 ### 3.4 확장 지점 (인터페이스 + 등록표)
 
