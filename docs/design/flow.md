@@ -19,7 +19,7 @@ flowchart TD
     F --> G[메인 화면<br/>상단: 군량·설정 / 배너 / 하단 탭]
 
     G --> T1[스토리 탭]
-    G --> T2[장수 키우기 · TO-BE]
+    G --> T2[장수 키우기<br/>스킬북·특성서·대결 보상]
     G --> T3[부대 키우기 · TO-BE]
     G --> T4[부대 편성]
     G --> T5[군량 충전<br/>광고 · 결제]
@@ -66,7 +66,7 @@ flowchart TD
 | 5 | 부대 편성 탭 | 군단 구성, 상황별 편성 | [content/formation.md](content/formation.md) | Step 1~2 |
 | 6 | 전투 | 실시간 군단 지휘 | [content/battle.md](content/battle.md) | Step 2 |
 | 7 | 결과·포로 처리 | 부대 결속, (더딘) 장수 경험치, 군량 포획, 숨은 보상, 등용·해방, 구출 | [content/captivity.md](content/captivity.md), [content/economy.md](content/economy.md) | Step 2 |
-| 8 | 장수 키우기 | 능력치·스킬 성장 | [content/general-growth.md](content/general-growth.md) | TO-BE |
+| 8 | 장수 키우기 | 스킬북·특성서 사용, 대결 전적 보상 (세부 성장은 TO-BE) | [content/general-growth.md](content/general-growth.md) | 일부 먼저 |
 | 9 | 부대 키우기 | 병종 승급, 진형 해금 | [content/troop-growth.md](content/troop-growth.md) | TO-BE |
 | 10 | 군량·결제 | 군량 획득·소비, 결제 상품 | [content/economy.md](content/economy.md) | 표시 Step 1, 결제 이후 |
 | 11 | 광고 | 띠 배너, 보상형 광고, 광고 제거 | [content/ads.md](content/ads.md) | 이후 |

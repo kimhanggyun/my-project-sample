@@ -32,7 +32,7 @@
 | 순서 | 탭 | 상태 | 내용 |
 |---|---|---|---|
 | 1 | 스토리(단계) | **이번 범위** | 스텝을 차례로 진행. 스텝 선택 → 출진 → 전투 → 결과 |
-| 2 | 장수 키우기 | **TO-BE** | 레벨업, 능력치 성장. 세부 항목(지략, 무력, 통솔 …)별로 나뉨. 각 항목 컨텐츠는 나중에 구성 |
+| 2 | 장수 키우기 | **일부 먼저 열림** | 지금: 스킬북·특성서 사용, 일기토·논쟁 전적 보상. 나중(TO-BE): 세부 성장 컨텐츠 (지략·무력·통솔 …) |
 | 3 | 부대 키우기 | **TO-BE** | 특정 컨텐츠로 진형 해금, 병종 승급 등 |
 | 4 | 부대 편성 | **이번 범위** | 보유 장수로 군단 구성, 상황별(야전·공성·공격·수비) 편성 저장 |
 | 5 | 고용 | **서버 도입 후** | 다른 유저가 등록한 장수·부대를 이력 보고 고용, 내 등록 관리 ([hiring.md](hiring.md)) |
@@ -52,7 +52,7 @@
 ```json
 [
   { "id": "story",     "name": "스토리",     "status": "active" },
-  { "id": "general",   "name": "장수 키우기", "status": "tobe" },
+  { "id": "general",   "name": "장수 키우기", "status": "active", "sections": ["skillBook", "traitBook", "contestRewards"] },
   { "id": "troop",     "name": "부대 키우기", "status": "tobe" },
   { "id": "formation", "name": "부대 편성",  "status": "active" }
 ]
@@ -64,7 +64,7 @@
 | 탭 | 문서 | 상태 |
 |---|---|---|
 | 스토리 | [story.md](story.md) | 이번 범위 |
-| 장수 키우기 | [general-growth.md](general-growth.md) | TO-BE |
+| 장수 키우기 | [general-growth.md](general-growth.md) | 일부 먼저 (스킬북·특성서·대결 보상) |
 | 부대 키우기 | [troop-growth.md](troop-growth.md) | TO-BE |
 | 부대 편성 | [formation.md](formation.md) | 이번 범위 |
 | 고용 | [hiring.md](hiring.md) | 서버 도입 후 |

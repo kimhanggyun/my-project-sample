@@ -398,7 +398,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `TitleScreen`, `SettingsScreen`, `ResultScreen` | 각 화면 (설정은 상단 톱니바퀴에서 여는 팝업) |
 | `MainScreen` | 상단 바(군량·충전·설정) + 띠 배너 자리 + 탭 화면 영역 + 하단 탭 바. 시작 시 탭 목록의 첫 번째 탭을 연다 |
 | `MainTabRegistry` | `mainTabs.json`을 읽어 탭 목록·순서·상태(사용/TO-BE/숨김)·해금 조건 관리 |
-| `IMainTab` | 탭 화면 모듈 인터페이스. 구현: `StoryTab`·`FormationTab`(이번 범위), `GeneralGrowthTab`·`TroopGrowthTab`(TO-BE), `ComingSoonTab` |
+| `IMainTab` | 탭 화면 모듈 인터페이스. 구현: `StoryTab`·`FormationTab`(이번 범위), `GeneralGrowthTab`(일부: 스킬북·특성서·대결 보상), `TroopGrowthTab`(TO-BE), `ComingSoonTab` |
 | `FormationTab` | 보유 장수 → 군단 슬롯 배치, 소부대 병종, 진형 선택, 상황별 편성 저장 |
 | `SortiePrepScreen` | 출진 준비: 전장 유형에 맞는 편성 자동 선택·변경, 군량 조정 |
 | `StoryTab` | 스텝 목록, 해금 상태, 스텝 선택 → 대사 → 전투 |
