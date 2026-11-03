@@ -65,7 +65,7 @@ flowchart TD
 | 4 | 스토리 탭 | 스텝 목록, 대사, 출진 준비 | [content/story.md](content/story.md) | Step 1~2 |
 | 5 | 부대 편성 탭 | 군단 구성, 상황별 편성 | [content/formation.md](content/formation.md) | Step 1~2 |
 | 6 | 전투 | 실시간 군단 지휘 | [content/battle.md](content/battle.md) | Step 2 |
-| 7 | 결과·포로 처리 | 경험치·레벨업, 군량 포획, 등용·해방, 구출 | [content/captivity.md](content/captivity.md), [content/economy.md](content/economy.md) | Step 2 |
+| 7 | 결과·포로 처리 | 부대 결속, (더딘) 장수 경험치, 군량 포획, 숨은 보상, 등용·해방, 구출 | [content/captivity.md](content/captivity.md), [content/economy.md](content/economy.md) | Step 2 |
 | 8 | 장수 키우기 | 능력치·스킬 성장 | [content/general-growth.md](content/general-growth.md) | TO-BE |
 | 9 | 부대 키우기 | 병종 승급, 진형 해금 | [content/troop-growth.md](content/troop-growth.md) | TO-BE |
 | 10 | 군량·결제 | 군량 획득·소비, 결제 상품 | [content/economy.md](content/economy.md) | 표시 Step 1, 결제 이후 |

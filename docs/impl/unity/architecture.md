@@ -145,7 +145,7 @@ public interface IBattleSystem { void Tick(BattleContext ctx, float dt); }
 | `ReinforcementSystem` | 사망한 화면 병사를 예비 병력에서 보충 |
 | `VisionSystem` | 소부대별 시야 계산 → 진영별 보임 격자(아군 전체 공유), 마지막 목격 위치 갱신. 일정 주기로 실행 |
 | `RangedAttackSystem` | 사거리(능력치 + 보정) 안의 보이는 적에게 원거리 공격, 곡사, 오사 옵션 |
-| `DetectionSystem` | 은신 부대 탐지 판정 (탐지 능력치·거리) |
+| `StealthSystem` | 은신 상태 관리: 간파 스킬(범위는 탐지 능력치 보정)·공격·숨은 곳 소멸 시 노출 |
 | `MoraleSystem` | 사기 증감 (손실, 기습, 문관 피격, 일기토, 주변 퇴각·포로). 사기 보정은 `MoraleModifier`(가산)로 피해 계산에 반영 |
 | `WeatherSystem` | 바람(방향·세기, 사거리·이동 보정)과 날씨(무더위·혹한·비·안개·강풍) 보정, 변화 이벤트 |
 | `SupplySystem` | 군단 군량 소비(병력 × 병종 하루 소비량 × 경과 일수, 1분 = 7일, 게임 시간 기준), 바닥 시 사기 하락 → 퇴각, 종료 시 포획 가능 군량 집계 (궤멸·포로 군단 전량, 퇴각 군단은 생존 병력 비율만큼 제외) |
@@ -224,7 +224,7 @@ public interface ISubUnitBehavior {
 | `GrowthCounterStore` | 장수·부대별 기록 카운터 (일기토 승·패·연승, 전투 승리 수 등) |
 | `SecretRewardService` | 숨은 보상 조건 판정 (전투 결과·명령 기록·카운터), 계정당 1회 기록, 발견 연출 요청 (`secrets.json`) |
 | `GrowthRuleEngine` | `growthTracks.json`의 조건 → 보상 적용 (능력치, 스킬·진형, 특성, 칭호, 자원) |
-| `ProgressionReport` | 결과 화면에 보여줄 장수별 경험치·레벨업·능력치 변화 |
+| `ProgressionReport` | 결과 화면에 보여줄 부대 결속 변화, 장수 경험치·레벨업(스위치), 숨은 보상 |
 
 스텝별로 설정할 수 있는 값 (`StepData`):
 
@@ -457,6 +457,6 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 - **진형 상성 회귀 테스트**: 같은 능력치·병력으로 진형 36개 조합을 시뮬레이션해 상성표대로 승패가 나오는지 확인
 - `CommandAuthority`: 규율·용맹 값에 따른 반응 지연·독자 행동 확률
 - `CorpsPicker`: 겹친 군단, 여유 반경 경계, 같은 자리 재터치 순환
-- `VisionSystem`: 지형·병종 보정, 진영 공유, 은신 탐지
+- `VisionSystem`: 지형·병종 보정, 진영 공유 / `StealthSystem`: 간파·공격 시 노출
 - `RangedAttackSystem`: 사거리 보정 합산, 안 보이는 적 제외
 - `CorpsOrderQueue`: 이동 → 스킬 순서 실행, 사거리 밖 자동 접근, 대상 소실 시 처리
