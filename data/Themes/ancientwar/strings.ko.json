@@ -37,5 +37,21 @@
   "skill.rally": "고무",
   "skill.regroup": "재정비",
   "skill.warCry": "돌격 함성",
-  "skill.taunt": "도발"
+  "skill.taunt": "도발",
+  "contest.duel.hp": "체력",
+  "contest.duel.energy": "기운",
+  "contest.duel.attack": "공격",
+  "contest.duel.evade": "회피",
+  "contest.duel.charge": "기운 모으기",
+  "contest.duel.bow": "활쏘기",
+  "contest.duel.retreat": "퇴각",
+  "contest.duel.special": "필살",
+  "contest.debate.composure": "평정심",
+  "contest.debate.insight": "통찰",
+  "contest.debate.strongPersuasion": "강한 설득",
+  "contest.debate.letItPass": "흘려듣기",
+  "contest.debate.deliberate": "심사숙고",
+  "contest.debate.mockery": "조롱",
+  "contest.debate.withdraw": "논쟁 철수",
+  "contest.debate.brainwash": "세뇌"
 }

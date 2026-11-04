@@ -20,6 +20,10 @@ namespace Game.Battle.Model.Simulation
         public ulong StateHash { get; internal set; }
         /// <summary>팀 → 탐색한 칸 (y × 폭 + x). 세이브에 넣어 같은 스텝 재도전의 탐색 기억으로 쓴다 (fogMemory).</summary>
         public IReadOnlyDictionary<string, bool[]> Explored { get; internal set; }
+        /// <summary>전투 직전 대결 결과 (장수 전적·성장 보상용).</summary>
+        public IReadOnlyList<Contests.ContestResult> Contests { get; internal set; }
+        /// <summary>장수 id → "light"(경상) 또는 "heavy"(중상) (R-23, 스위치 generalInjury).</summary>
+        public IReadOnlyDictionary<string, string> GeneralInjuries { get; internal set; }
 
         public CorpsResult Find(string corpsId)
         {

@@ -10,6 +10,8 @@ namespace Game.Battle.Model.Ai
         public const string Aggressive = "aggressive";
         /// <summary>제자리 대기, 감지 거리 안에 적이 오면 공격.</summary>
         public const string Defensive = "defensive";
+        /// <summary>숨는 지형에서 복병을 치고 기다림 (복병 스킬이 있을 때).</summary>
+        public const string Ambusher = "ambusher";
     }
 
     /// <summary>AI 군단의 판단 (정해진 틱마다). 새 성향은 구현을 추가하고 등록한다.</summary>
@@ -34,7 +36,8 @@ namespace Game.Battle.Model.Ai
 
         public static AiRegistry WithBuiltIns() => new AiRegistry()
             .Register(new AggressiveStance())
-            .Register(new DefensiveStance());
+            .Register(new DefensiveStance())
+            .Register(new AmbusherStance());
     }
 
     internal static class AiOrders

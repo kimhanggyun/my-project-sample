@@ -24,6 +24,7 @@ namespace Game.Battle.Model.Simulation
         public VictoryRegistry Victory { get; set; } = VictoryRegistry.WithBuiltIns();
         public List<IDamageModifierSource> DamageSources { get; set; } = Combat.DamageSources.BuiltIns();
         public SkillRegistry Skills { get; set; } = SkillRegistry.WithBuiltIns();
+        public AiSkillRules AiSkills { get; set; } = AiSkillRules.WithBuiltIns();
 
         public static BattleExtensions Default() => new BattleExtensions();
     }
@@ -38,9 +39,12 @@ namespace Game.Battle.Model.Simulation
         private readonly BattleExtensions _ext;
         private readonly DamageCalculator _calculator;
         private readonly CombatSystem _combat;
+        private readonly AiPlanner _planner;
         private readonly List<BattleCommand> _pending = new List<BattleCommand>();
         private readonly List<BattleCommand> _log = new List<BattleCommand>();
         private readonly long _maxTicks;
+        private readonly List<Contests.ContestResult> _contests;
+        private readonly Dictionary<string, string> _injuries = new Dictionary<string, string>();
 
         public BattleContext Context { get; }
         public long Tick => Context.Tick;
@@ -61,8 +65,10 @@ namespace Game.Battle.Model.Simulation
             };
             _calculator = new DamageCalculator(setup.Balance, setup.Flags);
             _combat = new CombatSystem(_ext.DamageSources);
+            _planner = new AiPlanner(_ext.AiSkills, _ext.Commands);
             _maxTicks = (setup.MaxMinutes * setup.Combat.TicksPerMinute).FloorToLong();
             Spawn();
+            _contests = Contests.PreBattleContests.Run(Context, setup.Contests, _injuries);
             VisionSystem.Init(Context);
         }
 
@@ -94,10 +100,14 @@ namespace Game.Battle.Model.Simulation
             }
             _pending.Clear();
 
-            if (ctx.Tick % ctx.Combat.AiThinkEveryTicks == 0)
-                foreach (var corps in ctx.Corps)
-                    if (corps.Status == CorpsStatus.Active && corps.Setup.Controller == Controllers.Ai && !corps.HasStatus(StatusIds.Taunted))
-                        _ext.Ai.Get(corps.Setup.AiStance).Think(ctx, corps);
+            foreach (var corps in ctx.Corps)
+            {
+                if (corps.Status != CorpsStatus.Active || corps.Setup.Controller != Controllers.Ai || corps.HasStatus(StatusIds.Taunted)) continue;
+                long every = (long)ctx.Combat.AiThinkEveryTicks * ctx.Defs.Ai.Difficulties[corps.Setup.AiDifficulty].ThinkIntervalMultiplier;
+                if (ctx.Tick % every != 0) continue;
+                _ext.Ai.Get(corps.Setup.AiStance).Think(ctx, corps);
+                _planner.Think(ctx, corps);
+            }
 
             SkillSystem.Step(ctx);
             StatusSystem.Enforce(ctx);
@@ -286,6 +296,8 @@ namespace Game.Battle.Model.Simulation
                 Commands = new List<BattleCommand>(_log),
                 StateHash = StateHasher.Hash(ctx),
                 Explored = ExploredCopy(ctx),
+                Contests = _contests,
+                GeneralInjuries = new Dictionary<string, string>(_injuries),
             };
         }
 
@@ -334,6 +346,13 @@ namespace Game.Battle.Model.Simulation
                 if (c.Units.Count == 0) Fail($"군단 '{c.Id}': 부대가 없습니다.");
             }
             if (teams.Count < 2) Fail("팀이 둘 이상 필요합니다.");
+            foreach (var c in s.Corps)
+                if (c.Controller == Controllers.Ai && !s.Defs.Ai.Difficulties.ContainsKey(c.AiDifficulty ?? "")) Fail($"군단 '{c.Id}': 없는 AI 난이도 '{c.AiDifficulty}'.");
+            foreach (var ct in s.Contests)
+            {
+                if (!s.Defs.Contests.ContainsKey(ct.ContestId ?? "")) Fail($"없는 대결 '{ct.ContestId}'.");
+                if (!ids.Contains(ct.CorpsA ?? "") || !ids.Contains(ct.CorpsB ?? "")) Fail($"대결 '{ct.ContestId}': 없는 군단.");
+            }
         }
     }
 

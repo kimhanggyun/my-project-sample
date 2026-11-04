@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Game.Battle.Model.Ai;
 using Game.Battle.Model.Commands;
 using Game.Battle.Model.Simulation;
@@ -60,6 +61,26 @@ namespace Game.Tests.Battle
                 // 숲 복병 vs 간파 미사용 / 사용 (verification 9장)
                 ["forest_ambush_no_reveal"] = () => AmbushBattle(false),
                 ["forest_ambush_with_reveal"] = () => AmbushBattle(true),
+                // 전투 직전 일기토 (AI 선택) → 결과가 전투에 반영
+                ["duel_before_battle"] = () =>
+                {
+                    var s = Setup("test_plain", 1007, null,
+                        Corps("A", "teamA", "square", general: General("ga", might: 72, temperament: "brave")),
+                        Corps("B", "teamB", "square", general: General("gb", might: 70, temperament: "cautious")));
+                    s.Contests.Add(new ContestSetup { ContestId = "duel", CorpsA = "A", CorpsB = "B" });
+                    return (s, null);
+                },
+                // 스킬을 쓰는 AI끼리 (보통 난이도)
+                ["ai_skills_normal"] = () =>
+                {
+                    var a = Corps("A", "teamA", "fishScale", general: General("ga", 60, 60, 60));
+                    a.General.Skills.AddRange(new[] { "rally", "regroup", "warCry", "arrowRain", "reveal" });
+                    a.Units[4].TroopType = "archer"; a.Units[5].TroopType = "archer";
+                    var b = Corps("B", "teamB", "circle", stance: AiStanceIds.Defensive, general: General("gb", 60, 60, 60));
+                    b.General.Skills.AddRange(new[] { "rally", "taunt", "warCry" });
+                    b.KnownFormations.Add("craneWing");
+                    return (Setup("test_ambush", 1008, null, a, b), null);
+                },
             };
 
         private static (BattleSetup, List<BattleCommand>) AmbushBattle(bool reveal)
@@ -100,7 +121,7 @@ namespace Game.Tests.Battle
         {
             var (setup, commands) = Battles[name]();
             var result = BattleSimulation.Run(setup, commands);
-            var actual = Summarize(result);
+            var actual = JObject.Parse(Summarize(result).ToString()); // 글로 한 번 거쳐 토큰 종류(null 등)를 파일과 맞춘다
             string path = Path.Combine(TestData.RepoRoot, "tests", "Game.Tests", "Golden", name + ".json");
 
             if (Environment.GetEnvironmentVariable("UPDATE_GOLDEN") == "1")
@@ -145,6 +166,7 @@ namespace Game.Tests.Battle
                     ["startSupply"] = c.StartSupply,
                     ["remainingSupply"] = c.RemainingSupply,
                     ["finalMorale"] = c.FinalMorale.ToString(),
+                    ["skillPointsLeft"] = c.SkillPointsLeft.ToString(),
                     ["units"] = units,
                 });
             }
@@ -155,6 +177,8 @@ namespace Game.Tests.Battle
                 ["ticks"] = r.Ticks,
                 ["elapsedSeconds"] = r.ElapsedSeconds.ToString(),
                 ["commands"] = r.Commands.Count,
+                ["contests"] = new JArray(r.Contests.Select(x => new JObject { ["id"] = x.ContestId, ["end"] = x.End, ["winner"] = x.Winner, ["retreater"] = x.Retreater, ["rounds"] = x.Rounds.Count })),
+                ["injuries"] = JObject.FromObject(r.GeneralInjuries),
                 ["stateHash"] = r.StateHash.ToString("x16"),
                 ["corps"] = corps,
             };

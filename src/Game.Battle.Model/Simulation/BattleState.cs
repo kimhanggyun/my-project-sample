@@ -83,6 +83,8 @@ namespace Game.Battle.Model.Simulation
         public const string Taunted = "taunted";
         public const string AmbushSetup = "ambushSetup";
         public const string Surprise = "surprise";
+        /// <summary>일기토 패배: 혼란이 끝나면 퇴각.</summary>
+        public const string Routing = "routing";
     }
 
     public sealed class CorpsState

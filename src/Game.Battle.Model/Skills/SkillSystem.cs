@@ -323,7 +323,12 @@ namespace Game.Battle.Model.Skills
             foreach (var c in ctx.Corps)
             {
                 for (int i = c.Statuses.Count - 1; i >= 0; i--)
-                    if (--c.Statuses[i].TicksLeft <= 0) c.Statuses.RemoveAt(i);
+                {
+                    if (--c.Statuses[i].TicksLeft > 0) continue;
+                    bool rout = c.Statuses[i].Id == StatusIds.Routing;
+                    c.Statuses.RemoveAt(i);
+                    if (rout && c.Status == CorpsStatus.Active) Systems.RetreatSystem.BeginRetreat(c);
+                }
                 foreach (var u in c.Units) if (u.ConfusedTicks > 0) u.ConfusedTicks--;
                 if (c.InBattle)
                     c.SkillPoints.Regenerate(k.SkillPointRegenPerSecond * k.TickSeconds, c.Morale, ctx.Balance.MoraleBase, regen);

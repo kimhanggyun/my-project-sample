@@ -1,0 +1,313 @@
+{
+  "_comment": "대결 엔진 데이터 (battle.md 2.7 일기토, 2.7.6 논쟁, 2.7.7). outcomes[나][상대] = 나에게 일어나는 일. 논쟁은 일기토 결과표를 그대로 쓰고 이름·능력치만 다르다. 수치는 예시.",
+  "contests": [
+    {
+      "id": "duel",
+      "flag": "duel",
+      "stat": "might",
+      "resourceKey": "contest.duel.hp",
+      "chargeKey": "contest.duel.energy",
+      "start": 100,
+      "maxRounds": 10,
+      "baseDamage": 15,
+      "specialDamage": 40,
+      "specialEnergy": 100,
+      "variancePct": 30,
+      "critChance": 0.1,
+      "critMultiplier": 2,
+      "statInfluencePctPerPoint": 1,
+      "statInfluenceMaxPct": 20,
+      "lightInjuryAtOrBelow": 30,
+      "trigger": {
+        "maxStatDifference": 3,
+        "chance": 0.8,
+        "refuseTemperaments": []
+      },
+      "actions": [
+        {
+          "id": "attack",
+          "nameKey": "contest.duel.attack"
+        },
+        {
+          "id": "evade",
+          "nameKey": "contest.duel.evade"
+        },
+        {
+          "id": "charge",
+          "nameKey": "contest.duel.charge"
+        },
+        {
+          "id": "bow",
+          "nameKey": "contest.duel.bow"
+        },
+        {
+          "id": "retreat",
+          "nameKey": "contest.duel.retreat"
+        },
+        {
+          "id": "special",
+          "nameKey": "contest.duel.special",
+          "requiresFullCharge": true
+        }
+      ],
+      "outcomes": {
+        "attack": {
+          "attack": [
+            {
+              "type": "takeStatDifference"
+            }
+          ],
+          "evade": [],
+          "charge": [],
+          "bow": [],
+          "retreat": [],
+          "special": [
+            {
+              "type": "takeSpecial"
+            }
+          ]
+        },
+        "evade": {
+          "attack": [
+            {
+              "type": "energy",
+              "amount": 20
+            }
+          ],
+          "evade": [],
+          "charge": [],
+          "bow": [
+            {
+              "type": "energy",
+              "amount": 20
+            }
+          ],
+          "retreat": [],
+          "special": [
+            {
+              "type": "takeSpecial"
+            }
+          ]
+        },
+        "charge": {
+          "attack": [
+            {
+              "type": "takeDamage",
+              "mult": 1.5
+            }
+          ],
+          "evade": [
+            {
+              "type": "energy",
+              "amount": 50
+            }
+          ],
+          "charge": [
+            {
+              "type": "energy",
+              "amount": 30
+            }
+          ],
+          "bow": [
+            {
+              "type": "takeDamage",
+              "mult": 1
+            }
+          ],
+          "retreat": [],
+          "special": [
+            {
+              "type": "takeSpecial"
+            }
+          ]
+        },
+        "bow": {
+          "attack": [
+            {
+              "type": "takeDamage",
+              "mult": 1
+            }
+          ],
+          "evade": [],
+          "charge": [],
+          "bow": [
+            {
+              "type": "takeDamage",
+              "mult": 1
+            }
+          ],
+          "retreat": [],
+          "special": []
+        },
+        "retreat": {
+          "attack": [
+            {
+              "type": "retreat"
+            }
+          ],
+          "evade": [
+            {
+              "type": "retreat"
+            }
+          ],
+          "charge": [
+            {
+              "type": "retreat"
+            }
+          ],
+          "bow": [
+            {
+              "type": "halveOrFall"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "withdraw"
+            }
+          ],
+          "special": [
+            {
+              "type": "retreat"
+            }
+          ]
+        },
+        "special": {
+          "attack": [
+            {
+              "type": "spendEnergy"
+            }
+          ],
+          "evade": [
+            {
+              "type": "spendEnergy"
+            }
+          ],
+          "charge": [
+            {
+              "type": "spendEnergy"
+            }
+          ],
+          "bow": [
+            {
+              "type": "spendEnergy"
+            },
+            {
+              "type": "takeDamage",
+              "mult": 1
+            }
+          ],
+          "retreat": [
+            {
+              "type": "spendEnergy"
+            }
+          ],
+          "special": [
+            {
+              "type": "spendEnergy"
+            },
+            {
+              "type": "takeSpecial"
+            }
+          ]
+        }
+      },
+      "battleEffects": {
+        "win": {
+          "winnerMorale": 10,
+          "loserMorale": -25
+        },
+        "fall": {
+          "winnerMorale": 10,
+          "loserMorale": -25,
+          "loserConfusionSec": 3,
+          "loserRetreats": true,
+          "loserInjury": "heavy"
+        },
+        "retreat": {
+          "retreaterMorale": -10
+        },
+        "draw": {}
+      }
+    },
+    {
+      "id": "debate",
+      "flag": "debate",
+      "stat": "intellect",
+      "resourceKey": "contest.debate.composure",
+      "chargeKey": "contest.debate.insight",
+      "start": 100,
+      "maxRounds": 10,
+      "baseDamage": 15,
+      "specialDamage": 40,
+      "specialEnergy": 100,
+      "variancePct": 30,
+      "critChance": 0.1,
+      "critMultiplier": 2,
+      "statInfluencePctPerPoint": 1,
+      "statInfluenceMaxPct": 20,
+      "trigger": {
+        "maxStatDifference": 3,
+        "chance": 0.8
+      },
+      "actionMap": {
+        "attack": "strongPersuasion",
+        "evade": "letItPass",
+        "charge": "deliberate",
+        "bow": "mockery",
+        "retreat": "withdraw",
+        "special": "brainwash"
+      },
+      "actions": [
+        {
+          "id": "strongPersuasion",
+          "nameKey": "contest.debate.strongPersuasion",
+          "as": "attack"
+        },
+        {
+          "id": "letItPass",
+          "nameKey": "contest.debate.letItPass",
+          "as": "evade"
+        },
+        {
+          "id": "deliberate",
+          "nameKey": "contest.debate.deliberate",
+          "as": "charge"
+        },
+        {
+          "id": "mockery",
+          "nameKey": "contest.debate.mockery",
+          "as": "bow"
+        },
+        {
+          "id": "withdraw",
+          "nameKey": "contest.debate.withdraw",
+          "as": "retreat"
+        },
+        {
+          "id": "brainwash",
+          "nameKey": "contest.debate.brainwash",
+          "as": "special",
+          "requiresFullCharge": true
+        }
+      ],
+      "outcomesFrom": "duel",
+      "battleEffects": {
+        "win": {
+          "winnerPoints": 10,
+          "loserPoints": -20,
+          "winnerMorale": 5,
+          "loserMorale": -5
+        },
+        "fall": {
+          "winnerPoints": 10,
+          "loserPoints": -40,
+          "loserMorale": -10
+        },
+        "retreat": {
+          "retreaterMorale": -5
+        },
+        "draw": {}
+      }
+    }
+  ]
+}
