@@ -1,5 +1,5 @@
 {
-  "_comment": "스킬 정의 (docs/design/content/skills.md, 1차 7종. 화계는 바람·불 번짐과 함께 2d). 수치는 예시. 효과·조건 종류는 전투 모듈 등록표에 있다.",
+  "_comment": "스킬 정의 (docs/design/content/skills.md 1차 8종). 수치는 예시. 효과·조건 종류는 전투 모듈 등록표에 있다.",
   "skills": [
     {
       "id": "reveal",
@@ -59,6 +59,41 @@
           "confusionRatio": 0.3,
           "confusionSec": 4,
           "moraleDamage": 15
+        }
+      ]
+    },
+    {
+      "id": "fireAttack",
+      "nameKey": "skill.fireAttack",
+      "category": "fire",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 50
+        }
+      ],
+      "cost": 40,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "point",
+        "range": 12
+      },
+      "conditions": [
+        {
+          "type": "targetFlammable"
+        },
+        {
+          "type": "windBlowing"
+        },
+        {
+          "type": "fireAllowedByWeather"
+        }
+      ],
+      "telegraphSec": 2,
+      "effects": [
+        {
+          "type": "ignite"
         }
       ]
     },

@@ -142,6 +142,7 @@ namespace Game.Battle.Model.Vision
             var rule = ctx.Field.RuleAt(Cell.Of(u.Position));
             r += k.VisionCellsPerHeightLevel * rule.Height;
             if (rule.Conceals) r -= k.VisionInsideConcealPenaltyCells;
+            r += ctx.Environment.Sum(x => x.VisionCells); // 비·안개·밤
             return Fix.Max(Fix.OneValue, r);
         }
 

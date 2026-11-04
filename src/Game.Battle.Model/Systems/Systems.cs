@@ -13,6 +13,7 @@ namespace Game.Battle.Model.Systems
     internal static class Tags
     {
         public const string Melee = "melee";
+        public const string Ranged = "ranged";
     }
 
     /// <summary>군단 이동: 명령 → 목적지 → 길 찾기 → 이동. 소부대는 진형 칸 위치를 따른다.</summary>
@@ -116,6 +117,13 @@ namespace Game.Battle.Model.Systems
             }
             Fix cost = ctx.Field.CostAt(Cell.Of(corps.Anchor), members);
             Fix dist = ctx.Combat.MoveCellsPerSecondAtSpeed50 * minSpeed / Fifty * ctx.Combat.TickSeconds / cost;
+            if (corps.PathIndex < corps.Path.Count)
+            {
+                // 바람(진행 방향)·날씨·시간대·병종 태그 이동 보정
+                Vec dir = (corps.Path[corps.PathIndex].Center - corps.Anchor).Normalized();
+                Fix pp = Fix.Max(Fix.FromInt(-90), ctx.Environment.MovePp(dir, members));
+                dist = dist * (Fix.Hundred + pp) / Fix.Hundred;
+            }
             while (dist > Fix.Zero && corps.PathIndex < corps.Path.Count)
             {
                 Vec wp = corps.Path[corps.PathIndex].Center;
@@ -193,10 +201,10 @@ namespace Game.Battle.Model.Systems
                 {
                     if (!u.Alive || u.Confused) continue;
                     Fix reach = u.Troop.AttackRange + c.ContactRadius;
-                    if (!Nearest(ctx, a, u.Position, reach * reach, null, out var dc, out var v))
+                    if (!Nearest(ctx, a, u.Position, reach, null, u.Troop.HasTag(Tags.Ranged), out var dc, out var v))
                     {
                         if (!u.Troop.HasTag(Tags.Melee) || _contacts.Count == 0) continue;
-                        Nearest(ctx, a, u.Position, null, _contacts, out dc, out v);
+                        Nearest(ctx, a, u.Position, null, _contacts, false, out dc, out v);
                     }
 
                     _attack.AttackerCorps = a;
@@ -253,8 +261,11 @@ namespace Game.Battle.Model.Systems
             }
         }
 
-        /// <summary>가장 가까운 적 소부대. reach2가 있으면 그 거리 안, only가 있으면 그 군단들 중에서.</summary>
-        private static bool Nearest(BattleContext ctx, CorpsState self, Vec from, Fix? reach2, List<CorpsState> only, out CorpsState corps, out SubUnitState unit)
+        /// <summary>
+        /// 가장 가까운 적 소부대. reach가 있으면 그 거리 안 (원거리면 대상 방향의 바람·날씨 사거리 보정을 더함),
+        /// only가 있으면 그 군단들 중에서.
+        /// </summary>
+        private static bool Nearest(BattleContext ctx, CorpsState self, Vec from, Fix? reach, List<CorpsState> only, bool ranged, out CorpsState corps, out SubUnitState unit)
         {
             corps = null;
             unit = null;
@@ -267,7 +278,12 @@ namespace Game.Battle.Model.Systems
                 {
                     if (!v.Alive) continue;
                     Fix d = Vec.DistanceSquared(from, v.Position);
-                    if (reach2.HasValue && d > reach2.Value) continue;
+                    if (reach.HasValue)
+                    {
+                        Fix r = reach.Value;
+                        if (ranged) r = Fix.Max(Fix.Zero, r + ctx.Environment.RangedRangeDelta(from, v.Position));
+                        if (d > r * r) continue;
+                    }
                     if (unit == null || d < best) { best = d; corps = e; unit = v; }
                 }
             }
@@ -275,7 +291,10 @@ namespace Game.Battle.Model.Systems
         }
     }
 
-    /// <summary>군량 소비 (R-6과 같은 식): 누적 Σ(병력 × 하루 소비량 × 하루 환산) × 틱 길이 ÷ 60, 내림.</summary>
+    /// <summary>
+    /// 군량 소비 (R-6과 같은 식): 누적 Σ(병력 × 하루 소비량 × 하루 환산 × (100 + 날씨 %p)) × 틱 길이 ÷ 6000, 내림.
+    /// 날씨 보정이 0이면 R-6 그대로.
+    /// </summary>
     internal static class SupplySystem
     {
         public static void Step(BattleContext ctx)
@@ -286,8 +305,9 @@ namespace Game.Battle.Model.Systems
                 if (!corps.InBattle) continue;
                 long daily = 0;
                 foreach (var u in corps.Units) daily = checked(daily + u.Troops * u.Troop.SupplyPerDay);
-                corps.SupplyAccumulator = checked(corps.SupplyAccumulator + daily * ctx.Balance.SupplyDaysPerMinute);
-                long consumed = (Fix.FromInt(corps.SupplyAccumulator) * ctx.Combat.TickSeconds / 60).FloorToLong();
+                long pct = 100 + ctx.Environment.EffectiveWeather.SupplyPp + ctx.Environment.EffectiveTime.SupplyPp;
+                corps.SupplyAccumulator = checked(corps.SupplyAccumulator + daily * ctx.Balance.SupplyDaysPerMinute * pct);
+                long consumed = (Fix.FromInt(corps.SupplyAccumulator) * ctx.Combat.TickSeconds / 6000).FloorToLong();
                 corps.Supply = System.Math.Max(0, corps.StartSupply - consumed);
             }
         }
@@ -312,6 +332,7 @@ namespace Game.Battle.Model.Systems
                     m = Fix.Min(corps.StartMorale, m + c.MoraleRecoverPerSecond * c.TickSeconds);
                 if (corps.Supply == 0 && ctx.IsEnabled(RuleFlagIds.SupplyConsumption))
                     m -= c.MoraleSupplyExhaustedPerSecond * c.TickSeconds;
+                m += ctx.Environment.Sum(x => x.MoralePerSecond) * c.TickSeconds; // 무더위·혹한
                 corps.Morale = Fix.Clamp(m, Fix.Zero, Fix.Hundred);
             }
         }
@@ -336,7 +357,7 @@ namespace Game.Battle.Model.Systems
                 {
                     bool fewTroops = Fix.FromInt(corps.Troops) <= c.RetreatTroopRatio * corps.StartTroops;
                     bool broken = ctx.IsEnabled(RuleFlagIds.Morale) && corps.Morale <= corps.Temperament.RetreatMorale;
-                    if (fewTroops || broken) BeginRetreat(corps);
+                    if (fewTroops || broken) BeginRetreat(ctx, corps);
                 }
                 if (corps.Status == CorpsStatus.Retreating && AtEdge(ctx, corps))
                 {
@@ -346,10 +367,24 @@ namespace Game.Battle.Model.Systems
             }
         }
 
-        public static void BeginRetreat(CorpsState corps)
+        /// <summary>퇴각 시작. 근처 아군 사기가 떨어진다 (battle.md 2.5.1 공통).</summary>
+        public static void BeginRetreat(BattleContext ctx, CorpsState corps)
         {
+            NearbyMoraleDrop(ctx, corps);
             corps.Status = CorpsStatus.Retreating;
             corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Retreat, Mode = MoveModes.Forced });
+        }
+
+        /// <summary>퇴각·포로가 생기면 반경 안 아군 군단 사기 감소.</summary>
+        public static void NearbyMoraleDrop(BattleContext ctx, CorpsState leaving)
+        {
+            Fix r = ctx.Combat.NearbyMoraleRadius;
+            foreach (var a in ctx.Corps)
+            {
+                if (a == leaving || a.Team != leaving.Team || !a.InBattle) continue;
+                if (Vec.DistanceSquared(a.Anchor, leaving.Anchor) > r * r) continue;
+                a.Morale = Fix.Clamp(a.Morale - ctx.Combat.NearbyMoraleDrop, Fix.Zero, Fix.Hundred);
+            }
         }
 
         public static Vec EdgePoint(BattleContext ctx, CorpsState corps)

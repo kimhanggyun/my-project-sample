@@ -94,18 +94,24 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 | 대결 | 전투 직전 일기토·논쟁 (`BattleSetup.Contests`). 한 엔진, 행동·결과표·전투 영향은 `contests.json` (논쟁은 일기토 결과표를 그대로 씀). 선택 기록이 없거나 모자라면 AI가 고름. 결과 → 사기·책략 점수·혼란 뒤 퇴각·부상(`BattleResult.GeneralInjuries`, R-23). 발생 판정은 `ContestTrigger` (바깥에서) |
 | 군단 AI | 성향(공격형·방어형·매복형)이 이동 명령을, 장수 판단(`AiPlanner`)이 스킬·진형을 고른다. 스킬은 점수 매기기 규칙(`AiSkillRules`)으로, 플레이어와 같은 명령 처리기·제한(점수·횟수·시야). 난이도(`ai.json`: 쉬움·보통)는 판단 빈도·스킬 사용 확률·상성 대응 확률·정찰 여부만 바꾼다 |
 
+| 포로 | 장수(중앙 소부대) 주변 반경을 방향 8칸으로 나눠 적이 차지한 비율 ≥ 기준, 반경 안 아군 병력 ≤ 기준이면 포위. 포위가 이어지면 압력이 쌓여 그만큼 확률로 포로(군단 궤멸, `CorpsStatus.Captured`), 무력에 비례해 탈출(경상·퇴각). 일기토 패배도 확률로 포로(`duelCapture`). 논쟁을 세뇌로 진 장수면 등용 보너스 표시. 결과 `BattleResult.Captures` — 구출·등용·해방은 캠페인 쪽 |
+| 퇴각·포로 영향 | 퇴각을 시작하거나 포로가 되면 반경 안 아군 군단 사기 감소 |
+| 바람 | 방향·세기(스텝 데이터, 이벤트로 바뀜). 원거리 사거리: 순풍 +, 역풍 −, 옆바람 조금 − (`windRange`). 이동: 진행 방향 · 바람 × 세기 (`windMove`) |
+| 날씨·시간대 | `conditions.json`: 시야, 원거리 사거리·공격, 이동, 사기(초당·시작), 군량 소비 %, 병종 태그 공격·방어·이동, 불 허용, 불 번짐 속도, 바람 세기 보너스. 날씨와 시간대 효과는 더해진다 (`weather`, `timeOfDay`) |
+| 화계·불 | 화계 = 불붙는 지형 + 바람 + 불 허용 날씨. 전조 뒤 점화 → 정해진 간격마다 바람 방향 이웃으로 번짐 (`fireSpread`, 강풍이면 빨라짐, 비면 안 번짐) → 타는 칸 위 부대 피해·사기↓·은신 노출 → 다 타면 지형 변화 (숲 → 불탄 땅, `Battlefield.SetTerrain`: 숨을 곳·이동 비용이 바뀜) |
+
 ### 5.3 확장 (등록표, `BattleExtensions`)
 
 | 등록표 | 기본 등록 | 새로 붙이는 예 |
 |---|---|---|
 | `CommandRegistry` | advance, moveTo(normal·forced·attackMove), attack, hold, retreat, changeFormation | 스킬 사용, 경유, 협공 대기 |
 | `AiRegistry` | aggressive, defensive, ambusher | 유격형·지원형·신중형, 사령관 AI 작전 방침 |
-| `AiSkills` | morale, clearConfusion, attackBuff, areaDamage, taunt, reveal (스킬 첫 효과 종류로 찾음) | 화계(순풍·숲), 연계 판단 |
+| `AiSkills` | morale, clearConfusion, attackBuff, areaDamage, taunt, reveal, ignite(순풍 + 숲의 적) (스킬 첫 효과 종류로 찾음) | 연계 판단 (간파 → 화계 등) |
 | `VictoryRegistry` | annihilation, commander | 거점 점령, 생존 시간 |
 | `DamageSources` | 위 보정 출처 7종 + 상태 공격 보정 | 날씨, 진형 특성치 |
 | `SkillRegistry` | 효과: reveal, ambush, areaDamage, morale, clearConfusion, attackBuff, contactMoraleDamage, taunt · 조건: casterOnConcealingTerrain, notEngaged, casterHasTag | 새 스킬은 `skills.json`에 효과 조합만 추가. 새 효과 종류만 코드 |
 
-**스킬 (2b, `data/Rules/skills.json`)**: 간파, 복병, 화살비, 고무, 재정비, 돌격 함성, 도발. skills.md 1차의 **화계는 바람·불 번짐·지형 변화와 함께 2d**에서 넣는다.
+**스킬 (`data/Rules/skills.json`)**: skills.md 1차 8종 — 간파, 복병, 화계, 화살비, 고무, 재정비, 돌격 함성, 도발.
 
 ### 5.4 2a에서 단순화한 것 (이후 단계)
 
@@ -114,7 +120,7 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 - 측면·배후는 두 군단 중심의 방향으로 판정한다. 진군(`advance`)의 역할별 배치(선봉·측면·후위)는 아직 없다.
 - 사령관 AI(작전 방침·역할 배분·협공), 어려움·지장 난이도, 위임 판단 수준 차등은 AI 2차 이후 (ai.md 10장).
 - 전투 중 일기토 신청(`challenge`, 3차 스킬)은 아직 없다. 대결은 전투 직전에만.
-- 포로·바람·날씨·화계·지형 변화(2d)는 아직 없다.
+- 수공·낙석 같은 다른 지형 변화 스킬, 스텝 스크립트(증원·페이즈)는 이후. 포로 뒤 처리(수용소 구출 전투, 등용 성공률, 해방 보상)는 캠페인 단계.
 - 시야는 소부대 원형 범위로 계산한다 (지형이 시선을 가리는 계산은 없음, 숲은 "가까이 가야 보임"으로만).
 - 명령 예약(경유), 협공 대기, "도착 후 사용" 선택은 아직 없다 (사거리 밖 스킬은 자동으로 다가가 사용).
 

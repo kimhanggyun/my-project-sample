@@ -57,6 +57,7 @@ namespace Game.Battle.Model.Combat
             new HeightSource(),
             new MoraleSource(),
             new StatusAttackSource(),
+            new ConditionSource(),
         };
     }
 
@@ -152,6 +153,19 @@ namespace Game.Battle.Model.Combat
         {
             foreach (var st in a.AttackerCorps.Statuses)
                 if (st.AttackPp != Fix.Zero) into.Add(new DamageModifier("status." + st.Id, st.AttackPp));
+        }
+    }
+
+    /// <summary>날씨·시간대: 병종 태그 공격·방어 보정, 원거리 공격 보정 (스위치 weather, timeOfDay).</summary>
+    internal sealed class ConditionSource : IDamageModifierSource
+    {
+        public void Collect(AttackContext a, List<DamageModifier> into)
+        {
+            var env = a.Battle.Environment;
+            Fix pp = env.TagSum(c => c.TagAttackPp, a.Attacker.Troop) - env.TagSum(c => c.TagDefensePp, a.Defender.Troop);
+            if (a.Attacker.Troop.HasTag("ranged") && Vec.DistanceSquared(a.Attacker.Position, a.Defender.Position) > a.Battle.Combat.ContactRadius * a.Battle.Combat.ContactRadius)
+                pp += env.Sum(c => c.RangedAttackPp);
+            if (pp != Fix.Zero) into.Add(new DamageModifier("conditions", pp));
         }
     }
 

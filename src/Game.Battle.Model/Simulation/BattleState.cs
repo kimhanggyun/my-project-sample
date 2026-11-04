@@ -18,6 +18,8 @@ namespace Game.Battle.Model.Simulation
         Retreated,
         /// <summary>병력 0.</summary>
         Destroyed,
+        /// <summary>장수가 포로가 됨 → 군단 궤멸 (남은 병력은 흩어져 전투에서 빠짐).</summary>
+        Captured,
     }
 
     public enum AttackSide { Front, Flank, Rear }
@@ -78,6 +80,18 @@ namespace Game.Battle.Model.Simulation
         public string SourceCorpsId { get; internal set; }
     }
 
+    /// <summary>포로 기록 (전투 뒤 등용·구출 처리는 캠페인, captivity.md).</summary>
+    public sealed class CaptureRecord
+    {
+        public string GeneralId { get; internal set; }
+        public string CorpsId { get; internal set; }
+        public string CapturedByTeam { get; internal set; }
+        /// <summary>"encircled"(포위) 또는 "duel"(일기토 패배).</summary>
+        public string Cause { get; internal set; }
+        /// <summary>그 전투의 논쟁에서 세뇌로 이긴 상대 → 등용 성공률 보너스.</summary>
+        public bool BrainwashBonus { get; internal set; }
+    }
+
     public static class StatusIds
     {
         public const string Taunted = "taunted";
@@ -103,7 +117,7 @@ namespace Game.Battle.Model.Simulation
         public Fix StartMorale { get; internal set; }
         public long StartSupply { get; internal set; }
         public long Supply { get; internal set; }
-        /// <summary>틱마다 Σ(병력 × 하루 소비량 × 하루 환산)을 더한 값. 소비 = 이 값 × 틱 길이 ÷ 60 (내림, R-6과 같은 식).</summary>
+        /// <summary>틱마다 Σ(병력 × 하루 소비량 × 하루 환산 × (100 + 날씨 %p))를 더한 값. 소비 = 이 값 × 틱 길이 ÷ 6000 (내림, R-6과 같은 식).</summary>
         public long SupplyAccumulator { get; internal set; }
         public List<SubUnitState> Units { get; } = new List<SubUnitState>();
 
@@ -118,6 +132,8 @@ namespace Game.Battle.Model.Simulation
         /// <summary>사거리 밖이라 다가가는 중인 스킬 (점수·횟수는 이미 냈다, R-12).</summary>
         public Commands.BattleCommand PendingSkill { get; internal set; }
         public bool MovedThisTick { get; internal set; }
+        /// <summary>포위 상태에서 쌓인 포로 압력 (battle.md 2.5.1).</summary>
+        public Fix CapturePressure { get; internal set; }
 
         public StatusEffect FindStatus(string id)
         {
@@ -220,6 +236,14 @@ namespace Game.Battle.Model.Simulation
         public List<Vision.RevealZone> Reveals { get; } = new List<Vision.RevealZone>();
         /// <summary>전조 중인 스킬 효과 (정해진 틱에 나타난다).</summary>
         public List<Skills.ScheduledEffect> Scheduled { get; } = new List<Skills.ScheduledEffect>();
+        /// <summary>바람·날씨·시간대·불.</summary>
+        public Environment.BattleEnvironment Environment { get; internal set; }
+        /// <summary>전투 중 포로가 된 장수.</summary>
+        public List<CaptureRecord> Captures { get; } = new List<CaptureRecord>();
+        /// <summary>장수 id → "light"/"heavy".</summary>
+        public Dictionary<string, string> Injuries { get; } = new Dictionary<string, string>();
+        /// <summary>이 전투의 논쟁에서 세뇌로 진 장수 (포로가 되면 등용 보너스).</summary>
+        public HashSet<string> Brainwashed { get; } = new HashSet<string>();
 
         /// <summary>그 팀이 지금 이 군단을 보는가 (안개·은신 반영). 같은 팀은 항상 보인다.</summary>
         public bool IsVisibleTo(string team, CorpsState corps) =>

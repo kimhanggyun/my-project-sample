@@ -39,7 +39,30 @@ namespace Game.Battle.Model.Field
         public int Width => Map.Width;
         public int Height => Map.Height;
 
-        public string TerrainAt(Cell c) => Map.TerrainAt(Clamp(c.X, Width), Clamp(c.Y, Height));
+        /// <summary>전투 중 바뀐 지형 (화계로 불탄 숲 등). 칸 순서 y × 폭 + x, 없으면 맵 그대로.</summary>
+        private string[] _changed;
+
+        public string TerrainAt(Cell c)
+        {
+            int x = Clamp(c.X, Width), y = Clamp(c.Y, Height);
+            return _changed?[y * Width + x] ?? Map.TerrainAt(x, y);
+        }
+
+        /// <summary>지형을 바꾼다 (지형 변화). 길은 다음에 찾을 때 반영된다.</summary>
+        public void SetTerrain(Cell c, string terrainId)
+        {
+            if (!Map.InBounds(c.X, c.Y)) return;
+            if (!_defs.TerrainRules.ContainsKey(terrainId)) throw new DataException($"이동 규칙이 없는 지형 '{terrainId}'.");
+            if (_changed == null) _changed = new string[Width * Height];
+            _changed[c.Y * Width + c.X] = terrainId;
+        }
+
+        /// <summary>바뀐 칸 (칸 번호 순서, 지문·화면용).</summary>
+        public IEnumerable<(int index, string terrain)> ChangedCells()
+        {
+            if (_changed == null) yield break;
+            for (int i = 0; i < _changed.Length; i++) if (_changed[i] != null) yield return (i, _changed[i]);
+        }
         public string TerrainAt(Vec p) => TerrainAt(Cell.Of(p));
         public TerrainRuleDef RuleAt(Cell c) => _defs.TerrainRules[TerrainAt(c)];
         public int HeightAt(Vec p) => RuleAt(Cell.Of(p)).Height;

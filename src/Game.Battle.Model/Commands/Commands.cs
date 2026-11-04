@@ -124,7 +124,7 @@ namespace Game.Battle.Model.Commands
     {
         public string Kind => CommandKinds.Retreat;
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) => true;
-        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => Systems.RetreatSystem.BeginRetreat(corps);
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => Systems.RetreatSystem.BeginRetreat(ctx, corps);
     }
 
     internal sealed class ChangeFormationHandler : ICommandHandler

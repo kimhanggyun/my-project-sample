@@ -124,6 +124,12 @@ namespace Game.Data.Validation
                             errors.Add($"대결 '{ct.Id}': 결과표 [{mine}][{theirs}]가 없습니다.");
             }
             foreach (var t in d.TerrainRules.Values)
+            {
+                if (t.Flammable && (t.BurnsTo == null || !d.TerrainRules.ContainsKey(t.BurnsTo)))
+                    errors.Add($"지형 '{t.Id}': 불탄 뒤 지형 '{t.BurnsTo}'가 이동 규칙에 없습니다.");
+                if (t.Flammable && t.BurnSec <= Foundation.Math.Fix.Zero) errors.Add($"지형 '{t.Id}': 타는 시간은 0보다 커야 합니다.");
+            }
+            foreach (var t in d.TerrainRules.Values)
                 if (t.Cost <= Foundation.Math.Fix.Zero) errors.Add($"지형 '{t.Id}': 이동 비용은 0보다 커야 합니다.");
             return errors;
         }

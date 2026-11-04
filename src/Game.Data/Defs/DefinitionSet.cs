@@ -38,6 +38,8 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, SkillDef> Skills { get; private set; }
         public IReadOnlyDictionary<string, ContestDef> Contests { get; private set; }
         public AiRules Ai { get; private set; }
+        public IReadOnlyDictionary<string, ConditionDef> Weathers { get; private set; }
+        public IReadOnlyDictionary<string, ConditionDef> TimesOfDay { get; private set; }
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -162,6 +164,9 @@ namespace Game.Data.Defs
                     Impassable = JsonUtil.StringList(t, "impassable"),
                     Height = (int)(t.Value<long?>("height") ?? 0),
                     Conceals = t.Value<bool?>("conceals") ?? false,
+                    Flammable = t.Value<bool?>("flammable") ?? false,
+                    BurnsTo = t.Value<string>("burnsTo"),
+                    BurnSec = JsonUtil.FixOr(t, "burnSec", Fix.Zero, ctx),
                 };
             }
             set.TerrainRules = terrainRules;
@@ -200,6 +205,17 @@ namespace Game.Data.Defs
             foreach (var def in ContestDef.LoadAll(Read(RulesDir + "contests.json"))) contests[def.Id] = def;
             set.Contests = contests;
             set.Ai = AiRules.From(Read(RulesDir + "ai.json"));
+
+            var cond = Read(RulesDir + "conditions.json");
+            Dictionary<string, ConditionDef> Conditions(string key)
+            {
+                var d = new Dictionary<string, ConditionDef>();
+                foreach (var p in JsonUtil.RequireObject(cond, key, "conditions.json").Properties())
+                    d[p.Name] = ConditionDef.From(p.Name, (JObject)p.Value, "conditions." + key + "." + p.Name);
+                return d;
+            }
+            set.Weathers = Conditions("weather");
+            set.TimesOfDay = Conditions("timeOfDay");
 
             var generals = new Dictionary<string, GeneralDef>();
             foreach (JObject g in RequireArray(Read(theme + "generals.json"), "generals", "generals.json"))
