@@ -112,6 +112,21 @@ namespace Game.Data.Validation
                     if (r.RewardStat != null && !d.Stats.ContainsKey(r.RewardStat)) errors.Add($"성장 '{t.Track}': 없는 능력치 '{r.RewardStat}'.");
                     if (r.Every <= 0 && r.AtLeast == null) errors.Add($"성장 '{t.Track}': 규칙 '{r.Counter}'에 every 또는 atLeast가 필요합니다.");
                 }
+            var secretIds = new HashSet<string>();
+            foreach (var sc in d.Secrets)
+            {
+                if (!secretIds.Add(sc.Id)) errors.Add($"숨은 보상 id '{sc.Id}' 중복.");
+                if (sc.RewardSkill != null && !d.Skills.ContainsKey(sc.RewardSkill)) errors.Add($"숨은 보상 '{sc.Id}': 없는 스킬 '{sc.RewardSkill}'.");
+                if (sc.RewardSkill == null && sc.RewardTrait == null) errors.Add($"숨은 보상 '{sc.Id}': 보상이 없습니다.");
+                if (sc.CasterSkill != null && !d.Skills.ContainsKey(sc.CasterSkill)) errors.Add($"숨은 보상 '{sc.Id}': 없는 스킬 '{sc.CasterSkill}'.");
+                if (sc.HintKey != null) CheckString(d, sc.HintKey, errors);
+            }
+            if (d.Levels.MaxLevel < 1 || d.Levels.ExpBase < 1) errors.Add("레벨: 최대 레벨·기본 경험치는 1 이상.");
+            foreach (var sp in d.Speech.Situations.Values)
+            {
+                CheckString(d, sp.LineKey, errors);
+                if (!d.Speech.KindPriority.ContainsKey(sp.Kind)) errors.Add($"말풍선 '{sp.Event}': 없는 종류 '{sp.Kind}'.");
+            }
             var baseActions = new[] { "attack", "evade", "charge", "bow", "retreat", ContestDef.Special };
             foreach (var ct in d.Contests.Values)
             {
@@ -165,6 +180,13 @@ namespace Game.Data.Validation
                     if (u.Troops < 0 || u.Troops > d.Balance.UnitMaxTroops) errors.Add($"{c}: 군단 '{e.Id}' 부대 병력 {u.Troops}가 범위를 벗어남.");
                 }
             }
+            var corpsIds = new HashSet<string>(ids);
+            foreach (var ev in s.Events)
+                foreach (var a in ev.Actions)
+                {
+                    if (a.Corps != null && !corpsIds.Contains(a.Corps)) errors.Add($"{c}: 연출 '{ev.Id}'의 없는 군단 '{a.Corps}'.");
+                    if (a.Key != null) CheckString(d, a.Key, errors);
+                }
             foreach (var f in s.RewardFormations) if (!d.Formations.ContainsKey(f)) errors.Add($"{c}: 보상 진형 '{f}'가 없습니다.");
             foreach (var k in s.RewardSkills) if (!d.Skills.ContainsKey(k)) errors.Add($"{c}: 보상 스킬 '{k}'가 없습니다.");
             return errors;

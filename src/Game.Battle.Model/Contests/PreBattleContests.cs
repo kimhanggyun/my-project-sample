@@ -55,7 +55,7 @@ namespace Game.Battle.Model.Contests
                 if (fx["loserConfusionSec"] != null)
                 {
                     long ticks = Skills.SkillRules.Ticks(ctx, Fix.FromDecimal(fx.Value<decimal>("loserConfusionSec")));
-                    foreach (var u in l.Units) u.ConfusedTicks = System.Math.Max(u.ConfusedTicks, ticks);
+                    foreach (var u in l.Units) Events.Confusion.Apply(ctx, u, ticks);
                     if (fx.Value<bool?>("loserRetreats") == true)
                         l.AddStatus(new StatusEffect { Id = StatusIds.Routing, TicksLeft = ticks });
                 }

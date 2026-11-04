@@ -26,6 +26,8 @@ namespace Game.Battle.Model.Simulation
         public IReadOnlyDictionary<string, string> GeneralInjuries { get; internal set; }
         /// <summary>포로가 된 장수 (포위·일기토). 전투 뒤 처리(구출·등용·해방)는 캠페인 모듈.</summary>
         public IReadOnlyList<CaptureRecord> Captures { get; internal set; }
+        /// <summary>전투 이벤트 기록 (스킬 사용, 퇴각, 포로, 기습, 불 피해, 경고, 증원, 대사).</summary>
+        public IReadOnlyList<Events.BattleEvent> Events { get; internal set; }
 
         public CorpsResult Find(string corpsId)
         {

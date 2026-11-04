@@ -25,6 +25,7 @@ namespace Game.Battle.Model.Simulation
         public List<IDamageModifierSource> DamageSources { get; set; } = Combat.DamageSources.BuiltIns();
         public SkillRegistry Skills { get; set; } = SkillRegistry.WithBuiltIns();
         public AiSkillRules AiSkills { get; set; } = AiSkillRules.WithBuiltIns();
+        public Events.EventRegistry Events { get; set; } = Battle.Model.Events.EventRegistry.WithBuiltIns();
 
         public static BattleExtensions Default() => new BattleExtensions();
     }
@@ -105,7 +106,7 @@ namespace Game.Battle.Model.Simulation
                 if (corps.Status != CorpsStatus.Active || corps.Setup.Controller != Controllers.Ai || corps.HasStatus(StatusIds.Taunted)) continue;
                 long every = (long)ctx.Combat.AiThinkEveryTicks * ctx.Defs.Ai.Difficulties[corps.Setup.AiDifficulty].ThinkIntervalMultiplier;
                 if (ctx.Tick % every != 0) continue;
-                _ext.Ai.Get(corps.Setup.AiStance).Think(ctx, corps);
+                _ext.Ai.Get(corps.AiStance).Think(ctx, corps);
                 _planner.Think(ctx, corps);
             }
 
@@ -121,6 +122,8 @@ namespace Game.Battle.Model.Simulation
             StatusSystem.Tick(ctx);
             CaptureSystem.Step(ctx);
             RetreatSystem.Step(ctx);
+            Battle.Model.Events.EventLog.Warnings(ctx);
+            Battle.Model.Events.EventSystem.Step(ctx, _ext.Events);
             ctx.Tick++;
             CheckEnd();
         }
@@ -219,7 +222,10 @@ namespace Game.Battle.Model.Simulation
                         Troop = setup.Defs.TroopTypes[u.TroopType],
                         StartTroops = u.Troops,
                         Troops = u.Troops,
+                        Cohesion = u.Cohesion,
                     });
+                corps.AiStance = cs.AiStance;
+                if (cs.Reserve) corps.Status = CorpsStatus.Reserve;
                 ctx.Corps.Add(corps);
                 MovementSystem.PlaceUnits(ctx, corps);
             }
@@ -301,6 +307,7 @@ namespace Game.Battle.Model.Simulation
                 Contests = _contests,
                 GeneralInjuries = new Dictionary<string, string>(ctx.Injuries),
                 Captures = new List<CaptureRecord>(ctx.Captures),
+                Events = new List<Battle.Model.Events.BattleEvent>(ctx.Log),
             };
         }
 
@@ -355,6 +362,15 @@ namespace Game.Battle.Model.Simulation
                 if (ch.Weather != null && !s.Defs.Weathers.ContainsKey(ch.Weather)) Fail($"없는 날씨 '{ch.Weather}'.");
             foreach (var c in s.Corps)
                 if (c.Controller == Controllers.Ai && !s.Defs.Ai.Difficulties.ContainsKey(c.AiDifficulty ?? "")) Fail($"군단 '{c.Id}': 없는 AI 난이도 '{c.AiDifficulty}'.");
+            foreach (var ev in s.Events)
+            {
+                if (ev.Trigger == null || !ext.Events.HasTrigger(ev.Trigger.Type)) Fail($"연출 '{ev.Id}': 등록되지 않은 조건 '{ev.Trigger?.Type}'.");
+                foreach (var a in ev.Actions)
+                {
+                    if (!ext.Events.HasAction(a.Type)) Fail($"연출 '{ev.Id}': 등록되지 않은 행동 '{a.Type}'.");
+                    if (a.Type == "setAiStance" && !ext.Ai.Contains(a.Stance)) Fail($"연출 '{ev.Id}': 없는 AI 성향 '{a.Stance}'.");
+                }
+            }
             foreach (var ct in s.Contests)
             {
                 if (!s.Defs.Contests.ContainsKey(ct.ContestId ?? "")) Fail($"없는 대결 '{ct.ContestId}'.");
@@ -397,6 +413,7 @@ namespace Game.Battle.Model.Simulation
                 Add(c.Anchor.X.Raw); Add(c.Anchor.Y.Raw);
                 Add(c.Facing.X.Raw); Add(c.Facing.Y.Raw);
                 Add(c.Hidden ? 1 : 0);
+                AddString(c.AiStance);
                 Add(c.SkillPoints.Points.Raw);
                 foreach (var st in c.Statuses) { AddString(st.Id); Add(st.TicksLeft); Add(st.AttackPp.Raw); }
                 foreach (var u in c.Units)

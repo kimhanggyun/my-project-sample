@@ -57,6 +57,74 @@ namespace Game.Data.Defs
         }
     }
 
+    /// <summary>장수 레벨 (levels.json).</summary>
+    public sealed class LevelRules
+    {
+        public int MaxLevel { get; private set; }
+        public long ExpBase { get; private set; }
+        public long ExpPerLevel { get; private set; }
+        public Fix BattleExpMultiplier { get; private set; }
+
+        /// <summary>이 레벨에서 다음 레벨까지 필요한 경험치.</summary>
+        public long ExpToNext(int level) => checked(ExpBase + ExpPerLevel * (level - 1));
+
+        public static LevelRules From(JObject o) => new LevelRules
+        {
+            MaxLevel = (int)JsonUtil.RequireLong(o, "maxLevel", "levels"),
+            ExpBase = JsonUtil.RequireLong(o, "expBase", "levels"),
+            ExpPerLevel = JsonUtil.RequireLong(o, "expPerLevel", "levels"),
+            BattleExpMultiplier = JsonUtil.RequireFix(o, "battleExpMultiplier", "levels"),
+        };
+    }
+
+    /// <summary>숨은 보상 하나 (secrets.json, secrets.md 5장). 조건 종류는 흐름 모듈 등록표가 해석한다.</summary>
+    public sealed class SecretDef
+    {
+        public string Id { get; internal set; }
+        public bool Once { get; internal set; }
+        /// <summary>특정 스텝에서만 (없으면 어느 스텝이든).</summary>
+        public string Step { get; internal set; }
+        /// <summary>"victory" 또는 "any".</summary>
+        public string Result { get; internal set; }
+        public IReadOnlyList<SkillPart> Conditions { get; internal set; }
+        /// <summary>받는 장수: commander / duelWinner / casterOf.</summary>
+        public string To { get; internal set; }
+        /// <summary>casterOf일 때 그 스킬을 쓴 장수.</summary>
+        public string CasterSkill { get; internal set; }
+        public string RewardSkill { get; internal set; }
+        public string RewardTrait { get; internal set; }
+        public string HintKey { get; internal set; }
+
+        internal static List<SecretDef> LoadAll(JObject doc)
+        {
+            var list = new List<SecretDef>();
+            foreach (JObject s in (JArray)doc["secrets"])
+            {
+                string id = JsonUtil.RequireString(s, "id", "secrets");
+                string c = "secrets." + id;
+                var cond = JsonUtil.RequireObject(s, "condition", c);
+                var reward = JsonUtil.RequireObject(s, "reward", c);
+                var parts = new List<SkillPart>();
+                if (cond["all"] is JArray all)
+                    foreach (JObject p in all) parts.Add(new SkillPart(JsonUtil.RequireString(p, "type", c), p, c));
+                list.Add(new SecretDef
+                {
+                    Id = id,
+                    Once = s.Value<bool?>("once") ?? true,
+                    Step = cond.Value<string>("step"),
+                    Result = cond.Value<string>("result") ?? "victory",
+                    Conditions = parts,
+                    To = JsonUtil.RequireString(reward, "to", c),
+                    CasterSkill = reward.Value<string>("casterSkill"),
+                    RewardSkill = reward.Value<string>("skill"),
+                    RewardTrait = reward.Value<string>("trait"),
+                    HintKey = s.Value<string>("hintKey"),
+                });
+            }
+            return list;
+        }
+    }
+
     /// <summary>성장 보상 규칙 하나 (growthTracks.json): 카운터가 조건을 만족하면 보상.</summary>
     public sealed class GrowthRuleDef
     {
@@ -140,6 +208,29 @@ namespace Game.Data.Defs
         public Fix? X { get; internal set; }
         public Fix? Y { get; internal set; }
         public string Facing { get; internal set; }
+        /// <summary>예비 군단 (증원 이벤트로 들어옴).</summary>
+        public bool Reserve { get; internal set; }
+    }
+
+    /// <summary>스텝 연출 하나 (조건 → 행동들). 팀은 "player"/"enemy".</summary>
+    public sealed class StepEventDef
+    {
+        public string Id { get; internal set; }
+        public string TriggerType { get; internal set; }
+        public long TriggerTick { get; internal set; }
+        public string TriggerCorps { get; internal set; }
+        public string TriggerTeam { get; internal set; }
+        public Fix TriggerRatio { get; internal set; }
+        public bool Once { get; internal set; }
+        public IReadOnlyList<StepEventActionDef> Actions { get; internal set; }
+    }
+
+    public sealed class StepEventActionDef
+    {
+        public string Type { get; internal set; }
+        public string Key { get; internal set; }
+        public string Corps { get; internal set; }
+        public string Stance { get; internal set; }
     }
 
     /// <summary>
@@ -172,6 +263,9 @@ namespace Game.Data.Defs
         public IReadOnlyList<string> RewardFormations { get; private set; }
         public IReadOnlyList<string> RewardSkills { get; private set; }
         public IReadOnlyDictionary<string, long> RewardResources { get; private set; }
+        /// <summary>승리 시 출전 장수 경험치 (전투 레벨업 배율 적용 전).</summary>
+        public long RewardExp { get; private set; }
+        public IReadOnlyList<StepEventDef> Events { get; private set; }
 
         public static StepDef Load(IDataSource source, string id) => From(JsonUtil.ParseObject(source.ReadText("Steps/" + id + ".json")));
 
@@ -204,12 +298,39 @@ namespace Game.Data.Defs
                     X = e.TryGetValue("x", out var x) ? JsonUtil.ToFix(x, c) : (Fix?)null,
                     Y = e.TryGetValue("y", out var y) ? JsonUtil.ToFix(y, c) : (Fix?)null,
                     Facing = e.Value<string>("facing"),
+                    Reserve = e.Value<bool?>("reserve") ?? false,
                 });
             }
             var rewards = o["rewards"] as JObject ?? new JObject();
             var res = new Dictionary<string, long>();
             foreach (var p in rewards.Properties())
-                if (p.Value.Type == JTokenType.Integer) res[p.Name] = p.Value.Value<long>();
+                if (p.Value.Type == JTokenType.Integer && p.Name != "exp") res[p.Name] = p.Value.Value<long>();
+            var events = new List<StepEventDef>();
+            if (o["events"] is JArray evs)
+                foreach (JObject ev in evs)
+                {
+                    var t = JsonUtil.RequireObject(ev, "trigger", c + ".events");
+                    var actions = new List<StepEventActionDef>();
+                    foreach (JObject a in (JArray)ev["actions"])
+                        actions.Add(new StepEventActionDef
+                        {
+                            Type = JsonUtil.RequireString(a, "type", c + ".events"),
+                            Key = a.Value<string>("key"),
+                            Corps = a.Value<string>("corps"),
+                            Stance = a.Value<string>("stance"),
+                        });
+                    events.Add(new StepEventDef
+                    {
+                        Id = JsonUtil.RequireString(ev, "id", c + ".events"),
+                        TriggerType = JsonUtil.RequireString(t, "type", c + ".events"),
+                        TriggerTick = t.Value<long?>("tick") ?? 0,
+                        TriggerCorps = t.Value<string>("corps"),
+                        TriggerTeam = t.Value<string>("team"),
+                        TriggerRatio = JsonUtil.FixOr(t, "ratio", Fix.Zero, c + ".events"),
+                        Once = ev.Value<bool?>("once") ?? true,
+                        Actions = actions,
+                    });
+                }
             var contests = o["contests"] as JObject ?? new JObject();
             var wind = o["wind"] as JObject;
             return new StepDef
@@ -236,6 +357,8 @@ namespace Game.Data.Defs
                 RewardFormations = JsonUtil.StringList(rewards, "unlockFormations"),
                 RewardSkills = JsonUtil.StringList(rewards, "unlockSkills"),
                 RewardResources = res,
+                RewardExp = rewards.Value<long?>("exp") ?? 0,
+                Events = events,
             };
         }
     }

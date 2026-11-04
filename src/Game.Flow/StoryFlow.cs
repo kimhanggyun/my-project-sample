@@ -70,6 +70,9 @@ namespace Game.Flow
         public List<string> UnlockedSkills { get; } = new List<string>();
         public Dictionary<string, long> RewardResources { get; } = new Dictionary<string, long>();
         public List<(string generalId, GrowthReward reward)> GrowthRewards { get; } = new List<(string, GrowthReward)>();
+        /// <summary>장수 id → 레벨업 결과 (오른 것만).</summary>
+        public Dictionary<string, LevelUpResult> LevelUps { get; } = new Dictionary<string, LevelUpResult>();
+        public List<FoundSecret> Secrets { get; } = new List<FoundSecret>();
     }
 
     /// <summary>
@@ -163,7 +166,7 @@ namespace Game.Flow
                 {
                     var u = state.FindUnit(slot.Value);
                     if (u == null) continue;
-                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId, Slot = slot.Key, TroopType = u.TroopType, Troops = u.Troops });
+                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId, Slot = slot.Key, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion });
                     if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + u.Troops * tt.SupplyPerDay);
                 }
                 daily.Add(d);
@@ -198,9 +201,22 @@ namespace Game.Flow
                     Supply = e.Supply,
                     KnownFormations = new List<string>(e.KnownFormations),
                     X = e.X, Y = e.Y, Facing = e.Facing,
+                    Reserve = e.Reserve,
                 };
                 foreach (var u in e.Units) cs.Units.Add(new UnitSetup { UnitId = e.Id + "_" + u.Slot, Slot = u.Slot, TroopType = u.TroopType, Troops = u.Troops });
                 setup.Corps.Add(cs);
+            }
+
+            foreach (var ev in step.Events)
+            {
+                var es = new EventSetup
+                {
+                    Id = ev.Id,
+                    Once = ev.Once,
+                    Trigger = new TriggerSetup { Type = ev.TriggerType, Tick = ev.TriggerTick, CorpsId = ev.TriggerCorps, Team = TeamOf(ev.TriggerTeam), Ratio = ev.TriggerRatio },
+                };
+                foreach (var a in ev.Actions) es.Actions.Add(new ActionSetup { Type = a.Type, Key = a.Key, CorpsId = a.Corps, Stance = a.Stance });
+                setup.Events.Add(es);
             }
 
             PlanContests(step, setup, request);
@@ -279,6 +295,9 @@ namespace Game.Flow
 
             if (result.Explored.TryGetValue(PlayerTeam, out var explored)) StepProgress.MergeExplored(state, step.Id, explored);
 
+            if (report.Won) GrantBattleExp(state, plan, step, report);
+            report.Secrets.AddRange(new SecretEngine().Evaluate(new SecretContext { Defs = _defs, State = state, Step = step, Plan = plan, Result = result, Won = report.Won }));
+
             if (report.Won)
             {
                 if (step.RescueCamp != null) report.Rescued.AddRange(captivity.Rescue(state, step.RescueCamp));
@@ -310,6 +329,27 @@ namespace Game.Flow
                         report.GrowthRewards.Add((g.GeneralId, r));
                     }
                 }
+            }
+        }
+
+        /// <summary>승리 시 출전 장수 경험치 (스텝 경험치 × 전투 배율, 아주 더디게, battleLevelUp). 포로가 된 장수는 제외.</summary>
+        private void GrantBattleExp(CampaignState state, SortiePlan plan, StepDef step, BattleReport report)
+        {
+            if (!_campaignFlags.IsEnabled(LevelEngine.BattleLevelUpFlag)) return;
+            long exp = LevelEngine.BattleExp(_defs.Levels, step.RewardExp);
+            foreach (var comp in plan.PlayerCorps.Values)
+            {
+                var g = state.FindGeneral(comp.GeneralId);
+                if (g == null || g.Status == GeneralStatus.Captured) continue;
+                var r = LevelEngine.AddExp(_defs.Levels, _defs.Generals[g.GeneralId].GrowthRates, g.Level, g.Exp, exp);
+                g.Level = r.Level;
+                g.Exp = r.Exp;
+                foreach (var kv in r.StatGains)
+                {
+                    g.StatGrowth.TryGetValue(kv.Key, out var v);
+                    g.StatGrowth[kv.Key] = v + kv.Value;
+                }
+                if (r.LevelsGained > 0) report.LevelUps[g.GeneralId] = r;
             }
         }
 
@@ -353,6 +393,9 @@ namespace Game.Flow
             }
             if (setup.Corps.Count > 0) setup.Corps[0].Supply += total - given;
         }
+
+        /// <summary>스텝 데이터의 팀 이름 ("player"/"enemy") → 전투 팀 id.</summary>
+        private static string TeamOf(string t) => t == "player" ? PlayerTeam : t == "enemy" ? EnemyTeam : t;
 
         private static bool HasCommander(BattleSetup s)
         {

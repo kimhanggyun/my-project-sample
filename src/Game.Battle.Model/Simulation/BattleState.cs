@@ -20,6 +20,8 @@ namespace Game.Battle.Model.Simulation
         Destroyed,
         /// <summary>장수가 포로가 됨 → 군단 궤멸 (남은 병력은 흩어져 전투에서 빠짐).</summary>
         Captured,
+        /// <summary>예비 군단: 증원 이벤트가 올 때까지 전장 밖에서 기다림.</summary>
+        Reserve,
     }
 
     public enum AttackSide { Front, Flank, Rear }
@@ -65,6 +67,8 @@ namespace Game.Battle.Model.Simulation
         public Vec Position { get; internal set; }
         /// <summary>혼란 남은 틱. 혼란 중에는 공격하지 않는다.</summary>
         public long ConfusedTicks { get; internal set; }
+        /// <summary>부대 결속 (캠페인에서 받음): 혼란 저항·회복.</summary>
+        public Fix Cohesion { get; internal set; }
         public bool Confused => ConfusedTicks > 0;
         public bool Alive => Troops > 0;
     }
@@ -134,6 +138,10 @@ namespace Game.Battle.Model.Simulation
         public bool MovedThisTick { get; internal set; }
         /// <summary>포위 상태에서 쌓인 포로 압력 (battle.md 2.5.1).</summary>
         public Fix CapturePressure { get; internal set; }
+        /// <summary>AI 성향 (설정값에서 시작, 스텝 연출로 바뀔 수 있음).</summary>
+        public string AiStance { get; internal set; }
+        /// <summary>이미 남긴 경고 종류 (군단마다 한 번).</summary>
+        public HashSet<string> Warned { get; } = new HashSet<string>();
 
         public StatusEffect FindStatus(string id)
         {
@@ -244,6 +252,10 @@ namespace Game.Battle.Model.Simulation
         public Dictionary<string, string> Injuries { get; } = new Dictionary<string, string>();
         /// <summary>이 전투의 논쟁에서 세뇌로 진 장수 (포로가 되면 등용 보너스).</summary>
         public HashSet<string> Brainwashed { get; } = new HashSet<string>();
+        /// <summary>전투 이벤트 기록 (말풍선·연출·리플레이·숨은 보상).</summary>
+        public List<Events.BattleEvent> Log { get; } = new List<Events.BattleEvent>();
+        /// <summary>이미 일어난 스텝 연출 (Setup.Events 번호).</summary>
+        public HashSet<int> FiredEvents { get; } = new HashSet<int>();
 
         /// <summary>그 팀이 지금 이 군단을 보는가 (안개·은신 반영). 같은 팀은 항상 보인다.</summary>
         public bool IsVisibleTo(string team, CorpsState corps) =>

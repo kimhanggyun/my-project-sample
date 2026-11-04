@@ -1,0 +1,40 @@
+{
+  "_comment": "장수 말풍선 (battle.md 4.4). 전투 이벤트 → 종류·우선순위·대사 키. 대사 문구는 테마 문자열. 같은 군단·같은 상황은 간격을 둔다. 스위치 generalSpeech",
+  "minIntervalSec": 3,
+  "situations": {
+    "skillUsed": {
+      "kind": "shout",
+      "lineKey": "speech.skillUsed",
+      "perDataKeyPrefix": "speech.skill."
+    },
+    "retreatStarted": {
+      "kind": "shout",
+      "lineKey": "speech.retreat"
+    },
+    "ambushSprung": {
+      "kind": "shout",
+      "lineKey": "speech.ambush"
+    },
+    "supplyLow": {
+      "kind": "warning",
+      "lineKey": "speech.supplyLow"
+    },
+    "moraleCritical": {
+      "kind": "warning",
+      "lineKey": "speech.moraleCritical"
+    },
+    "reinforced": {
+      "kind": "shout",
+      "lineKey": "speech.reinforced"
+    },
+    "fireHit": {
+      "kind": "warning",
+      "lineKey": "speech.fireHit"
+    }
+  },
+  "kindPriority": {
+    "report": 3,
+    "warning": 2,
+    "shout": 1
+  }
+}

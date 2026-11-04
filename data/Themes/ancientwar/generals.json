@@ -17,6 +17,11 @@
         "leadership": 60,
         "might": 45,
         "intellect": 45
+      },
+      "growthRates": {
+        "leadership": 0.6,
+        "might": 0.3,
+        "intellect": 0.3
       }
     },
     {
@@ -35,6 +40,11 @@
         "leadership": 45,
         "might": 62,
         "intellect": 40
+      },
+      "growthRates": {
+        "leadership": 0.3,
+        "might": 0.7,
+        "intellect": 0.2
       }
     },
     {
@@ -53,6 +63,11 @@
         "leadership": 50,
         "might": 38,
         "intellect": 62
+      },
+      "growthRates": {
+        "leadership": 0.4,
+        "might": 0.2,
+        "intellect": 0.6
       }
     },
     {
@@ -69,6 +84,11 @@
         "leadership": 45,
         "might": 55,
         "intellect": 35
+      },
+      "growthRates": {
+        "leadership": 0.3,
+        "might": 0.5,
+        "intellect": 0.2
       }
     },
     {
@@ -86,6 +106,11 @@
         "leadership": 50,
         "might": 40,
         "intellect": 55
+      },
+      "growthRates": {
+        "leadership": 0.4,
+        "might": 0.2,
+        "intellect": 0.5
       }
     },
     {
@@ -103,6 +128,11 @@
         "leadership": 55,
         "might": 50,
         "intellect": 60
+      },
+      "growthRates": {
+        "leadership": 0.5,
+        "might": 0.4,
+        "intellect": 0.5
       }
     }
   ]

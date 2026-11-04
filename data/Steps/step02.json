@@ -111,6 +111,41 @@
           "troops": 600
         }
       ]
+    },
+    {
+      "id": "enemy_reserve_01",
+      "general": "enemy_general_01",
+      "role": "reserve",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supply": 40000,
+      "reserve": true,
+      "x": 12.5,
+      "y": 2.5,
+      "facing": "S",
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "troops": 800
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 800
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 700
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "spearman",
+          "troops": 700
+        }
+      ]
     }
   ],
   "rewards": {
@@ -120,6 +155,55 @@
     "unlockSkills": [
       "ambush"
     ],
-    "gold": 300
-  }
+    "gold": 300,
+    "exp": 500
+  },
+  "events": [
+    {
+      "id": "start",
+      "trigger": {
+        "type": "start"
+      },
+      "actions": [
+        {
+          "type": "dialogue",
+          "key": "dialogue.step02.start"
+        }
+      ]
+    },
+    {
+      "id": "commander_in_danger",
+      "trigger": {
+        "type": "corpsTroopsBelow",
+        "corps": "enemy_corps_02",
+        "ratio": 0.6
+      },
+      "actions": [
+        {
+          "type": "reinforce",
+          "corps": "enemy_reserve_01"
+        },
+        {
+          "type": "dialogue",
+          "key": "dialogue.step02.reinforce",
+          "corps": "enemy_reserve_01"
+        }
+      ]
+    },
+    {
+      "id": "enemy_half",
+      "trigger": {
+        "type": "teamTroopsBelow",
+        "team": "enemy",
+        "ratio": 0.5
+      },
+      "actions": [
+        {
+          "type": "setAiStance",
+          "corps": "enemy_corps_02",
+          "stance": "aggressive"
+        }
+      ]
+    }
+  ]
 }

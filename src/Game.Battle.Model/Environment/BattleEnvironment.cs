@@ -29,6 +29,10 @@ namespace Game.Battle.Model.Environment
         public ConditionDef TimeOfDay { get; internal set; }
         /// <summary>타는 칸 (칸 번호 → 남은 틱). 칸 번호 순서로 처리한다.</summary>
         public SortedDictionary<int, long> Burning { get; } = new SortedDictionary<int, long>();
+        /// <summary>타는 칸 → 불을 놓은 팀 (번진 불은 원래 불의 팀).</summary>
+        public Dictionary<int, string> FireTeam { get; } = new Dictionary<int, string>();
+        /// <summary>불 피해를 이미 기록한 (군단, 팀).</summary>
+        internal HashSet<string> FireHitRecorded { get; } = new HashSet<string>();
 
         internal BattleEnvironment(BattleContext ctx) { _ctx = ctx; }
 
@@ -130,13 +134,14 @@ namespace Game.Battle.Model.Environment
         }
 
         /// <summary>지점에 불을 붙인다 (화계). 불이 붙는 지형이 아니면 아무 일 없음.</summary>
-        public static bool Ignite(BattleContext ctx, Cell c)
+        public static bool Ignite(BattleContext ctx, Cell c, string team = null)
         {
             if (!ctx.Field.Map.InBounds(c.X, c.Y)) return false;
             var rule = ctx.Field.RuleAt(c);
             int idx = c.Y * ctx.Field.Width + c.X;
             if (!rule.Flammable || ctx.Environment.Burning.ContainsKey(idx)) return false;
             ctx.Environment.Burning[idx] = Skills.SkillRules.Ticks(ctx, rule.BurnSec);
+            if (team != null) ctx.Environment.FireTeam[idx] = team;
             return true;
         }
 
@@ -155,18 +160,19 @@ namespace Game.Battle.Model.Environment
             if (every < 1) every = 1;
             if (ctx.IsEnabled(BattleEnvironment.FireSpreadFlag) && env.FireAllowed && env.WindStrength > Fix.Zero && ctx.Tick % every == 0)
             {
-                var spread = new List<Cell>();
+                var spread = new List<(Cell cell, string team)>();
                 foreach (var idx in env.Burning.Keys)
                 {
                     var c = new Cell(idx % w, idx / w);
+                    env.FireTeam.TryGetValue(idx, out var team);
                     for (int i = 0; i < 8; i++)
                     {
                         var n = new Cell(c.X + Dx[i], c.Y + Dy[i]);
                         Fix dot = new Vec(Fix.FromInt(Dx[i]), Fix.FromInt(Dy[i])).Normalized().Dot(env.WindDirection);
-                        if (dot >= k.FireSpreadMinDot) spread.Add(n);
+                        if (dot >= k.FireSpreadMinDot) spread.Add((n, team));
                     }
                 }
-                foreach (var n in spread) Ignite(ctx, n);
+                foreach (var (n, team) in spread) Ignite(ctx, n, team);
             }
 
             // 불 피해: 타는 칸 위 소부대 (불에 약한 병종은 배수). 숨은 복병은 드러난다.
@@ -176,7 +182,10 @@ namespace Game.Battle.Model.Environment
                 bool hit = false;
                 foreach (var u in corps.Units)
                 {
-                    if (!u.Alive || !env.IsBurning(Cell.Of(u.Position))) continue;
+                    var cell = Cell.Of(u.Position);
+                    if (!u.Alive || !env.IsBurning(cell)) continue;
+                    if (env.FireTeam.TryGetValue(cell.Y * w + cell.X, out var by) && env.FireHitRecorded.Add(corps.Id + "|" + by))
+                        Events.EventLog.Add(ctx, Events.EventKinds.FireHit, corps.Id, by);
                     Fix loss = Fix.FromInt(u.Troops) * k.FireTroopLossPctPerSecond / 100 * k.TickSeconds;
                     if (u.Troop.HasTag("flammable")) loss = loss * k.FireFlammableTagMultiplier;
                     u.PendingLoss += loss;
@@ -201,6 +210,7 @@ namespace Game.Battle.Model.Environment
             foreach (var idx in done)
             {
                 env.Burning.Remove(idx);
+                env.FireTeam.Remove(idx);
                 var c = new Cell(idx % w, idx / w);
                 var rule = ctx.Field.RuleAt(c);
                 if (rule.BurnsTo != null) ctx.Field.SetTerrain(c, rule.BurnsTo);
