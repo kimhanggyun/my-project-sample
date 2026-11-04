@@ -19,11 +19,15 @@ namespace Game.Campaign.Save
     /// </summary>
     public sealed class CampaignSaveService
     {
-        public const int CurrentVersion = 1;
+        /// <summary>v2: 포로 목록, 스텝별 탐색 기억, 장수 포로 정보·기록 카운터·받은 성장 보상.</summary>
+        public const int CurrentVersion = 2;
         public const string DefaultKey = "campaign";
 
         private readonly ISaveStore _store;
         private readonly Dictionary<int, ISaveMigration> _migrations = new Dictionary<int, ISaveMigration>();
+
+        /// <summary>게임에 들어 있는 변환기 (예전 세이브를 지금 형식으로).</summary>
+        public static readonly IReadOnlyList<ISaveMigration> BuiltInMigrations = new ISaveMigration[] { new V1ToV2() };
 
         private static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {
@@ -35,6 +39,7 @@ namespace Game.Campaign.Save
         public CampaignSaveService(ISaveStore store, IEnumerable<ISaveMigration> migrations = null)
         {
             _store = store;
+            foreach (var m in BuiltInMigrations) _migrations[m.FromVersion] = m;
             if (migrations != null) foreach (var m in migrations) _migrations[m.FromVersion] = m;
         }
 
@@ -65,6 +70,25 @@ namespace Game.Campaign.Save
                 root["version"] = version;
             }
             return root["campaign"].ToObject<CampaignState>(JsonSerializer.Create(Settings));
+        }
+    }
+
+    /// <summary>v1 → v2: 새 목록·사전을 빈 값으로 채운다 (기존 값은 그대로).</summary>
+    internal sealed class V1ToV2 : ISaveMigration
+    {
+        public int FromVersion => 1;
+
+        public void Apply(JObject save)
+        {
+            var c = (JObject)save["campaign"];
+            if (c["Prisoners"] == null) c["Prisoners"] = new JArray();
+            if (c["ExploredBySteps"] == null) c["ExploredBySteps"] = new JObject();
+            if (c["Generals"] is JArray gens)
+                foreach (JObject g in gens)
+                {
+                    if (g["Records"] == null) g["Records"] = new JObject();
+                    if (g["GrantedRewards"] == null) g["GrantedRewards"] = new JObject();
+                }
         }
     }
 

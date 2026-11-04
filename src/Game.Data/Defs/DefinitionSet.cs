@@ -40,6 +40,9 @@ namespace Game.Data.Defs
         public AiRules Ai { get; private set; }
         public IReadOnlyDictionary<string, ConditionDef> Weathers { get; private set; }
         public IReadOnlyDictionary<string, ConditionDef> TimesOfDay { get; private set; }
+        public CampaignRules Campaign { get; private set; }
+        public IReadOnlyList<GrowthTrackDef> GrowthTracks { get; private set; }
+        public StepIndexDef StepIndex { get; private set; }
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -216,6 +219,10 @@ namespace Game.Data.Defs
             }
             set.Weathers = Conditions("weather");
             set.TimesOfDay = Conditions("timeOfDay");
+
+            set.Campaign = CampaignRules.From(Read(RulesDir + "campaign.json"));
+            set.GrowthTracks = GrowthTrackDef.LoadAll(Read(RulesDir + "growthTracks.json"));
+            set.StepIndex = StepIndexDef.From(Read("Steps/steps.json"));
 
             var generals = new Dictionary<string, GeneralDef>();
             foreach (JObject g in RequireArray(Read(theme + "generals.json"), "generals", "generals.json"))

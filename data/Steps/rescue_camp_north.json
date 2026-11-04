@@ -1,0 +1,47 @@
+{
+  "id": "rescue_camp_north",
+  "nameKey": "step.rescue_camp_north.name",
+  "battleType": "field",
+  "map": "test_plain",
+  "maxCorps": 3,
+  "maxMinutes": 8,
+  "rescueCamp": "camp_north",
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "enemy": [
+    {
+      "id": "camp_guard_01",
+      "general": "enemy_general_01",
+      "role": "commander",
+      "formation": "square",
+      "ai": "defensive",
+      "difficulty": "easy",
+      "supply": 50000,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "troops": 800
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 800
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 600
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "spearman",
+          "troops": 600
+        }
+      ]
+    }
+  ],
+  "rewards": {}
+}

@@ -1,0 +1,69 @@
+{
+  "id": "step01",
+  "nameKey": "step.step01.name",
+  "battleType": "field",
+  "map": "test_plain",
+  "maxCorps": 3,
+  "maxMinutes": 10,
+  "camp": "camp_north",
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "weather": "clear",
+  "timeOfDay": "day",
+  "contests": {
+    "duel": true,
+    "debate": true
+  },
+  "enemy": [
+    {
+      "id": "enemy_corps_01",
+      "general": "enemy_general_01",
+      "role": "commander",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "easy",
+      "supply": 105000,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "troops": 1200
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 1200
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 1000
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "spearman",
+          "troops": 1000
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "archer",
+          "troops": 800
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "archer",
+          "troops": 800
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "unlockFormations": [
+      "fishScale"
+    ],
+    "unlockSkills": [],
+    "gold": 200
+  }
+}

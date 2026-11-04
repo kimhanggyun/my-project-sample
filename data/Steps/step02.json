@@ -1,0 +1,125 @@
+{
+  "id": "step02",
+  "nameKey": "step.step02.name",
+  "battleType": "field",
+  "map": "test_ambush",
+  "maxCorps": 3,
+  "maxMinutes": 10,
+  "camp": "camp_north",
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "weather": "clear",
+  "timeOfDay": "dusk",
+  "wind": {
+    "direction": "S",
+    "strength": 1
+  },
+  "contests": {
+    "duel": true,
+    "debate": true
+  },
+  "rules": {
+    "fogOfWar": true
+  },
+  "enemy": [
+    {
+      "id": "enemy_corps_02",
+      "general": "enemy_general_02",
+      "role": "commander",
+      "formation": "circle",
+      "ai": "defensive",
+      "difficulty": "normal",
+      "supply": 80000,
+      "knownFormations": [
+        "craneWing"
+      ],
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "spearman",
+          "troops": 1000
+        },
+        {
+          "slot": "center",
+          "troopType": "archer",
+          "troops": 1000
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 900
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "spearman",
+          "troops": 900
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "archer",
+          "troops": 700
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "archer",
+          "troops": 700
+        }
+      ]
+    },
+    {
+      "id": "enemy_corps_03",
+      "general": "enemy_general_03",
+      "role": "vanguard",
+      "formation": "arrowhead",
+      "ai": "ambusher",
+      "difficulty": "normal",
+      "supply": 60000,
+      "x": 8.5,
+      "y": 18.5,
+      "facing": "E",
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "cavalry",
+          "troops": 800
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 900
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "troops": 800
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "infantry",
+          "troops": 800
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "infantry",
+          "troops": 600
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "infantry",
+          "troops": 600
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "unlockFormations": [
+      "craneWing"
+    ],
+    "unlockSkills": [
+      "ambush"
+    ],
+    "gold": 300
+  }
+}

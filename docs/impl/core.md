@@ -12,11 +12,13 @@ src/                       규칙 모듈 (netstandard2.1, C# 9 — Unity 호환)
 ├─ Game.Data/              데이터 읽기, 덮어쓰기 병합(BalanceResolver), 규칙 스위치(RuleFlags), 정의, 데이터 검사
 ├─ Game.Services/          외부 서비스 경계(로그인·결제·광고)와 끔·가짜 구현, 서비스 설정·등록표
 ├─ Game.Battle.Model/      전투 시뮬레이션(5장), 피해 계산, 사기 보정, 책략 점수, 지형 전투 보정, 화면 병사 비율
-├─ Game.Campaign/          보유 장수·부대, 편성 검사, 병력 한도, 손실 분배, 초기 지급, 세이브(버전·변환기)
+├─ Game.Campaign/          보유 장수·부대, 편성 검사, 병력 한도, 손실·부상병, 장수 부상, 포로·구출·등용, 스텝 진행·탐색 기억, 초기 지급, 세이브(버전·변환기)
+├─ Game.Progression/       기록 카운터·성장 보상 규칙 엔진(일기토·논쟁 전적), 부대 결속
 ├─ Game.Economy/           지갑, 군량 계산, 치료 비용
-└─ Game.Online/            부대 고용 계산
+├─ Game.Online/            부대 고용 계산
+└─ Game.Flow/              흐름(조립): 스텝 + 편성 → BattleSetup, BattleResult → 진행 상태 (6장)
 tests/Game.Tests/          단위·규칙(R)·수치(N)·데이터 검사·의존 방향 테스트, 기준 전투(Golden/)
-data/                      규칙 데이터(Rules/), 맵(Maps/), 테마 데이터(Themes/<테마>/) — Unity에서는 StreamingAssets로 복사
+data/                      규칙 데이터(Rules/), 맵(Maps/), 스텝(Steps/), 테마 데이터(Themes/<테마>/) — Unity에서는 StreamingAssets로 복사
 config/                    외부 서비스 설정 (services.<환경>.json) — 규칙 스위치와 별개
 .github/workflows/         push·PR마다 빌드·테스트
 ```
@@ -24,12 +26,15 @@ config/                    외부 서비스 설정 (services.<환경>.json) — 
 ## 2. 의존 방향
 
 ```
-Game.Battle.Model ─┐
-Game.Campaign ─────┼─▶ Game.Data ─▶ Game.Foundation
-Game.Economy ──────┤
-Game.Online ───────┘
-Game.Services ───────────────────▶ Game.Foundation
+                ┌─ Game.Battle.Model ─┐
+                ├─ Game.Campaign ─────┤
+Game.Flow ──────┼─ Game.Economy ──────┼─▶ Game.Data ─▶ Game.Foundation
+                └─ Game.Progression ──┤
+                   Game.Online ───────┘
+                   Game.Services ───────────────────▶ Game.Foundation
 ```
+
+- 규칙 모듈끼리는 서로 모른다. 서로 이어야 하는 곳(출진·결과 반영)은 **Game.Flow**가 경계 객체(`BattleSetup`, `BattleResult`, `CampaignState`)로만 잇는다. 규칙은 Flow에 두지 않는다.
 
 - `ArchitectureTests`가 허용되지 않은 참조(다른 규칙 모듈, Unity)를 잡는다.
 
@@ -124,7 +129,41 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 - 시야는 소부대 원형 범위로 계산한다 (지형이 시선을 가리는 계산은 없음, 숲은 "가까이 가야 보임"으로만).
 - 명령 예약(경유), 협공 대기, "도착 후 사용" 선택은 아직 없다 (사거리 밖 스킬은 자동으로 다가가 사용).
 
-## 6. 아직 하지 않은 것
+## 6. 캠페인 흐름 (Game.Flow, Game.Campaign, Game.Progression)
+
+```
+스텝(Steps/stepNN.json) + 저장된 편성 + 진행 상태
+   │ StoryFlow.Prepare  (해금·편성·군단 수·군량 검사, 군량 자동 계산 R-7, 탐색 기억, 전투 직전 대결 판정)
+   ▼
+SortiePlan.Setup (BattleSetup) ── StoryFlow.Confirm (보유 군량에서 차감)
+   │ BattleSimulation
+   ▼
+BattleResult ── StoryFlow.ApplyResult
+   ├ 손실 → 부상병·사망 (R-9), 부대 결속 (승 +, 패 −, cohesionGain)
+   ├ 남은 지참 군량 반환, 승리 시 적 군량 포획 (R-8, 궤멸·포로 군단은 전량)
+   ├ 장수 부상 (경상·중상, 회복 시각), 아군 장수 포로 (수용소·구출 기한), 적 장수 → 감금 목록 (세뇌 보너스)
+   ├ 대결 전적 → 성장 보상 (100승마다 능력치 등, duelGrowth)
+   ├ 탐색 기억 합치기 (승패 무관)
+   └ 승리: 구출 전투면 그 수용소 장수 구출, 스텝 클리어, 처음 깼을 때만 보상 (진형·자원)
+```
+
+| 서비스 | 내용 | 스위치 |
+|---|---|---|
+| `CaptivityService` | 아군 포로(수용소·기한·자동 석방·구출), 적 포로(등용 성공률 = 기본 + 성향 + 세뇌, 실패 시 재시도 대기 또는 해방, 등용 불가 장수, 해방 보상) | capture, rescueBattle, rescueDeadline, recruitment, recruitRetry, releaseReward |
+| `InjuryService` | 경상(능력치 × 배율, 출전 가능)·중상(출전 불가), 회복 시각, 돈으로 즉시 치료 | generalInjury |
+| `CasualtyService` | 손실 → 부상병·사망, 부상병 치료 → 병력 복귀 (비용은 Economy `HealCostCalculator`) | woundedRecovery |
+| `StepProgress` | 차례 해금, 반복 가능, 구출 전투는 갇힌 장수가 있을 때, 탐색 기억 저장 | — |
+| `GrowthEngine` | 기록 카운터(승·패·퇴각·무승부·연승·승패 차), "몇마다"·"몇 이상(한 번만)" 보상, 받은 횟수 기록 | duelGrowth |
+| `Cohesion` | 승리 +, 패배 −, 0~최대 | cohesionGain |
+
+- 시간은 `ITimeProvider`, 무작위(등용·대결 판정)는 시드 난수에서만. 수치는 `campaign.json`, `growthTracks.json`.
+- 세이브 형식 v2 (포로·탐색 기억·장수 기록). v1 세이브는 변환기로 올린다.
+
+## 7. 아직 하지 않은 것
+
+- 장수 레벨·경험치(전투 레벨업은 아주 더디게, `battleLevelUp`) — 성장률 데이터가 정해지면 Progression에 추가
+- 결속의 전투 효과(혼란 회복·저항), 새 병사 보충 시 결속 희석 (formation.md 미결)
+- 스텝 이벤트(대사·증원), 숨은 보상 판정 (secrets.md)
 
 - 위 5.4 항목, 일기토·논쟁 엔진 → R-21~R-23, R-26
 - 스킬·특성 데이터의 전체 정의 (지금은 id만 사용)

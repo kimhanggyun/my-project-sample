@@ -1,0 +1,384 @@
+using System.Collections.Generic;
+using Game.Battle.Model.Contests;
+using Game.Battle.Model.Simulation;
+using Game.Campaign;
+using Game.Campaign.Captivity;
+using Game.Campaign.Progress;
+using Game.Campaign.Roster;
+using Game.Campaign.Troops;
+using Game.Data.Defs;
+using Game.Data.Json;
+using Game.Data.Rules;
+using Game.Economy;
+using Game.Foundation.Math;
+using Game.Foundation.Random;
+using Game.Foundation.Time;
+using Game.Progression;
+
+namespace Game.Flow
+{
+    /// <summary>출진 요청 (출진 준비 화면의 선택).</summary>
+    public sealed class SortieRequest
+    {
+        public string StepId { get; set; }
+        /// <summary>출전할 군단 편성. 비면 저장된 편성(CampaignState.Compositions) 그대로.</summary>
+        public List<CorpsComposition> Compositions { get; set; }
+        /// <summary>가져갈 군량 합계. 없으면 자동 계산 (R-7: 출전 병력 기준 3분 분량).</summary>
+        public long? Supply { get; set; }
+        /// <summary>전투 시드 (서버 도입 후 서버가 정함).</summary>
+        public ulong Seed { get; set; }
+        /// <summary>대결 id → 플레이어 선택 기록 (없거나 모자라면 AI가 대신 고름).</summary>
+        public Dictionary<string, List<string>> ContestChoices { get; set; } = new Dictionary<string, List<string>>();
+    }
+
+    /// <summary>출진 준비 결과. 문제가 없으면 Setup으로 전투를 시작한다.</summary>
+    public sealed class SortiePlan
+    {
+        public StepDef Step { get; internal set; }
+        public BattleSetup Setup { get; internal set; }
+        /// <summary>아군 군단 id → 편성 (결과 반영용).</summary>
+        public Dictionary<string, CorpsComposition> PlayerCorps { get; } = new Dictionary<string, CorpsComposition>();
+        public long SupplyTaken { get; internal set; }
+        public long AutoSupply { get; internal set; }
+        public List<string> Errors { get; } = new List<string>();
+        public bool Ok => Errors.Count == 0;
+    }
+
+    public sealed class UnitReport
+    {
+        public string UnitId { get; internal set; }
+        public long Losses { get; internal set; }
+        public long Wounded { get; internal set; }
+        public long Dead { get; internal set; }
+        public Fix CohesionBefore { get; internal set; }
+        public Fix CohesionAfter { get; internal set; }
+    }
+
+    /// <summary>결과 화면에 보여줄 것 (story.md 5장).</summary>
+    public sealed class BattleReport
+    {
+        public bool Won { get; internal set; }
+        public bool FirstClear { get; internal set; }
+        public List<UnitReport> Units { get; } = new List<UnitReport>();
+        public long SupplyReturned { get; internal set; }
+        public long SupplyCaptured { get; internal set; }
+        public Dictionary<string, string> Injuries { get; } = new Dictionary<string, string>();
+        public List<string> CapturedOwn { get; } = new List<string>();
+        public List<string> NewPrisoners { get; } = new List<string>();
+        public List<string> Rescued { get; } = new List<string>();
+        public List<string> UnlockedFormations { get; } = new List<string>();
+        public List<string> UnlockedSkills { get; } = new List<string>();
+        public Dictionary<string, long> RewardResources { get; } = new Dictionary<string, long>();
+        public List<(string generalId, GrowthReward reward)> GrowthRewards { get; } = new List<(string, GrowthReward)>();
+    }
+
+    /// <summary>
+    /// 스토리 진행 흐름 (story.md 4·5장, flow.md): 스텝 + 편성 → <see cref="BattleSetup"/>, <see cref="BattleResult"/> → 진행 상태.
+    /// 규칙 모듈(전투·진행·경제·성장)을 경계 객체로만 잇는다. 전투 규칙·진행 규칙은 이 클래스에 없다.
+    /// </summary>
+    public sealed class StoryFlow
+    {
+        public const string PlayerTeam = "teamA";
+        public const string EnemyTeam = "teamB";
+
+        private readonly DefinitionSet _defs;
+        private readonly IDataSource _source;
+        private readonly ITimeProvider _time;
+        private readonly RuleFlags _campaignFlags;
+
+        public StoryFlow(DefinitionSet defs, IDataSource source, ITimeProvider time)
+        {
+            _defs = defs;
+            _source = source;
+            _time = time;
+            _campaignFlags = defs.ResolveFlags();
+        }
+
+        public CaptivityService Captivity => new CaptivityService(_defs, _campaignFlags, _time);
+        public InjuryService Injuries => new InjuryService(_defs, _campaignFlags, _time);
+
+        /// <summary>시간 경과 처리: 부상 회복, 구출 기한 지난 장수 석방. 화면을 열 때마다 부른다.</summary>
+        public void Tick(CampaignState state)
+        {
+            Injuries.Recover(state);
+            Captivity.ReleaseExpired(state);
+        }
+
+        public bool IsUnlocked(CampaignState state, string stepId) =>
+            StepProgress.IsUnlocked(_defs.StepIndex, state, stepId, Captivity.CampsWithCaptives(state));
+
+        /// <summary>출진 준비: 상태는 바꾸지 않는다. 문제(편성·군량·해금)는 Errors로 돌려준다.</summary>
+        public SortiePlan Prepare(CampaignState state, SortieRequest request)
+        {
+            var plan = new SortiePlan();
+            var step = StepDef.Load(_source, request.StepId);
+            var map = MapDef.Load(_source, step.Map);
+            plan.Step = step;
+            if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");
+
+            var comps = request.Compositions ?? state.Compositions;
+            int maxCorps = step.MaxCorps ?? _defs.Campaign.DefaultMaxCorps;
+            if (comps.Count == 0) plan.Errors.Add("출전할 군단이 없습니다.");
+            if (comps.Count > maxCorps) plan.Errors.Add($"출전 군단 {comps.Count}개가 이 스텝의 한도 {maxCorps}개를 넘습니다.");
+            plan.Errors.AddRange(CorpsValidator.Validate(_defs, state, comps));
+
+            var flags = _defs.ResolveFlags(step.RuleOverrides);
+            var balance = _defs.ResolveBalance(step.BalanceOverrides);
+            var setup = new BattleSetup
+            {
+                Defs = _defs,
+                Map = map,
+                Balance = balance,
+                Combat = _defs.ResolveCombat(step.CombatOverrides),
+                Flags = flags,
+                Seed = request.Seed,
+                MaxMinutes = step.MaxMinutes,
+                DefeatConditions = new List<string>(step.DefeatConditions),
+                Weather = step.Weather,
+                TimeOfDay = step.TimeOfDay,
+                Wind = new WindSetup { Direction = step.WindDirection, Strength = step.WindStrength },
+            };
+            setup.InitialExplored[PlayerTeam] = StepProgress.Explored(state, step.Id, map.Width * map.Height);
+
+            // 아군: 편성에서 (부상병은 부대에 따로 있으므로 병력만), 군량은 하루 소비 비율로 나눔
+            var daily = new List<long>();
+            int n = 0;
+            foreach (var comp in comps)
+            {
+                var g = state.FindGeneral(comp.GeneralId);
+                if (g == null) continue;
+                string id = "P" + (++n);
+                var cs = new CorpsSetup
+                {
+                    Id = id,
+                    Team = PlayerTeam,
+                    Role = comp.Role ?? (n == 1 ? CorpsRoles.Commander : null),
+                    Controller = Controllers.Player,
+                    General = Snapshot(g),
+                    Formation = comp.Formation,
+                    KnownFormations = new List<string>(state.LearnedFormations),
+                };
+                long d = 0;
+                foreach (var slot in comp.Slots)
+                {
+                    var u = state.FindUnit(slot.Value);
+                    if (u == null) continue;
+                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId, Slot = slot.Key, TroopType = u.TroopType, Troops = u.Troops });
+                    if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + u.Troops * tt.SupplyPerDay);
+                }
+                daily.Add(d);
+                setup.Corps.Add(cs);
+                plan.PlayerCorps[id] = comp;
+            }
+            if (!HasCommander(setup)) foreach (var c in setup.Corps) { c.Role = CorpsRoles.Commander; break; }
+
+            long totalDaily = 0;
+            foreach (var d in daily) totalDaily += d;
+            plan.AutoSupply = SupplyCalculator.AutoSortieSupply(balance, totalDaily);
+            long take = request.Supply ?? plan.AutoSupply;
+            plan.SupplyTaken = take;
+            if (take < 0) plan.Errors.Add("군량은 음수일 수 없습니다.");
+            if (new Wallet(state.Wallet).Get(ResourceIds.Supply) < take) plan.Errors.Add($"군량이 모자랍니다 (필요 {take}, 보유 {new Wallet(state.Wallet).Get(ResourceIds.Supply)}).");
+            SplitSupply(setup, daily, take);
+
+            // 적: 스텝 데이터
+            foreach (var e in step.Enemy)
+            {
+                var gd = _defs.Generals[e.General];
+                var cs = new CorpsSetup
+                {
+                    Id = e.Id,
+                    Team = EnemyTeam,
+                    Role = e.Role,
+                    Controller = Controllers.Ai,
+                    AiStance = e.Ai,
+                    AiDifficulty = e.Difficulty,
+                    General = GeneralSnapshot.From(gd),
+                    Formation = e.Formation,
+                    Supply = e.Supply,
+                    KnownFormations = new List<string>(e.KnownFormations),
+                    X = e.X, Y = e.Y, Facing = e.Facing,
+                };
+                foreach (var u in e.Units) cs.Units.Add(new UnitSetup { UnitId = e.Id + "_" + u.Slot, Slot = u.Slot, TroopType = u.TroopType, Troops = u.Troops });
+                setup.Corps.Add(cs);
+            }
+
+            PlanContests(step, setup, request);
+            plan.Setup = setup;
+            return plan;
+        }
+
+        /// <summary>출진 확정: 보유 군량에서 가져갈 군량을 뺀다.</summary>
+        public bool Confirm(CampaignState state, SortiePlan plan)
+        {
+            if (!plan.Ok) return false;
+            return new Wallet(state.Wallet).TrySpend(ResourceIds.Supply, plan.SupplyTaken);
+        }
+
+        /// <summary>
+        /// 전투 결과 반영 (story.md 5장, flow.md 3장): 손실(부상·사망), 남은 군량 반환 + 승리 시 적 군량 포획(R-8), 부대 결속,
+        /// 장수 부상·포로, 적 포로, 대결 전적·성장 보상, 탐색 기억, 스텝 클리어·보상, 구출.
+        /// </summary>
+        public BattleReport ApplyResult(CampaignState state, SortiePlan plan, BattleResult result)
+        {
+            var report = new BattleReport { Won = result.Winner == PlayerTeam };
+            var step = plan.Step;
+            var b = plan.Setup.Balance;
+            var wallet = new Wallet(state.Wallet);
+
+            foreach (var cr in result.Corps)
+            {
+                if (cr.Team == PlayerTeam)
+                {
+                    foreach (var ur in cr.Units)
+                    {
+                        var unit = state.FindUnit(ur.UnitId);
+                        if (unit == null) continue;
+                        var (wounded, dead) = CasualtyService.Apply(b, plan.Setup.Flags, unit, ur.Losses);
+                        var before = unit.Cohesion;
+                        unit.Cohesion = Cohesion.After(_defs.Campaign, _campaignFlags, unit.Cohesion, report.Won);
+                        report.Units.Add(new UnitReport { UnitId = unit.UnitId, Losses = ur.Losses, Wounded = wounded, Dead = dead, CohesionBefore = before, CohesionAfter = unit.Cohesion });
+                    }
+                    // 남은 지참 군량은 돌려받는다. 궤멸·포로 군단의 군량은 잃는다.
+                    if (cr.Status != CorpsStatus.Destroyed && cr.Status != CorpsStatus.Captured) report.SupplyReturned += cr.RemainingSupply;
+                }
+                else if (report.Won && cr.Status != CorpsStatus.Active && cr.Status != CorpsStatus.Retreating)
+                {
+                    // R-8: 퇴각한 적은 생존 병사 몫만 가져가고 나머지 몰수, 궤멸·포로는 전량 몰수
+                    bool lost = cr.Status == CorpsStatus.Destroyed || cr.Status == CorpsStatus.Captured;
+                    var (_, confiscated) = SupplyCalculator.RetreatSplit(cr.RemainingSupply, cr.RemainingTroops, cr.StartTroops, lost);
+                    report.SupplyCaptured += (_defs.Campaign.SupplyCaptureRate * confiscated).FloorToLong();
+                }
+            }
+            wallet.Add(ResourceIds.Supply, report.SupplyReturned + report.SupplyCaptured);
+
+            var injuries = Injuries;
+            foreach (var kv in result.GeneralInjuries)
+            {
+                if (state.FindGeneral(kv.Key) == null) continue;
+                injuries.Apply(state, kv.Key, kv.Value);
+                report.Injuries[kv.Key] = kv.Value;
+            }
+
+            var captivity = Captivity;
+            foreach (var cap in result.Captures)
+            {
+                if (cap.CapturedByTeam == PlayerTeam)
+                {
+                    captivity.AddPrisoner(state, cap.GeneralId, cap.BrainwashBonus);
+                    if (state.FindPrisoner(cap.GeneralId) != null) report.NewPrisoners.Add(cap.GeneralId);
+                }
+                else if (state.FindGeneral(cap.GeneralId) != null)
+                {
+                    captivity.CaptureOwn(state, cap.GeneralId, step.Camp ?? step.Id);
+                    report.CapturedOwn.Add(cap.GeneralId);
+                }
+            }
+
+            RecordContests(state, result, report);
+
+            if (result.Explored.TryGetValue(PlayerTeam, out var explored)) StepProgress.MergeExplored(state, step.Id, explored);
+
+            if (report.Won)
+            {
+                if (step.RescueCamp != null) report.Rescued.AddRange(captivity.Rescue(state, step.RescueCamp));
+                report.FirstClear = StepProgress.MarkCleared(state, step.Id);
+                if (report.FirstClear) GrantRewards(state, step, report);
+            }
+            return report;
+        }
+
+        private void RecordContests(CampaignState state, BattleResult result, BattleReport report)
+        {
+            foreach (var c in result.Contests)
+            {
+                foreach (var (side, fighter) in new[] { ("A", c.A), ("B", c.B) })
+                {
+                    var g = state.FindGeneral(fighter.Id);
+                    if (g == null) continue;
+                    string outcome = c.End == ContestEnds.Retreat ? (c.Retreater == side ? "retreat" : "win")
+                        : c.Winner == null ? "draw" : (c.Winner == side ? "win" : "loss");
+                    GrowthEngine.RecordContest(g.Records, c.ContestId, outcome);
+                    foreach (var r in GrowthEngine.Evaluate(_defs.GrowthTracks, _campaignFlags, g.Records, g.GrantedRewards))
+                    {
+                        if (r.Stat != null)
+                        {
+                            g.StatGrowth.TryGetValue(r.Stat, out var v);
+                            g.StatGrowth[r.Stat] = v + r.Add;
+                        }
+                        if (r.Trait != null && !g.LearnedTraits.Contains(r.Trait)) g.LearnedTraits.Add(r.Trait);
+                        report.GrowthRewards.Add((g.GeneralId, r));
+                    }
+                }
+            }
+        }
+
+        private void GrantRewards(CampaignState state, StepDef step, BattleReport report)
+        {
+            foreach (var f in step.RewardFormations)
+                if (!state.LearnedFormations.Contains(f)) { state.LearnedFormations.Add(f); report.UnlockedFormations.Add(f); }
+            foreach (var s in step.RewardSkills) report.UnlockedSkills.Add(s); // 스킬 해금 = 스킬북 획득처 (상점·보상), 장수에게 쓰는 것은 키우기 탭
+            var wallet = new Wallet(state.Wallet);
+            foreach (var kv in step.RewardResources) { wallet.Add(kv.Key, kv.Value); report.RewardResources[kv.Key] = kv.Value; }
+        }
+
+        /// <summary>전투에 들어갈 장수 능력치: 정의 + 성장분, 경상이면 배율 (CorpsValidator.EffectiveStat).</summary>
+        private GeneralSnapshot Snapshot(GeneralState g)
+        {
+            var def = _defs.Generals[g.GeneralId];
+            return new GeneralSnapshot
+            {
+                Id = g.GeneralId,
+                Leadership = CorpsValidator.EffectiveStat(_defs, g, "leadership"),
+                Might = CorpsValidator.EffectiveStat(_defs, g, "might"),
+                Intellect = CorpsValidator.EffectiveStat(_defs, g, "intellect"),
+                Temperament = def.Temperament,
+                Skills = new List<string>(g.LearnedSkills),
+            };
+        }
+
+        /// <summary>군량을 군단별 하루 소비 비율로 나눈다 (내림, 나머지는 첫 군단).</summary>
+        private static void SplitSupply(BattleSetup setup, List<long> daily, long total)
+        {
+            long sum = 0;
+            foreach (var d in daily) sum += d;
+            long given = 0;
+            int i = 0;
+            foreach (var c in setup.Corps)
+            {
+                long share = sum == 0 ? 0 : (long)((decimal)total * daily[i] / sum);
+                c.Supply = share;
+                given += share;
+                i++;
+            }
+            if (setup.Corps.Count > 0) setup.Corps[0].Supply += total - given;
+        }
+
+        private static bool HasCommander(BattleSetup s)
+        {
+            foreach (var c in s.Corps) if (c.Role == CorpsRoles.Commander) return true;
+            return false;
+        }
+
+        /// <summary>전투 직전 대결: 양쪽 대장끼리, 능력치 차이가 기준 이내면 확률로 (스위치·스텝 허용). 판정 난수는 전투 시드에서 따로 만든다.</summary>
+        private void PlanContests(StepDef step, BattleSetup setup, SortieRequest request)
+        {
+            CorpsSetup mine = null, theirs = null;
+            foreach (var c in setup.Corps)
+            {
+                if (c.Role != CorpsRoles.Commander) continue;
+                if (c.Team == PlayerTeam && mine == null) mine = c;
+                if (c.Team == EnemyTeam && theirs == null) theirs = c;
+            }
+            if (mine == null || theirs == null) return;
+            var rng = new SeededRandom(unchecked(request.Seed ^ 0x5DEECE66DUL));
+            foreach (var (id, allowed) in new[] { ("duel", step.DuelAllowed), ("debate", step.DebateAllowed) })
+            {
+                if (!allowed || !_defs.Contests.TryGetValue(id, out var def) || !setup.Flags.IsEnabled(def.Flag)) continue;
+                if (!ContestTrigger.Occurs(def, mine.General.Stat(def.Stat), theirs.General.Stat(def.Stat), mine.General.Temperament, theirs.General.Temperament, rng)) continue;
+                request.ContestChoices.TryGetValue(id, out var choices);
+                setup.Contests.Add(new ContestSetup { ContestId = id, CorpsA = mine.Id, CorpsB = theirs.Id, ChoicesA = choices });
+            }
+        }
+    }
+}
