@@ -37,5 +37,17 @@
     "mightToAttack": 0.2,
     "leadershipToDefense": 0.2
   },
-  "spawnSpacingCells": 8
+  "spawnSpacingCells": 8,
+  "vision": {
+    "updateEveryTicks": 2,
+    "cellsAtStat50": 7,
+    "cellsPerStatPoint": 0.1,
+    "intellectCellsPerPoint": 0.03,
+    "cellsPerHeightLevel": 2,
+    "concealedSeenCells": 2.5,
+    "insideConcealPenaltyCells": 2
+  },
+  "skills": {
+    "pointRegenPerSecond": 0.2
+  }
 }

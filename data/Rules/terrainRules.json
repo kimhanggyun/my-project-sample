@@ -1,5 +1,5 @@
 {
-  "_comment": "지형 이동 규칙 (예시). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이",
+  "_comment": "지형 이동 규칙 (예시). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이, conceals = 숨는 지형 (안의 부대는 가까이 가야 보임, 복병 가능)",
   "terrain": {
     "plain": {
       "cost": 1
@@ -8,14 +8,16 @@
       "cost": 0.8
     },
     "grass": {
-      "cost": 1.2
+      "cost": 1.2,
+      "conceals": true
     },
     "forest": {
       "cost": 1.6,
       "costByTag": {
         "mounted": 2.5,
         "light": 1.2
-      }
+      },
+      "conceals": true
     },
     "burnt": {
       "cost": 1

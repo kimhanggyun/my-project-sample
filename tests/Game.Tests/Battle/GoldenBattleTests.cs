@@ -57,7 +57,42 @@ namespace Game.Tests.Battle
                     };
                     return (Setup("test_mountain_pass", 1005, null, a1, a2, b1, b2), commands);
                 },
+                // 숲 복병 vs 간파 미사용 / 사용 (verification 9장)
+                ["forest_ambush_no_reveal"] = () => AmbushBattle(false),
+                ["forest_ambush_with_reveal"] = () => AmbushBattle(true),
             };
+
+        private static (BattleSetup, List<BattleCommand>) AmbushBattle(bool reveal)
+        {
+            var a = Corps("A", "teamA", "square", controller: Controllers.Player, general: General("ga", intellect: 60));
+            a.General.Skills.Add("ambush");
+            a.X = Fix.Parse("8.5"); a.Y = Fix.Parse("18.5"); a.Facing = "E";
+            var b = Corps("B", "teamB", "square", controller: Controllers.Player, general: General("gb", intellect: 60));
+            b.General.Skills.Add("reveal");
+            var commands = new List<BattleCommand>
+            {
+                new BattleCommand { Tick = 0, CorpsId = "A", Kind = CommandKinds.UseSkill, SkillId = "ambush" },
+                new BattleCommand { Tick = 210, CorpsId = "B", Kind = CommandKinds.MoveTo, X = Fix.FromInt(12), Y = Fix.FromInt(36) },
+            };
+            if (reveal)
+                commands.Add(new BattleCommand { Tick = 211, CorpsId = "B", Kind = CommandKinds.UseSkill, SkillId = "reveal", X = Fix.FromInt(8), Y = Fix.FromInt(18) });
+            var setup = Setup("test_ambush", 1006, null, a, b);
+            setup.MaxMinutes = Fix.FromInt(3);
+            return (setup, commands);
+        }
+
+        [Fact(DisplayName = "기준 전투: 간파하지 않으면 복병에 걸려 더 빨리 무너지고, 복병 쪽 손실이 적다")]
+        public void AmbushRevealDifference()
+        {
+            var (s1, c1) = AmbushBattle(false);
+            var (s2, c2) = AmbushBattle(true);
+            var none = BattleSimulation.Run(s1, c1);
+            var revealed = BattleSimulation.Run(s2, c2);
+            Assert.Equal("teamA", none.Winner);
+            Assert.True(none.Ticks < revealed.Ticks, $"무너진 시점: 간파 안 함 {none.Ticks}틱, 간파 함 {revealed.Ticks}틱");
+            Assert.True(none.Find("A").Losses < revealed.Find("A").Losses,
+                $"복병 쪽 손실: 간파 안 함 {none.Find("A").Losses}, 간파 함 {revealed.Find("A").Losses}");
+        }
 
         [Theory(DisplayName = "기준 전투가 정답 파일과 같다")]
         [MemberData(nameof(Cases))]

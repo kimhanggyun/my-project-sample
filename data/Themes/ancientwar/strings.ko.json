@@ -30,5 +30,12 @@
   "general.general_c": "장수 C",
   "resource.supply": "군량",
   "resource.gold": "돈",
-  "resource.gem": "보석(임시)"
+  "resource.gem": "보석(임시)",
+  "skill.reveal": "간파",
+  "skill.ambush": "복병",
+  "skill.arrowRain": "화살비",
+  "skill.rally": "고무",
+  "skill.regroup": "재정비",
+  "skill.warCry": "돌격 함성",
+  "skill.taunt": "도발"
 }

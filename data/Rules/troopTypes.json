@@ -60,7 +60,8 @@
       "stats": {
         "attack": 60,
         "defense": 45,
-        "speed": 80
+        "speed": 80,
+        "vision": 65
       }
     },
     {

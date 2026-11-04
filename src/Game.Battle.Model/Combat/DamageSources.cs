@@ -56,6 +56,7 @@ namespace Game.Battle.Model.Combat
             new TerrainCombatSource(),
             new HeightSource(),
             new MoraleSource(),
+            new StatusAttackSource(),
         };
     }
 
@@ -141,6 +142,16 @@ namespace Game.Battle.Model.Combat
             var (_, def) = MoraleModifier.Calculate(b, a.DefenderCorps.Morale, dg.Might, dg.Intellect);
             into.Add(new DamageModifier("morale", atk, RuleFlagIds.Morale));
             into.Add(new DamageModifier("moraleDefense", -def, RuleFlagIds.Morale));
+        }
+    }
+
+    /// <summary>공격하는 군단에 걸린 상태(돌격 함성, 기습 …)의 공격 보정.</summary>
+    internal sealed class StatusAttackSource : IDamageModifierSource
+    {
+        public void Collect(AttackContext a, List<DamageModifier> into)
+        {
+            foreach (var st in a.AttackerCorps.Statuses)
+                if (st.AttackPp != Fix.Zero) into.Add(new DamageModifier("status." + st.Id, st.AttackPp));
         }
     }
 

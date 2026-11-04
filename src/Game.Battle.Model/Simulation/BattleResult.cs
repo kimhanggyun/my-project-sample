@@ -18,6 +18,8 @@ namespace Game.Battle.Model.Simulation
         /// <summary>받아들인 명령 기록 (리플레이·서버 검증용).</summary>
         public IReadOnlyList<BattleCommand> Commands { get; internal set; }
         public ulong StateHash { get; internal set; }
+        /// <summary>팀 → 탐색한 칸 (y × 폭 + x). 세이브에 넣어 같은 스텝 재도전의 탐색 기억으로 쓴다 (fogMemory).</summary>
+        public IReadOnlyDictionary<string, bool[]> Explored { get; internal set; }
 
         public CorpsResult Find(string corpsId)
         {
@@ -37,6 +39,7 @@ namespace Game.Battle.Model.Simulation
         public long StartSupply { get; internal set; }
         public long RemainingSupply { get; internal set; }
         public Fix FinalMorale { get; internal set; }
+        public Fix SkillPointsLeft { get; internal set; }
         public IReadOnlyList<UnitResult> Units { get; internal set; }
     }
 

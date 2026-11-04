@@ -1,0 +1,202 @@
+{
+  "_comment": "스킬 정의 (docs/design/content/skills.md, 1차 7종. 화계는 바람·불 번짐과 함께 2d). 수치는 예시. 효과·조건 종류는 전투 모듈 등록표에 있다.",
+  "skills": [
+    {
+      "id": "reveal",
+      "nameKey": "skill.reveal",
+      "category": "intel",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 20
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "point"
+      },
+      "effects": [
+        {
+          "type": "reveal",
+          "radius": 4,
+          "detectionRadiusPerPoint": 0.05,
+          "durationSec": 5
+        }
+      ]
+    },
+    {
+      "id": "ambush",
+      "nameKey": "skill.ambush",
+      "category": "intel",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 30
+        }
+      ],
+      "cost": 25,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "conditions": [
+        {
+          "type": "casterOnConcealingTerrain"
+        },
+        {
+          "type": "notEngaged"
+        }
+      ],
+      "effects": [
+        {
+          "type": "ambush",
+          "setupSec": 20,
+          "surprisePp": 50,
+          "surpriseSec": 3,
+          "confusionRatio": 0.3,
+          "confusionSec": 4,
+          "moraleDamage": 15
+        }
+      ]
+    },
+    {
+      "id": "arrowRain",
+      "nameKey": "skill.arrowRain",
+      "category": "ranged",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 30
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "area",
+        "range": 14,
+        "radius": 2
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "ranged"
+        }
+      ],
+      "telegraphSec": 1.5,
+      "effects": [
+        {
+          "type": "areaDamage",
+          "sourceTag": "ranged",
+          "damagePerSourceTroop": 0.1
+        }
+      ]
+    },
+    {
+      "id": "rally",
+      "nameKey": "skill.rally",
+      "category": "command",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 30
+        }
+      ],
+      "cost": 10,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "morale",
+          "amount": 15,
+          "allyRadius": 6
+        }
+      ]
+    },
+    {
+      "id": "regroup",
+      "nameKey": "skill.regroup",
+      "category": "command",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 40
+        }
+      ],
+      "cost": 10,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "clearConfusion"
+        }
+      ]
+    },
+    {
+      "id": "warCry",
+      "nameKey": "skill.warCry",
+      "category": "valor",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "might",
+          "min": 40
+        }
+      ],
+      "cost": 10,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "attackBuff",
+          "pp": 20,
+          "durationSec": 8
+        },
+        {
+          "type": "contactMoraleDamage",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "taunt",
+      "nameKey": "skill.taunt",
+      "category": "disrupt",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 30
+        },
+        {
+          "stat": "might",
+          "min": 50
+        }
+      ],
+      "requiresAny": true,
+      "cost": 15,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "enemyCorps",
+        "range": 10
+      },
+      "effects": [
+        {
+          "type": "taunt",
+          "durationSec": 8
+        }
+      ]
+    }
+  ]
+}

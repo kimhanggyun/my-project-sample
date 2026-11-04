@@ -19,6 +19,8 @@ namespace Game.Battle.Model.Commands
         public string TargetCorpsId { get; set; }
         public string FormationId { get; set; }
         public string Mode { get; set; }
+        /// <summary>useSkill의 스킬 id.</summary>
+        public string SkillId { get; set; }
 
         public BattleCommand Clone() => (BattleCommand)MemberwiseClone();
     }
@@ -37,6 +39,8 @@ namespace Game.Battle.Model.Commands
         public const string Retreat = "retreat";
         /// <summary>진형 변경.</summary>
         public const string ChangeFormation = "changeFormation";
+        /// <summary>스킬 사용 (SkillId + 대상 군단 또는 지점). 사거리 밖이면 다가간 뒤 쓴다.</summary>
+        public const string UseSkill = "useSkill";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -65,7 +69,8 @@ namespace Game.Battle.Model.Commands
             .Register(new AttackHandler())
             .Register(new HoldHandler())
             .Register(new RetreatHandler())
-            .Register(new ChangeFormationHandler());
+            .Register(new ChangeFormationHandler())
+            .Register(new Skills.UseSkillHandler());
     }
 
     internal sealed class AdvanceHandler : ICommandHandler
@@ -97,7 +102,7 @@ namespace Game.Battle.Model.Commands
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             var t = ctx.FindCorps(cmd.TargetCorpsId);
-            return t != null && t.Team != corps.Team && t.InBattle;
+            return t != null && t.Team != corps.Team && t.InBattle && ctx.IsVisibleTo(corps.Team, t);
         }
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {

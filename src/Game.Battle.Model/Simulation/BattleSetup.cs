@@ -23,6 +23,10 @@ namespace Game.Battle.Model.Simulation
         /// <summary>패배 조건 id 목록 (<see cref="Victory.VictoryConditionIds"/>). 하나라도 만족하면 그 팀 패배.</summary>
         public List<string> DefeatConditions { get; set; } = new List<string> { Victory.VictoryConditionIds.Annihilation, Victory.VictoryConditionIds.Commander };
         public List<CorpsSetup> Corps { get; set; } = new List<CorpsSetup>();
+        /// <summary>
+        /// 팀 → 이미 탐색한 칸 (같은 스텝 재도전 시 탐색 기억, 스위치 fogMemory). 칸 순서는 y × 폭 + x. 없으면 모두 미탐색.
+        /// </summary>
+        public Dictionary<string, bool[]> InitialExplored { get; set; } = new Dictionary<string, bool[]>();
     }
 
     /// <summary>전투에 들어가는 장수 능력치. 부상·고용 등은 바깥(캠페인)에서 반영한 뒤 넘긴다.</summary>
@@ -33,9 +37,24 @@ namespace Game.Battle.Model.Simulation
         public Fix Might { get; set; }
         public Fix Intellect { get; set; }
         public string Temperament { get; set; }
+        /// <summary>가진 스킬 전부 (기본 스킬 + 배운 스킬). 보유 스킬은 전부 가지고 출진한다.</summary>
+        public List<string> Skills { get; set; } = new List<string>();
+
+        /// <summary>통솔·무력·지략 밖의 능력치 (능력치는 확장형, battle.md 2.9).</summary>
+        public Dictionary<string, Fix> OtherStats { get; set; } = new Dictionary<string, Fix>();
+
+        /// <summary>능력치 id로 값 (스킬 요구 조건용). 모르는 id는 0.</summary>
+        public Fix Stat(string id)
+        {
+            if (id == "leadership") return Leadership;
+            if (id == "might") return Might;
+            if (id == "intellect") return Intellect;
+            return OtherStats.TryGetValue(id, out var v) ? v : Fix.Zero;
+        }
 
         public static GeneralSnapshot From(GeneralDef def) => new GeneralSnapshot
         {
+            Skills = new List<string>(def.InnateSkills),
             Id = def.Id,
             Leadership = def.Stats.Get("leadership"),
             Might = def.Stats.Get("might"),
