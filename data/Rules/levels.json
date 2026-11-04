@@ -1,0 +1,7 @@
+{
+  "_comment": "장수 레벨 (battle.md 2.19.1, general-growth.md): 성장률 방식(무작위 없음). 다음 레벨까지 경험치 = base + perLevel × (레벨 − 1). 전투 경험치는 아주 더디게(battleExpMultiplier, 스위치 battleLevelUp). 수치는 예시",
+  "maxLevel": 50,
+  "expBase": 100,
+  "expPerLevel": 50,
+  "battleExpMultiplier": 0.1
+}

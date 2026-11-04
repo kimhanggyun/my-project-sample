@@ -50,6 +50,7 @@ namespace Game.Battle.Model.Systems
         {
             RetreatSystem.NearbyMoraleDrop(ctx, c);
             c.Status = CorpsStatus.Captured;
+            Events.EventLog.Add(ctx, Events.EventKinds.Captured, c.Id, byTeam);
             c.Hidden = false;
             c.ClearPath();
             ctx.Captures.Add(new CaptureRecord { GeneralId = c.Setup.General.Id, CorpsId = c.Id, CapturedByTeam = byTeam, Cause = cause, BrainwashBonus = brainwash });

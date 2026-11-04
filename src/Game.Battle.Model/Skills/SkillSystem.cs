@@ -172,6 +172,7 @@ namespace Game.Battle.Model.Skills
         internal static void Cast(SkillCast cast)
         {
             var ctx = cast.Battle;
+            Events.EventLog.Add(ctx, Events.EventKinds.SkillUsed, cast.Caster.Id, cast.Skill.Id);
             long delay = (cast.Skill.TelegraphSec / ctx.Combat.TickSeconds).CeilToLong();
             if (delay <= 0) ApplyEffects(cast);
             else ctx.Scheduled.Add(new ScheduledEffect { FireTick = ctx.Tick + delay, Cast = cast });
@@ -279,6 +280,7 @@ namespace Game.Battle.Model.Skills
             var p = h.AmbushEffect;
             var victims = EnemiesInReach(ctx, h);
             Expose(h);
+            Events.EventLog.Add(ctx, Events.EventKinds.AmbushSprung, h.Id);
             if (p == null) return;
             h.AddStatus(new StatusEffect { Id = StatusIds.Surprise, AttackPp = p.Fix("surprisePp"), TicksLeft = SkillRules.Ticks(ctx, p.Fix("surpriseSec")) });
             long confusedTicks = SkillRules.Ticks(ctx, p.Fix("confusionSec"));
@@ -296,7 +298,7 @@ namespace Game.Battle.Model.Skills
                     int cmp = Vec.DistanceSquared(a.Position, h.Anchor).CompareTo(Vec.DistanceSquared(b.Position, h.Anchor));
                     return cmp != 0 ? cmp : e.Units.IndexOf(a).CompareTo(e.Units.IndexOf(b));
                 });
-                for (int i = 0; i < n && i < alive.Count; i++) alive[i].ConfusedTicks = System.Math.Max(alive[i].ConfusedTicks, confusedTicks);
+                for (int i = 0; i < n && i < alive.Count; i++) Events.Confusion.Apply(ctx, alive[i], confusedTicks);
             }
         }
     }
@@ -478,7 +480,7 @@ namespace Game.Battle.Model.Skills
     internal sealed class IgniteEffect : ISkillEffect
     {
         public string Type => "ignite";
-        public void Apply(SkillCast c, SkillPart p) => Environment.EnvironmentSystem.Ignite(c.Battle, Cell.Of(c.Point));
+        public void Apply(SkillCast c, SkillPart p) => Environment.EnvironmentSystem.Ignite(c.Battle, Cell.Of(c.Point), c.Caster.Team);
     }
 
     // ---- 조건 ----

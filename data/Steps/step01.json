@@ -64,6 +64,21 @@
       "fishScale"
     ],
     "unlockSkills": [],
-    "gold": 200
-  }
+    "gold": 200,
+    "exp": 300
+  },
+  "events": [
+    {
+      "id": "start",
+      "trigger": {
+        "type": "start"
+      },
+      "actions": [
+        {
+          "type": "dialogue",
+          "key": "dialogue.step01.start"
+        }
+      ]
+    }
+  ]
 }

@@ -37,6 +37,36 @@ namespace Game.Battle.Model.Simulation
         public string TimeOfDay { get; set; } = "day";
         /// <summary>전투 중 바람·날씨가 바뀌는 이벤트 (틱 순서).</summary>
         public List<EnvironmentChange> Changes { get; set; } = new List<EnvironmentChange>();
+        /// <summary>스텝 연출: 조건 → 행동 (대사, 증원, AI 성향 바꾸기).</summary>
+        public List<EventSetup> Events { get; set; } = new List<EventSetup>();
+    }
+
+    public sealed class EventSetup
+    {
+        public string Id { get; set; }
+        public TriggerSetup Trigger { get; set; }
+        public List<ActionSetup> Actions { get; set; } = new List<ActionSetup>();
+        /// <summary>한 번만 (기본). false면 조건이 맞는 틱마다.</summary>
+        public bool Once { get; set; } = true;
+    }
+
+    /// <summary>조건: start, atTick(Tick), corpsLeft(CorpsId), corpsTroopsBelow(CorpsId, Ratio), teamTroopsBelow(Team, Ratio).</summary>
+    public sealed class TriggerSetup
+    {
+        public string Type { get; set; }
+        public long Tick { get; set; }
+        public string CorpsId { get; set; }
+        public string Team { get; set; }
+        public Fix Ratio { get; set; }
+    }
+
+    /// <summary>행동: dialogue(Key, CorpsId), reinforce(CorpsId), setAiStance(CorpsId, Stance).</summary>
+    public sealed class ActionSetup
+    {
+        public string Type { get; set; }
+        public string Key { get; set; }
+        public string CorpsId { get; set; }
+        public string Stance { get; set; }
     }
 
     public sealed class WindSetup
@@ -116,6 +146,8 @@ namespace Game.Battle.Model.Simulation
         public string Slot { get; set; }
         public string TroopType { get; set; }
         public long Troops { get; set; }
+        /// <summary>부대 결속 (0~100).</summary>
+        public Fix Cohesion { get; set; }
     }
 
     public sealed class CorpsSetup
@@ -132,6 +164,8 @@ namespace Game.Battle.Model.Simulation
         public string AiDifficulty { get; set; } = "normal";
         /// <summary>쓸 수 있는 진형 (AI 상성 대응용). 비면 지금 진형만.</summary>
         public List<string> KnownFormations { get; set; } = new List<string>();
+        /// <summary>예비 군단: 증원 이벤트(reinforce)가 올 때까지 전장 밖.</summary>
+        public bool Reserve { get; set; }
         public GeneralSnapshot General { get; set; }
         public string Formation { get; set; }
         /// <summary>가져간 군량.</summary>

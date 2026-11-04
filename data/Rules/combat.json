@@ -75,5 +75,14 @@
     "troopLossPctPerSecond": 2,
     "flammableTagMultiplier": 2,
     "moralePerSecond": 2
+  },
+  "cohesion": {
+    "confusionResistPerPoint": 0.004,
+    "confusionDurationCutPerPoint": 0.005,
+    "maxDurationCut": 0.5
+  },
+  "warnings": {
+    "supplyLowRatio": 0.2,
+    "moraleCriticalMargin": 10
   }
 }

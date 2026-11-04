@@ -74,6 +74,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<string> InnateSkills { get; internal set; }
         public bool Recruitable { get; internal set; }
         public StatBlock Stats { get; internal set; }
+        /// <summary>성장률: 레벨업 1번에 오르는 능력치 (무작위 없음).</summary>
+        public IReadOnlyDictionary<string, Fix> GrowthRates { get; internal set; }
     }
 
     public sealed class StartingUnitDef

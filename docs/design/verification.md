@@ -186,6 +186,7 @@
 - 대결(일기토·논쟁, R-21~R-23)과 군단 AI는 `tests/Game.Tests/Battle/AiContestTests.cs`.
 - 포로(포위·일기토·스위치)·바람·날씨·시간대·화계는 `tests/Game.Tests/Battle/EnvironmentCaptureTests.cs`.
 - 캠페인 흐름(출진 R-7, 결과 반영 R-8·R-9, 포로·등용·부상·성장·결속·스텝 해금)은 `tests/Game.Tests/Campaign/CampaignFlowTests.cs`.
+- 결속·스텝 연출·전투 이벤트·말풍선은 `tests/Game.Tests/Battle/EventSpeechTests.cs`, 장수 레벨·숨은 보상은 `tests/Game.Tests/Campaign/LevelSecretTests.cs`.
 - 아직 테스트가 없는 것 (고용 동시성, 서버 도입 후): R-26.
 
 ## 9. 기준 전투

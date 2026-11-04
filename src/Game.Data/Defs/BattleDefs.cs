@@ -67,6 +67,14 @@ namespace Game.Data.Defs
         public Fix NearbyMoraleDrop { get; private set; }
         public Fix DuelCaptureChance { get; private set; }
 
+        // 결속 (2.19.1): 혼란 저항·회복
+        public Fix CohesionConfusionResistPerPoint { get; private set; }
+        public Fix CohesionConfusionDurationCutPerPoint { get; private set; }
+        public Fix CohesionMaxDurationCut { get; private set; }
+        // 장수 말풍선 상황 기준
+        public Fix WarningSupplyLowRatio { get; private set; }
+        public Fix WarningMoraleCriticalMargin { get; private set; }
+
         // 바람 (2.17)
         public Fix WindFrontDot { get; private set; }
         public Fix WindTailRangeCellsPerStrength { get; private set; }
@@ -100,6 +108,8 @@ namespace Game.Data.Defs
             var cap = JsonUtil.RequireObject(o, "capture", c);
             var wind = JsonUtil.RequireObject(o, "wind", c);
             var fire = JsonUtil.RequireObject(o, "fire", c);
+            var coh = JsonUtil.RequireObject(o, "cohesion", c);
+            var warn = JsonUtil.RequireObject(o, "warnings", c);
             var r = new CombatRules
             {
                 TickSeconds = JsonUtil.RequireFix(o, "tickSeconds", c),
@@ -156,6 +166,11 @@ namespace Game.Data.Defs
                 FireTroopLossPctPerSecond = JsonUtil.RequireFix(fire, "troopLossPctPerSecond", c + ".fire"),
                 FireFlammableTagMultiplier = JsonUtil.RequireFix(fire, "flammableTagMultiplier", c + ".fire"),
                 FireMoralePerSecond = JsonUtil.RequireFix(fire, "moralePerSecond", c + ".fire"),
+                CohesionConfusionResistPerPoint = JsonUtil.RequireFix(coh, "confusionResistPerPoint", c + ".cohesion"),
+                CohesionConfusionDurationCutPerPoint = JsonUtil.RequireFix(coh, "confusionDurationCutPerPoint", c + ".cohesion"),
+                CohesionMaxDurationCut = JsonUtil.RequireFix(coh, "maxDurationCut", c + ".cohesion"),
+                WarningSupplyLowRatio = JsonUtil.RequireFix(warn, "supplyLowRatio", c + ".warnings"),
+                WarningMoraleCriticalMargin = JsonUtil.RequireFix(warn, "moraleCriticalMargin", c + ".warnings"),
             };
             if (r.TickSeconds <= Fix.Zero || (Fix.FromInt(60) / r.TickSeconds) * r.TickSeconds != Fix.FromInt(60))
                 throw new DataException("combat.tickSeconds: 60초를 나누어떨어지게 하는 양수여야 합니다.");

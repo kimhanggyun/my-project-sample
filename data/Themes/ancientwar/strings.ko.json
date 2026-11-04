@@ -61,5 +61,21 @@
   "step.step01.name": "(임시) 첫 싸움",
   "step.step02.name": "(임시) 숲길 매복",
   "step.rescue_camp_north.name": "(임시) 북쪽 수용소 구출",
-  "camp.camp_north": "북쪽 수용소"
+  "camp.camp_north": "북쪽 수용소",
+  "speech.skillUsed": "(임시) 계책을 펼쳐라!",
+  "speech.skill.fireAttack": "(임시) 불을 놓아라!",
+  "speech.skill.warCry": "(임시) 나를 따르라!",
+  "speech.retreat": "(임시) 물러나라!",
+  "speech.ambush": "(임시) 지금이다, 쳐라!",
+  "speech.supplyLow": "(임시) 주군, 군량이 얼마 남지 않았습니다!",
+  "speech.moraleCritical": "(임시) 병사들이 흔들립니다!",
+  "speech.reinforced": "(임시) 원군이 도착했다!",
+  "speech.fireHit": "(임시) 불이다! 피하라!",
+  "dialogue.step01.start": "(임시) 출진하라!",
+  "dialogue.step02.start": "(임시) 숲길이 수상하다…",
+  "dialogue.step02.reinforce": "(임시) 원군이 왔다! 버텨라!",
+  "hint.secret_step01_light_losses": "(힌트) 첫 싸움을 거의 잃지 않고…",
+  "hint.secret_fire_two_corps": "(힌트) 불길 하나로 둘을…",
+  "hint.secret_rain_no_archers": "(힌트) 빗속에서 활 없이…",
+  "hint.secret_duel_fall": "(힌트) 한 장수의 칼로…"
 }

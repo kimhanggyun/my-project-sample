@@ -105,6 +105,11 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 | 날씨·시간대 | `conditions.json`: 시야, 원거리 사거리·공격, 이동, 사기(초당·시작), 군량 소비 %, 병종 태그 공격·방어·이동, 불 허용, 불 번짐 속도, 바람 세기 보너스. 날씨와 시간대 효과는 더해진다 (`weather`, `timeOfDay`) |
 | 화계·불 | 화계 = 불붙는 지형 + 바람 + 불 허용 날씨. 전조 뒤 점화 → 정해진 간격마다 바람 방향 이웃으로 번짐 (`fireSpread`, 강풍이면 빨라짐, 비면 안 번짐) → 타는 칸 위 부대 피해·사기↓·은신 노출 → 다 타면 지형 변화 (숲 → 불탄 땅, `Battlefield.SetTerrain`: 숨을 곳·이동 비용이 바뀜) |
 
+| 결속 | 부대 결속(캠페인에서 받음)이 높으면 혼란에 걸릴 확률이 줄고(저항), 걸려도 시간이 짧다 (battle.md 2.19.1) |
+| 스텝 연출 | `BattleSetup.Events`: 조건(start, atTick, corpsLeft, corpsTroopsBelow, teamTroopsBelow) → 행동(dialogue, reinforce, setAiStance). 예비 군단(`Reserve`)은 증원 행동으로 전장에 들어온다 (ai.md 8장) |
+| 전투 이벤트 기록 | `BattleResult.Events`: 스킬 사용, 퇴각 시작, 궤멸, 포로, 기습, 불 피해(놓은 팀), 군량 부족·사기 붕괴 경고(군단마다 한 번), 증원, 대사. 말풍선·연출·리플레이·숨은 보상이 같은 기록을 쓴다 |
+| 장수 말풍선 | `SpeechPlanner`: 이벤트 → 말풍선(종류·우선순위·대사 키, `speech.json`). 같은 군단·같은 상황은 최소 간격, 스킬별 대사, AI 군단은 보고 없음 (`generalSpeech`). 이벤트에서만 만들므로 리플레이에서도 같다 |
+
 ### 5.3 확장 (등록표, `BattleExtensions`)
 
 | 등록표 | 기본 등록 | 새로 붙이는 예 |
@@ -114,6 +119,7 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 | `AiSkills` | morale, clearConfusion, attackBuff, areaDamage, taunt, reveal, ignite(순풍 + 숲의 적) (스킬 첫 효과 종류로 찾음) | 연계 판단 (간파 → 화계 등) |
 | `VictoryRegistry` | annihilation, commander | 거점 점령, 생존 시간 |
 | `DamageSources` | 위 보정 출처 7종 + 상태 공격 보정 | 날씨, 진형 특성치 |
+| `Events` | 연출 조건 5종, 행동 3종 | 구역 점령, 시간대 변화, 대사 선택지 |
 | `SkillRegistry` | 효과: reveal, ambush, areaDamage, morale, clearConfusion, attackBuff, contactMoraleDamage, taunt · 조건: casterOnConcealingTerrain, notEngaged, casterHasTag | 새 스킬은 `skills.json`에 효과 조합만 추가. 새 효과 종류만 코드 |
 
 **스킬 (`data/Rules/skills.json`)**: skills.md 1차 8종 — 간파, 복병, 화계, 화살비, 고무, 재정비, 돌격 함성, 도발.
@@ -155,15 +161,17 @@ BattleResult ── StoryFlow.ApplyResult
 | `StepProgress` | 차례 해금, 반복 가능, 구출 전투는 갇힌 장수가 있을 때, 탐색 기억 저장 | — |
 | `GrowthEngine` | 기록 카운터(승·패·퇴각·무승부·연승·승패 차), "몇마다"·"몇 이상(한 번만)" 보상, 받은 횟수 기록 | duelGrowth |
 | `Cohesion` | 승리 +, 패배 −, 0~최대 | cohesionGain |
+| `LevelEngine` | 경험치 → 레벨업, 능력치 = 장수 성장률 × 오른 레벨 (무작위 없음), 최대 레벨. 전투 경험치 = 스텝 경험치 × 전투 배율 (아주 더디게, 승리 시 출전 장수) | battleLevelUp |
+| `SecretEngine` (Flow) | 숨은 보상: 조건(손실 비율, 날씨·시간대, 병종 태그 없음, 일기토 승리, 불로 태운 적 군단 수) + 받는 장수(대장·일기토 승자·그 스킬을 쓴 장수) → 스킬·특성. 요구 능력치가 모자라거나 이미 가졌으면 스킬북·특성서로 보관, 한 번만, 도감(못 찾은 것은 ???와 힌트) | — |
 
 - 시간은 `ITimeProvider`, 무작위(등용·대결 판정)는 시드 난수에서만. 수치는 `campaign.json`, `growthTracks.json`.
-- 세이브 형식 v2 (포로·탐색 기억·장수 기록). v1 세이브는 변환기로 올린다.
+- 세이브 형식 v3 (v2: 포로·탐색 기억·장수 기록, v3: 도감·스킬북·특성서 보관함). 예전 세이브는 변환기로 차례로 올린다.
 
 ## 7. 아직 하지 않은 것
 
-- 장수 레벨·경험치(전투 레벨업은 아주 더디게, `battleLevelUp`) — 성장률 데이터가 정해지면 Progression에 추가
-- 결속의 전투 효과(혼란 회복·저항), 새 병사 보충 시 결속 희석 (formation.md 미결)
-- 스텝 이벤트(대사·증원), 숨은 보상 판정 (secrets.md)
+- 장수 키우기 탭의 경험치 사용처(성장 자원, general-growth.md 미결), 스킬 칸 수(등급별)·스킬 교체
+- 새 병사 보충 시 결속 희석 (formation.md 미결), 결속의 진형 유지 효과 (진형 특성치와 함께)
+- 첫 버전 숨은 보상 목록 (secrets.md 미결, 지금은 예시 4개)
 
 - 위 5.4 항목, 일기토·논쟁 엔진 → R-21~R-23, R-26
 - 스킬·특성 데이터의 전체 정의 (지금은 id만 사용)

@@ -350,6 +350,7 @@ namespace Game.Battle.Model.Systems
                 if (corps.Troops == 0)
                 {
                     corps.Status = CorpsStatus.Destroyed;
+                    Events.EventLog.Add(ctx, Events.EventKinds.Destroyed, corps.Id);
                     corps.ClearPath();
                     continue;
                 }
@@ -371,6 +372,7 @@ namespace Game.Battle.Model.Systems
         public static void BeginRetreat(BattleContext ctx, CorpsState corps)
         {
             NearbyMoraleDrop(ctx, corps);
+            Events.EventLog.Add(ctx, Events.EventKinds.RetreatStarted, corps.Id);
             corps.Status = CorpsStatus.Retreating;
             corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Retreat, Mode = MoveModes.Forced });
         }

@@ -43,6 +43,9 @@ namespace Game.Data.Defs
         public CampaignRules Campaign { get; private set; }
         public IReadOnlyList<GrowthTrackDef> GrowthTracks { get; private set; }
         public StepIndexDef StepIndex { get; private set; }
+        public SpeechRules Speech { get; private set; }
+        public LevelRules Levels { get; private set; }
+        public IReadOnlyList<SecretDef> Secrets { get; private set; }
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -223,6 +226,9 @@ namespace Game.Data.Defs
             set.Campaign = CampaignRules.From(Read(RulesDir + "campaign.json"));
             set.GrowthTracks = GrowthTrackDef.LoadAll(Read(RulesDir + "growthTracks.json"));
             set.StepIndex = StepIndexDef.From(Read("Steps/steps.json"));
+            set.Speech = SpeechRules.From(Read(RulesDir + "speech.json"));
+            set.Levels = LevelRules.From(Read(RulesDir + "levels.json"));
+            set.Secrets = SecretDef.LoadAll(Read(RulesDir + "secrets.json"));
 
             var generals = new Dictionary<string, GeneralDef>();
             foreach (JObject g in RequireArray(Read(theme + "generals.json"), "generals", "generals.json"))
@@ -238,6 +244,7 @@ namespace Game.Data.Defs
                     InnateSkills = JsonUtil.StringList(g, "innateSkills"),
                     Recruitable = g.Value<bool?>("recruitable") ?? true,
                     Stats = ReadStatBlock(g["stats"] as JObject, stats, "generals." + id),
+                    GrowthRates = ReadRates(g["growthRates"] as JObject, stats, "generals." + id),
                 };
                 AddUnique(generals, id, def, "generals.json");
             }
@@ -251,6 +258,18 @@ namespace Game.Data.Defs
             set.Strings = strings;
 
             return set;
+        }
+
+        private static IReadOnlyDictionary<string, Fix> ReadRates(JObject obj, IReadOnlyDictionary<string, StatDefinition> defs, string context)
+        {
+            var d = new Dictionary<string, Fix>();
+            if (obj != null)
+                foreach (var p in obj.Properties())
+                {
+                    if (!defs.ContainsKey(p.Name)) throw new DataException($"{context}.growthRates: 알 수 없는 능력치 '{p.Name}'.");
+                    d[p.Name] = JsonUtil.ToFix(p.Value, context + ".growthRates." + p.Name);
+                }
+            return d;
         }
 
         private static IReadOnlyDictionary<string, SlotOffset> ReadSlots(JObject formation)
