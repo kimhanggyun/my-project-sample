@@ -1,0 +1,12 @@
+<!-- IL2CPP 코드 제거(스트리핑)에서 규칙 어셈블리를 지킨다. 세이브·데이터는 Newtonsoft가 리플렉션으로 읽고 쓴다. -->
+<linker>
+  <assembly fullname="Game.Foundation" preserve="all" />
+  <assembly fullname="Game.Data" preserve="all" />
+  <assembly fullname="Game.Services" preserve="all" />
+  <assembly fullname="Game.Battle.Model" preserve="all" />
+  <assembly fullname="Game.Campaign" preserve="all" />
+  <assembly fullname="Game.Economy" preserve="all" />
+  <assembly fullname="Game.Online" preserve="all" />
+  <assembly fullname="Game.Progression" preserve="all" />
+  <assembly fullname="Game.Flow" preserve="all" />
+</linker>

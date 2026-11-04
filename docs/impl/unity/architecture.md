@@ -5,7 +5,7 @@
 
 ## 원칙
 
-0. **수치는 실수(float).** 능력치 1~100, 소수점 허용. 화면 표시는 정수. **능력치 항목은 데이터로 정의**하고 코드는 이름으로 조회한다.
+0. **규칙 계산의 수는 `Fix`(10진 고정소수점, 소수 4자리)** — float/double 금지 ([../core.md](../core.md)). 능력치 1~100, 소수점 허용. 화면 표시는 정수. **능력치 항목은 데이터로 정의**하고 코드는 이름으로 조회한다. 화면(View)은 표시용으로만 `Fix.ToDisplayDouble()`을 쓴다.
 
 1. **시스템 하나 = 클래스 하나.** 각 시스템은 자기 책임만 가진다 (사기, 보충, 진형 …).
 2. **규칙과 화면 분리.** 전투 규칙(Model)은 Unity에 의존하지 않는 순수 C#. 화면(View)은 Model의 상태와 이벤트를 받아 그리기만 한다.
@@ -15,6 +15,15 @@
 5. **테스트 가능.** Model은 고정 시드 난수로 결정적으로 돌아가며, Unity 에디터 없이 단위 테스트한다.
 
 ---
+
+## 0.5 규칙 코드 연결 (Step 1b, 확정)
+
+- 규칙 코드는 `src/` 하나뿐이다. `src/`는 .NET 프로젝트이면서 **Unity 로컬 패키지** `com.myproject.gamecore`이기도 하다 (`src/package.json`). Unity 프로젝트는 `unity/Packages/manifest.json`에서 `"file:../../src"`로 가져온다. 복사본이 없으므로 한 곳만 고친다.
+- 모듈마다 asmdef가 csproj 옆에 있다. 참조는 csproj의 프로젝트 참조와 같고, 규칙 어셈블리는 모두 `noEngineReferences: true` (UnityEngine 참조 불가). Newtonsoft는 Unity 패키지 `com.unity.nuget.newtonsoft-json`의 `Newtonsoft.Json.dll`.
+- .NET 빌드 결과물은 `build/`로 나간다 (`src/Directory.Build.props`). Unity가 `obj`의 생성 파일을 컴파일하지 않게 하기 위해서다.
+- `src/`에 파일·폴더를 추가하면 `python3 tools/unity_meta.py`로 `.meta`를 만든다 (경로에서 정해지는 GUID). `UnityPackageTests`가 빠진 `.meta`, asmdef·csproj 참조 불일치, manifest 연결을 CI에서 잡는다.
+- IL2CPP 코드 제거로 리플렉션(세이브·데이터의 Newtonsoft)이 깨지지 않게 `unity/Assets/link.xml`에서 규칙 어셈블리를 보존한다.
+- `unity/Assets/Tests/EditMode/GameCoreSmokeTests`: Unity(Mono)에서 데이터 검사와 step01 전투를 돌려 **.NET과 같은 상태 지문**인지 확인한다 (런타임과 무관한 결정성). 규칙·데이터를 바꾸면 기대값을 다시 계산한다.
 
 ## 1. 어셈블리(모듈) 구성
 
