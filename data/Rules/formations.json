@@ -1,65 +1,325 @@
 {
-  "_comment": "상성표는 docs/design/content/formations.md 4.1과 같다. wins = 공격 진형이 유리한 상대.",
+  "_comment": "상성표는 docs/design/content/formations.md 4.1과 같다. wins = 공격 진형이 유리한 상대. slots = 장수(중앙) 기준 소부대 자리 (칸, y는 앞쪽).",
   "formations": [
     {
       "id": "square",
       "nameKey": "formation.square",
       "group": "situational",
-      "tier": "basic"
+      "tier": "basic",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 2
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -2,
+          "y": 0
+        },
+        "rightWing": {
+          "x": 2,
+          "y": 0
+        },
+        "leftGuard": {
+          "x": -1.5,
+          "y": -1.5
+        },
+        "rightGuard": {
+          "x": 1.5,
+          "y": -1.5
+        }
+      }
     },
     {
       "id": "column",
       "nameKey": "formation.column",
       "group": "situational",
-      "tier": "basic"
+      "tier": "basic",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 4
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": 0,
+          "y": 2
+        },
+        "rightWing": {
+          "x": 0,
+          "y": -2
+        },
+        "leftGuard": {
+          "x": 0,
+          "y": -4
+        },
+        "rightGuard": {
+          "x": 0,
+          "y": -6
+        }
+      }
     },
     {
       "id": "line",
       "nameKey": "formation.line",
       "group": "situational",
-      "tier": "beginner"
+      "tier": "beginner",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 1
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -3,
+          "y": 0.5
+        },
+        "rightWing": {
+          "x": 3,
+          "y": 0.5
+        },
+        "leftGuard": {
+          "x": -1.5,
+          "y": 0
+        },
+        "rightGuard": {
+          "x": 1.5,
+          "y": 0
+        }
+      }
     },
     {
       "id": "loose",
       "nameKey": "formation.loose",
       "group": "situational",
-      "tier": "intermediate"
+      "tier": "intermediate",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 3
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -4,
+          "y": 1
+        },
+        "rightWing": {
+          "x": 4,
+          "y": 1
+        },
+        "leftGuard": {
+          "x": -3,
+          "y": -3
+        },
+        "rightGuard": {
+          "x": 3,
+          "y": -3
+        }
+      }
     },
     {
       "id": "fishScale",
       "nameKey": "formation.fishScale",
       "group": "core",
-      "tier": "beginner"
+      "tier": "beginner",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 3
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -1,
+          "y": 1.5
+        },
+        "rightWing": {
+          "x": 1,
+          "y": 1.5
+        },
+        "leftGuard": {
+          "x": -1.5,
+          "y": -1
+        },
+        "rightGuard": {
+          "x": 1.5,
+          "y": -1
+        }
+      }
     },
     {
       "id": "craneWing",
       "nameKey": "formation.craneWing",
       "group": "core",
-      "tier": "beginner"
+      "tier": "beginner",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 1
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -3.5,
+          "y": 2.5
+        },
+        "rightWing": {
+          "x": 3.5,
+          "y": 2.5
+        },
+        "leftGuard": {
+          "x": -1.5,
+          "y": -1
+        },
+        "rightGuard": {
+          "x": 1.5,
+          "y": -1
+        }
+      }
     },
     {
       "id": "arrowhead",
       "nameKey": "formation.arrowhead",
       "group": "core",
-      "tier": "advanced"
+      "tier": "advanced",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 4
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -1,
+          "y": 2
+        },
+        "rightWing": {
+          "x": 1,
+          "y": 2
+        },
+        "leftGuard": {
+          "x": -0.8,
+          "y": -1.5
+        },
+        "rightGuard": {
+          "x": 0.8,
+          "y": -1.5
+        }
+      }
     },
     {
       "id": "circle",
       "nameKey": "formation.circle",
       "group": "core",
-      "tier": "intermediate"
+      "tier": "intermediate",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 2
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -2,
+          "y": 0.5
+        },
+        "rightWing": {
+          "x": 2,
+          "y": 0.5
+        },
+        "leftGuard": {
+          "x": -1.5,
+          "y": -1.8
+        },
+        "rightGuard": {
+          "x": 1.5,
+          "y": -1.8
+        }
+      }
     },
     {
       "id": "echelon",
       "nameKey": "formation.echelon",
       "group": "core",
-      "tier": "intermediate"
+      "tier": "intermediate",
+      "slots": {
+        "vanguard": {
+          "x": 2,
+          "y": 2
+        },
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "leftWing": {
+          "x": -1,
+          "y": -1
+        },
+        "rightWing": {
+          "x": 1,
+          "y": 1
+        },
+        "leftGuard": {
+          "x": -2,
+          "y": -2
+        },
+        "rightGuard": {
+          "x": 3,
+          "y": 3
+        }
+      }
     },
     {
       "id": "crescent",
       "nameKey": "formation.crescent",
       "group": "core",
-      "tier": "advanced"
+      "tier": "advanced",
+      "slots": {
+        "vanguard": {
+          "x": 0,
+          "y": 1
+        },
+        "center": {
+          "x": 0,
+          "y": 2.5
+        },
+        "leftWing": {
+          "x": -3,
+          "y": 1.5
+        },
+        "rightWing": {
+          "x": 3,
+          "y": 1.5
+        },
+        "leftGuard": {
+          "x": -2,
+          "y": 0
+        },
+        "rightGuard": {
+          "x": 2,
+          "y": 0
+        }
+      }
     }
   ],
   "wins": {

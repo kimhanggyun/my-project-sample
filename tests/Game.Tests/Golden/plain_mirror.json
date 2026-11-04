@@ -1,0 +1,108 @@
+{
+  "winner": "teamB",
+  "endReason": "defeat",
+  "ticks": 1046,
+  "elapsedSeconds": "104.6",
+  "commands": 0,
+  "stateHash": "a35758c3282e3366",
+  "corps": [
+    {
+      "id": "A",
+      "team": "teamA",
+      "status": "Retreated",
+      "startTroops": 6000,
+      "remainingTroops": 4541,
+      "losses": 1459,
+      "startSupply": 1000000,
+      "remainingSupply": 936447,
+      "finalMorale": "26.634",
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 0
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 916
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 831
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 831
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 978
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 985
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "team": "teamB",
+      "status": "Retreating",
+      "startTroops": 6000,
+      "remainingTroops": 4542,
+      "losses": 1458,
+      "startSupply": 1000000,
+      "remainingSupply": 936440,
+      "finalMorale": "26.6583",
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 0
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 916
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 831
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 831
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 978
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "infantry",
+          "start": 1000,
+          "remaining": 986
+        }
+      ]
+    }
+  ]
+}

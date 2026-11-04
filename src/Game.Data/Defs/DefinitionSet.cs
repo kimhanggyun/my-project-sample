@@ -28,6 +28,18 @@ namespace Game.Data.Defs
         public JObject RuleFlagDefinitions { get; private set; }
         public JObject BalanceCommon { get; private set; }
 
+        /// <summary>전투 수치 (combat.json).</summary>
+        public CombatRules Combat { get; private set; }
+        public JObject CombatCommon { get; private set; }
+        /// <summary>지형 id → 이동 규칙.</summary>
+        public IReadOnlyDictionary<string, TerrainRuleDef> TerrainRules { get; private set; }
+        public IReadOnlyList<TroopCounterRule> TroopCounters { get; private set; }
+        public IReadOnlyDictionary<string, TemperamentDef> Temperaments { get; private set; }
+
+        /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
+        public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
+            CombatRules.From(BalanceResolver.Resolve(CombatCommon, stepOverride, ruleSetOverride));
+
         /// <summary>공통 balance만 적용한 값. 스텝·규칙 세트 덮어쓰기는 <see cref="ResolveBalance"/>.</summary>
         public BalanceData Balance { get; private set; }
 
@@ -88,6 +100,7 @@ namespace Game.Data.Defs
                     NameKey = JsonUtil.RequireString(f, "nameKey", "formations"),
                     Group = JsonUtil.RequireString(f, "group", "formations"),
                     Tier = JsonUtil.RequireString(f, "tier", "formations"),
+                    Slots = ReadSlots(f),
                 };
                 AddUnique(formations, def.Id, def, "formations.json");
             }
@@ -127,6 +140,50 @@ namespace Game.Data.Defs
             set.BalanceCommon = Read(RulesDir + "balance.json");
             set.Balance = BalanceData.From(set.BalanceCommon);
 
+            set.CombatCommon = Read(RulesDir + "combat.json");
+            set.Combat = CombatRules.From(set.CombatCommon);
+
+            var terrainRules = new Dictionary<string, TerrainRuleDef>();
+            foreach (var p in JsonUtil.RequireObject(Read(RulesDir + "terrainRules.json"), "terrain", "terrainRules.json").Properties())
+            {
+                var t = (JObject)p.Value;
+                string ctx = "terrainRules." + p.Name;
+                var byTag = new Dictionary<string, Fix>();
+                if (t["costByTag"] is JObject bt)
+                    foreach (var q in bt.Properties()) byTag[q.Name] = JsonUtil.ToFix(q.Value, ctx + ".costByTag." + q.Name);
+                terrainRules[p.Name] = new TerrainRuleDef
+                {
+                    Id = p.Name,
+                    Cost = JsonUtil.RequireFix(t, "cost", ctx),
+                    CostByTag = byTag,
+                    Impassable = JsonUtil.StringList(t, "impassable"),
+                    Height = (int)(t.Value<long?>("height") ?? 0),
+                };
+            }
+            set.TerrainRules = terrainRules;
+
+            var counters = new List<TroopCounterRule>();
+            foreach (JObject r in RequireArray(Read(RulesDir + "troopCounters.json"), "rules", "troopCounters.json"))
+                counters.Add(new TroopCounterRule
+                {
+                    AttackerTag = JsonUtil.RequireString(r, "attacker", "troopCounters"),
+                    DefenderTag = JsonUtil.RequireString(r, "defender", "troopCounters"),
+                    Pp = JsonUtil.RequireFix(r, "pp", "troopCounters"),
+                });
+            set.TroopCounters = counters;
+
+            var temperaments = new Dictionary<string, TemperamentDef>();
+            foreach (JObject t in RequireArray(Read(RulesDir + "temperaments.json"), "temperaments", "temperaments.json"))
+            {
+                var def = new TemperamentDef
+                {
+                    Id = JsonUtil.RequireString(t, "id", "temperaments"),
+                    RetreatMorale = JsonUtil.RequireFix(t, "retreatMorale", "temperaments"),
+                };
+                AddUnique(temperaments, def.Id, def, "temperaments.json");
+            }
+            set.Temperaments = temperaments;
+
             var generals = new Dictionary<string, GeneralDef>();
             foreach (JObject g in RequireArray(Read(theme + "generals.json"), "generals", "generals.json"))
             {
@@ -154,6 +211,19 @@ namespace Game.Data.Defs
             set.Strings = strings;
 
             return set;
+        }
+
+        private static IReadOnlyDictionary<string, SlotOffset> ReadSlots(JObject formation)
+        {
+            var slots = new Dictionary<string, SlotOffset>();
+            if (formation["slots"] is JObject obj)
+                foreach (var p in obj.Properties())
+                {
+                    var o = (JObject)p.Value;
+                    string ctx = "formations." + formation.Value<string>("id") + ".slots." + p.Name;
+                    slots[p.Name] = new SlotOffset(JsonUtil.RequireFix(o, "x", ctx), JsonUtil.RequireFix(o, "y", ctx));
+                }
+            return slots;
         }
 
         private static StartingKitDef ReadStartingKit(JObject doc)

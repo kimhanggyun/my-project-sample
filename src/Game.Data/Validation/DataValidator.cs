@@ -84,6 +84,41 @@ namespace Game.Data.Validation
             }
 
             foreach (var s in d.Stats.Values) CheckString(d, s.NameKey, errors);
+
+            // 전투 데이터
+            foreach (var f in d.Formations.Values)
+                foreach (var slot in SlotIds.All)
+                    if (!f.Slots.ContainsKey(slot)) errors.Add($"진형 '{f.Id}': 칸 '{slot}' 위치가 없습니다.");
+            foreach (var f in d.Formations.Values)
+                foreach (var slot in f.Slots.Keys)
+                    if (!SlotIds.IsValid(slot)) errors.Add($"진형 '{f.Id}': 없는 칸 '{slot}'.");
+            foreach (var g in d.Generals.Values)
+                if (!d.Temperaments.ContainsKey(g.Temperament)) errors.Add($"장수 '{g.Id}': 없는 성향 '{g.Temperament}'.");
+            foreach (var t in d.TerrainRules.Values)
+                if (t.Cost <= Foundation.Math.Fix.Zero) errors.Add($"지형 '{t.Id}': 이동 비용은 0보다 커야 합니다.");
+            return errors;
+        }
+
+        /// <summary>맵 검사: 지형 id가 이동 규칙에 있고, 시작 위치가 맵 안의 지나갈 수 있는 칸이며, 퇴각 방향이 올바르다.</summary>
+        public static List<string> ValidateMap(DefinitionSet d, MapDef map)
+        {
+            var errors = new List<string>();
+            foreach (var t in map.TerrainIds)
+                if (!d.TerrainRules.ContainsKey(t)) errors.Add($"맵 '{map.Id}': 이동 규칙이 없는 지형 '{t}'.");
+            foreach (var kv in map.Spawns)
+            {
+                int x = (int)kv.Value.X.FloorToLong(), y = (int)kv.Value.Y.FloorToLong();
+                if (!map.InBounds(x, y)) { errors.Add($"맵 '{map.Id}': '{kv.Key}' 시작 위치가 맵 밖."); continue; }
+                if (d.TerrainRules.TryGetValue(map.TerrainAt(x, y), out var rule) && rule.BlocksEveryone)
+                    errors.Add($"맵 '{map.Id}': '{kv.Key}' 시작 위치가 지나갈 수 없는 칸.");
+                if (!map.RetreatEdges.ContainsKey(kv.Key)) errors.Add($"맵 '{map.Id}': '{kv.Key}' 퇴각 방향이 없습니다.");
+            }
+            foreach (var kv in map.RetreatEdges)
+            {
+                bool ok = false;
+                foreach (var e in MapDef.Edges) if (e == kv.Value) ok = true;
+                if (!ok) errors.Add($"맵 '{map.Id}': '{kv.Key}'의 퇴각 방향 '{kv.Value}'가 올바르지 않습니다.");
+            }
             return errors;
         }
 

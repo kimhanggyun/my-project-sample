@@ -1,0 +1,78 @@
+{
+  "_comment": "지형 이동 규칙 (예시). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이",
+  "terrain": {
+    "plain": {
+      "cost": 1
+    },
+    "road": {
+      "cost": 0.8
+    },
+    "grass": {
+      "cost": 1.2
+    },
+    "forest": {
+      "cost": 1.6,
+      "costByTag": {
+        "mounted": 2.5,
+        "light": 1.2
+      }
+    },
+    "burnt": {
+      "cost": 1
+    },
+    "hill": {
+      "cost": 1.5,
+      "height": 1
+    },
+    "mountain": {
+      "cost": 2.5,
+      "height": 2,
+      "impassable": [
+        "mounted",
+        "siege"
+      ],
+      "costByTag": {
+        "mountaineer": 1.2
+      }
+    },
+    "cliff": {
+      "cost": 1,
+      "height": 2,
+      "impassable": [
+        "*"
+      ]
+    },
+    "pass": {
+      "cost": 1
+    },
+    "river": {
+      "cost": 1,
+      "impassable": [
+        "*"
+      ]
+    },
+    "ford": {
+      "cost": 2.0,
+      "costByTag": {
+        "flammable": 1.2
+      }
+    },
+    "bridge": {
+      "cost": 1
+    },
+    "marsh": {
+      "cost": 2.5,
+      "costByTag": {
+        "mounted": 4,
+        "heavy": 3.5,
+        "light": 1.8
+      }
+    },
+    "building": {
+      "cost": 1,
+      "impassable": [
+        "*"
+      ]
+    }
+  }
+}

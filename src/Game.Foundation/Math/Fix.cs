@@ -81,6 +81,27 @@ namespace Game.Foundation.Math
         public static Fix Max(Fix a, Fix b) => a.Raw >= b.Raw ? a : b;
         public static Fix Clamp(Fix v, Fix min, Fix max) => Max(min, Min(max, v));
 
+        /// <summary>제곱근 (내림). 정수 제곱근만 쓰므로 기기와 무관하다.</summary>
+        public static Fix Sqrt(Fix v)
+        {
+            if (v.Raw < 0) throw new ArgumentOutOfRangeException(nameof(v));
+            return new Fix(ISqrt(checked(v.Raw * One)));
+        }
+
+        private static long ISqrt(long n)
+        {
+            if (n < 2) return n;
+            // 정수 뉴턴법: 시작값 ≥ √n 에서 단조 감소, 내림 제곱근에서 멈춘다.
+            long x = n;
+            long y = (x + 1) / 2;
+            while (y < x)
+            {
+                x = y;
+                y = (x + n / x) / 2;
+            }
+            return x;
+        }
+
         /// <summary>내림 (음수는 더 작은 쪽).</summary>
         public long FloorToLong() => FloorDiv(Raw, One);
 
