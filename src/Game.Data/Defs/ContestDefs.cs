@@ -168,6 +168,21 @@ namespace Game.Data.Defs
         public int ContestOpponentFullChargeRetreatBonus { get; internal set; }
         /// <summary>성향 → 기본 행동 → 가중치 가감.</summary>
         public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> ContestTemperamentBonus { get; internal set; }
+        /// <summary>위임 판단 수준을 정하는 장수 능력치 (평균).</summary>
+        public IReadOnlyList<string> DelegationStats { get; internal set; }
+        /// <summary>(평균 ≥ 기준, 난이도) — 높은 기준부터.</summary>
+        public IReadOnlyList<(Fix atLeast, string difficulty)> DelegationLevels { get; internal set; }
+        public string DelegationStance { get; internal set; }
+
+        /// <summary>장수 능력치 평균으로 위임 판단 수준(난이도 id).</summary>
+        public string DelegationDifficulty(System.Func<string, Fix> stat)
+        {
+            Fix sum = Fix.Zero;
+            foreach (var s in DelegationStats) sum += stat(s);
+            Fix avg = DelegationStats.Count == 0 ? Fix.Zero : sum / DelegationStats.Count;
+            foreach (var (atLeast, difficulty) in DelegationLevels) if (avg >= atLeast) return difficulty;
+            return DelegationLevels[DelegationLevels.Count - 1].difficulty;
+        }
 
         internal static AiRules From(JObject o)
         {
@@ -197,8 +212,16 @@ namespace Game.Data.Defs
                 foreach (var q in ((JObject)p.Value).Properties()) row[q.Name] = q.Value.Value<int>();
                 temp[p.Name] = row;
             }
+            var del = JsonUtil.RequireObject(o, "delegation", c);
+            var levels = new List<(Fix, string)>();
+            foreach (JObject l in (JArray)del["levels"])
+                levels.Add((JsonUtil.RequireFix(l, "atLeast", c + ".delegation"), JsonUtil.RequireString(l, "difficulty", c + ".delegation")));
+            levels.Sort((a, b) => b.Item1.CompareTo(a.Item1));
             return new AiRules
             {
+                DelegationStats = JsonUtil.StringList(del, "stats"),
+                DelegationLevels = levels,
+                DelegationStance = JsonUtil.RequireString(del, "stance", c + ".delegation"),
                 Difficulties = diffs,
                 RallyMoraleDrop = JsonUtil.RequireFix(sk, "rallyMoraleDrop", c + ".skills"),
                 RevealSearchCells = JsonUtil.RequireFix(sk, "revealSearchCells", c + ".skills"),

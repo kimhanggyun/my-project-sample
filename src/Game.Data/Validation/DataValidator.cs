@@ -112,6 +112,10 @@ namespace Game.Data.Validation
                     if (r.RewardStat != null && !d.Stats.ContainsKey(r.RewardStat)) errors.Add($"성장 '{t.Track}': 없는 능력치 '{r.RewardStat}'.");
                     if (r.Every <= 0 && r.AtLeast == null) errors.Add($"성장 '{t.Track}': 규칙 '{r.Counter}'에 every 또는 atLeast가 필요합니다.");
                 }
+            foreach (var (_, diff) in d.Ai.DelegationLevels)
+                if (!d.Ai.Difficulties.ContainsKey(diff)) errors.Add($"위임: 없는 난이도 '{diff}'.");
+            if (d.Ai.DelegationLevels.Count == 0) errors.Add("위임: 판단 수준이 없습니다.");
+            foreach (var s in d.Ai.DelegationStats) if (!d.Stats.ContainsKey(s)) errors.Add($"위임: 없는 능력치 '{s}'.");
             var secretIds = new HashSet<string>();
             foreach (var sc in d.Secrets)
             {

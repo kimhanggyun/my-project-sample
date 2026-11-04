@@ -29,6 +29,10 @@ namespace Game.Flow
         public ulong Seed { get; set; }
         /// <summary>대결 id → 플레이어 선택 기록 (없거나 모자라면 AI가 대신 고름).</summary>
         public Dictionary<string, List<string>> ContestChoices { get; set; } = new Dictionary<string, List<string>>();
+        /// <summary>위임 출진: 모든 아군 군단을 AI가 지휘 (자동 전투). 전투 중 delegate 명령으로 군단마다 바꿀 수 있다.</summary>
+        public bool Delegate { get; set; }
+        /// <summary>이 장수들의 군단만 위임 (Delegate가 false일 때).</summary>
+        public List<string> DelegateGenerals { get; set; } = new List<string>();
     }
 
     /// <summary>출진 준비 결과. 문제가 없으면 Setup으로 전투를 시작한다.</summary>
@@ -160,6 +164,7 @@ namespace Game.Flow
                     General = Snapshot(g),
                     Formation = comp.Formation,
                     KnownFormations = new List<string>(state.LearnedFormations),
+                    Delegated = request.Delegate || request.DelegateGenerals.Contains(comp.GeneralId),
                 };
                 long d = 0;
                 foreach (var slot in comp.Slots)

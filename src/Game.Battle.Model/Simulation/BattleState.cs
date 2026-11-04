@@ -214,8 +214,19 @@ namespace Game.Battle.Model.Simulation
         public void AssignOrder(CorpsOrder order)
         {
             Order = order ?? new CorpsOrder();
+            OrderByPlayer = false;
             ClearPath();
         }
+
+        /// <summary>위임 중 (아군 군단을 AI가 지휘, ai.md 9장).</summary>
+        public bool Delegated { get; internal set; }
+        /// <summary>지금 명령을 플레이어가 내렸다 (위임 중에도 이 명령이 끝날 때까지 AI가 덮어쓰지 않는다).</summary>
+        public bool OrderByPlayer { get; internal set; }
+        /// <summary>AI 판단 수준 (AI 군단은 설정값, 아군 군단은 장수 능력치로 정한 위임 수준).</summary>
+        public string AiDifficulty { get; internal set; }
+
+        /// <summary>AI가 지휘하는가: AI 군단이거나, 위임 중이고 플레이어 명령이 진행 중이 아닐 때.</summary>
+        public bool AiInCharge => Setup.Controller == Controllers.Ai || (Delegated && !OrderByPlayer);
 
         public void ClearPath()
         {

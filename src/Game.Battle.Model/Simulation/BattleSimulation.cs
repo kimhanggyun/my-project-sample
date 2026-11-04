@@ -97,14 +97,18 @@ namespace Game.Battle.Model.Simulation
             {
                 var corps = ctx.FindCorps(cmd.CorpsId);
                 if (corps.Status != CorpsStatus.Active || corps.HasStatus(StatusIds.Taunted)) continue;
-                if (_ext.Commands.TryGet(cmd.Kind, out var h) && h.IsValid(ctx, corps, cmd)) h.Apply(ctx, corps, cmd);
+                if (!_ext.Commands.TryGet(cmd.Kind, out var h) || !h.IsValid(ctx, corps, cmd)) continue;
+                var before = corps.Order;
+                h.Apply(ctx, corps, cmd);
+                // 플레이어가 내린 이동·공격·대기 명령은 위임 중에도 끝날 때까지 우선 (진형·스킬처럼 명령을 바꾸지 않는 것은 제외)
+                if (!ReferenceEquals(before, corps.Order)) corps.OrderByPlayer = true;
             }
             _pending.Clear();
 
             foreach (var corps in ctx.Corps)
             {
-                if (corps.Status != CorpsStatus.Active || corps.Setup.Controller != Controllers.Ai || corps.HasStatus(StatusIds.Taunted)) continue;
-                long every = (long)ctx.Combat.AiThinkEveryTicks * ctx.Defs.Ai.Difficulties[corps.Setup.AiDifficulty].ThinkIntervalMultiplier;
+                if (corps.Status != CorpsStatus.Active || !corps.AiInCharge || corps.HasStatus(StatusIds.Taunted)) continue;
+                long every = (long)ctx.Combat.AiThinkEveryTicks * ctx.Defs.Ai.Difficulties[corps.AiDifficulty].ThinkIntervalMultiplier;
                 if (ctx.Tick % every != 0) continue;
                 _ext.Ai.Get(corps.AiStance).Think(ctx, corps);
                 _planner.Think(ctx, corps);
@@ -225,6 +229,14 @@ namespace Game.Battle.Model.Simulation
                         Cohesion = u.Cohesion,
                     });
                 corps.AiStance = cs.AiStance;
+                if (cs.Controller == Controllers.Ai) corps.AiDifficulty = cs.AiDifficulty;
+                else
+                {
+                    // 위임 판단 수준 = 장수 능력치 (ai.md 9장), 성향은 위임 기본값
+                    corps.AiDifficulty = setup.Defs.Ai.DelegationDifficulty(cs.General.Stat);
+                    corps.AiStance = setup.Defs.Ai.DelegationStance;
+                    corps.Delegated = cs.Delegated && setup.Flags.IsEnabled(CommandKinds.DelegateFlag);
+                }
                 if (cs.Reserve) corps.Status = CorpsStatus.Reserve;
                 ctx.Corps.Add(corps);
                 MovementSystem.PlaceUnits(ctx, corps);
@@ -413,6 +425,8 @@ namespace Game.Battle.Model.Simulation
                 Add(c.Anchor.X.Raw); Add(c.Anchor.Y.Raw);
                 Add(c.Facing.X.Raw); Add(c.Facing.Y.Raw);
                 Add(c.Hidden ? 1 : 0);
+                Add(c.Delegated ? 1 : 0);
+                Add(c.OrderByPlayer ? 1 : 0);
                 AddString(c.AiStance);
                 Add(c.SkillPoints.Points.Raw);
                 foreach (var st in c.Statuses) { AddString(st.Id); Add(st.TicksLeft); Add(st.AttackPp.Raw); }

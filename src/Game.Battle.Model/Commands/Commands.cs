@@ -41,6 +41,9 @@ namespace Game.Battle.Model.Commands
         public const string ChangeFormation = "changeFormation";
         /// <summary>스킬 사용 (SkillId + 대상 군단 또는 지점). 사거리 밖이면 다가간 뒤 쓴다.</summary>
         public const string UseSkill = "useSkill";
+        /// <summary>위임 켜기/끄기 (Mode "on"/"off"). 스위치 delegate.</summary>
+        public const string Delegate = "delegate";
+        public const string DelegateFlag = "delegate";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -70,7 +73,8 @@ namespace Game.Battle.Model.Commands
             .Register(new HoldHandler())
             .Register(new RetreatHandler())
             .Register(new ChangeFormationHandler())
-            .Register(new Skills.UseSkillHandler());
+            .Register(new Skills.UseSkillHandler())
+            .Register(new DelegateHandler());
     }
 
     internal sealed class AdvanceHandler : ICommandHandler
@@ -125,6 +129,15 @@ namespace Game.Battle.Model.Commands
         public string Kind => CommandKinds.Retreat;
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) => true;
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => Systems.RetreatSystem.BeginRetreat(ctx, corps);
+    }
+
+    /// <summary>위임 켜고 끄기. 켜면 AI가 바로 지휘하고(진행 중인 플레이어 명령은 그대로 둔다), 끄면 지금 명령을 유지한 채 플레이어에게 돌아온다.</summary>
+    internal sealed class DelegateHandler : ICommandHandler
+    {
+        public string Kind => CommandKinds.Delegate;
+        public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
+            ctx.IsEnabled(CommandKinds.DelegateFlag) && (cmd.Mode == "on" || cmd.Mode == "off") && (cmd.Mode == "on") != corps.Delegated;
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => corps.Delegated = cmd.Mode == "on";
     }
 
     internal sealed class ChangeFormationHandler : ICommandHandler
