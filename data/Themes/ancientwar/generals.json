@@ -54,6 +54,56 @@
         "might": 38,
         "intellect": 62
       }
+    },
+    {
+      "id": "enemy_general_01",
+      "nameKey": "general.enemy_general_01",
+      "grade": "common",
+      "temperament": "arrogant",
+      "traits": [],
+      "innateSkills": [
+        "warCry"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 45,
+        "might": 55,
+        "intellect": 35
+      }
+    },
+    {
+      "id": "enemy_general_02",
+      "nameKey": "general.enemy_general_02",
+      "grade": "common",
+      "temperament": "cautious",
+      "traits": [],
+      "innateSkills": [
+        "reveal",
+        "arrowRain"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 50,
+        "might": 40,
+        "intellect": 55
+      }
+    },
+    {
+      "id": "enemy_general_03",
+      "nameKey": "general.enemy_general_03",
+      "grade": "rare",
+      "temperament": "cunning",
+      "traits": [],
+      "innateSkills": [
+        "ambush",
+        "taunt"
+      ],
+      "recruitable": false,
+      "stats": {
+        "leadership": 55,
+        "might": 50,
+        "intellect": 60
+      }
     }
   ]
 }

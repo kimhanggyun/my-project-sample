@@ -106,6 +106,12 @@ namespace Game.Data.Validation
             foreach (var g in d.Generals.Values)
                 foreach (var sk in g.InnateSkills)
                     if (!d.Skills.ContainsKey(sk)) errors.Add($"장수 '{g.Id}': 없는 기본 스킬 '{sk}'.");
+            foreach (var t in d.GrowthTracks)
+                foreach (var r in t.Rules)
+                {
+                    if (r.RewardStat != null && !d.Stats.ContainsKey(r.RewardStat)) errors.Add($"성장 '{t.Track}': 없는 능력치 '{r.RewardStat}'.");
+                    if (r.Every <= 0 && r.AtLeast == null) errors.Add($"성장 '{t.Track}': 규칙 '{r.Counter}'에 every 또는 atLeast가 필요합니다.");
+                }
             var baseActions = new[] { "attack", "evade", "charge", "bow", "retreat", ContestDef.Special };
             foreach (var ct in d.Contests.Values)
             {
@@ -131,6 +137,36 @@ namespace Game.Data.Validation
             }
             foreach (var t in d.TerrainRules.Values)
                 if (t.Cost <= Foundation.Math.Fix.Zero) errors.Add($"지형 '{t.Id}': 이동 비용은 0보다 커야 합니다.");
+            return errors;
+        }
+
+        /// <summary>스텝 검사: 맵·적 장수·진형·병종·칸·AI·날씨가 데이터에 있고, 적 군단 병력이 한도 안이다.</summary>
+        public static List<string> ValidateStep(DefinitionSet d, StepDef s, MapDef map)
+        {
+            var errors = ValidateMap(d, map);
+            string c = $"스텝 '{s.Id}'";
+            if (!d.Weathers.ContainsKey(s.Weather)) errors.Add($"{c}: 없는 날씨 '{s.Weather}'.");
+            if (!d.TimesOfDay.ContainsKey(s.TimeOfDay)) errors.Add($"{c}: 없는 시간대 '{s.TimeOfDay}'.");
+            CheckString(d, s.NameKey, errors);
+            if (s.Enemy.Count == 0) errors.Add($"{c}: 적 군단이 없습니다.");
+            var ids = new HashSet<string>();
+            foreach (var e in s.Enemy)
+            {
+                if (!ids.Add(e.Id)) errors.Add($"{c}: 적 군단 id '{e.Id}' 중복.");
+                if (!d.Generals.ContainsKey(e.General)) errors.Add($"{c}: 없는 적 장수 '{e.General}'.");
+                if (!d.Formations.ContainsKey(e.Formation)) errors.Add($"{c}: 없는 진형 '{e.Formation}'.");
+                if (!d.Ai.Difficulties.ContainsKey(e.Difficulty)) errors.Add($"{c}: 없는 AI 난이도 '{e.Difficulty}'.");
+                foreach (var f in e.KnownFormations) if (!d.Formations.ContainsKey(f)) errors.Add($"{c}: 없는 진형 '{f}'.");
+                var slots = new HashSet<string>();
+                foreach (var u in e.Units)
+                {
+                    if (!SlotIds.IsValid(u.Slot) || !slots.Add(u.Slot)) errors.Add($"{c}: 군단 '{e.Id}'의 칸 '{u.Slot}'가 없거나 중복.");
+                    if (!d.TroopTypes.ContainsKey(u.TroopType)) errors.Add($"{c}: 없는 병종 '{u.TroopType}'.");
+                    if (u.Troops < 0 || u.Troops > d.Balance.UnitMaxTroops) errors.Add($"{c}: 군단 '{e.Id}' 부대 병력 {u.Troops}가 범위를 벗어남.");
+                }
+            }
+            foreach (var f in s.RewardFormations) if (!d.Formations.ContainsKey(f)) errors.Add($"{c}: 보상 진형 '{f}'가 없습니다.");
+            foreach (var k in s.RewardSkills) if (!d.Skills.ContainsKey(k)) errors.Add($"{c}: 보상 스킬 '{k}'가 없습니다.");
             return errors;
         }
 

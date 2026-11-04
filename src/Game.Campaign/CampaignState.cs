@@ -12,8 +12,13 @@ namespace Game.Campaign
         public List<string> LearnedFormations { get; set; } = new List<string>();
         public List<string> ClearedSteps { get; set; } = new List<string>();
         public Dictionary<string, long> Wallet { get; set; } = new Dictionary<string, long>();
+        /// <summary>아군이 가둔 적 장수.</summary>
+        public List<PrisonerState> Prisoners { get; set; } = new List<PrisonerState>();
+        /// <summary>스텝 id → 탐색한 칸 ("0"/"1" 문자열, 칸 순서 y × 폭 + x). 같은 스텝 재도전 시 탐색 기억 (battle.md 2.10).</summary>
+        public Dictionary<string, string> ExploredBySteps { get; set; } = new Dictionary<string, string>();
 
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);
+        public PrisonerState FindPrisoner(string id) => Prisoners.Find(p => p.GeneralId == id);
     }
 }

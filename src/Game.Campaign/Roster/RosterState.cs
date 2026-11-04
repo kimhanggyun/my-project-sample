@@ -15,7 +15,27 @@ namespace Game.Campaign.Roster
         public List<string> LearnedTraits { get; set; } = new List<string>();
         /// <summary>"available" / "lightInjury" / "seriousInjury" / "captured"</summary>
         public string Status { get; set; } = GeneralStatus.Available;
+        /// <summary>부상 회복 시각 (경상·중상).</summary>
         public long StatusUntilUnixSeconds { get; set; }
+        /// <summary>포로일 때: 갇힌 수용소 id, 잡힌 시각, 구출 기한 (captivity.md 2장).</summary>
+        public string CampId { get; set; }
+        public long CapturedAtUnixSeconds { get; set; }
+        public long RescueDeadlineUnixSeconds { get; set; }
+        /// <summary>기록 카운터 (일기토 승수 등, general-growth.md 2.3).</summary>
+        public Dictionary<string, long> Records { get; set; } = new Dictionary<string, long>();
+        /// <summary>성장 보상을 받은 횟수 (규칙 키 → 횟수). "몇마다"·"한 번만" 보상이 겹치지 않게.</summary>
+        public Dictionary<string, long> GrantedRewards { get; set; } = new Dictionary<string, long>();
+    }
+
+    /// <summary>아군이 잡아 가둔 적 장수 (captivity.md 1.2).</summary>
+    public sealed class PrisonerState
+    {
+        public string GeneralId { get; set; }
+        public long CapturedAtUnixSeconds { get; set; }
+        /// <summary>마지막 등용 시도 시각. 시도한 적 없으면 0.</summary>
+        public long LastRecruitAttemptUnixSeconds { get; set; }
+        /// <summary>잡은 전투의 논쟁에서 세뇌로 이긴 상대 → 등용 성공률 보너스.</summary>
+        public bool BrainwashBonus { get; set; }
     }
 
     public static class GeneralStatus

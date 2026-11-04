@@ -1,0 +1,41 @@
+{
+  "_comment": "성장 항목과 보상 규칙 (general-growth.md 2.2, 2.3). 보상 수치는 예시이며 테스트하며 정한다. 스위치 duelGrowth",
+  "tracks": [
+    {
+      "track": "duel",
+      "flag": "duelGrowth",
+      "rules": [
+        {
+          "counter": "duelWins",
+          "every": 100,
+          "reward": {
+            "stat": "might",
+            "add": 1
+          }
+        },
+        {
+          "counter": "duelWinLossDiff",
+          "atLeast": 50,
+          "once": true,
+          "reward": {
+            "trait": "fierce"
+          }
+        }
+      ]
+    },
+    {
+      "track": "debate",
+      "flag": "duelGrowth",
+      "rules": [
+        {
+          "counter": "debateWins",
+          "every": 100,
+          "reward": {
+            "stat": "intellect",
+            "add": 1
+          }
+        }
+      ]
+    }
+  ]
+}

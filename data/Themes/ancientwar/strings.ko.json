@@ -54,5 +54,12 @@
   "contest.debate.mockery": "조롱",
   "contest.debate.withdraw": "논쟁 철수",
   "contest.debate.brainwash": "세뇌",
-  "skill.fireAttack": "화계"
+  "skill.fireAttack": "화계",
+  "general.enemy_general_01": "적장 갑",
+  "general.enemy_general_02": "적장 을",
+  "general.enemy_general_03": "적장 병",
+  "step.step01.name": "(임시) 첫 싸움",
+  "step.step02.name": "(임시) 숲길 매복",
+  "step.rescue_camp_north.name": "(임시) 북쪽 수용소 구출",
+  "camp.camp_north": "북쪽 수용소"
 }

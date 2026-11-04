@@ -1,0 +1,32 @@
+{
+  "_comment": "전투 밖 진행 수치 (captivity.md 4장, battle.md 2.5.3·2.19.1, economy.md). 수치는 예시. 시간은 실제 시간(초).",
+  "captivity": {
+    "rescueDeadlineDays": 30,
+    "recruitRetryHours": 3,
+    "recruitBaseChance": 0.3,
+    "brainwashBonus": 0.2,
+    "temperamentRecruitBonus": {
+      "loyal": -0.15,
+      "arrogant": -0.1,
+      "timid": 0.1,
+      "cunning": 0.05
+    },
+    "releaseReward": {
+      "gold": 100
+    }
+  },
+  "injury": {
+    "lightHours": 1,
+    "heavyHours": 6,
+    "healGoldPerHourLeft": 50
+  },
+  "cohesion": {
+    "winGain": 2,
+    "lossPenalty": 1,
+    "max": 100
+  },
+  "supply": {
+    "captureRate": 1
+  },
+  "defaultMaxCorps": 3
+}
