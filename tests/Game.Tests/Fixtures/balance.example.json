@@ -1,0 +1,11 @@
+{
+  "_comment": "수치 예시(N) 테스트 전용. docs/design/verification.md 0장 '예시 수치'와 같아야 한다. 밸런스를 확정해도 이 파일은 바꾸지 않는다.",
+  "damage": { "modifierMinPp": -60, "modifierMaxPp": 100 },
+  "morale": { "base": 50, "bonusCoefficient": 0.25, "minPenaltyPp": 30 },
+  "troopCap": { "minLeadership": 1, "maxLeadership": 100, "min": 5000, "max": 20000, "unitMax": 5000 },
+  "supply": { "daysPerMinute": 7, "sortieMinutes": 3 },
+  "casualty": { "woundedRatio": 0.4, "healCostRatio": 0.5, "conscriptSupplyPerSoldier": 10, "recruitGoldPerSoldier": 2 },
+  "hire": { "priceCapMultiplier": 2 },
+  "generalInjury": { "lightStatMultiplier": 0.9 },
+  "display": { "soldierBudget": 300 }
+}

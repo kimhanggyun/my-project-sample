@@ -1,0 +1,117 @@
+{
+  "_comment": "상성표는 docs/design/content/formations.md 4.1과 같다. wins = 공격 진형이 유리한 상대.",
+  "formations": [
+    {
+      "id": "square",
+      "nameKey": "formation.square",
+      "group": "situational",
+      "tier": "basic"
+    },
+    {
+      "id": "column",
+      "nameKey": "formation.column",
+      "group": "situational",
+      "tier": "basic"
+    },
+    {
+      "id": "line",
+      "nameKey": "formation.line",
+      "group": "situational",
+      "tier": "beginner"
+    },
+    {
+      "id": "loose",
+      "nameKey": "formation.loose",
+      "group": "situational",
+      "tier": "intermediate"
+    },
+    {
+      "id": "fishScale",
+      "nameKey": "formation.fishScale",
+      "group": "core",
+      "tier": "beginner"
+    },
+    {
+      "id": "craneWing",
+      "nameKey": "formation.craneWing",
+      "group": "core",
+      "tier": "beginner"
+    },
+    {
+      "id": "arrowhead",
+      "nameKey": "formation.arrowhead",
+      "group": "core",
+      "tier": "advanced"
+    },
+    {
+      "id": "circle",
+      "nameKey": "formation.circle",
+      "group": "core",
+      "tier": "intermediate"
+    },
+    {
+      "id": "echelon",
+      "nameKey": "formation.echelon",
+      "group": "core",
+      "tier": "intermediate"
+    },
+    {
+      "id": "crescent",
+      "nameKey": "formation.crescent",
+      "group": "core",
+      "tier": "advanced"
+    }
+  ],
+  "wins": {
+    "square": [
+      "column",
+      "loose",
+      "arrowhead"
+    ],
+    "line": [
+      "column",
+      "circle",
+      "echelon"
+    ],
+    "column": [],
+    "loose": [
+      "line",
+      "column"
+    ],
+    "fishScale": [
+      "line",
+      "column",
+      "craneWing",
+      "crescent"
+    ],
+    "craneWing": [
+      "column",
+      "arrowhead",
+      "echelon",
+      "square"
+    ],
+    "arrowhead": [
+      "line",
+      "column",
+      "loose",
+      "circle",
+      "crescent"
+    ],
+    "circle": [
+      "column",
+      "fishScale",
+      "craneWing"
+    ],
+    "echelon": [
+      "column",
+      "fishScale",
+      "arrowhead"
+    ],
+    "crescent": [
+      "column",
+      "loose",
+      "circle",
+      "echelon"
+    ]
+  }
+}

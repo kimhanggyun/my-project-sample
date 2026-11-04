@@ -1,0 +1,7 @@
+{
+  "_comment": "출시 빌드. 실제 구현이 생기면 이름을 바꾼다. 지금은 모두 끔.",
+  "auth": "off",
+  "store": "off",
+  "rewardedAd": "off",
+  "bannerAd": "off"
+}

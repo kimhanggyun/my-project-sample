@@ -1,0 +1,122 @@
+{
+  "_comment": "새 게임 초기 지급 (임시 값). docs/design/content/formation.md 3장",
+  "generals": [
+    "general_a",
+    "general_b",
+    "general_c"
+  ],
+  "units": [
+    {
+      "id": "u01",
+      "troopType": "infantry",
+      "troops": 4000
+    },
+    {
+      "id": "u02",
+      "troopType": "spearman",
+      "troops": 3000
+    },
+    {
+      "id": "u03",
+      "troopType": "archer",
+      "troops": 3000
+    },
+    {
+      "id": "u04",
+      "troopType": "cavalry",
+      "troops": 2000
+    },
+    {
+      "id": "u05",
+      "troopType": "scout",
+      "troops": 500
+    },
+    {
+      "id": "u06",
+      "troopType": "cavalry",
+      "troops": 4000
+    },
+    {
+      "id": "u07",
+      "troopType": "infantry",
+      "troops": 3000
+    },
+    {
+      "id": "u08",
+      "troopType": "spearman",
+      "troops": 2500
+    },
+    {
+      "id": "u09",
+      "troopType": "archer",
+      "troops": 2000
+    },
+    {
+      "id": "u10",
+      "troopType": "archer",
+      "troops": 4000
+    },
+    {
+      "id": "u11",
+      "troopType": "infantry",
+      "troops": 3500
+    },
+    {
+      "id": "u12",
+      "troopType": "spearman",
+      "troops": 3000
+    },
+    {
+      "id": "u13",
+      "troopType": "scout",
+      "troops": 500
+    }
+  ],
+  "compositions": [
+    {
+      "general": "general_a",
+      "formation": "fishScale",
+      "role": "vanguard",
+      "slots": {
+        "vanguard": "u01",
+        "center": "u02",
+        "leftWing": "u04",
+        "rightWing": "u05",
+        "leftGuard": "u03"
+      }
+    },
+    {
+      "general": "general_b",
+      "formation": "craneWing",
+      "role": "flank",
+      "slots": {
+        "vanguard": "u07",
+        "center": "u08",
+        "leftWing": "u06",
+        "rightGuard": "u09"
+      }
+    },
+    {
+      "general": "general_c",
+      "formation": "square",
+      "role": "rear",
+      "slots": {
+        "vanguard": "u11",
+        "center": "u12",
+        "leftGuard": "u10",
+        "rightGuard": "u13"
+      }
+    }
+  ],
+  "formations": [
+    "square",
+    "column",
+    "fishScale",
+    "craneWing"
+  ],
+  "wallet": {
+    "supply": 1500000,
+    "gold": 1000,
+    "gem": 0
+  }
+}

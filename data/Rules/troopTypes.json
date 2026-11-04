@@ -1,0 +1,86 @@
+{
+  "troopTypes": [
+    {
+      "id": "infantry",
+      "nameKey": "troop.infantry",
+      "tier": 1,
+      "tags": [
+        "infantry",
+        "melee"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 50,
+        "defense": 60,
+        "speed": 45
+      }
+    },
+    {
+      "id": "spearman",
+      "nameKey": "troop.spearman",
+      "tier": 1,
+      "tags": [
+        "polearm",
+        "melee"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 2,
+      "stats": {
+        "attack": 50,
+        "defense": 50,
+        "speed": 45
+      }
+    },
+    {
+      "id": "archer",
+      "nameKey": "troop.archer",
+      "tier": 1,
+      "tags": [
+        "ranged"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 10,
+      "stats": {
+        "attack": 45,
+        "defense": 35,
+        "speed": 45
+      }
+    },
+    {
+      "id": "cavalry",
+      "nameKey": "troop.cavalry",
+      "tier": 1,
+      "tags": [
+        "mounted",
+        "melee"
+      ],
+      "supplyPerDay": 2,
+      "attackRange": 1,
+      "stats": {
+        "attack": 60,
+        "defense": 45,
+        "speed": 80
+      }
+    },
+    {
+      "id": "scout",
+      "nameKey": "troop.scout",
+      "tier": 1,
+      "tags": [
+        "scout",
+        "light",
+        "melee"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 30,
+        "defense": 30,
+        "speed": 70,
+        "vision": 85,
+        "detection": 70
+      }
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "_comment": "규칙 스위치 정의. 값은 공통 → 스텝 → 규칙 세트로 덮어쓴다. 외부 서비스 설정은 config/services.*.json",
+  "flags": {
+    "fogOfWar": {
+      "default": true
+    },
+    "fogMemory": {
+      "default": true
+    },
+    "skillPointRegen": {
+      "default": true
+    },
+    "morale": {
+      "default": true
+    },
+    "troopCounters": {
+      "default": true
+    },
+    "formationCounters": {
+      "default": true
+    },
+    "flankBonus": {
+      "default": true
+    },
+    "terrainRules": {
+      "default": true
+    },
+    "terrainCombat": {
+      "default": true
+    },
+    "heightBonus": {
+      "default": true
+    },
+    "timeOfDay": {
+      "default": true
+    },
+    "wind": {
+      "default": true
+    },
+    "fireSpread": {
+      "default": true
+    },
+    "ambushConfusion": {
+      "default": true
+    },
+    "duel": {
+      "default": true
+    },
+    "debate": {
+      "default": true
+    },
+    "supplyConsumption": {
+      "default": true
+    },
+    "woundedRecovery": {
+      "default": true
+    },
+    "pauseAllowed": {
+      "default": true
+    },
+    "speedControl": {
+      "default": true
+    },
+    "delegate": {
+      "default": true
+    },
+    "generalSpeech": {
+      "default": true
+    },
+    "battleLevelUp": {
+      "default": true
+    },
+    "cohesionGain": {
+      "default": true
+    },
+    "generalInjury": {
+      "default": true
+    },
+    "duelGrowth": {
+      "default": true
+    },
+    "weather": {
+      "default": true
+    },
+    "windRange": {
+      "default": true,
+      "parent": "wind"
+    },
+    "windMove": {
+      "default": true,
+      "parent": "wind"
+    },
+    "friendlyFire": {
+      "default": false
+    },
+    "formationSynergy": {
+      "default": false
+    },
+    "capture": {
+      "default": true
+    },
+    "battleCapture": {
+      "default": true,
+      "parent": "capture"
+    },
+    "duelCapture": {
+      "default": true,
+      "parent": "capture"
+    },
+    "rescueBattle": {
+      "default": true,
+      "parent": "capture"
+    },
+    "rescueDeadline": {
+      "default": true,
+      "parent": "capture"
+    },
+    "recruitment": {
+      "default": true,
+      "parent": "capture"
+    },
+    "recruitRetry": {
+      "default": true,
+      "parent": "recruitment"
+    },
+    "releaseReward": {
+      "default": true,
+      "parent": "capture"
+    }
+  }
+}
