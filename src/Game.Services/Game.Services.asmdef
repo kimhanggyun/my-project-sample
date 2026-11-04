@@ -1,0 +1,16 @@
+{
+  "name": "Game.Services",
+  "rootNamespace": "Game.Services",
+  "references": [
+    "Game.Foundation"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Game.Battle.Model",
+  "rootNamespace": "Game.Battle.Model",
+  "references": [
+    "Game.Foundation",
+    "Game.Data"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

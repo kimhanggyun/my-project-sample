@@ -1,4 +1,5 @@
 # .NET
+/build/
 bin/
 obj/
 *.user

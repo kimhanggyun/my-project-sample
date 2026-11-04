@@ -1,0 +1,23 @@
+{
+  "name": "Game.Flow",
+  "rootNamespace": "Game.Flow",
+  "references": [
+    "Game.Foundation",
+    "Game.Data",
+    "Game.Battle.Model",
+    "Game.Campaign",
+    "Game.Economy",
+    "Game.Progression"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

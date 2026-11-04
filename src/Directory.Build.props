@@ -1,5 +1,10 @@
 <Project>
   <!-- 규칙 모듈 공통 설정: Unity와 호환되는 netstandard2.1, C# 9 -->
+  <!-- 빌드 결과물은 src 밖(build/)으로: src는 Unity 로컬 패키지이기도 해서, obj의 생성 파일을 Unity가 컴파일하지 않게 한다 -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../build/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../build/bin/$(MSBuildProjectName)/</BaseOutputPath>
+  </PropertyGroup>
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>9.0</LangVersion>
