@@ -44,6 +44,16 @@ namespace Game.Data.Defs
         public int AiThinkEveryTicks { get; private set; }
         public Fix GeneralMightToAttack { get; private set; }
         public Fix GeneralLeadershipToDefense { get; private set; }
+        public int VisionUpdateEveryTicks { get; private set; }
+        public Fix VisionCellsAtStat50 { get; private set; }
+        public Fix VisionCellsPerStatPoint { get; private set; }
+        public Fix VisionIntellectCellsPerPoint { get; private set; }
+        public Fix VisionCellsPerHeightLevel { get; private set; }
+        /// <summary>숨는 지형(숲 등) 안의 적은 이 거리 안에서만 보인다.</summary>
+        public Fix VisionConcealedSeenCells { get; private set; }
+        /// <summary>숨는 지형 안에서 보는 쪽의 시야 감소.</summary>
+        public Fix VisionInsideConcealPenaltyCells { get; private set; }
+        public Fix SkillPointRegenPerSecond { get; private set; }
         /// <summary>같은 팀 군단끼리 시작 위치 옆 간격 (칸).</summary>
         public Fix SpawnSpacingCells { get; private set; }
 
@@ -59,6 +69,8 @@ namespace Game.Data.Defs
             var morale = JsonUtil.RequireObject(o, "morale", c);
             var retreat = JsonUtil.RequireObject(o, "retreat", c);
             var general = JsonUtil.RequireObject(o, "general", c);
+            var vision = JsonUtil.RequireObject(o, "vision", c);
+            var skills = JsonUtil.RequireObject(o, "skills", c);
             var r = new CombatRules
             {
                 TickSeconds = JsonUtil.RequireFix(o, "tickSeconds", c),
@@ -87,9 +99,18 @@ namespace Game.Data.Defs
                 GeneralMightToAttack = JsonUtil.RequireFix(general, "mightToAttack", c + ".general"),
                 GeneralLeadershipToDefense = JsonUtil.RequireFix(general, "leadershipToDefense", c + ".general"),
                 SpawnSpacingCells = JsonUtil.RequireFix(o, "spawnSpacingCells", c),
+                VisionUpdateEveryTicks = (int)JsonUtil.RequireLong(vision, "updateEveryTicks", c + ".vision"),
+                VisionCellsAtStat50 = JsonUtil.RequireFix(vision, "cellsAtStat50", c + ".vision"),
+                VisionCellsPerStatPoint = JsonUtil.RequireFix(vision, "cellsPerStatPoint", c + ".vision"),
+                VisionIntellectCellsPerPoint = JsonUtil.RequireFix(vision, "intellectCellsPerPoint", c + ".vision"),
+                VisionCellsPerHeightLevel = JsonUtil.RequireFix(vision, "cellsPerHeightLevel", c + ".vision"),
+                VisionConcealedSeenCells = JsonUtil.RequireFix(vision, "concealedSeenCells", c + ".vision"),
+                VisionInsideConcealPenaltyCells = JsonUtil.RequireFix(vision, "insideConcealPenaltyCells", c + ".vision"),
+                SkillPointRegenPerSecond = JsonUtil.RequireFix(skills, "pointRegenPerSecond", c + ".skills"),
             };
             if (r.TickSeconds <= Fix.Zero || (Fix.FromInt(60) / r.TickSeconds) * r.TickSeconds != Fix.FromInt(60))
                 throw new DataException("combat.tickSeconds: 60초를 나누어떨어지게 하는 양수여야 합니다.");
+            if (r.VisionUpdateEveryTicks < 1) throw new DataException("combat.vision.updateEveryTicks: 1 이상이어야 합니다.");
             if (r.AiThinkEveryTicks < 1) throw new DataException("combat.aiThinkEveryTicks: 1 이상이어야 합니다.");
             return r;
         }
@@ -107,6 +128,8 @@ namespace Game.Data.Defs
         /// <summary>진입 불가 태그. "*"는 모든 병종.</summary>
         public IReadOnlyList<string> Impassable { get; internal set; }
         public int Height { get; internal set; }
+        /// <summary>숨는 지형 (안의 부대는 가까이 가야 보이고, 복병을 칠 수 있다).</summary>
+        public bool Conceals { get; internal set; }
 
         public bool BlocksEveryone
         {

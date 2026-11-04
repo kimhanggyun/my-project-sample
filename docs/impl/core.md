@@ -73,8 +73,9 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 
 ### 5.2 틱 순서 (고정 0.1초, `combat.json`)
 
-1. 명령 적용 → 2. AI 판단 (`aiThinkEveryTicks`마다) → 3. 이동 (A* 길 찾기, 소부대는 진형 칸 위치)
-→ 4. 전투 → 5. 군량 소비 → 6. 사기 → 7. 궤멸·퇴각 → 8. 승패.
+1. 명령 적용 → 2. AI 판단 (`aiThinkEveryTicks`마다) → 3. 스킬 (사거리까지 다가가기, 전조 끝난 효과) → 4. 도발 강제
+→ 5. 이동 (A* 길 찾기, 소부대는 진형 칸 위치) → 6. 시야 (`vision.updateEveryTicks`마다) → 7. 은신·복병
+→ 8. 전투 → 9. 군량 소비 → 10. 사기 → 11. 상태 시간·책략 점수 회복 → 12. 궤멸·퇴각 → 13. 승패.
 
 | 시스템 | 내용 |
 |---|---|
@@ -85,6 +86,10 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 | 사기 | 손실 %당 감소, 측면·배후 피격 감소, 군량 바닥 감소, 싸우지 않으면 시작값까지 회복 |
 | 퇴각 | 사기 ≤ 성향 기준(`temperaments.json`) 또는 병력 ≤ 시작 × 비율 → 퇴각 방향 끝으로 이동 → 이탈 |
 | 승패 | 등록된 패배 조건 (`annihilation`, `commander`) 중 하나라도 만족한 팀 패배. 시간 제한이면 남은 병력 비율 |
+| 시야 | 팀마다 하나 (아군 시야를 합침, 플레이어·AI 공통). 소부대 시야 = 기준 + 시야 능력치·장수 지략·높이 보정 − 숨는 지형 안 감소. 숨는 지형(`conceals`: 숲·수풀) 안의 적은 가까이 가야 보임. 칸 3단계(미탐색·탐색함·보임), 적 마지막 목격 위치. 보이지 않는 적은 공격·지정 불가. 스위치 `fogOfWar`, 탐색 기억 `fogMemory`(`BattleSetup.InitialExplored` → `BattleResult.Explored`) |
+| 스킬 | `useSkill` 명령. 받는 순간 책략 점수·횟수를 냄 (R-11, R-12). 사거리 밖이면 다가간 뒤 사용, 대상을 잃으면 취소. 전조(`telegraphSec`) 뒤 효과. 점수는 사기 ≥ 기준일 때 회복 (R-13) |
+| 은신·복병 | 숨는 지형에서 준비(움직이거나 들키면 실패) → 은신(안 보이고 공격 안 함, R-20 예외) → 적이 사거리에 들면 기습: 기습 보정, 닿은 적 사기↓·일부 소부대 혼란(`ambushConfusion`). 간파 범위에 들거나 범위 피해를 맞거나 움직이면 드러남 |
+| 상태 | 군단 상태(버프·도발·복병 준비 …, 시간 제한)와 소부대 혼란(공격 안 함). 공격 보정이 있는 상태는 피해 보정 출처로 더해짐 |
 
 ### 5.3 확장 (등록표, `BattleExtensions`)
 
@@ -93,14 +98,19 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 | `CommandRegistry` | advance, moveTo(normal·forced·attackMove), attack, hold, retreat, changeFormation | 스킬 사용, 경유, 협공 대기 |
 | `AiRegistry` | aggressive, defensive | 난이도별 지휘관 AI (2c) |
 | `VictoryRegistry` | annihilation, commander | 거점 점령, 생존 시간 |
-| `DamageSources` | 위 보정 출처 7종 | 스킬 효과, 날씨, 진형 특성치 |
+| `DamageSources` | 위 보정 출처 7종 + 상태 공격 보정 | 날씨, 진형 특성치 |
+| `SkillRegistry` | 효과: reveal, ambush, areaDamage, morale, clearConfusion, attackBuff, contactMoraleDamage, taunt · 조건: casterOnConcealingTerrain, notEngaged, casterHasTag | 새 스킬은 `skills.json`에 효과 조합만 추가. 새 효과 종류만 코드 |
+
+**스킬 (2b, `data/Rules/skills.json`)**: 간파, 복병, 화살비, 고무, 재정비, 돌격 함성, 도발. skills.md 1차의 **화계는 바람·불 번짐·지형 변화와 함께 2d**에서 넣는다.
 
 ### 5.4 2a에서 단순화한 것 (이후 단계)
 
 - 동시에 싸우는 수는 소부대 위치가 아니라 **접전 여부**로 정한다. 진형 특성치(정면 폭·돌파력·측면 방어 …, [formations.md](../design/content/formations.md) 2장)는 수치가 정해지면 보정 출처로 추가한다.
 - 진형 변경은 즉시 (전환 시간·전환 중 응집력 저하는 특성치와 함께).
 - 측면·배후는 두 군단 중심의 방향으로 판정한다. 진군(`advance`)의 역할별 배치(선봉·측면·후위)는 아직 없다.
-- 시야·안개·은신·스킬(2b), 지휘관 AI·일기토·논쟁(2c), 포로·바람·날씨·불·지형 변화(2d)는 아직 없다.
+- AI 군단은 아직 스킬을 쓰지 않는다 (지휘관 AI와 함께 2c). 지휘관 AI·일기토·논쟁(2c), 포로·바람·날씨·화계·지형 변화(2d)는 아직 없다.
+- 시야는 소부대 원형 범위로 계산한다 (지형이 시선을 가리는 계산은 없음, 숲은 "가까이 가야 보임"으로만).
+- 명령 예약(경유), 협공 대기, "도착 후 사용" 선택은 아직 없다 (사거리 밖 스킬은 자동으로 다가가 사용).
 
 ## 6. 아직 하지 않은 것
 

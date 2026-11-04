@@ -39,12 +39,17 @@ namespace Game.Battle.Model.Ai
 
     internal static class AiOrders
     {
-        /// <summary>지금 공격 중인 대상이 아직 전장에 있으면 유지, 아니면 가장 가까운 적.</summary>
+        /// <summary>지금 공격 중인 대상이 가장 가까운 보이는 적이면 유지, 아니면 그 적. 보이는 적이 없으면 진군.</summary>
         public static void AttackNearest(BattleContext ctx, CorpsState corps)
         {
             var current = corps.Order.Kind == OrderKinds.Attack ? ctx.FindCorps(corps.Order.TargetCorpsId) : null;
             var nearest = ctx.NearestEnemy(corps);
-            if (nearest == null) { corps.AssignOrder(new CorpsOrder()); return; }
+            if (nearest == null)
+            {
+                // 보이는 적이 없으면 진군 (마지막 목격 위치·적 시작 위치로, 보이면 그때 공격)
+                if (corps.Order.Kind != OrderKinds.Advance) corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Advance, Mode = MoveModes.AttackMove });
+                return;
+            }
             if (current != null && current.InBattle && current == nearest) return;
             corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Attack, TargetCorpsId = nearest.Id, Mode = MoveModes.AttackMove });
         }
@@ -64,6 +69,8 @@ namespace Game.Battle.Model.Ai
             var nearest = ctx.NearestEnemy(corps);
             var reach = ctx.Combat.PerceptionCells;
             if (nearest != null && Vec.DistanceSquared(nearest.Anchor, corps.Anchor) <= reach * reach)
+                AiOrders.AttackNearest(ctx, corps);
+            else if (corps.BeingHit && nearest != null)
                 AiOrders.AttackNearest(ctx, corps);
             else if (corps.Order.Kind != OrderKinds.Hold)
                 corps.AssignOrder(new CorpsOrder());

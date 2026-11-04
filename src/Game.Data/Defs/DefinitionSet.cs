@@ -35,6 +35,7 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, TerrainRuleDef> TerrainRules { get; private set; }
         public IReadOnlyList<TroopCounterRule> TroopCounters { get; private set; }
         public IReadOnlyDictionary<string, TemperamentDef> Temperaments { get; private set; }
+        public IReadOnlyDictionary<string, SkillDef> Skills { get; private set; }
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -158,6 +159,7 @@ namespace Game.Data.Defs
                     CostByTag = byTag,
                     Impassable = JsonUtil.StringList(t, "impassable"),
                     Height = (int)(t.Value<long?>("height") ?? 0),
+                    Conceals = t.Value<bool?>("conceals") ?? false,
                 };
             }
             set.TerrainRules = terrainRules;
@@ -183,6 +185,14 @@ namespace Game.Data.Defs
                 AddUnique(temperaments, def.Id, def, "temperaments.json");
             }
             set.Temperaments = temperaments;
+
+            var skills = new Dictionary<string, SkillDef>();
+            foreach (JObject sk in RequireArray(Read(RulesDir + "skills.json"), "skills", "skills.json"))
+            {
+                var def = SkillDef.From(sk);
+                AddUnique(skills, def.Id, def, "skills.json");
+            }
+            set.Skills = skills;
 
             var generals = new Dictionary<string, GeneralDef>();
             foreach (JObject g in RequireArray(Read(theme + "generals.json"), "generals", "generals.json"))

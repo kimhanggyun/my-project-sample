@@ -61,7 +61,28 @@ namespace Game.Battle.Model.Simulation
         /// <summary>아직 정수 병력으로 떨어지지 않은 누적 피해.</summary>
         public Fix PendingLoss { get; internal set; }
         public Vec Position { get; internal set; }
+        /// <summary>혼란 남은 틱. 혼란 중에는 공격하지 않는다.</summary>
+        public long ConfusedTicks { get; internal set; }
+        public bool Confused => ConfusedTicks > 0;
         public bool Alive => Troops > 0;
+    }
+
+    /// <summary>군단에 걸린 상태 하나 (버프·디버프·도발·복병 준비 …). 틱이 0이 되면 사라진다.</summary>
+    public sealed class StatusEffect
+    {
+        public string Id { get; internal set; }
+        public long TicksLeft { get; internal set; }
+        /// <summary>이 상태가 공격에 더하는 %p (없으면 0).</summary>
+        public Fix AttackPp { get; internal set; }
+        /// <summary>건 군단 (도발 등).</summary>
+        public string SourceCorpsId { get; internal set; }
+    }
+
+    public static class StatusIds
+    {
+        public const string Taunted = "taunted";
+        public const string AmbushSetup = "ambushSetup";
+        public const string Surprise = "surprise";
     }
 
     public sealed class CorpsState
@@ -83,6 +104,46 @@ namespace Game.Battle.Model.Simulation
         /// <summary>틱마다 Σ(병력 × 하루 소비량 × 하루 환산)을 더한 값. 소비 = 이 값 × 틱 길이 ÷ 60 (내림, R-6과 같은 식).</summary>
         public long SupplyAccumulator { get; internal set; }
         public List<SubUnitState> Units { get; } = new List<SubUnitState>();
+
+        // 스킬·상태
+        public Skills.SkillPointPool SkillPoints { get; internal set; }
+        public IReadOnlyList<SkillDef> KnownSkills { get; internal set; }
+        public List<StatusEffect> Statuses { get; } = new List<StatusEffect>();
+        /// <summary>은신 (복병 완성). 적에게 보이지 않고, 들키거나 공격하기 전에는 공격하지 않는다 (R-20 예외).</summary>
+        public bool Hidden { get; internal set; }
+        /// <summary>복병 효과 매개변수 (준비·은신 중일 때).</summary>
+        public SkillPart AmbushEffect { get; internal set; }
+        /// <summary>사거리 밖이라 다가가는 중인 스킬 (점수·횟수는 이미 냈다, R-12).</summary>
+        public Commands.BattleCommand PendingSkill { get; internal set; }
+        public bool MovedThisTick { get; internal set; }
+
+        public StatusEffect FindStatus(string id)
+        {
+            foreach (var st in Statuses) if (st.Id == id) return st;
+            return null;
+        }
+
+        public bool HasStatus(string id) => FindStatus(id) != null;
+
+        /// <summary>같은 id면 시간을 새로 잡는다.</summary>
+        public void AddStatus(StatusEffect status)
+        {
+            var old = FindStatus(status.Id);
+            if (old != null) Statuses.Remove(old);
+            Statuses.Add(status);
+        }
+
+        public void RemoveStatus(string id)
+        {
+            var old = FindStatus(id);
+            if (old != null) Statuses.Remove(old);
+        }
+
+        public bool KnowsSkill(string id)
+        {
+            foreach (var s in KnownSkills) if (s.Id == id) return true;
+            return false;
+        }
 
         // 길
         public List<Cell> Path { get; internal set; } = new List<Cell>();
@@ -148,9 +209,19 @@ namespace Game.Battle.Model.Simulation
         public RuleFlags Flags => Setup.Flags;
         public Battlefield Field { get; internal set; }
         public IRandom Random { get; internal set; }
+        public Skills.SkillRegistry SkillRegistry { get; internal set; }
         public long Tick { get; internal set; }
         public List<CorpsState> Corps { get; } = new List<CorpsState>();
         public List<string> Teams { get; } = new List<string>();
+        /// <summary>팀 → 시야 (전장 안개).</summary>
+        public Dictionary<string, Vision.TeamVision> Vision { get; } = new Dictionary<string, Vision.TeamVision>();
+        public List<Vision.RevealZone> Reveals { get; } = new List<Vision.RevealZone>();
+        /// <summary>전조 중인 스킬 효과 (정해진 틱에 나타난다).</summary>
+        public List<Skills.ScheduledEffect> Scheduled { get; } = new List<Skills.ScheduledEffect>();
+
+        /// <summary>그 팀이 지금 이 군단을 보는가 (안개·은신 반영). 같은 팀은 항상 보인다.</summary>
+        public bool IsVisibleTo(string team, CorpsState corps) =>
+            corps.Team == team || (Vision.TryGetValue(team, out var v) && v.VisibleCorps.Contains(corps.Id));
 
         public CorpsState FindCorps(string id)
         {
@@ -158,14 +229,14 @@ namespace Game.Battle.Model.Simulation
             return null;
         }
 
-        /// <summary>가장 가까운 전투 중인 적 군단 (같은 거리면 앞 순서).</summary>
+        /// <summary>가장 가까운, 지금 보이는 전투 중인 적 군단 (같은 거리면 앞 순서).</summary>
         public CorpsState NearestEnemy(CorpsState self)
         {
             CorpsState best = null;
             Fix bestD = Fix.Zero;
             foreach (var c in Corps)
             {
-                if (c.Team == self.Team || !c.InBattle) continue;
+                if (c.Team == self.Team || !c.InBattle || !IsVisibleTo(self.Team, c)) continue;
                 Fix d = Vec.DistanceSquared(c.Anchor, self.Anchor);
                 if (best == null || d < bestD) { best = c; bestD = d; }
             }
@@ -173,5 +244,26 @@ namespace Game.Battle.Model.Simulation
         }
 
         public bool IsEnabled(string flag) => Flags.IsEnabled(flag);
+
+        /// <summary>
+        /// 보이는 적이 없을 때 진군할 곳: 마지막으로 본 가장 가까운 적 위치, 그것도 없으면 적 팀 시작 위치.
+        /// </summary>
+        public Vec? AdvanceFallback(CorpsState self)
+        {
+            Vec? best = null;
+            Fix bestD = Fix.Zero;
+            if (Vision.TryGetValue(self.Team, out var v))
+                foreach (var c in Corps)
+                {
+                    if (c.Team == self.Team || !c.InBattle || !v.LastSeen.TryGetValue(c.Id, out var seen)) continue;
+                    Fix d = Vec.DistanceSquared(seen, self.Anchor);
+                    if (best == null || d < bestD) { best = seen; bestD = d; }
+                }
+            if (best != null) return best;
+            foreach (var team in Teams)
+                if (team != self.Team && Setup.Map.Spawns.TryGetValue(team, out var spawn))
+                    return new Cell((int)spawn.X.FloorToLong(), (int)spawn.Y.FloorToLong()).Center;
+            return null;
+        }
     }
 }

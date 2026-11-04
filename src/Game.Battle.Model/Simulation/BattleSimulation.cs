@@ -6,7 +6,9 @@ using Game.Battle.Model.Commands;
 using Game.Battle.Model.Damage;
 using Game.Battle.Model.Field;
 using Game.Battle.Model.Geometry;
+using Game.Battle.Model.Skills;
 using Game.Battle.Model.Systems;
+using Game.Battle.Model.Vision;
 using Game.Battle.Model.Victory;
 using Game.Data.Defs;
 using Game.Foundation.Math;
@@ -21,13 +23,15 @@ namespace Game.Battle.Model.Simulation
         public AiRegistry Ai { get; set; } = AiRegistry.WithBuiltIns();
         public VictoryRegistry Victory { get; set; } = VictoryRegistry.WithBuiltIns();
         public List<IDamageModifierSource> DamageSources { get; set; } = Combat.DamageSources.BuiltIns();
+        public SkillRegistry Skills { get; set; } = SkillRegistry.WithBuiltIns();
 
         public static BattleExtensions Default() => new BattleExtensions();
     }
 
     /// <summary>
     /// 전투 시뮬레이션 (고정 틱, 결정적). 화면은 <see cref="Context"/>를 읽기만 하고, 입력은 <see cref="Issue"/>로만 넣는다.
-    /// 틱 순서: 명령 → AI 판단 → 이동 → 전투 → 군량 → 사기 → 궤멸·퇴각 → 승패.
+    /// 틱 순서: 명령 → AI 판단 → 스킬(다가가기·전조) → 도발 강제 → 이동 → 시야 → 은신·복병 → 전투 → 군량 → 사기
+    /// → 상태 시간·책략 점수 → 궤멸·퇴각 → 승패.
     /// </summary>
     public sealed class BattleSimulation
     {
@@ -53,11 +57,13 @@ namespace Game.Battle.Model.Simulation
                 Setup = setup,
                 Field = new Battlefield(setup.Map, setup.Defs, setup.Flags.IsEnabled(RuleFlagIds.TerrainRules)),
                 Random = new SeededRandom(setup.Seed),
+                SkillRegistry = _ext.Skills,
             };
             _calculator = new DamageCalculator(setup.Balance, setup.Flags);
             _combat = new CombatSystem(_ext.DamageSources);
             _maxTicks = (setup.MaxMinutes * setup.Combat.TicksPerMinute).FloorToLong();
             Spawn();
+            VisionSystem.Init(Context);
         }
 
         /// <summary>명령을 넣는다. 다음 <see cref="Step"/> 처음에 적용된다. 받을 수 없는 명령이면 false (기록하지 않음).</summary>
@@ -66,6 +72,7 @@ namespace Game.Battle.Model.Simulation
             if (IsOver || command == null) return false;
             var corps = Context.FindCorps(command.CorpsId);
             if (corps == null || corps.Setup.Controller != Controllers.Player || corps.Status != CorpsStatus.Active) return false;
+            if (corps.HasStatus(StatusIds.Taunted)) return false; // 도발당한 동안은 명령을 받지 않는다
             if (!_ext.Commands.TryGet(command.Kind, out var handler) || !handler.IsValid(Context, corps, command)) return false;
             var stamped = command.Clone();
             stamped.Tick = Context.Tick;
@@ -82,20 +89,25 @@ namespace Game.Battle.Model.Simulation
             foreach (var cmd in _pending)
             {
                 var corps = ctx.FindCorps(cmd.CorpsId);
-                if (corps.Status != CorpsStatus.Active) continue;
+                if (corps.Status != CorpsStatus.Active || corps.HasStatus(StatusIds.Taunted)) continue;
                 if (_ext.Commands.TryGet(cmd.Kind, out var h) && h.IsValid(ctx, corps, cmd)) h.Apply(ctx, corps, cmd);
             }
             _pending.Clear();
 
             if (ctx.Tick % ctx.Combat.AiThinkEveryTicks == 0)
                 foreach (var corps in ctx.Corps)
-                    if (corps.Status == CorpsStatus.Active && corps.Setup.Controller == Controllers.Ai)
+                    if (corps.Status == CorpsStatus.Active && corps.Setup.Controller == Controllers.Ai && !corps.HasStatus(StatusIds.Taunted))
                         _ext.Ai.Get(corps.Setup.AiStance).Think(ctx, corps);
 
+            SkillSystem.Step(ctx);
+            StatusSystem.Enforce(ctx);
             MovementSystem.Step(ctx);
+            VisionSystem.Step(ctx);
+            StealthSystem.Step(ctx);
             _combat.Step(ctx, _calculator);
             SupplySystem.Step(ctx);
             MoraleSystem.Step(ctx);
+            StatusSystem.Tick(ctx);
             RetreatSystem.Step(ctx);
             ctx.Tick++;
             CheckEnd();
@@ -176,6 +188,17 @@ namespace Game.Battle.Model.Simulation
                     StartSupply = cs.Supply,
                     Supply = cs.Supply,
                 };
+                var known = new List<SkillDef>();
+                var uses = new Dictionary<string, int>();
+                foreach (var id in cs.General.Skills)
+                {
+                    var sk = setup.Defs.Skills[id];
+                    if (known.Contains(sk)) continue;
+                    known.Add(sk);
+                    uses[id] = sk.UsesPerBattle;
+                }
+                corps.KnownSkills = known;
+                corps.SkillPoints = new SkillPointPool(cs.General.Intellect, uses);
                 foreach (var u in cs.Units)
                     corps.Units.Add(new SubUnitState
                     {
@@ -249,6 +272,7 @@ namespace Game.Battle.Model.Simulation
                     StartSupply = c.StartSupply,
                     RemainingSupply = c.Supply,
                     FinalMorale = c.Morale,
+                    SkillPointsLeft = c.SkillPoints.Points,
                     Units = units,
                 });
             }
@@ -261,7 +285,15 @@ namespace Game.Battle.Model.Simulation
                 Corps = corps,
                 Commands = new List<BattleCommand>(_log),
                 StateHash = StateHasher.Hash(ctx),
+                Explored = ExploredCopy(ctx),
             };
+        }
+
+        private static Dictionary<string, bool[]> ExploredCopy(BattleContext ctx)
+        {
+            var d = new Dictionary<string, bool[]>();
+            foreach (var kv in ctx.Vision) d[kv.Key] = (bool[])kv.Value.ExploredCells.Clone();
+            return d;
         }
 
         private static void Validate(BattleSetup s, BattleExtensions ext)
@@ -284,6 +316,14 @@ namespace Game.Battle.Model.Simulation
                 if (c.Controller != Controllers.Player && c.Controller != Controllers.Ai) Fail($"군단 '{c.Id}': 조종 '{c.Controller}'는 player 또는 ai.");
                 if (c.Controller == Controllers.Ai && !ext.Ai.Contains(c.AiStance)) Fail($"군단 '{c.Id}': 없는 AI 성향 '{c.AiStance}'.");
                 if (c.Supply < 0) Fail($"군단 '{c.Id}': 군량이 음수.");
+                foreach (var sk in c.General.Skills ?? new List<string>())
+                {
+                    if (!s.Defs.Skills.TryGetValue(sk, out var def)) Fail($"군단 '{c.Id}': 없는 스킬 '{sk}'.");
+                    foreach (var part in def.Effects)
+                        if (!ext.Skills.HasEffect(part.Type)) Fail($"스킬 '{sk}': 등록되지 않은 효과 '{part.Type}'.");
+                    foreach (var part in def.Conditions)
+                        if (!ext.Skills.HasCondition(part.Type)) Fail($"스킬 '{sk}': 등록되지 않은 조건 '{part.Type}'.");
+                }
                 var slots = new HashSet<string>();
                 foreach (var u in c.Units)
                 {
@@ -330,13 +370,20 @@ namespace Game.Battle.Model.Simulation
                 Add(c.SupplyAccumulator);
                 Add(c.Anchor.X.Raw); Add(c.Anchor.Y.Raw);
                 Add(c.Facing.X.Raw); Add(c.Facing.Y.Raw);
+                Add(c.Hidden ? 1 : 0);
+                Add(c.SkillPoints.Points.Raw);
+                foreach (var st in c.Statuses) { AddString(st.Id); Add(st.TicksLeft); Add(st.AttackPp.Raw); }
                 foreach (var u in c.Units)
                 {
                     Add(u.Troops);
                     Add(u.PendingLoss.Raw);
                     Add(u.Position.X.Raw); Add(u.Position.Y.Raw);
+                    Add(u.ConfusedTicks);
                 }
             }
+            foreach (var z in ctx.Reveals) { AddString(z.Team); Add(z.Center.X.Raw); Add(z.Center.Y.Raw); Add(z.TicksLeft); }
+            foreach (var team in ctx.Teams)
+                foreach (var id in ctx.Vision[team].VisibleCorps.OrderedIds(ctx)) AddString(id);
             return h;
         }
     }

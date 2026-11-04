@@ -24,6 +24,7 @@ namespace Game.Battle.Model.Systems
         {
             foreach (var corps in ctx.Corps)
             {
+                corps.MovedThisTick = false;
                 if (!corps.InBattle) continue;
                 Vec? dest = Destination(ctx, corps, out bool chasing);
                 if (dest == null || ShouldStop(corps)) continue;
@@ -46,7 +47,9 @@ namespace Game.Battle.Model.Systems
                     corps.PathGoal = goal;
                     corps.PathPlannedTick = ctx.Tick;
                 }
+                var before = corps.Anchor;
                 Move(ctx, corps, members);
+                corps.MovedThisTick = !before.Equals(corps.Anchor);
             }
             foreach (var corps in ctx.Corps) PlaceUnits(ctx, corps);
         }
@@ -80,7 +83,7 @@ namespace Game.Battle.Model.Systems
                 case OrderKinds.Advance:
                 {
                     var target = ctx.NearestEnemy(corps);
-                    if (target == null) return null;
+                    if (target == null) return ctx.AdvanceFallback(corps); // 안 보이면 마지막 목격 위치·적 시작 위치로
                     chasing = true;
                     return target.Anchor;
                 }
@@ -152,7 +155,8 @@ namespace Game.Battle.Model.Systems
 
     /// <summary>
     /// 전투. 피해는 동시에 계산한 뒤 한꺼번에 적용한다 (처리 순서가 결과를 바꾸지 않게).
-    /// 1) 사거리 안의 적은 반드시 공격한다 (R-20): 소부대마다 사거리 안의 가장 가까운 적.
+    /// 1) 사거리 안의 (보이는) 적은 반드시 공격한다 (R-20): 소부대마다 사거리 안의 가장 가까운 적.
+    ///    예외: 은신 중인 복병, 혼란 중인 소부대.
     /// 2) 접전: 근접 소부대 하나라도 적 군단에 닿으면 그 군단과 "접전" 상태가 되고, 사거리 밖의 근접 소부대도 접전 상대의
     ///    가장 가까운 소부대를 공격한다. 동시에 싸우는 수는 소부대 위치가 아니라 진형 특성치(정면 폭, 추후)가 정한다.
     /// 피해 = 병력 × 초당 기본 피해 × 틱 길이 × (100 + 보정 합) / 100 (R-1, R-2).
@@ -182,12 +186,12 @@ namespace Game.Battle.Model.Systems
 
             foreach (var a in ctx.Corps)
             {
-                if (!a.InBattle) continue;
+                if (!a.InBattle || a.Hidden) continue; // 은신 중인 복병은 들킬 때까지 공격하지 않는다 (R-20 예외)
                 FindMeleeContacts(ctx, a);
                 a.MeleeContact = _contacts.Count > 0;
                 foreach (var u in a.Units)
                 {
-                    if (!u.Alive) continue;
+                    if (!u.Alive || u.Confused) continue;
                     Fix reach = u.Troop.AttackRange + c.ContactRadius;
                     if (!Nearest(ctx, a, u.Position, reach * reach, null, out var dc, out var v))
                     {
@@ -234,7 +238,7 @@ namespace Game.Battle.Model.Systems
             var c = ctx.Combat;
             foreach (var e in ctx.Corps)
             {
-                if (e.Team == a.Team || !e.InBattle) continue;
+                if (e.Team == a.Team || !e.InBattle || !ctx.IsVisibleTo(a.Team, e)) continue;
                 bool touch = false;
                 foreach (var u in a.Units)
                 {
@@ -257,7 +261,7 @@ namespace Game.Battle.Model.Systems
             Fix best = Fix.Zero;
             foreach (var e in ctx.Corps)
             {
-                if (e.Team == self.Team || !e.InBattle) continue;
+                if (e.Team == self.Team || !e.InBattle || !ctx.IsVisibleTo(self.Team, e)) continue;
                 if (only != null && !only.Contains(e)) continue;
                 foreach (var v in e.Units)
                 {

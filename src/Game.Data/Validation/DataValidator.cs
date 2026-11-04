@@ -94,6 +94,18 @@ namespace Game.Data.Validation
                     if (!SlotIds.IsValid(slot)) errors.Add($"진형 '{f.Id}': 없는 칸 '{slot}'.");
             foreach (var g in d.Generals.Values)
                 if (!d.Temperaments.ContainsKey(g.Temperament)) errors.Add($"장수 '{g.Id}': 없는 성향 '{g.Temperament}'.");
+            foreach (var sk in d.Skills.Values)
+            {
+                CheckString(d, sk.NameKey, errors);
+                if (sk.Cost < Foundation.Math.Fix.Zero) errors.Add($"스킬 '{sk.Id}': 비용이 음수.");
+                if (sk.UsesPerBattle < 1) errors.Add($"스킬 '{sk.Id}': 전투당 횟수는 1 이상.");
+                if (sk.Effects.Count == 0) errors.Add($"스킬 '{sk.Id}': 효과가 없습니다.");
+                foreach (var r in sk.Requires)
+                    if (!d.Stats.ContainsKey(r.Stat)) errors.Add($"스킬 '{sk.Id}': 없는 능력치 '{r.Stat}'.");
+            }
+            foreach (var g in d.Generals.Values)
+                foreach (var sk in g.InnateSkills)
+                    if (!d.Skills.ContainsKey(sk)) errors.Add($"장수 '{g.Id}': 없는 기본 스킬 '{sk}'.");
             foreach (var t in d.TerrainRules.Values)
                 if (t.Cost <= Foundation.Math.Fix.Zero) errors.Add($"지형 '{t.Id}': 이동 비용은 0보다 커야 합니다.");
             return errors;

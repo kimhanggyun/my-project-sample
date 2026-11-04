@@ -228,7 +228,7 @@ namespace Game.Tests.Battle
 
     public class BattleDeterminismTests
     {
-        private static BattleSetup TwoVsTwo(ulong seed)
+        private static BattleSetup TwoVsTwo(ulong seed, string flags = null)
         {
             var a1 = Mixed("A1", "teamA", "fishScale",
                 ("vanguard", "spearman", 1000), ("center", "infantry", 1200), ("leftWing", "infantry", 800),
@@ -241,7 +241,7 @@ namespace Game.Tests.Battle
                 ("rightWing", "spearman", 900), ("leftGuard", "archer", 700), ("rightGuard", "archer", 700));
             var b2 = Corps("B2", "teamB", "arrowhead", "cavalry", 800, General("gb2", leadership: 40, might: 75, temperament: "arrogant"));
             b2.Role = "vanguard";
-            return Setup("test_plain", seed, null, a1, a2, b1, b2);
+            return Setup("test_plain", seed, flags, a1, a2, b1, b2);
         }
 
         private static List<BattleCommand> PlayerOrders() => new List<BattleCommand>
@@ -312,7 +312,7 @@ namespace Game.Tests.Battle
         {
             var ext = BattleExtensions.Default();
             ext.Commands.Register(new Charge());
-            var sim = new BattleSimulation(TwoVsTwo(1), ext);
+            var sim = new BattleSimulation(TwoVsTwo(1, "{\"fogOfWar\": false}"), ext);
             Assert.True(sim.Issue(new BattleCommand { CorpsId = "A1", Kind = "charge" }));
             sim.Step();
             Assert.Equal(MoveModes.Forced, sim.Context.Corps[0].Order.Mode);
