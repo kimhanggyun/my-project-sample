@@ -36,6 +36,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<TroopCounterRule> TroopCounters { get; private set; }
         public IReadOnlyDictionary<string, TemperamentDef> Temperaments { get; private set; }
         public IReadOnlyDictionary<string, SkillDef> Skills { get; private set; }
+        public IReadOnlyDictionary<string, ContestDef> Contests { get; private set; }
+        public AiRules Ai { get; private set; }
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -193,6 +195,11 @@ namespace Game.Data.Defs
                 AddUnique(skills, def.Id, def, "skills.json");
             }
             set.Skills = skills;
+
+            var contests = new Dictionary<string, ContestDef>();
+            foreach (var def in ContestDef.LoadAll(Read(RulesDir + "contests.json"))) contests[def.Id] = def;
+            set.Contests = contests;
+            set.Ai = AiRules.From(Read(RulesDir + "ai.json"));
 
             var generals = new Dictionary<string, GeneralDef>();
             foreach (JObject g in RequireArray(Read(theme + "generals.json"), "generals", "generals.json"))

@@ -183,7 +183,8 @@
 - R·N 예시는 `tests/Game.Tests/VerificationRuleTests.cs`(R), `VerificationNumericTests.cs`(N)에 같은 번호로 있다.
 - 전투 시뮬레이션 규칙(R-16, R-17 전장 확인, R-20, R-6 전투 중 소비, R-29 리플레이)은 `tests/Game.Tests/Battle/BattleSimulationTests.cs`.
 - 시야·안개·복병·스킬(R-11~R-13 전투 안, N-10 간파 부분, R-29 스킬 리플레이)은 `tests/Game.Tests/Battle/VisionSkillTests.cs`.
-- 아직 테스트가 없는 것 (일기토·고용 동시성 구현 후 추가): R-21, R-22, R-23, R-26.
+- 대결(일기토·논쟁, R-21~R-23)과 군단 AI는 `tests/Game.Tests/Battle/AiContestTests.cs`.
+- 아직 테스트가 없는 것 (고용 동시성, 서버 도입 후): R-26.
 
 ## 9. 기준 전투
 
@@ -199,6 +200,8 @@
 | `forest_infantry_vs_cavalry` 숲 | 지형 전투 보정으로 보병 승 (평원에서는 기병 승) | 있음 |
 | `mountain_2v2_commands` 2:2 혼성 + 플레이어 명령 | 명령 기록 재생, 산 우회, 대장 패배 조건 | 있음 |
 | `forest_ambush_no_reveal` / `forest_ambush_with_reveal` 숲 복병 vs 간파 미사용 / 사용 | 간파 안 하면 기습(혼란·사기↓)으로 더 빨리 무너지고 복병 쪽 손실이 적다 | 있음 |
+| `duel_before_battle` 전투 직전 일기토 (AI 선택) | 대결 결과(퇴각·쓰러짐)가 사기·혼란·퇴각·부상으로 전투에 반영 | 있음 |
+| `ai_skills_normal` 스킬을 쓰는 AI끼리 (보통) | AI 스킬 판단·상성 대응이 결정적으로 재현 | 있음 |
 | 순풍 화계 | 불 번짐 방향, 숲 → 불탄 땅 | 2d |
 
 ---

@@ -1,0 +1,61 @@
+{
+  "_comment": "AI 수치 (docs/design/content/ai.md). 난이도는 판단의 질만 바꾼다 (능력치를 몰래 올리지 않음). 수치는 예시.",
+  "difficulties": {
+    "easy": {
+      "thinkIntervalMultiplier": 2,
+      "skillUseChance": 0.3,
+      "counterFormationChance": 0,
+      "scouting": false
+    },
+    "normal": {
+      "thinkIntervalMultiplier": 1,
+      "skillUseChance": 0.8,
+      "counterFormationChance": 0.5,
+      "scouting": true
+    }
+  },
+  "skills": {
+    "rallyMoraleDrop": 15,
+    "revealSearchCells": 8
+  },
+  "contest": {
+    "baseWeights": {
+      "attack": 30,
+      "evade": 20,
+      "charge": 20,
+      "bow": 15,
+      "retreat": 5
+    },
+    "fullChargeSpecialWeight": 60,
+    "lowResourceAtOrBelow": 30,
+    "lowResourceRetreatBonus": 25,
+    "lowResourceEvadeBonus": 10,
+    "opponentFullChargeBowBonus": 30,
+    "opponentFullChargeRetreatBonus": 10,
+    "temperamentBonus": {
+      "brave": {
+        "attack": 15,
+        "retreat": -5
+      },
+      "arrogant": {
+        "attack": 10,
+        "charge": 10
+      },
+      "cautious": {
+        "evade": 10,
+        "retreat": 10
+      },
+      "timid": {
+        "evade": 10,
+        "retreat": 20
+      },
+      "cunning": {
+        "bow": 10
+      },
+      "calm": {},
+      "loyal": {
+        "attack": 5
+      }
+    }
+  }
+}

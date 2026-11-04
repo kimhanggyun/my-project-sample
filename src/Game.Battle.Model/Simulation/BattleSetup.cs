@@ -27,6 +27,18 @@ namespace Game.Battle.Model.Simulation
         /// 팀 → 이미 탐색한 칸 (같은 스텝 재도전 시 탐색 기억, 스위치 fogMemory). 칸 순서는 y × 폭 + x. 없으면 모두 미탐색.
         /// </summary>
         public Dictionary<string, bool[]> InitialExplored { get; set; } = new Dictionary<string, bool[]>();
+        /// <summary>전투 시작 직전 대결 (일기토·논쟁). 발생 판정은 바깥에서 <see cref="Contests.ContestTrigger"/>로 한다.</summary>
+        public List<ContestSetup> Contests { get; set; } = new List<ContestSetup>();
+    }
+
+    /// <summary>대결 하나. 선택 기록이 없거나 모자라면 AI가 고른다 (시간 안에 못 고르면 대신 고름).</summary>
+    public sealed class ContestSetup
+    {
+        public string ContestId { get; set; }
+        public string CorpsA { get; set; }
+        public string CorpsB { get; set; }
+        public List<string> ChoicesA { get; set; }
+        public List<string> ChoicesB { get; set; }
     }
 
     /// <summary>전투에 들어가는 장수 능력치. 부상·고용 등은 바깥(캠페인)에서 반영한 뒤 넘긴다.</summary>
@@ -93,6 +105,10 @@ namespace Game.Battle.Model.Simulation
         public string Controller { get; set; } = Controllers.Ai;
         /// <summary>AI 성향 id (<see cref="Ai.AiStanceIds"/>).</summary>
         public string AiStance { get; set; } = Ai.AiStanceIds.Aggressive;
+        /// <summary>AI 난이도 id (ai.json). 판단의 질만 바꾼다.</summary>
+        public string AiDifficulty { get; set; } = "normal";
+        /// <summary>쓸 수 있는 진형 (AI 상성 대응용). 비면 지금 진형만.</summary>
+        public List<string> KnownFormations { get; set; } = new List<string>();
         public GeneralSnapshot General { get; set; }
         public string Formation { get; set; }
         /// <summary>가져간 군량.</summary>

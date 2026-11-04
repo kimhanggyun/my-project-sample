@@ -1,0 +1,216 @@
+using System.Collections.Generic;
+using Game.Data.Json;
+using Game.Foundation.Math;
+using Newtonsoft.Json.Linq;
+
+namespace Game.Data.Defs
+{
+    /// <summary>
+    /// 대결 정의 (contests.json: 일기토·논쟁, battle.md 2.7.7). 행동마다 기본 행동(as)이 있고,
+    /// 결과표 outcomes[나의 기본 행동][상대의 기본 행동] = 나에게 일어나는 일 목록.
+    /// </summary>
+    public sealed class ContestDef
+    {
+        public const string Special = "special";
+
+        public string Id { get; internal set; }
+        public string Flag { get; internal set; }
+        public string Stat { get; internal set; }
+        public string ResourceKey { get; internal set; }
+        public string ChargeKey { get; internal set; }
+        public Fix Start { get; internal set; }
+        public int MaxRounds { get; internal set; }
+        public Fix BaseDamage { get; internal set; }
+        public Fix SpecialDamage { get; internal set; }
+        public Fix SpecialCharge { get; internal set; }
+        public int VariancePct { get; internal set; }
+        public Fix CritChance { get; internal set; }
+        public Fix CritMultiplier { get; internal set; }
+        public Fix StatInfluencePctPerPoint { get; internal set; }
+        public Fix StatInfluenceMaxPct { get; internal set; }
+        /// <summary>끝났을 때 체력이 이 값 이하면 경상 (없으면 경상 없음).</summary>
+        public Fix? LightInjuryAtOrBelow { get; internal set; }
+        public Fix TriggerMaxStatDifference { get; internal set; }
+        public Fix TriggerChance { get; internal set; }
+        public IReadOnlyList<string> RefuseTemperaments { get; internal set; }
+        /// <summary>행동 id (화면 순서).</summary>
+        public IReadOnlyList<ContestActionDef> Actions { get; internal set; }
+        public IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyList<SkillPart>>> Outcomes { get; internal set; }
+        /// <summary>결과 종류(win, fall, retreat, draw) → 전투 영향 값.</summary>
+        public IReadOnlyDictionary<string, JObject> BattleEffects { get; internal set; }
+
+        public ContestActionDef Action(string id)
+        {
+            foreach (var a in Actions) if (a.Id == id) return a;
+            return null;
+        }
+
+        public ContestActionDef ByBase(string baseId)
+        {
+            foreach (var a in Actions) if (a.Base == baseId) return a;
+            return null;
+        }
+
+        internal static List<ContestDef> LoadAll(JObject doc)
+        {
+            var raw = new Dictionary<string, JObject>();
+            var order = new List<string>();
+            foreach (JObject c in (JArray)doc["contests"])
+            {
+                string id = JsonUtil.RequireString(c, "id", "contests");
+                if (raw.ContainsKey(id)) throw new DataException($"contests.json: id '{id}'가 중복됩니다.");
+                raw[id] = c;
+                order.Add(id);
+            }
+            var list = new List<ContestDef>();
+            foreach (var id in order) list.Add(From(raw[id], raw));
+            return list;
+        }
+
+        private static ContestDef From(JObject o, Dictionary<string, JObject> all)
+        {
+            string id = JsonUtil.RequireString(o, "id", "contests");
+            string c = "contests." + id;
+            var actions = new List<ContestActionDef>();
+            foreach (JObject a in (JArray)o["actions"])
+                actions.Add(new ContestActionDef
+                {
+                    Id = JsonUtil.RequireString(a, "id", c + ".actions"),
+                    NameKey = JsonUtil.RequireString(a, "nameKey", c + ".actions"),
+                    Base = a.Value<string>("as") ?? a.Value<string>("id"),
+                    RequiresFullCharge = a.Value<bool?>("requiresFullCharge") ?? false,
+                });
+            JObject outcomesObj = o["outcomes"] as JObject;
+            if (outcomesObj == null)
+            {
+                string from = JsonUtil.RequireString(o, "outcomesFrom", c);
+                if (!all.TryGetValue(from, out var src) || !(src["outcomes"] is JObject so))
+                    throw new DataException($"{c}.outcomesFrom: 결과표가 있는 대결 '{from}'이 없습니다.");
+                outcomesObj = so;
+            }
+            var outcomes = new Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<SkillPart>>>();
+            foreach (var mine in outcomesObj.Properties())
+            {
+                var row = new Dictionary<string, IReadOnlyList<SkillPart>>();
+                foreach (var theirs in ((JObject)mine.Value).Properties())
+                {
+                    var parts = new List<SkillPart>();
+                    foreach (JObject e in (JArray)theirs.Value)
+                        parts.Add(new SkillPart(JsonUtil.RequireString(e, "type", c + ".outcomes"), e, c + ".outcomes." + mine.Name + "." + theirs.Name));
+                    row[theirs.Name] = parts;
+                }
+                outcomes[mine.Name] = row;
+            }
+            var effects = new Dictionary<string, JObject>();
+            foreach (var p in JsonUtil.RequireObject(o, "battleEffects", c).Properties()) effects[p.Name] = (JObject)p.Value.DeepClone();
+            var trig = JsonUtil.RequireObject(o, "trigger", c);
+            return new ContestDef
+            {
+                Id = id,
+                Flag = JsonUtil.RequireString(o, "flag", c),
+                Stat = JsonUtil.RequireString(o, "stat", c),
+                ResourceKey = JsonUtil.RequireString(o, "resourceKey", c),
+                ChargeKey = JsonUtil.RequireString(o, "chargeKey", c),
+                Start = JsonUtil.RequireFix(o, "start", c),
+                MaxRounds = (int)JsonUtil.RequireLong(o, "maxRounds", c),
+                BaseDamage = JsonUtil.RequireFix(o, "baseDamage", c),
+                SpecialDamage = JsonUtil.RequireFix(o, "specialDamage", c),
+                SpecialCharge = JsonUtil.RequireFix(o, "specialEnergy", c),
+                VariancePct = (int)JsonUtil.RequireLong(o, "variancePct", c),
+                CritChance = JsonUtil.RequireFix(o, "critChance", c),
+                CritMultiplier = JsonUtil.RequireFix(o, "critMultiplier", c),
+                StatInfluencePctPerPoint = JsonUtil.RequireFix(o, "statInfluencePctPerPoint", c),
+                StatInfluenceMaxPct = JsonUtil.RequireFix(o, "statInfluenceMaxPct", c),
+                LightInjuryAtOrBelow = o.TryGetValue("lightInjuryAtOrBelow", out var li) ? JsonUtil.ToFix(li, c) : (Fix?)null,
+                TriggerMaxStatDifference = JsonUtil.RequireFix(trig, "maxStatDifference", c + ".trigger"),
+                TriggerChance = JsonUtil.RequireFix(trig, "chance", c + ".trigger"),
+                RefuseTemperaments = JsonUtil.StringList(trig, "refuseTemperaments"),
+                Actions = actions,
+                Outcomes = outcomes,
+                BattleEffects = effects,
+            };
+        }
+    }
+
+    public sealed class ContestActionDef
+    {
+        public string Id { get; internal set; }
+        public string NameKey { get; internal set; }
+        /// <summary>결과표에서 쓰는 기본 행동 (attack, evade, charge, bow, retreat, special).</summary>
+        public string Base { get; internal set; }
+        /// <summary>기운(통찰)이 가득 찼을 때만 고를 수 있다 (필살·세뇌).</summary>
+        public bool RequiresFullCharge { get; internal set; }
+    }
+
+    /// <summary>AI 난이도 하나 (ai.json). 판단의 질만 바꾼다.</summary>
+    public sealed class AiDifficultyDef
+    {
+        public string Id { get; internal set; }
+        public int ThinkIntervalMultiplier { get; internal set; }
+        public Fix SkillUseChance { get; internal set; }
+        public Fix CounterFormationChance { get; internal set; }
+        /// <summary>안 보이는 숨는 지형을 간파로 살피는가.</summary>
+        public bool Scouting { get; internal set; }
+    }
+
+    /// <summary>AI 수치 (ai.json).</summary>
+    public sealed class AiRules
+    {
+        public IReadOnlyDictionary<string, AiDifficultyDef> Difficulties { get; internal set; }
+        public Fix RallyMoraleDrop { get; internal set; }
+        public Fix RevealSearchCells { get; internal set; }
+        public IReadOnlyDictionary<string, int> ContestBaseWeights { get; internal set; }
+        public int ContestFullChargeSpecialWeight { get; internal set; }
+        public Fix ContestLowResourceAtOrBelow { get; internal set; }
+        public int ContestLowResourceRetreatBonus { get; internal set; }
+        public int ContestLowResourceEvadeBonus { get; internal set; }
+        public int ContestOpponentFullChargeBowBonus { get; internal set; }
+        public int ContestOpponentFullChargeRetreatBonus { get; internal set; }
+        /// <summary>성향 → 기본 행동 → 가중치 가감.</summary>
+        public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> ContestTemperamentBonus { get; internal set; }
+
+        internal static AiRules From(JObject o)
+        {
+            const string c = "ai";
+            var diffs = new Dictionary<string, AiDifficultyDef>();
+            foreach (var p in JsonUtil.RequireObject(o, "difficulties", c).Properties())
+            {
+                var d = (JObject)p.Value;
+                string ctx = c + ".difficulties." + p.Name;
+                diffs[p.Name] = new AiDifficultyDef
+                {
+                    Id = p.Name,
+                    ThinkIntervalMultiplier = (int)JsonUtil.RequireLong(d, "thinkIntervalMultiplier", ctx),
+                    SkillUseChance = JsonUtil.RequireFix(d, "skillUseChance", ctx),
+                    CounterFormationChance = JsonUtil.RequireFix(d, "counterFormationChance", ctx),
+                    Scouting = d.Value<bool?>("scouting") ?? false,
+                };
+            }
+            var sk = JsonUtil.RequireObject(o, "skills", c);
+            var ct = JsonUtil.RequireObject(o, "contest", c);
+            var weights = new Dictionary<string, int>();
+            foreach (var p in JsonUtil.RequireObject(ct, "baseWeights", c + ".contest").Properties()) weights[p.Name] = p.Value.Value<int>();
+            var temp = new Dictionary<string, IReadOnlyDictionary<string, int>>();
+            foreach (var p in JsonUtil.RequireObject(ct, "temperamentBonus", c + ".contest").Properties())
+            {
+                var row = new Dictionary<string, int>();
+                foreach (var q in ((JObject)p.Value).Properties()) row[q.Name] = q.Value.Value<int>();
+                temp[p.Name] = row;
+            }
+            return new AiRules
+            {
+                Difficulties = diffs,
+                RallyMoraleDrop = JsonUtil.RequireFix(sk, "rallyMoraleDrop", c + ".skills"),
+                RevealSearchCells = JsonUtil.RequireFix(sk, "revealSearchCells", c + ".skills"),
+                ContestBaseWeights = weights,
+                ContestFullChargeSpecialWeight = (int)JsonUtil.RequireLong(ct, "fullChargeSpecialWeight", c),
+                ContestLowResourceAtOrBelow = JsonUtil.RequireFix(ct, "lowResourceAtOrBelow", c),
+                ContestLowResourceRetreatBonus = (int)JsonUtil.RequireLong(ct, "lowResourceRetreatBonus", c),
+                ContestLowResourceEvadeBonus = (int)JsonUtil.RequireLong(ct, "lowResourceEvadeBonus", c),
+                ContestOpponentFullChargeBowBonus = (int)JsonUtil.RequireLong(ct, "opponentFullChargeBowBonus", c),
+                ContestOpponentFullChargeRetreatBonus = (int)JsonUtil.RequireLong(ct, "opponentFullChargeRetreatBonus", c),
+                ContestTemperamentBonus = temp,
+            };
+        }
+    }
+}

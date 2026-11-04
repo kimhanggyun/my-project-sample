@@ -4,6 +4,8 @@
   "ticks": 855,
   "elapsedSeconds": "85.5",
   "commands": 0,
+  "contests": [],
+  "injuries": {},
   "stateHash": "232a6f16e2b73ae8",
   "corps": [
     {
@@ -16,6 +18,7 @@
       "startSupply": 1000000,
       "remainingSupply": 946237,
       "finalMorale": "42.5518",
+      "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",
@@ -65,6 +68,7 @@
       "startSupply": 1000000,
       "remainingSupply": 899110,
       "finalMorale": "28.3193",
+      "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",

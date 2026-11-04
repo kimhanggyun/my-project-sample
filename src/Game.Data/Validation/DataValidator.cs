@@ -106,6 +106,23 @@ namespace Game.Data.Validation
             foreach (var g in d.Generals.Values)
                 foreach (var sk in g.InnateSkills)
                     if (!d.Skills.ContainsKey(sk)) errors.Add($"장수 '{g.Id}': 없는 기본 스킬 '{sk}'.");
+            var baseActions = new[] { "attack", "evade", "charge", "bow", "retreat", ContestDef.Special };
+            foreach (var ct in d.Contests.Values)
+            {
+                if (!d.Stats.ContainsKey(ct.Stat)) errors.Add($"대결 '{ct.Id}': 없는 능력치 '{ct.Stat}'.");
+                CheckString(d, ct.ResourceKey, errors);
+                CheckString(d, ct.ChargeKey, errors);
+                foreach (var a in ct.Actions)
+                {
+                    CheckString(d, a.NameKey, errors);
+                    if (System.Array.IndexOf(baseActions, a.Base) < 0) errors.Add($"대결 '{ct.Id}': 행동 '{a.Id}'의 기본 행동 '{a.Base}'가 없습니다.");
+                }
+                // 결과표는 모든 기본 행동 쌍을 채워야 한다
+                foreach (var mine in baseActions)
+                    foreach (var theirs in baseActions)
+                        if (!ct.Outcomes.TryGetValue(mine, out var row) || !row.ContainsKey(theirs))
+                            errors.Add($"대결 '{ct.Id}': 결과표 [{mine}][{theirs}]가 없습니다.");
+            }
             foreach (var t in d.TerrainRules.Values)
                 if (t.Cost <= Foundation.Math.Fix.Zero) errors.Add($"지형 '{t.Id}': 이동 비용은 0보다 커야 합니다.");
             return errors;

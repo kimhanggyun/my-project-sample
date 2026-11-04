@@ -91,12 +91,16 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 | 은신·복병 | 숨는 지형에서 준비(움직이거나 들키면 실패) → 은신(안 보이고 공격 안 함, R-20 예외) → 적이 사거리에 들면 기습: 기습 보정, 닿은 적 사기↓·일부 소부대 혼란(`ambushConfusion`). 간파 범위에 들거나 범위 피해를 맞거나 움직이면 드러남 |
 | 상태 | 군단 상태(버프·도발·복병 준비 …, 시간 제한)와 소부대 혼란(공격 안 함). 공격 보정이 있는 상태는 피해 보정 출처로 더해짐 |
 
+| 대결 | 전투 직전 일기토·논쟁 (`BattleSetup.Contests`). 한 엔진, 행동·결과표·전투 영향은 `contests.json` (논쟁은 일기토 결과표를 그대로 씀). 선택 기록이 없거나 모자라면 AI가 고름. 결과 → 사기·책략 점수·혼란 뒤 퇴각·부상(`BattleResult.GeneralInjuries`, R-23). 발생 판정은 `ContestTrigger` (바깥에서) |
+| 군단 AI | 성향(공격형·방어형·매복형)이 이동 명령을, 장수 판단(`AiPlanner`)이 스킬·진형을 고른다. 스킬은 점수 매기기 규칙(`AiSkillRules`)으로, 플레이어와 같은 명령 처리기·제한(점수·횟수·시야). 난이도(`ai.json`: 쉬움·보통)는 판단 빈도·스킬 사용 확률·상성 대응 확률·정찰 여부만 바꾼다 |
+
 ### 5.3 확장 (등록표, `BattleExtensions`)
 
 | 등록표 | 기본 등록 | 새로 붙이는 예 |
 |---|---|---|
 | `CommandRegistry` | advance, moveTo(normal·forced·attackMove), attack, hold, retreat, changeFormation | 스킬 사용, 경유, 협공 대기 |
-| `AiRegistry` | aggressive, defensive | 난이도별 지휘관 AI (2c) |
+| `AiRegistry` | aggressive, defensive, ambusher | 유격형·지원형·신중형, 사령관 AI 작전 방침 |
+| `AiSkills` | morale, clearConfusion, attackBuff, areaDamage, taunt, reveal (스킬 첫 효과 종류로 찾음) | 화계(순풍·숲), 연계 판단 |
 | `VictoryRegistry` | annihilation, commander | 거점 점령, 생존 시간 |
 | `DamageSources` | 위 보정 출처 7종 + 상태 공격 보정 | 날씨, 진형 특성치 |
 | `SkillRegistry` | 효과: reveal, ambush, areaDamage, morale, clearConfusion, attackBuff, contactMoraleDamage, taunt · 조건: casterOnConcealingTerrain, notEngaged, casterHasTag | 새 스킬은 `skills.json`에 효과 조합만 추가. 새 효과 종류만 코드 |
@@ -108,7 +112,9 @@ BattleResult (승자·끝난 이유·틱·군단별 남은 병력·군량·사�
 - 동시에 싸우는 수는 소부대 위치가 아니라 **접전 여부**로 정한다. 진형 특성치(정면 폭·돌파력·측면 방어 …, [formations.md](../design/content/formations.md) 2장)는 수치가 정해지면 보정 출처로 추가한다.
 - 진형 변경은 즉시 (전환 시간·전환 중 응집력 저하는 특성치와 함께).
 - 측면·배후는 두 군단 중심의 방향으로 판정한다. 진군(`advance`)의 역할별 배치(선봉·측면·후위)는 아직 없다.
-- AI 군단은 아직 스킬을 쓰지 않는다 (지휘관 AI와 함께 2c). 지휘관 AI·일기토·논쟁(2c), 포로·바람·날씨·화계·지형 변화(2d)는 아직 없다.
+- 사령관 AI(작전 방침·역할 배분·협공), 어려움·지장 난이도, 위임 판단 수준 차등은 AI 2차 이후 (ai.md 10장).
+- 전투 중 일기토 신청(`challenge`, 3차 스킬)은 아직 없다. 대결은 전투 직전에만.
+- 포로·바람·날씨·화계·지형 변화(2d)는 아직 없다.
 - 시야는 소부대 원형 범위로 계산한다 (지형이 시선을 가리는 계산은 없음, 숲은 "가까이 가야 보임"으로만).
 - 명령 예약(경유), 협공 대기, "도착 후 사용" 선택은 아직 없다 (사거리 밖 스킬은 자동으로 다가가 사용).
 

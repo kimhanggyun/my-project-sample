@@ -39,6 +39,9 @@ namespace Game.Battle.Model.Skills
             return true;
         }
 
+        /// <summary>점수 가감 (논쟁 결과 등). 0 아래로는 내려가지 않는다.</summary>
+        public void Adjust(Fix delta) => Points = Fix.Max(Fix.Zero, Points + delta);
+
         /// <summary>점수 회복 (R-13): 스위치가 켜져 있고 사기 ≥ 기준일 때만, 시작 점수를 넘지 않는다.</summary>
         public void Regenerate(Fix amount, Fix morale, Fix moraleBase, bool regenEnabled)
         {
