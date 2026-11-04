@@ -24,37 +24,78 @@
       "formation": "square",
       "ai": "aggressive",
       "difficulty": "easy",
-      "supply": 105000,
+      "supplyMinutes": 10,
       "units": [
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 1200
+          "troops": 3500
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 1200
+          "troops": 3500
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 1000
+          "troops": 3000
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 1000
+          "troops": 3000
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 800
+          "troops": 2500
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 800
+          "troops": 2500
+        }
+      ]
+    },
+    {
+      "id": "enemy_corps_01b",
+      "general": "enemy_general_02",
+      "role": "vanguard",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "easy",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "troops": 3000
+        },
+        {
+          "slot": "center",
+          "troopType": "spearman",
+          "troops": 3000
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "troops": 3000
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "infantry",
+          "troops": 3000
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "archer",
+          "troops": 1500
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "archer",
+          "troops": 1500
         }
       ]
     }
@@ -80,5 +121,10 @@
         }
       ]
     }
-  ]
+  ],
+  "balanceTarget": {
+    "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
+    "winRateMin": 0.9,
+    "winRateMax": 1.0
+  }
 }

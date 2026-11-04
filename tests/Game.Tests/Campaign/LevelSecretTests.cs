@@ -47,9 +47,9 @@ namespace Game.Tests.Campaign
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
             var state = StartingKitService.CreateNewGame(Kit.D);
-            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 5 });
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 5, Delegate = true });
             flow.Confirm(state, plan);
-            flow.ApplyResult(state, plan, BattleSimulation.Run(plan.Setup));
+            Assert.True(flow.ApplyResult(state, plan, BattleSimulation.Run(plan.Setup)).Won);
             long expected = LevelEngine.BattleExp(L, StepDef.Load(Kit.Source, "step01").RewardExp);
             Assert.True(expected > 0);
             Assert.All(state.Generals, g => Assert.Equal(expected, g.Exp));
@@ -117,15 +117,22 @@ namespace Game.Tests.Campaign
         public void SkillStoredAsBook()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
-            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 5 });
-            flow.Confirm(state, plan);
-            var result = BattleSimulation.Run(plan.Setup);
-            var report = flow.ApplyResult(state, plan, result);
-            long start = result.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Sum(c => c.StartTroops);
-            long lost = result.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Sum(c => c.Losses);
-            bool qualifies = report.Won && lost * 10 <= start;
-            Assert.True(qualifies, $"이 시드는 조건을 만족해야 합니다 (손실 {lost}/{start}).");
+            CampaignState state = null;
+            BattleReport report = null;
+            long start = 0, lost = 0;
+            bool qualifies = false;
+            for (ulong seed = 1; seed <= 40 && !qualifies; seed++) // 손실 10% 이하로 이기는 판을 찾는다 (평균 손실은 약 13%)
+            {
+                state = StartingKitService.CreateNewGame(Kit.D);
+                var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = seed, Delegate = true });
+                flow.Confirm(state, plan);
+                var result = BattleSimulation.Run(plan.Setup);
+                report = flow.ApplyResult(state, plan, result);
+                start = result.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Sum(c => c.StartTroops);
+                lost = result.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Sum(c => c.Losses);
+                qualifies = report.Won && lost * 10 <= start;
+            }
+            Assert.True(qualifies, "40개 시드 중 손실 10% 이하로 이긴 판이 없습니다.");
             Assert.Equal(qualifies, report.Secrets.Any(s => s.SecretId == "secret_step01_light_losses"));
             if (qualifies)
             {

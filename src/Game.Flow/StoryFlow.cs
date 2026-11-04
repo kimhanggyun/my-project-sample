@@ -208,7 +208,15 @@ namespace Game.Flow
                     X = e.X, Y = e.Y, Facing = e.Facing,
                     Reserve = e.Reserve,
                 };
-                foreach (var u in e.Units) cs.Units.Add(new UnitSetup { UnitId = e.Id + "_" + u.Slot, Slot = u.Slot, TroopType = u.TroopType, Troops = u.Troops });
+                long enemyDaily = 0;
+                foreach (var u in e.Units)
+                {
+                    cs.Units.Add(new UnitSetup { UnitId = e.Id + "_" + u.Slot, Slot = u.Slot, TroopType = u.TroopType, Troops = u.Troops });
+                    enemyDaily = checked(enemyDaily + u.Troops * _defs.TroopTypes[u.TroopType].SupplyPerDay);
+                }
+                // 적 군량을 분 분량으로 정했으면 그 군단 병력 기준으로 계산 (R-6 식, 올림)
+                if (e.SupplyMinutes.HasValue)
+                    cs.Supply = (e.SupplyMinutes.Value * (enemyDaily * balance.SupplyDaysPerMinute)).CeilToLong();
                 setup.Corps.Add(cs);
             }
 

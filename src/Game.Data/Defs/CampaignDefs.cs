@@ -202,7 +202,10 @@ namespace Game.Data.Defs
         public string Formation { get; internal set; }
         public string Ai { get; internal set; }
         public string Difficulty { get; internal set; }
+        /// <summary>군량 수량 (SupplyMinutes가 없을 때).</summary>
         public long Supply { get; internal set; }
+        /// <summary>군량을 "분" 분량으로 (그 군단 병력 기준, R-6 식). 있으면 Supply보다 우선.</summary>
+        public Fix? SupplyMinutes { get; internal set; }
         public IReadOnlyList<string> KnownFormations { get; internal set; }
         public IReadOnlyList<StepUnitDef> Units { get; internal set; }
         public Fix? X { get; internal set; }
@@ -266,6 +269,9 @@ namespace Game.Data.Defs
         /// <summary>승리 시 출전 장수 경험치 (전투 레벨업 배율 적용 전).</summary>
         public long RewardExp { get; private set; }
         public IReadOnlyList<StepEventDef> Events { get; private set; }
+        /// <summary>밸런스 목표: 위임 출진 승률 범위 (없으면 null).</summary>
+        public Fix? TargetWinRateMin { get; private set; }
+        public Fix? TargetWinRateMax { get; private set; }
 
         public static StepDef Load(IDataSource source, string id) => From(JsonUtil.ParseObject(source.ReadText("Steps/" + id + ".json")));
 
@@ -292,7 +298,8 @@ namespace Game.Data.Defs
                     Formation = JsonUtil.RequireString(e, "formation", c + ".enemy"),
                     Ai = e.Value<string>("ai") ?? "aggressive",
                     Difficulty = e.Value<string>("difficulty") ?? "normal",
-                    Supply = JsonUtil.RequireLong(e, "supply", c + ".enemy"),
+                    Supply = e.Value<long?>("supply") ?? 0,
+                    SupplyMinutes = e.TryGetValue("supplyMinutes", out var sm) ? JsonUtil.ToFix(sm, c + ".enemy.supplyMinutes") : (Fix?)null,
                     KnownFormations = JsonUtil.StringList(e, "knownFormations"),
                     Units = units,
                     X = e.TryGetValue("x", out var x) ? JsonUtil.ToFix(x, c) : (Fix?)null,
@@ -359,6 +366,8 @@ namespace Game.Data.Defs
                 RewardResources = res,
                 RewardExp = rewards.Value<long?>("exp") ?? 0,
                 Events = events,
+                TargetWinRateMin = o["balanceTarget"] is JObject bt1 ? JsonUtil.RequireFix(bt1, "winRateMin", c + ".balanceTarget") : (Fix?)null,
+                TargetWinRateMax = o["balanceTarget"] is JObject bt2 ? JsonUtil.RequireFix(bt2, "winRateMax", c + ".balanceTarget") : (Fix?)null,
             };
         }
     }
