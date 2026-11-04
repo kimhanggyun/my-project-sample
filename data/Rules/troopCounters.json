@@ -1,0 +1,40 @@
+{
+  "_comment": "병종 상성 (태그 기준, 가산 %p, 예시). 창병 > 기병 > 궁병 > 창병, 관통 > 중장",
+  "rules": [
+    {
+      "attacker": "polearm",
+      "defender": "mounted",
+      "pp": 25
+    },
+    {
+      "attacker": "mounted",
+      "defender": "polearm",
+      "pp": -15
+    },
+    {
+      "attacker": "mounted",
+      "defender": "ranged",
+      "pp": 20
+    },
+    {
+      "attacker": "ranged",
+      "defender": "mounted",
+      "pp": -10
+    },
+    {
+      "attacker": "ranged",
+      "defender": "polearm",
+      "pp": 20
+    },
+    {
+      "attacker": "polearm",
+      "defender": "ranged",
+      "pp": -10
+    },
+    {
+      "attacker": "piercing",
+      "defender": "heavy",
+      "pp": 15
+    }
+  ]
+}

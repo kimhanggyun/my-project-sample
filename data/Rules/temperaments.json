@@ -1,0 +1,33 @@
+{
+  "_comment": "성향: 퇴각 사기 기준 (docs/design/content/traits.md 2장, 예시 값)",
+  "temperaments": [
+    {
+      "id": "brave",
+      "retreatMorale": 15
+    },
+    {
+      "id": "calm",
+      "retreatMorale": 25
+    },
+    {
+      "id": "cautious",
+      "retreatMorale": 35
+    },
+    {
+      "id": "cunning",
+      "retreatMorale": 25
+    },
+    {
+      "id": "loyal",
+      "retreatMorale": 20
+    },
+    {
+      "id": "arrogant",
+      "retreatMorale": 20
+    },
+    {
+      "id": "timid",
+      "retreatMorale": 45
+    }
+  ]
+}

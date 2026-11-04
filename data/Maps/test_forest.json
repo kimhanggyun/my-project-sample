@@ -1,0 +1,66 @@
+{
+  "_comment": "시험용: 전체 숲 (지형 상성 확인)",
+  "id": "test_forest",
+  "battleType": "field",
+  "legend": {
+    "f": "forest"
+  },
+  "rows": [
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff",
+    "ffffffffffffffffffffffff"
+  ],
+  "spawns": {
+    "teamA": {
+      "x": 12,
+      "y": 24,
+      "facing": "N"
+    },
+    "teamB": {
+      "x": 12,
+      "y": 16,
+      "facing": "S"
+    }
+  },
+  "retreatEdges": {
+    "teamA": "south",
+    "teamB": "north"
+  }
+}

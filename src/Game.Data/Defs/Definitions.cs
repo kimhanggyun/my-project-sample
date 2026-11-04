@@ -60,6 +60,8 @@ namespace Game.Data.Defs
         /// <summary>"core"(상성 순환 6종) 또는 "situational".</summary>
         public string Group { get; internal set; }
         public string Tier { get; internal set; }
+        /// <summary>칸 id → 장수 기준 위치.</summary>
+        public IReadOnlyDictionary<string, SlotOffset> Slots { get; internal set; }
     }
 
     public sealed class GeneralDef

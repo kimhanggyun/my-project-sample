@@ -1,0 +1,41 @@
+{
+  "_comment": "전투 시뮬레이션 수치 (예시, 확정 전). docs/design/content/battle.md, docs/impl/core.md 5장",
+  "tickSeconds": 0.1,
+  "baseDamagePerTroopPerSecond": 0.004,
+  "statPpPerPoint": 0.5,
+  "damageVariancePp": 5,
+  "moveCellsPerSecondAtSpeed50": 1.0,
+  "contactRadius": 1.0,
+  "perceptionCells": 6,
+  "direction": {
+    "flankPp": 15,
+    "rearPp": 30,
+    "frontDot": 0.5,
+    "rearDot": -0.5
+  },
+  "height": {
+    "ppPerLevel": 10
+  },
+  "formationCounter": {
+    "corePp": 25,
+    "situationalPp": 15
+  },
+  "morale": {
+    "start": 60,
+    "leadershipFactor": 0.2,
+    "lossPerPercentTroops": 1.5,
+    "flankHitPerSecond": 0.5,
+    "recoverPerSecond": 0.2,
+    "supplyExhaustedPerSecond": 1.0
+  },
+  "retreat": {
+    "troopRatio": 0.3
+  },
+  "retreatEdgeMargin": 1.5,
+  "aiThinkEveryTicks": 10,
+  "general": {
+    "mightToAttack": 0.2,
+    "leadershipToDefense": 0.2
+  },
+  "spawnSpacingCells": 8
+}
