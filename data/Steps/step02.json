@@ -26,12 +26,11 @@
   "enemy": [
     {
       "id": "enemy_corps_02",
-      "general": "enemy_general_02",
+      "general": "enemy_general_01",
       "role": "commander",
       "formation": "circle",
-      "ai": "defensive",
+      "ai": "aggressive",
       "difficulty": "normal",
-      "supply": 80000,
       "knownFormations": [
         "craneWing"
       ],
@@ -39,34 +38,35 @@
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 1000
+          "troops": 3100
         },
         {
           "slot": "center",
           "troopType": "archer",
-          "troops": 1000
+          "troops": 3100
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 900
+          "troops": 2800
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 900
+          "troops": 2800
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 700
+          "troops": 2200
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 700
+          "troops": 2200
         }
-      ]
+      ],
+      "supplyMinutes": 10
     },
     {
       "id": "enemy_corps_03",
@@ -75,7 +75,6 @@
       "formation": "arrowhead",
       "ai": "ambusher",
       "difficulty": "normal",
-      "supply": 60000,
       "x": 8.5,
       "y": 18.5,
       "facing": "E",
@@ -83,43 +82,43 @@
         {
           "slot": "vanguard",
           "troopType": "cavalry",
-          "troops": 800
+          "troops": 2500
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 900
+          "troops": 2800
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 800
+          "troops": 2500
         },
         {
           "slot": "rightWing",
           "troopType": "infantry",
-          "troops": 800
+          "troops": 2500
         },
         {
           "slot": "leftGuard",
           "troopType": "infantry",
-          "troops": 600
+          "troops": 1900
         },
         {
           "slot": "rightGuard",
           "troopType": "infantry",
-          "troops": 600
+          "troops": 1900
         }
-      ]
+      ],
+      "supplyMinutes": 10
     },
     {
       "id": "enemy_reserve_01",
-      "general": "enemy_general_01",
+      "general": "enemy_general_02",
       "role": "reserve",
       "formation": "square",
       "ai": "aggressive",
       "difficulty": "normal",
-      "supply": 40000,
       "reserve": true,
       "x": 12.5,
       "y": 2.5,
@@ -128,24 +127,25 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 800
+          "troops": 2500
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 800
+          "troops": 2500
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 700
+          "troops": 2200
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 700
+          "troops": 2200
         }
-      ]
+      ],
+      "supplyMinutes": 10
     }
   ],
   "rewards": {
@@ -176,7 +176,7 @@
       "trigger": {
         "type": "corpsTroopsBelow",
         "corps": "enemy_corps_02",
-        "ratio": 0.6
+        "ratio": 0.95
       },
       "actions": [
         {
@@ -205,5 +205,10 @@
         }
       ]
     }
-  ]
+  ],
+  "balanceTarget": {
+    "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
+    "winRateMin": 0.6,
+    "winRateMax": 0.75
+  }
 }

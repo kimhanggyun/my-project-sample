@@ -88,7 +88,7 @@ namespace Game.Tests.Campaign
             var plan = Flow().Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));
             Assert.Equal(3, plan.Setup.Corps.Count(c => c.Team == StoryFlow.PlayerTeam));
-            Assert.Single(plan.Setup.Corps, c => c.Team == StoryFlow.EnemyTeam);
+            Assert.Equal(StepDef.Load(Kit.Source, "step01").Enemy.Count, plan.Setup.Corps.Count(c => c.Team == StoryFlow.EnemyTeam));
             long daily = state.Units.Sum(u => u.Troops * Kit.D.TroopTypes[u.TroopType].SupplyPerDay);
             Assert.Equal(SupplyCalculator.AutoSortieSupply(Kit.D.Balance, daily), plan.AutoSupply);
             Assert.Equal(plan.SupplyTaken, plan.Setup.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Sum(c => c.Supply));
@@ -116,13 +116,13 @@ namespace Game.Tests.Campaign
             long supply0 = state.Wallet[ResourceIds.Supply], gold0 = state.Wallet[ResourceIds.Gold];
             var troops0 = state.Units.ToDictionary(u => u.UnitId, u => u.Troops);
 
-            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 5 });
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 5, Delegate = true });
             Assert.True(flow.Confirm(state, plan));
             Assert.Equal(supply0 - plan.SupplyTaken, state.Wallet[ResourceIds.Supply]);
 
             var result = BattleSimulation.Run(plan.Setup);
             var report = flow.ApplyResult(state, plan, result);
-            Assert.True(report.Won, "초기 편성 3군단이 쉬움 적 1군단에 졌습니다.");
+            Assert.True(report.Won, "초기 편성(위임 출진)이 step01에서 졌습니다 (목표 승률 90~95%, 이 시드는 승).");
             Assert.True(report.FirstClear);
 
             foreach (var ur in report.Units)
@@ -141,7 +141,7 @@ namespace Game.Tests.Campaign
             Assert.Contains('1', state.ExploredBySteps["step01"]);
             Assert.True(flow.IsUnlocked(state, "step02"));
 
-            var plan2 = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 6 });
+            var plan2 = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 6, Delegate = true });
             Assert.True(flow.Confirm(state, plan2), string.Join("\n", plan2.Errors));
             var report2 = flow.ApplyResult(state, plan2, BattleSimulation.Run(plan2.Setup));
             Assert.False(report2.FirstClear);
