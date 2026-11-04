@@ -166,6 +166,8 @@ namespace Game.Battle.Model.Simulation
         public List<string> KnownFormations { get; set; } = new List<string>();
         /// <summary>예비 군단: 증원 이벤트(reinforce)가 올 때까지 전장 밖.</summary>
         public bool Reserve { get; set; }
+        /// <summary>플레이어 군단을 처음부터 위임 (전투 중 delegate 명령으로 켜고 끈다).</summary>
+        public bool Delegated { get; set; }
         public GeneralSnapshot General { get; set; }
         public string Formation { get; set; }
         /// <summary>가져간 군량.</summary>

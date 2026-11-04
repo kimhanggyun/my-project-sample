@@ -57,5 +57,23 @@
         "attack": 5
       }
     }
+  },
+  "delegation": {
+    "_comment": "위임 (ai.md 9장): 아군 군단을 같은 AI가 지휘. 판단 수준은 장수 능력치(지략·통솔 평균)로 정한다 (높은 기준부터).",
+    "stats": [
+      "intellect",
+      "leadership"
+    ],
+    "levels": [
+      {
+        "atLeast": 55,
+        "difficulty": "normal"
+      },
+      {
+        "atLeast": 0,
+        "difficulty": "easy"
+      }
+    ],
+    "stance": "aggressive"
   }
 }

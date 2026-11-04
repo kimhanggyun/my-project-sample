@@ -52,7 +52,7 @@ namespace Game.Battle.Model.Ai
 
         public void Think(BattleContext ctx, CorpsState corps)
         {
-            var diff = ctx.Defs.Ai.Difficulties[corps.Setup.AiDifficulty];
+            var diff = ctx.Defs.Ai.Difficulties[corps.AiDifficulty];
             TryCounterFormation(ctx, corps, diff);
             TryUseSkill(ctx, corps, diff);
         }
