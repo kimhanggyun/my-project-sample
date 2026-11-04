@@ -1,0 +1,62 @@
+{
+  "_comment": "상점 상품. 편의 기능이 아니면 playPaths(플레이로 얻는 경로)가 있어야 한다 (verification R-30).",
+  "products": [
+    {
+      "id": "remove_banner_permanent",
+      "kind": "adRemoval",
+      "convenience": true,
+      "priceKRW": 5000
+    },
+    {
+      "id": "remove_banner_30d",
+      "kind": "adRemoval",
+      "convenience": true,
+      "priceKRW": 1000
+    },
+    {
+      "id": "supply_pack_small",
+      "kind": "supply",
+      "playPaths": [
+        "battleCapture",
+        "depot",
+        "adReward"
+      ]
+    },
+    {
+      "id": "gold_pack_small",
+      "kind": "gold",
+      "playPaths": [
+        "reward",
+        "releaseReward",
+        "hireIncome"
+      ]
+    },
+    {
+      "id": "gem_pack_small",
+      "kind": "gem",
+      "playPaths": [
+        "reward",
+        "secretReward",
+        "event"
+      ]
+    },
+    {
+      "id": "skill_book",
+      "kind": "skillBook",
+      "playPaths": [
+        "reward",
+        "secretReward",
+        "storyReward"
+      ]
+    },
+    {
+      "id": "trait_book",
+      "kind": "traitBook",
+      "playPaths": [
+        "reward",
+        "secretReward",
+        "growthReward"
+      ]
+    }
+  ]
+}

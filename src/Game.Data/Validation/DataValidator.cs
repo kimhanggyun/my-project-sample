@@ -1,0 +1,108 @@
+using System.Collections.Generic;
+using Game.Data.Defs;
+
+namespace Game.Data.Validation
+{
+    /// <summary>
+    /// 데이터 검사. 참조 id 존재, 상성표 대칭(R-14), 핵심 진형 2/2(R-15),
+    /// 상점 상품 플레이 경로(R-30), 화면 문구 키 존재 등. 문제 목록을 돌려준다 (비어 있으면 통과).
+    /// </summary>
+    public static class DataValidator
+    {
+        public static List<string> Validate(DefinitionSet d)
+        {
+            var errors = new List<string>();
+
+            foreach (var t in d.TroopTypes.Values)
+            {
+                if (t.Parent != null && !d.TroopTypes.ContainsKey(t.Parent))
+                    errors.Add($"병종 '{t.Id}': 없는 상위 병종 '{t.Parent}'.");
+                if (t.Tags.Count == 0) errors.Add($"병종 '{t.Id}': 태그가 없습니다.");
+                if (t.SupplyPerDay < 1) errors.Add($"병종 '{t.Id}': 하루 군량은 1 이상이어야 합니다.");
+                CheckStatRanges(d, t.Stats, "병종 " + t.Id, errors);
+                CheckString(d, t.NameKey, errors);
+            }
+
+            foreach (var kv in d.FormationWins)
+            {
+                if (!d.Formations.ContainsKey(kv.Key)) errors.Add($"진형 상성: 없는 진형 '{kv.Key}'.");
+                foreach (var target in kv.Value)
+                {
+                    if (!d.Formations.ContainsKey(target)) errors.Add($"진형 상성: 없는 진형 '{target}'.");
+                    if (target == kv.Key) errors.Add($"진형 상성: '{kv.Key}'가 자기 자신에게 유리.");
+                    // R-14: A가 B에 유리하면 B가 A에 유리할 수 없다
+                    if (d.FormationWins.TryGetValue(target, out var back) && back.Contains(kv.Key))
+                        errors.Add($"진형 상성 대칭 위반: '{kv.Key}'와 '{target}'가 서로 유리.");
+                }
+            }
+            // R-15: 핵심 진형끼리 유리 2, 불리 2
+            var core = new List<string>();
+            foreach (var f in d.Formations.Values) { if (f.Group == "core") core.Add(f.Id); CheckString(d, f.NameKey, errors); }
+            foreach (var a in core)
+            {
+                int w = 0, l = 0;
+                foreach (var b in core)
+                {
+                    if (a == b) continue;
+                    if (Wins(d, a, b)) w++;
+                    if (Wins(d, b, a)) l++;
+                }
+                if (w != 2 || l != 2) errors.Add($"핵심 진형 '{a}': 유리 {w}, 불리 {l} (2/2여야 함).");
+            }
+
+            foreach (var g in d.Generals.Values)
+            {
+                CheckStatRanges(d, g.Stats, "장수 " + g.Id, errors);
+                CheckString(d, g.NameKey, errors);
+            }
+
+            foreach (var p in d.Products.Values)
+                if (!p.Convenience && p.PlayPaths.Count == 0)
+                    errors.Add($"상품 '{p.Id}': 편의 기능이 아닌데 플레이로 얻는 경로가 없습니다 (R-30).");
+
+            var kit = d.StartingKit;
+            var kitUnits = new HashSet<string>();
+            foreach (var u in kit.Units)
+            {
+                if (!kitUnits.Add(u.Id)) errors.Add($"초기 지급: 부대 id '{u.Id}' 중복.");
+                if (!d.TroopTypes.ContainsKey(u.TroopType)) errors.Add($"초기 지급: 부대 '{u.Id}'의 없는 병종 '{u.TroopType}'.");
+                if (u.Troops < 0 || u.Troops > d.Balance.UnitMaxTroops) errors.Add($"초기 지급: 부대 '{u.Id}' 병력 {u.Troops}가 범위를 벗어남.");
+            }
+            foreach (var g in kit.Generals)
+                if (!d.Generals.ContainsKey(g)) errors.Add($"초기 지급: 없는 장수 '{g}'.");
+            foreach (var f in kit.Formations)
+                if (!d.Formations.ContainsKey(f)) errors.Add($"초기 지급: 없는 진형 '{f}'.");
+            foreach (var c in kit.Compositions)
+            {
+                if (!d.Generals.ContainsKey(c.General)) errors.Add($"초기 편성: 없는 장수 '{c.General}'.");
+                if (!d.Formations.ContainsKey(c.Formation)) errors.Add($"초기 편성: 없는 진형 '{c.Formation}'.");
+                foreach (var s in c.Slots)
+                {
+                    if (!SlotIds.IsValid(s.Key)) errors.Add($"초기 편성: 없는 칸 '{s.Key}'.");
+                    if (!kitUnits.Contains(s.Value)) errors.Add($"초기 편성: 없는 부대 '{s.Value}'.");
+                }
+            }
+
+            foreach (var s in d.Stats.Values) CheckString(d, s.NameKey, errors);
+            return errors;
+        }
+
+        public static bool Wins(DefinitionSet d, string attacker, string defender) =>
+            d.FormationWins.TryGetValue(attacker, out var set) && set.Contains(defender);
+
+        private static void CheckStatRanges(DefinitionSet d, StatBlock block, string context, List<string> errors)
+        {
+            foreach (var kv in block.Explicit)
+            {
+                var def = d.Stats[kv.Key];
+                if (kv.Value < def.Min || kv.Value > def.Max)
+                    errors.Add($"{context}: 능력치 '{kv.Key}' {kv.Value}가 범위({def.Min}~{def.Max})를 벗어남.");
+            }
+        }
+
+        private static void CheckString(DefinitionSet d, string key, List<string> errors)
+        {
+            if (!d.Strings.ContainsKey(key)) errors.Add($"화면 문구 '{key}'가 문자열 표에 없습니다.");
+        }
+    }
+}

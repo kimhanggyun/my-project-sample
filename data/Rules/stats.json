@@ -1,0 +1,81 @@
+{
+  "stats": [
+    {
+      "id": "leadership",
+      "nameKey": "stat.leadership",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "might",
+      "nameKey": "stat.might",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "intellect",
+      "nameKey": "stat.intellect",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "attack",
+      "nameKey": "stat.attack",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "defense",
+      "nameKey": "stat.defense",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "speed",
+      "nameKey": "stat.speed",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "vision",
+      "nameKey": "stat.vision",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "detection",
+      "nameKey": "stat.detection",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "judgment",
+      "nameKey": "stat.judgment",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "pursuit",
+      "nameKey": "stat.pursuit",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    {
+      "id": "formationSwitch",
+      "nameKey": "stat.formationSwitch",
+      "min": 1,
+      "max": 100,
+      "default": 50
+    }
+  ]
+}

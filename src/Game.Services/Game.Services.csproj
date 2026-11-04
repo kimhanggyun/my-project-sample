@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><RootNamespace>Game.Services</RootNamespace></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Game.Foundation/Game.Foundation.csproj" />
+  </ItemGroup>
+</Project>

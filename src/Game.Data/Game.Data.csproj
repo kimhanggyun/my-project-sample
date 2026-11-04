@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><RootNamespace>Game.Data</RootNamespace></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Game.Foundation/Game.Foundation.csproj" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

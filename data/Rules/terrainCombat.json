@@ -1,0 +1,73 @@
+{
+  "_comment": "지형별 병종 전투 보정(%p, 예시). docs/design/content/battle.md 2.16.1",
+  "terrain": {
+    "plain": {
+      "infantry": 0,
+      "polearm": 0,
+      "ranged": 0,
+      "mounted": 10
+    },
+    "forest": {
+      "infantry": 10,
+      "polearm": 0,
+      "ranged": -10,
+      "mounted": -20,
+      "light": 5
+    },
+    "grass": {
+      "infantry": 5,
+      "polearm": 0,
+      "ranged": -5,
+      "mounted": -5
+    },
+    "hill": {
+      "infantry": 5,
+      "polearm": 5,
+      "ranged": 10,
+      "mounted": 0
+    },
+    "mountain": {
+      "infantry": 5,
+      "polearm": 0,
+      "ranged": 5,
+      "mountaineer": 15
+    },
+    "pass": {
+      "infantry": 10,
+      "polearm": 10,
+      "ranged": -10,
+      "mounted": -15
+    },
+    "marsh": {
+      "infantry": -5,
+      "polearm": -10,
+      "ranged": -5,
+      "mounted": -25,
+      "heavy": -10,
+      "light": 5
+    },
+    "ford": {
+      "infantry": -10,
+      "polearm": -10,
+      "ranged": -15,
+      "mounted": -10
+    },
+    "bridge": {
+      "infantry": 0,
+      "polearm": 5,
+      "ranged": -5,
+      "mounted": -10
+    },
+    "wallTop": {
+      "infantry": 10,
+      "polearm": 10,
+      "ranged": 20
+    },
+    "burnt": {
+      "infantry": 0,
+      "polearm": 0,
+      "ranged": 5,
+      "mounted": 5
+    }
+  }
+}

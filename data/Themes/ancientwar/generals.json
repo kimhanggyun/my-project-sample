@@ -1,0 +1,59 @@
+{
+  "_comment": "임시 익명 장수. 이름은 strings에서.",
+  "generals": [
+    {
+      "id": "general_a",
+      "nameKey": "general.general_a",
+      "grade": "advanced",
+      "temperament": "calm",
+      "traits": [
+        "discipline"
+      ],
+      "innateSkills": [
+        "rally"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 60,
+        "might": 45,
+        "intellect": 45
+      }
+    },
+    {
+      "id": "general_b",
+      "nameKey": "general.general_b",
+      "grade": "advanced",
+      "temperament": "brave",
+      "traits": [
+        "fierce"
+      ],
+      "innateSkills": [
+        "warCry"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 45,
+        "might": 62,
+        "intellect": 40
+      }
+    },
+    {
+      "id": "general_c",
+      "nameKey": "general.general_c",
+      "grade": "advanced",
+      "temperament": "cautious",
+      "traits": [
+        "keenEye"
+      ],
+      "innateSkills": [
+        "reveal"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 50,
+        "might": 38,
+        "intellect": 62
+      }
+    }
+  ]
+}

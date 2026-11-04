@@ -1,0 +1,21 @@
+name: core-tests
+
+# 규칙 모듈(순수 C#) 빌드·테스트. push·PR마다 실행한다 (docs/dev-rules.md 6.1).
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore GameCore.sln
+      - name: Build
+        run: dotnet build GameCore.sln --no-restore -c Release
+      - name: Test
+        run: dotnet test GameCore.sln --no-build -c Release --logger "console;verbosity=normal"

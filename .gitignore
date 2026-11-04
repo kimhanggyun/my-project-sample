@@ -1,0 +1,21 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Unity (Step 1b에서 Unity 프로젝트를 추가할 때 사용)
+/unity/[Ll]ibrary/
+/unity/[Tt]emp/
+/unity/[Oo]bj/
+/unity/[Bb]uild/
+/unity/[Bb]uilds/
+/unity/[Ll]ogs/
+/unity/[Uu]ser[Ss]ettings/
+/unity/*.csproj
+/unity/*.sln
