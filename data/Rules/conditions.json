@@ -1,0 +1,48 @@
+{
+  "_comment": "날씨·시간대 효과 (battle.md 2.17). 모두 가산 보정. 수치는 예시. 스위치: weather, timeOfDay",
+  "weather": {
+    "clear": {},
+    "heat": {
+      "moralePerSecond": -0.1,
+      "tagAttackPp": {
+        "heavy": -10
+      },
+      "tagMovePp": {
+        "heavy": -15
+      },
+      "supplyPp": 20
+    },
+    "cold": {
+      "moralePerSecond": -0.1,
+      "movePp": -10,
+      "tagDefensePp": {
+        "light": -10
+      }
+    },
+    "rain": {
+      "fireAllowed": false,
+      "rangedRangeCells": -2,
+      "rangedAttackPp": -10,
+      "visionCells": -2,
+      "movePp": -10
+    },
+    "fog": {
+      "visionCells": -4
+    },
+    "gale": {
+      "windStrengthBonus": 1,
+      "fireSpreadPp": 100
+    }
+  },
+  "timeOfDay": {
+    "day": {},
+    "dusk": {
+      "visionCells": -1
+    },
+    "night": {
+      "visionCells": -3,
+      "rangedAttackPp": -10,
+      "startMorale": -5
+    }
+  }
+}

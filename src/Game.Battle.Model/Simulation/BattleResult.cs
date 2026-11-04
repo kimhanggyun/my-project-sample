@@ -24,6 +24,8 @@ namespace Game.Battle.Model.Simulation
         public IReadOnlyList<Contests.ContestResult> Contests { get; internal set; }
         /// <summary>장수 id → "light"(경상) 또는 "heavy"(중상) (R-23, 스위치 generalInjury).</summary>
         public IReadOnlyDictionary<string, string> GeneralInjuries { get; internal set; }
+        /// <summary>포로가 된 장수 (포위·일기토). 전투 뒤 처리(구출·등용·해방)는 캠페인 모듈.</summary>
+        public IReadOnlyList<CaptureRecord> Captures { get; internal set; }
 
         public CorpsResult Find(string corpsId)
         {

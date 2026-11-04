@@ -54,6 +54,32 @@ namespace Game.Data.Defs
         /// <summary>숨는 지형 안에서 보는 쪽의 시야 감소.</summary>
         public Fix VisionInsideConcealPenaltyCells { get; private set; }
         public Fix SkillPointRegenPerSecond { get; private set; }
+
+        // 포로 (battle.md 2.5.1)
+        public Fix CaptureCheckEverySec { get; private set; }
+        public Fix CaptureEncircleRadius { get; private set; }
+        public int CaptureSectors { get; private set; }
+        public Fix CaptureSectorRatio { get; private set; }
+        public long CaptureAllyTroopsAtOrBelow { get; private set; }
+        public Fix CapturePressurePerSecond { get; private set; }
+        public Fix CaptureEscapePerMightPoint { get; private set; }
+        public Fix NearbyMoraleRadius { get; private set; }
+        public Fix NearbyMoraleDrop { get; private set; }
+        public Fix DuelCaptureChance { get; private set; }
+
+        // 바람 (2.17)
+        public Fix WindFrontDot { get; private set; }
+        public Fix WindTailRangeCellsPerStrength { get; private set; }
+        public Fix WindHeadRangeCellsPerStrength { get; private set; }
+        public Fix WindCrossRangeCellsPerStrength { get; private set; }
+        public Fix WindMovePpPerStrength { get; private set; }
+
+        // 불
+        public Fix FireSpreadEverySec { get; private set; }
+        public Fix FireSpreadMinDot { get; private set; }
+        public Fix FireTroopLossPctPerSecond { get; private set; }
+        public Fix FireFlammableTagMultiplier { get; private set; }
+        public Fix FireMoralePerSecond { get; private set; }
         /// <summary>같은 팀 군단끼리 시작 위치 옆 간격 (칸).</summary>
         public Fix SpawnSpacingCells { get; private set; }
 
@@ -71,6 +97,9 @@ namespace Game.Data.Defs
             var general = JsonUtil.RequireObject(o, "general", c);
             var vision = JsonUtil.RequireObject(o, "vision", c);
             var skills = JsonUtil.RequireObject(o, "skills", c);
+            var cap = JsonUtil.RequireObject(o, "capture", c);
+            var wind = JsonUtil.RequireObject(o, "wind", c);
+            var fire = JsonUtil.RequireObject(o, "fire", c);
             var r = new CombatRules
             {
                 TickSeconds = JsonUtil.RequireFix(o, "tickSeconds", c),
@@ -107,6 +136,26 @@ namespace Game.Data.Defs
                 VisionConcealedSeenCells = JsonUtil.RequireFix(vision, "concealedSeenCells", c + ".vision"),
                 VisionInsideConcealPenaltyCells = JsonUtil.RequireFix(vision, "insideConcealPenaltyCells", c + ".vision"),
                 SkillPointRegenPerSecond = JsonUtil.RequireFix(skills, "pointRegenPerSecond", c + ".skills"),
+                CaptureCheckEverySec = JsonUtil.RequireFix(cap, "checkEverySec", c + ".capture"),
+                CaptureEncircleRadius = JsonUtil.RequireFix(cap, "encircleRadius", c + ".capture"),
+                CaptureSectors = (int)JsonUtil.RequireLong(cap, "sectors", c + ".capture"),
+                CaptureSectorRatio = JsonUtil.RequireFix(cap, "sectorRatio", c + ".capture"),
+                CaptureAllyTroopsAtOrBelow = JsonUtil.RequireLong(cap, "allyTroopsAtOrBelow", c + ".capture"),
+                CapturePressurePerSecond = JsonUtil.RequireFix(cap, "pressurePerSecond", c + ".capture"),
+                CaptureEscapePerMightPoint = JsonUtil.RequireFix(cap, "escapePerMightPoint", c + ".capture"),
+                NearbyMoraleRadius = JsonUtil.RequireFix(cap, "nearbyMoraleRadius", c + ".capture"),
+                NearbyMoraleDrop = JsonUtil.RequireFix(cap, "nearbyMoraleDrop", c + ".capture"),
+                DuelCaptureChance = JsonUtil.RequireFix(cap, "duelCaptureChance", c + ".capture"),
+                WindFrontDot = JsonUtil.RequireFix(wind, "frontDot", c + ".wind"),
+                WindTailRangeCellsPerStrength = JsonUtil.RequireFix(wind, "tailRangeCellsPerStrength", c + ".wind"),
+                WindHeadRangeCellsPerStrength = JsonUtil.RequireFix(wind, "headRangeCellsPerStrength", c + ".wind"),
+                WindCrossRangeCellsPerStrength = JsonUtil.RequireFix(wind, "crossRangeCellsPerStrength", c + ".wind"),
+                WindMovePpPerStrength = JsonUtil.RequireFix(wind, "movePpPerStrength", c + ".wind"),
+                FireSpreadEverySec = JsonUtil.RequireFix(fire, "spreadEverySec", c + ".fire"),
+                FireSpreadMinDot = JsonUtil.RequireFix(fire, "spreadMinDot", c + ".fire"),
+                FireTroopLossPctPerSecond = JsonUtil.RequireFix(fire, "troopLossPctPerSecond", c + ".fire"),
+                FireFlammableTagMultiplier = JsonUtil.RequireFix(fire, "flammableTagMultiplier", c + ".fire"),
+                FireMoralePerSecond = JsonUtil.RequireFix(fire, "moralePerSecond", c + ".fire"),
             };
             if (r.TickSeconds <= Fix.Zero || (Fix.FromInt(60) / r.TickSeconds) * r.TickSeconds != Fix.FromInt(60))
                 throw new DataException("combat.tickSeconds: 60초를 나누어떨어지게 하는 양수여야 합니다.");
@@ -130,6 +179,11 @@ namespace Game.Data.Defs
         public int Height { get; internal set; }
         /// <summary>숨는 지형 (안의 부대는 가까이 가야 보이고, 복병을 칠 수 있다).</summary>
         public bool Conceals { get; internal set; }
+        /// <summary>불이 붙는 지형 (화계).</summary>
+        public bool Flammable { get; internal set; }
+        /// <summary>다 타면 바뀌는 지형 id (예: burnt).</summary>
+        public string BurnsTo { get; internal set; }
+        public Fix BurnSec { get; internal set; }
 
         public bool BlocksEveryone
         {
@@ -154,6 +208,63 @@ namespace Game.Data.Defs
             foreach (var kv in CostByTag)
                 if (troop.HasTag(kv.Key) && (!found || kv.Value > best)) { best = kv.Value; found = true; }
             return found ? best : Cost;
+        }
+    }
+
+    /// <summary>
+    /// 날씨·시간대 하나의 효과 (conditions.json). 모두 가산 보정이고, 날씨와 시간대 효과는 서로 더해진다.
+    /// </summary>
+    public sealed class ConditionDef
+    {
+        public string Id { get; internal set; }
+        public Fix VisionCells { get; internal set; }
+        public Fix RangedRangeCells { get; internal set; }
+        public Fix RangedAttackPp { get; internal set; }
+        public Fix MovePp { get; internal set; }
+        public Fix MoralePerSecond { get; internal set; }
+        public Fix StartMorale { get; internal set; }
+        public long SupplyPp { get; internal set; }
+        public bool FireAllowed { get; internal set; } = true;
+        public Fix FireSpreadPp { get; internal set; }
+        public Fix WindStrengthBonus { get; internal set; }
+        public IReadOnlyDictionary<string, Fix> TagAttackPp { get; internal set; }
+        public IReadOnlyDictionary<string, Fix> TagDefensePp { get; internal set; }
+        public IReadOnlyDictionary<string, Fix> TagMovePp { get; internal set; }
+
+        /// <summary>효과 없음 (스위치가 꺼졌거나 지정 없음).</summary>
+        public static readonly ConditionDef None = new ConditionDef
+        {
+            Id = "none",
+            TagAttackPp = new Dictionary<string, Fix>(),
+            TagDefensePp = new Dictionary<string, Fix>(),
+            TagMovePp = new Dictionary<string, Fix>(),
+        };
+
+        public static ConditionDef From(string id, JObject o, string c)
+        {
+            Dictionary<string, Fix> Tags(string key)
+            {
+                var d = new Dictionary<string, Fix>();
+                if (o[key] is JObject t) foreach (var p in t.Properties()) d[p.Name] = JsonUtil.ToFix(p.Value, c + "." + key + "." + p.Name);
+                return d;
+            }
+            return new ConditionDef
+            {
+                Id = id,
+                VisionCells = JsonUtil.FixOr(o, "visionCells", Fix.Zero, c),
+                RangedRangeCells = JsonUtil.FixOr(o, "rangedRangeCells", Fix.Zero, c),
+                RangedAttackPp = JsonUtil.FixOr(o, "rangedAttackPp", Fix.Zero, c),
+                MovePp = JsonUtil.FixOr(o, "movePp", Fix.Zero, c),
+                MoralePerSecond = JsonUtil.FixOr(o, "moralePerSecond", Fix.Zero, c),
+                StartMorale = JsonUtil.FixOr(o, "startMorale", Fix.Zero, c),
+                SupplyPp = o.Value<long?>("supplyPp") ?? 0,
+                FireAllowed = o.Value<bool?>("fireAllowed") ?? true,
+                FireSpreadPp = JsonUtil.FixOr(o, "fireSpreadPp", Fix.Zero, c),
+                WindStrengthBonus = JsonUtil.FixOr(o, "windStrengthBonus", Fix.Zero, c),
+                TagAttackPp = Tags("tagAttackPp"),
+                TagDefensePp = Tags("tagDefensePp"),
+                TagMovePp = Tags("tagMovePp"),
+            };
         }
     }
 

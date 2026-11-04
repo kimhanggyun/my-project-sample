@@ -53,6 +53,10 @@ namespace Game.Battle.Model.Skills
             .Register(new AttackBuffEffect())
             .Register(new ContactMoraleDamageEffect())
             .Register(new TauntEffect())
+            .Register(new IgniteEffect())
+            .Register(new TargetFlammable())
+            .Register(new WindBlowing())
+            .Register(new FireAllowedByWeather())
             .Register(new OnConcealingTerrain())
             .Register(new NotEngaged())
             .Register(new CasterHasTag());
@@ -327,7 +331,7 @@ namespace Game.Battle.Model.Skills
                     if (--c.Statuses[i].TicksLeft > 0) continue;
                     bool rout = c.Statuses[i].Id == StatusIds.Routing;
                     c.Statuses.RemoveAt(i);
-                    if (rout && c.Status == CorpsStatus.Active) Systems.RetreatSystem.BeginRetreat(c);
+                    if (rout && c.Status == CorpsStatus.Active) Systems.RetreatSystem.BeginRetreat(ctx, c);
                 }
                 foreach (var u in c.Units) if (u.ConfusedTicks > 0) u.ConfusedTicks--;
                 if (c.InBattle)
@@ -470,7 +474,35 @@ namespace Game.Battle.Model.Skills
         }
     }
 
+    /// <summary>화계: 지점 칸에 불을 붙인다. 번짐·타기·피해·지형 변화는 EnvironmentSystem.</summary>
+    internal sealed class IgniteEffect : ISkillEffect
+    {
+        public string Type => "ignite";
+        public void Apply(SkillCast c, SkillPart p) => Environment.EnvironmentSystem.Ignite(c.Battle, Cell.Of(c.Point));
+    }
+
     // ---- 조건 ----
+
+    /// <summary>지점이 불이 붙는 지형 (숲·수풀).</summary>
+    internal sealed class TargetFlammable : ISkillCondition
+    {
+        public string Type => "targetFlammable";
+        public bool IsMet(SkillCast c, SkillPart p) => c.Battle.Field.RuleAt(Cell.Of(c.Point)).Flammable;
+    }
+
+    /// <summary>바람이 분다 (스위치 wind가 꺼지면 불지 않는 것으로 본다).</summary>
+    internal sealed class WindBlowing : ISkillCondition
+    {
+        public string Type => "windBlowing";
+        public bool IsMet(SkillCast c, SkillPart p) => c.Battle.Environment.WindStrength > Fix.Zero;
+    }
+
+    /// <summary>불을 쓸 수 있는 날씨 (비 아님).</summary>
+    internal sealed class FireAllowedByWeather : ISkillCondition
+    {
+        public string Type => "fireAllowedByWeather";
+        public bool IsMet(SkillCast c, SkillPart p) => c.Battle.Environment.FireAllowed;
+    }
 
     internal sealed class OnConcealingTerrain : ISkillCondition
     {

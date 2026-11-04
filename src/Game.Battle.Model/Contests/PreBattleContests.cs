@@ -13,6 +13,7 @@ namespace Game.Battle.Model.Contests
     internal static class PreBattleContests
     {
         public const string GeneralInjuryFlag = "generalInjury";
+        public const string DuelCaptureFlag = "duelCapture";
 
         public static List<ContestResult> Run(BattleContext ctx, List<ContestSetup> contests, Dictionary<string, string> injuries)
         {
@@ -59,6 +60,16 @@ namespace Game.Battle.Model.Contests
                         l.AddStatus(new StatusEffect { Id = StatusIds.Routing, TicksLeft = ticks });
                 }
                 if (injuryOn && fx.Value<string>("loserInjury") is string inj) injuries[l.Setup.General.Id] = inj;
+                // 일기토 패배 → 포로가 될 수 있다 (capture → duelCapture)
+                if (r.End == ContestEnds.Fall && def.Id == "duel" && ctx.IsEnabled(DuelCaptureFlag) && ctx.Random.Chance(ctx.Combat.DuelCaptureChance))
+                    Systems.CaptureSystem.Capture(ctx, l, w.Team, "duel", ctx.Brainwashed.Contains(l.Setup.General.Id));
+                // 논쟁을 세뇌(필살)로 이김 → 그 상대가 포로가 되면 등용 보너스
+                if (def.Id == "debate" && r.Rounds.Count > 0)
+                {
+                    var last = r.Rounds[r.Rounds.Count - 1];
+                    string winnerAction = r.Winner == "A" ? last.ActionA : last.ActionB;
+                    if (def.Action(winnerAction).Base == ContestDef.Special) ctx.Brainwashed.Add(l.Setup.General.Id);
+                }
             }
             if (injuryOn && def.LightInjuryAtOrBelow.HasValue)
                 foreach (var (f, c) in new[] { (r.A, ca), (r.B, cb) })

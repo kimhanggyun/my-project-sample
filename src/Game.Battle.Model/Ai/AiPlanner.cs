@@ -31,7 +31,8 @@ namespace Game.Battle.Model.Ai
             .Register(new WarCryRule())
             .Register(new ArrowRainRule())
             .Register(new TauntRule())
-            .Register(new RevealRule());
+            .Register(new RevealRule())
+            .Register(new FireAttackRule());
     }
 
     /// <summary>
@@ -187,6 +188,31 @@ namespace Game.Battle.Model.Ai
             if (best == null) return (0, null);
             var center = best.Value.Center;
             return (4, new BattleCommand { X = center.X, Y = center.Y });
+        }
+    }
+
+    /// <summary>
+    /// 화계 (ai.md 6장 "순풍 + 상대가 숲에 있음"): 보이는 적이 불붙는 지형에 있고 바람이 불면,
+    /// 바람이 불어 오는 쪽(적의 바람 위쪽)에 불을 놓아 적 쪽으로 번지게 한다.
+    /// </summary>
+    internal sealed class FireAttackRule : IAiSkillRule
+    {
+        public string EffectType => "ignite";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var env = ctx.Environment;
+            if (env.WindStrength <= Fix.Zero || !env.FireAllowed) return (0, null);
+            foreach (var e in ctx.Corps)
+            {
+                if (e.Team == c.Team || !e.InBattle || !ctx.IsVisibleTo(c.Team, e)) continue;
+                if (!ctx.Field.RuleAt(Cell.Of(e.Anchor)).Flammable) continue;
+                Vec upwind = e.Anchor - env.WindDirection * Fix.FromInt(2);
+                Vec point = ctx.Field.RuleAt(Cell.Of(upwind)).Flammable ? upwind : e.Anchor;
+                Fix r = s.Range ?? Fix.FromInt(ctx.Field.Width + ctx.Field.Height);
+                if (Vec.DistanceSquared(point, c.Anchor) > r * r) continue;
+                return (9, new BattleCommand { X = point.X, Y = point.Y });
+            }
+            return (0, null);
         }
     }
 

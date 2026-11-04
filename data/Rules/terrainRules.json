@@ -1,5 +1,5 @@
 {
-  "_comment": "지형 이동 규칙 (예시). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이, conceals = 숨는 지형 (안의 부대는 가까이 가야 보임, 복병 가능)",
+  "_comment": "지형 이동 규칙 (예시). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이, conceals = 숨는 지형 (안의 부대는 가까이 가야 보임, 복병 가능), flammable/burnsTo/burnSec = 불이 붙는 지형과 타고 나서 바뀌는 지형",
   "terrain": {
     "plain": {
       "cost": 1
@@ -9,7 +9,10 @@
     },
     "grass": {
       "cost": 1.2,
-      "conceals": true
+      "conceals": true,
+      "flammable": true,
+      "burnsTo": "burnt",
+      "burnSec": 3
     },
     "forest": {
       "cost": 1.6,
@@ -17,7 +20,10 @@
         "mounted": 2.5,
         "light": 1.2
       },
-      "conceals": true
+      "conceals": true,
+      "flammable": true,
+      "burnsTo": "burnt",
+      "burnSec": 6
     },
     "burnt": {
       "cost": 1

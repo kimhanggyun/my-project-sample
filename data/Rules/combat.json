@@ -49,5 +49,31 @@
   },
   "skills": {
     "pointRegenPerSecond": 0.2
+  },
+  "capture": {
+    "checkEverySec": 1,
+    "encircleRadius": 3,
+    "sectors": 8,
+    "sectorRatio": 0.75,
+    "allyTroopsAtOrBelow": 1500,
+    "pressurePerSecond": 0.05,
+    "escapePerMightPoint": 0.004,
+    "nearbyMoraleRadius": 8,
+    "nearbyMoraleDrop": 10,
+    "duelCaptureChance": 0.5
+  },
+  "wind": {
+    "frontDot": 0.5,
+    "tailRangeCellsPerStrength": 1,
+    "headRangeCellsPerStrength": -1,
+    "crossRangeCellsPerStrength": -0.3,
+    "movePpPerStrength": 5
+  },
+  "fire": {
+    "spreadEverySec": 1,
+    "spreadMinDot": 0.3,
+    "troopLossPctPerSecond": 2,
+    "flammableTagMultiplier": 2,
+    "moralePerSecond": 2
   }
 }

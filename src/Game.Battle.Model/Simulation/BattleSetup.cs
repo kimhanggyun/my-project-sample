@@ -29,6 +29,29 @@ namespace Game.Battle.Model.Simulation
         public Dictionary<string, bool[]> InitialExplored { get; set; } = new Dictionary<string, bool[]>();
         /// <summary>전투 시작 직전 대결 (일기토·논쟁). 발생 판정은 바깥에서 <see cref="Contests.ContestTrigger"/>로 한다.</summary>
         public List<ContestSetup> Contests { get; set; } = new List<ContestSetup>();
+        /// <summary>바람 (스텝 데이터). 세기 0이면 바람 없음.</summary>
+        public WindSetup Wind { get; set; } = new WindSetup();
+        /// <summary>날씨 id (conditions.json weather). 기본 맑음.</summary>
+        public string Weather { get; set; } = "clear";
+        /// <summary>시간대 id (conditions.json timeOfDay). 기본 낮.</summary>
+        public string TimeOfDay { get; set; } = "day";
+        /// <summary>전투 중 바람·날씨가 바뀌는 이벤트 (틱 순서).</summary>
+        public List<EnvironmentChange> Changes { get; set; } = new List<EnvironmentChange>();
+    }
+
+    public sealed class WindSetup
+    {
+        /// <summary>바람이 불어 가는 방향 ("N", "SE" …). 없으면 바람 없음.</summary>
+        public string Direction { get; set; }
+        public Fix Strength { get; set; }
+    }
+
+    /// <summary>정해진 틱에 바람(방향·세기) 또는 날씨가 바뀐다. 비어 있는 값은 그대로.</summary>
+    public sealed class EnvironmentChange
+    {
+        public long Tick { get; set; }
+        public WindSetup Wind { get; set; }
+        public string Weather { get; set; }
     }
 
     /// <summary>대결 하나. 선택 기록이 없거나 모자라면 AI가 고른다 (시간 안에 못 고르면 대신 고름).</summary>

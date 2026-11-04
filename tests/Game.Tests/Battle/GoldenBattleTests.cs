@@ -70,6 +70,20 @@ namespace Game.Tests.Battle
                     s.Contests.Add(new ContestSetup { ContestId = "duel", CorpsA = "A", CorpsB = "B" });
                     return (s, null);
                 },
+                // 순풍 화계: 숲의 적 바람 위쪽에 불 → 아래로 번져 적을 태우고 숲은 불탄 땅이 된다
+                ["tailwind_fire_attack"] = () =>
+                {
+                    var a = Corps("A", "teamA", "square", controller: Controllers.Player, general: General("ga", intellect: 70));
+                    a.General.Skills.Add("fireAttack");
+                    a.X = Fix.Parse("15.5"); a.Y = Fix.Parse("20.5"); a.Facing = "W";   // 숲 밖 평지
+                    var b = Corps("B", "teamB", "square", stance: AiStanceIds.Defensive);
+                    b.X = Fix.Parse("5.5"); b.Y = Fix.Parse("17.5"); b.Facing = "E";    // 숲 안
+                    var s = Setup("test_ambush", 1009, "{\"fogOfWar\": false}", a, b);
+                    s.Wind = new WindSetup { Direction = "S", Strength = Fix.FromInt(2) };
+                    s.MaxMinutes = Fix.FromInt(3);
+                    var cmds = new List<BattleCommand> { new BattleCommand { Tick = 0, CorpsId = "A", Kind = CommandKinds.UseSkill, SkillId = "fireAttack", X = Fix.FromInt(5), Y = Fix.FromInt(14) } };
+                    return (s, cmds);
+                },
                 // 스킬을 쓰는 AI끼리 (보통 난이도)
                 ["ai_skills_normal"] = () =>
                 {
@@ -179,6 +193,7 @@ namespace Game.Tests.Battle
                 ["commands"] = r.Commands.Count,
                 ["contests"] = new JArray(r.Contests.Select(x => new JObject { ["id"] = x.ContestId, ["end"] = x.End, ["winner"] = x.Winner, ["retreater"] = x.Retreater, ["rounds"] = x.Rounds.Count })),
                 ["injuries"] = JObject.FromObject(r.GeneralInjuries),
+                ["captures"] = new JArray(r.Captures.Select(x => new JObject { ["general"] = x.GeneralId, ["by"] = x.CapturedByTeam, ["cause"] = x.Cause })),
                 ["stateHash"] = r.StateHash.ToString("x16"),
                 ["corps"] = corps,
             };

@@ -44,7 +44,6 @@ namespace Game.Battle.Model.Simulation
         private readonly List<BattleCommand> _log = new List<BattleCommand>();
         private readonly long _maxTicks;
         private readonly List<Contests.ContestResult> _contests;
-        private readonly Dictionary<string, string> _injuries = new Dictionary<string, string>();
 
         public BattleContext Context { get; }
         public long Tick => Context.Tick;
@@ -67,8 +66,9 @@ namespace Game.Battle.Model.Simulation
             _combat = new CombatSystem(_ext.DamageSources);
             _planner = new AiPlanner(_ext.AiSkills, _ext.Commands);
             _maxTicks = (setup.MaxMinutes * setup.Combat.TicksPerMinute).FloorToLong();
+            Context.Environment = Environment.EnvironmentSystem.Create(Context);
             Spawn();
-            _contests = Contests.PreBattleContests.Run(Context, setup.Contests, _injuries);
+            _contests = Contests.PreBattleContests.Run(Context, setup.Contests, Context.Injuries);
             VisionSystem.Init(Context);
         }
 
@@ -109,6 +109,7 @@ namespace Game.Battle.Model.Simulation
                 _planner.Think(ctx, corps);
             }
 
+            Environment.EnvironmentSystem.Step(ctx);
             SkillSystem.Step(ctx);
             StatusSystem.Enforce(ctx);
             MovementSystem.Step(ctx);
@@ -118,6 +119,7 @@ namespace Game.Battle.Model.Simulation
             SupplySystem.Step(ctx);
             MoraleSystem.Step(ctx);
             StatusSystem.Tick(ctx);
+            CaptureSystem.Step(ctx);
             RetreatSystem.Step(ctx);
             ctx.Tick++;
             CheckEnd();
@@ -183,7 +185,7 @@ namespace Game.Battle.Model.Simulation
                 }
 
                 var leadershipBonus = (cs.General.Leadership - Fix.FromInt(50)) * setup.Combat.MoraleLeadershipFactor;
-                var morale = Fix.Clamp(setup.Combat.MoraleStart + leadershipBonus, Fix.Zero, Fix.Hundred);
+                var morale = Fix.Clamp(setup.Combat.MoraleStart + leadershipBonus + Context.Environment.Sum(x => x.StartMorale), Fix.Zero, Fix.Hundred);
                 var corps = new CorpsState
                 {
                     Index = i,
@@ -297,7 +299,8 @@ namespace Game.Battle.Model.Simulation
                 StateHash = StateHasher.Hash(ctx),
                 Explored = ExploredCopy(ctx),
                 Contests = _contests,
-                GeneralInjuries = new Dictionary<string, string>(_injuries),
+                GeneralInjuries = new Dictionary<string, string>(ctx.Injuries),
+                Captures = new List<CaptureRecord>(ctx.Captures),
             };
         }
 
@@ -346,6 +349,10 @@ namespace Game.Battle.Model.Simulation
                 if (c.Units.Count == 0) Fail($"군단 '{c.Id}': 부대가 없습니다.");
             }
             if (teams.Count < 2) Fail("팀이 둘 이상 필요합니다.");
+            if (!s.Defs.Weathers.ContainsKey(s.Weather ?? "")) Fail($"없는 날씨 '{s.Weather}'.");
+            if (!s.Defs.TimesOfDay.ContainsKey(s.TimeOfDay ?? "")) Fail($"없는 시간대 '{s.TimeOfDay}'.");
+            foreach (var ch in s.Changes)
+                if (ch.Weather != null && !s.Defs.Weathers.ContainsKey(ch.Weather)) Fail($"없는 날씨 '{ch.Weather}'.");
             foreach (var c in s.Corps)
                 if (c.Controller == Controllers.Ai && !s.Defs.Ai.Difficulties.ContainsKey(c.AiDifficulty ?? "")) Fail($"군단 '{c.Id}': 없는 AI 난이도 '{c.AiDifficulty}'.");
             foreach (var ct in s.Contests)
@@ -400,6 +407,10 @@ namespace Game.Battle.Model.Simulation
                     Add(u.ConfusedTicks);
                 }
             }
+            Add(ctx.Environment.WindDirection.X.Raw); Add(ctx.Environment.WindDirection.Y.Raw); Add(ctx.Environment.WindBaseStrength.Raw);
+            AddString(ctx.Environment.Weather.Id);
+            foreach (var kv in ctx.Environment.Burning) { Add(kv.Key); Add(kv.Value); }
+            foreach (var (i, t) in ctx.Field.ChangedCells()) { Add(i); AddString(t); }
             foreach (var z in ctx.Reveals) { AddString(z.Team); Add(z.Center.X.Raw); Add(z.Center.Y.Raw); Add(z.TicksLeft); }
             foreach (var team in ctx.Teams)
                 foreach (var id in ctx.Vision[team].VisibleCorps.OrderedIds(ctx)) AddString(id);

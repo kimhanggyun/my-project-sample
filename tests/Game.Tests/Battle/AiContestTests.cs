@@ -149,7 +149,7 @@ namespace Game.Tests.Battle
         [Fact(DisplayName = "R-23 일기토 패배(체력 0) → 중상, 군단은 혼란 뒤 퇴각, 사기 하락")]
         public void DuelFall()
         {
-            var sim = new BattleSimulation(WithDuel(null, "duel", Bows, Retreats));
+            var sim = new BattleSimulation(WithDuel("{\"duelCapture\": false}", "duel", Bows, Retreats));
             var b = sim.Context.FindCorps("B");
             var a = sim.Context.FindCorps("A");
             Assert.All(b.Units, u => Assert.True(u.Confused));
@@ -168,6 +168,7 @@ namespace Game.Tests.Battle
             var r = BattleSimulation.Run(WithDuel("{\"generalInjury\": false}", "duel", Bows, Retreats));
             Assert.Empty(r.GeneralInjuries);
             var off = new BattleSimulation(WithDuel("{\"duel\": false}", "duel", Bows, Retreats));
+            Assert.Empty(BattleSimulation.Run(WithDuel("{\"duel\": false}", "duel", Bows, Retreats)).Captures);
             Assert.DoesNotContain(off.Context.FindCorps("B").Units, u => u.Confused);
             Assert.Empty(off.RunToEnd().Contests);
         }
