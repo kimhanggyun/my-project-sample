@@ -9,7 +9,7 @@ TestResults/
 .DS_Store
 Thumbs.db
 
-# Unity (Step 1b에서 Unity 프로젝트를 추가할 때 사용)
+# Unity
 /unity/[Ll]ibrary/
 /unity/[Tt]emp/
 /unity/[Oo]bj/
@@ -19,3 +19,14 @@ Thumbs.db
 /unity/[Uu]ser[Ss]ettings/
 /unity/*.csproj
 /unity/*.sln
+/unity/[Mm]emoryCaptures/
+/unity/[Rr]ecordings/
+/unity/*.slnx
+/unity/*.pidb
+/unity/*.booproj
+/unity/*.apk
+/unity/*.aab
+/unity/sysinfo.txt
+/unity/crashlytics-build.properties
+.idea/
+.vscode/

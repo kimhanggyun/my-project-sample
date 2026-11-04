@@ -1,0 +1,61 @@
+# 줄바꿈: 저장소에는 LF로 저장하고, 각 PC에서는 Git이 알아서 바꾼다 (Windows CRLF로 파일 전체가 바뀐 것처럼 보이는 문제 방지)
+* text=auto eol=lf
+
+# Windows 전용 스크립트만 CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Unity YAML (씬·프리팹·에셋 설정): 텍스트로 저장, 병합은 Unity Smart Merge(UnityYAMLMerge)로
+*.unity      text eol=lf merge=unityyamlmerge linguist-generated
+*.prefab     text eol=lf merge=unityyamlmerge linguist-generated
+*.asset      text eol=lf merge=unityyamlmerge linguist-generated
+*.mat        text eol=lf merge=unityyamlmerge linguist-generated
+*.anim       text eol=lf merge=unityyamlmerge linguist-generated
+*.controller text eol=lf merge=unityyamlmerge linguist-generated
+*.overrideController text eol=lf merge=unityyamlmerge linguist-generated
+*.physicMaterial text eol=lf merge=unityyamlmerge linguist-generated
+*.meta       text eol=lf merge=unityyamlmerge linguist-generated
+*.lighting   text eol=lf merge=unityyamlmerge linguist-generated
+*.mask       text eol=lf merge=unityyamlmerge linguist-generated
+*.signal     text eol=lf merge=unityyamlmerge linguist-generated
+*.playable   text eol=lf merge=unityyamlmerge linguist-generated
+*.shadergraph text eol=lf
+*.shadersubgraph text eol=lf
+*.inputactions text eol=lf
+*.asmdef     text eol=lf
+*.asmref     text eol=lf
+
+# 큰 바이너리는 Git LFS (dev-rules 7장: 3D 모델·텍스처·사운드)
+# 이미지
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.jpg  filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text
+*.tga  filter=lfs diff=lfs merge=lfs -text
+*.tif  filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+# 3D
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+# 소리·영상
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.mp3  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.aif  filter=lfs diff=lfs merge=lfs -text
+*.mp4  filter=lfs diff=lfs merge=lfs -text
+*.mov  filter=lfs diff=lfs merge=lfs -text
+# 글꼴·기타
+*.ttf  filter=lfs diff=lfs merge=lfs -text
+*.otf  filter=lfs diff=lfs merge=lfs -text
+*.dll  filter=lfs diff=lfs merge=lfs -text
+*.so   filter=lfs diff=lfs merge=lfs -text
+*.a    filter=lfs diff=lfs merge=lfs -text
+*.aar  filter=lfs diff=lfs merge=lfs -text
+*.jar  filter=lfs diff=lfs merge=lfs -text
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
