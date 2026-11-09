@@ -132,6 +132,7 @@ namespace Game.Flow
                 ClaimedHash = result.StateHash.ToString("x16"),
                 ClaimedTicks = result.Ticks,
                 PlayedAtUnixSeconds = plan.PreparedAtUnixSeconds,
+                Location = plan.Location,
             };
             if (plan.Hired != null && !plan.Hired.IsEmpty)
             {
@@ -331,6 +332,7 @@ namespace Game.Flow
             _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
             var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog);
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
+            if (v.Valid && TerritoryBattles.Captures(s, v)) _owners[TerritoryBattles.RegionOf(s.StepId)] = new TerritoryOwner { RegionId = TerritoryBattles.RegionOf(s.StepId), OwnerAccountId = AccountId, SinceUnixSeconds = at };
             if (v.Valid && hired != null)
             {
                 foreach (var u in hired.Uses) _hireLog.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
@@ -413,6 +415,16 @@ namespace Game.Flow
 
         public void Unregister(string listingId, Action<bool?> done) =>
             done?.Invoke(_market.RemoveAll(l => l.Id == listingId && l.OwnerAccountId == AccountId) > 0);
+
+        /// <summary>영토 주인 (가짜: 메모리만, 이긴 영토 전투로).</summary>
+        private readonly Dictionary<string, TerritoryOwner> _owners = new Dictionary<string, TerritoryOwner>();
+
+        public void GetTerritory(Action<TerritoryResponse> done)
+        {
+            var r = new TerritoryResponse();
+            foreach (var o in _owners.Values) r.Owners.Add(new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds });
+            done?.Invoke(r);
+        }
 
         /// <summary>가짜 시장의 등록자는 고용하지 않으므로 우편은 없다.</summary>
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse());

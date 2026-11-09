@@ -90,6 +90,10 @@ app.MapDelete("/v1/games/{game}/hire/listings/{listing}", (string game, string l
 app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.MailOf(id))));
 
+// 영토 (R-46)
+app.MapGet("/v1/games/{game}/territory", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.Territory())));
+
 app.Run();
 
 static IResult Json(object o, int status = StatusCodes.Status200OK) =>

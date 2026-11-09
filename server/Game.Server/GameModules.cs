@@ -33,6 +33,9 @@ namespace Game.Server
         HireListResponse Listings(string kind, string accountId);
         bool Unregister(string accountId, string listingId);
         MailListResponse MailOf(string accountId);
+
+        /// <summary>영토 주인 목록 (R-46).</summary>
+        TerritoryResponse Territory();
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -125,6 +128,7 @@ namespace Game.Server
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
+            if (TerritoryBattles.Captures(s, verdict)) _store.SetTerritoryOwner(Code, TerritoryBattles.RegionOf(s.StepId), accountId, at);
             // 고용 보상: 등록자 우편으로 (등록자 세이브는 직접 고치지 않는다 — 받을 때 행동 mail.claim)
             if (hired != null)
             {
@@ -185,6 +189,7 @@ namespace Game.Server
         }
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
+        public TerritoryResponse Territory() => new TerritoryResponse { Owners = _store.TerritoryOwners(Code) };
 
         public static string ToJson(CampaignState state) => SaveJson.Write(state);
         public static CampaignState FromJson(string json) => SaveJson.Read(json);

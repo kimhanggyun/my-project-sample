@@ -73,7 +73,8 @@ namespace Game.Unity.Screens
             foreach (var s in _report.Secrets) secrets.Add(Ctx.GeneralName(s.GeneralId) + ": " + s.SecretId);
             Section(body, "ui.result.secrets", secrets);
 
-            Ui.Button(Root, T("ui.result.toStory"), () => App.ShowMain("story"), 140);
+            bool territory = _plan.Step.IsTerritory; // 영토 전투면 영토 탭으로
+            Ui.Button(Root, T(territory ? "ui.result.toTerritory" : "ui.result.toStory"), () => App.ShowMain(territory ? "territory" : "story"), 140);
         }
 
         private List<string> Names(List<string> generalIds)

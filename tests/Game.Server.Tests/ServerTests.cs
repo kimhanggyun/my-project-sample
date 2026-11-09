@@ -202,6 +202,36 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.NoContent, (await a.DeleteAsync(OnlineRoutes.HireListing(ServerSetup.DefaultGame, listing.Id))).StatusCode);
         }
 
+        [Fact(DisplayName = "R-46 영토 전투: 이기면 그 지역 주인이 된다, 위치가 공격할 수 있는 곳이 아니면 422 badSortie")]
+        public async Task TerritoryCapture()
+        {
+            var c = await SignedIn();
+            var territory = OnlineRoutes.Territory(ServerSetup.DefaultGame);
+            Assert.Empty((await Read<TerritoryResponse>(await c.GetAsync(territory))).Owners);
+            var source = new FileDataSource(DataRoot);
+            var defs = DefinitionSet.Load(source, "ancientwar");
+            var flow = new StoryFlow(defs, source, new ManualTimeProvider(Clock));
+            const string here = "37.566500,126.978000"; // 가짜 위치 서비스의 기본 좌표 (가동 1구역)
+
+            var save = await Read<CloudSave>(await c.GetAsync(Save));
+            BattleSubmission won = null;
+            for (ulong seed = 1; seed <= 10 && won == null; seed++)
+            {
+                var plan = flow.Prepare(StrategyGameModule.FromJson(save.Json), new SortieRequest { StepId = "territory.dev_zone_a1", Seed = seed, Delegate = true, Location = here });
+                Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+                var sim = new BattleSimulation(plan.Setup);
+                while (!sim.IsOver) sim.Step();
+                if (sim.Result.Winner == StoryFlow.PlayerTeam) won = CloudSync.SubmissionOf(plan, sim.CommandLog, sim.Result, save.Revision);
+            }
+            Assert.NotNull(won);
+            won.Location = "35.0,129.0"; // 등록된 지역 밖
+            Assert.Equal((HttpStatusCode)422, (await c.PostAsync(Battles, Body(won))).StatusCode);
+            won.Location = here;
+            Assert.Equal(HttpStatusCode.OK, (await c.PostAsync(Battles, Body(won))).StatusCode);
+            var owner = Assert.Single((await Read<TerritoryResponse>(await c.GetAsync(territory))).Owners);
+            Assert.Equal("dev_zone_a1", owner.RegionId);
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {

@@ -65,7 +65,8 @@ namespace Game.Tests
         [Fact(DisplayName = "지역 데이터 검사: 이웃은 서로·같은 단계, 상위는 더 큰 단계, 경계 꼭짓점 3개 이상")]
         public void Validation()
         {
-            string Doc(string regions) => "{\"levels\":{\"sido\":{\"requiredLegions\":30},\"sigungu\":{\"requiredLegions\":10},\"eupmyeondong\":{\"requiredLegions\":5},\"ri\":{\"requiredLegions\":1}},\"regions\":[" + regions + "]}";
+            const string d = ",\"defense\":{\"enemy\":[{}]}";
+            string Doc(string regions) => "{\"levels\":{\"sido\":{\"requiredLegions\":30" + d + "},\"sigungu\":{\"requiredLegions\":10" + d + "},\"eupmyeondong\":{\"requiredLegions\":5" + d + "},\"ri\":{\"requiredLegions\":1" + d + "}},\"regions\":[" + regions + "]}";
             const string box = "\"boundary\":[[0,0],[0,1],[1,1]]";
             TerritoryDefs Load(string regions) => TerritoryDefs.Load(new MemorySource(TerritoryDefs.File, Doc(regions)));
             Load("{\"id\":\"a\",\"level\":\"sido\"," + box + "}");
@@ -73,6 +74,7 @@ namespace Game.Tests
             Assert.Throws<DataException>(() => Load("{\"id\":\"a\",\"level\":\"sido\"," + box + ",\"neighbors\":[\"b\"]},{\"id\":\"b\",\"level\":\"sido\"," + box + "}"));
             Assert.Throws<DataException>(() => Load("{\"id\":\"a\",\"level\":\"ri\",\"parent\":\"b\"," + box + "},{\"id\":\"b\",\"level\":\"ri\",\"parent\":\"a\"," + box + "}"));
             Assert.Throws<DataException>(() => Load("{\"id\":\"a\",\"level\":\"sigungu\"," + box + "}")); // 상위 없음
+            Assert.Throws<DataException>(() => TerritoryDefs.Load(new MemorySource(TerritoryDefs.File, Doc("").Replace(d, "")))); // 수비군 없음
         }
 
         [Fact(DisplayName = "위치 서비스: 끔은 off로 실패, 가짜는 고정 좌표 (설정으로 바꿀 수 있다)")]

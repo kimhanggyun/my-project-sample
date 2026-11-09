@@ -133,6 +133,9 @@ namespace Game.Online
         public void GetMail(Action<MailListResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Mail(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
+        public void GetTerritory(Action<TerritoryResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.Territory(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<TerritoryResponse>(body) : null));
+
         private static T Parse<T>(string body) where T : class
         {
             if (string.IsNullOrEmpty(body)) return null;

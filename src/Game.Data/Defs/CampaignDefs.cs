@@ -284,6 +284,11 @@ namespace Game.Data.Defs
         /// <summary>밸런스 목표: 위임 출진 승률 범위 (없으면 null).</summary>
         public Fix? TargetWinRateMin { get; private set; }
         public Fix? TargetWinRateMax { get; private set; }
+        /// <summary>스텝 종류: story(스토리, 기본) / territory(영토 전투: 해금·클리어·첫 보상·탐색 기억 없음).</summary>
+        public string Kind { get; private set; }
+        public const string StoryKind = "story";
+        public const string TerritoryKind = "territory";
+        public bool IsTerritory => Kind == TerritoryKind;
 
         public static StepDef Load(IDataSource source, string id) => From(JsonUtil.ParseObject(source.ReadText("Steps/" + id + ".json")));
 
@@ -355,6 +360,7 @@ namespace Game.Data.Defs
             return new StepDef
             {
                 Id = id,
+                Kind = o.Value<string>("kind") ?? StoryKind,
                 NameKey = JsonUtil.RequireString(o, "nameKey", c),
                 BattleType = o.Value<string>("battleType") ?? "field",
                 Map = JsonUtil.RequireString(o, "map", c),

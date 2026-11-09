@@ -32,6 +32,8 @@ namespace Game.Territory
         public int RequiredLegions { get; internal set; }
         /// <summary>상시가 아니라 시즌 행사로만 (territory.md 2장, 제안).</summary>
         public bool SeasonOnly { get; internal set; }
+        /// <summary>주인 없는 지역의 AI 수비군 (스텝과 같은 JSON 형식: map·maxMinutes·camp·enemy …).</summary>
+        public JObject Defense { get; internal set; }
     }
 
     /// <summary>지역 하나: 경계(다각형), 상위 지역, 이웃, 필요 군단 수(덮어쓰기), 전투 템플릿.</summary>
@@ -46,8 +48,10 @@ namespace Game.Territory
         public IReadOnlyList<string> Neighbors { get; internal set; }
         /// <summary>지역별 덮어쓰기 (없으면 단계 기본값).</summary>
         public int? RequiredLegionsOverride { get; internal set; }
-        /// <summary>영토 전투에 쓸 지형 템플릿 (data/Maps id, 다음 단계).</summary>
+        /// <summary>영토 전투에 쓸 지형 (data/Maps id). 없으면 수비군 데이터의 map.</summary>
         public string BattleMap { get; internal set; }
+        /// <summary>지역별 수비군 덮어쓰기 (단계 기본값 위에 합친다). 없으면 null.</summary>
+        public JObject DefenseOverride { get; internal set; }
     }
 
     /// <summary>
@@ -75,7 +79,10 @@ namespace Game.Territory
                     Id = p.Name,
                     RequiredLegions = (int)JsonUtil.RequireLong(o, "requiredLegions", File + ".levels." + p.Name),
                     SeasonOnly = o.Value<bool?>("seasonOnly") ?? false,
+                    Defense = o["defense"] as JObject,
                 };
+                if (levels[p.Name].Defense == null || !(levels[p.Name].Defense["enemy"] is JArray en) || en.Count == 0)
+                    throw new DataException($"{File}.levels.{p.Name}: 수비군(defense.enemy)이 있어야 합니다.");
             }
             foreach (var l in RegionLevels.Order)
                 if (!levels.ContainsKey(l)) throw new DataException($"{File}: 단계 '{l}'의 기본값이 없습니다.");
@@ -106,6 +113,7 @@ namespace Game.Territory
                     Neighbors = JsonUtil.StringList(o, "neighbors"),
                     RequiredLegionsOverride = o.Value<int?>("requiredLegions"),
                     BattleMap = o.Value<string>("battleMap"),
+                    DefenseOverride = o["defense"] as JObject,
                 };
                 if (!levels.ContainsKey(r.Level)) throw new DataException($"{ctx}: 모르는 단계 '{r.Level}'.");
                 if (r.RequiredLegionsOverride.HasValue && r.RequiredLegionsOverride.Value < 1) throw new DataException($"{ctx}: requiredLegions는 1 이상.");
@@ -132,5 +140,14 @@ namespace Game.Territory
 
         /// <summary>그 지역을 차지하려면 필요한 군단 수: 지역별 값, 없으면 단계 기본값.</summary>
         public int RequiredLegions(RegionDef r) => r.RequiredLegionsOverride ?? Levels[r.Level].RequiredLegions;
+
+        /// <summary>그 지역의 AI 수비군 (단계 기본값 + 지역 덮어쓰기, 사본).</summary>
+        public JObject DefenseFor(RegionDef r)
+        {
+            var d = (JObject)Levels[r.Level].Defense.DeepClone();
+            if (r.DefenseOverride != null) d = JsonUtil.DeepMerge(d, r.DefenseOverride);
+            if (r.BattleMap != null) d["map"] = r.BattleMap;
+            return d;
+        }
     }
 }

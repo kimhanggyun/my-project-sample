@@ -1,18 +1,232 @@
 {
-  "_comment": "영토 지역 (territory.md 2·3장). 개발용 가상 지역 몇 곳 (사각형, 실제 행정구역 아님). 실제 경계는 공개 행정구역 경계 자료로 교체. levels = 단계별 기본값(requiredLegions = 차지에 필요한 군단 수, seasonOnly = 시즌 행사로만), regions = id·level·parent·boundary([위도, 경도] 꼭짓점)·neighbors(같은 단계, 서로)·requiredLegions(덮어쓰기)·battleMap(영토 전투 지형, 다음 단계). 이름 = 문자열 region.<id>",
+  "_comment": "영토 지역 (territory.md 2·3장). 개발용 가상 지역 몇 곳 (사각형, 실제 행정구역 아님). 실제 경계는 공개 행정구역 경계 자료로 교체. levels = 단계별 기본값(requiredLegions = 차지에 필요한 군단 수, seasonOnly = 시즌 행사로만), regions = id·level·parent·boundary([위도, 경도] 꼭짓점)·neighbors(같은 단계, 서로)·requiredLegions(덮어쓰기)·battleMap(영토 전투 지형, 다음 단계). 이름 = 문자열 region.<id>. defense = 영토 전투 (스텝과 같은 형식: map·maxMinutes·camp·enemy …, 단계 기본값 → 지역 덮어쓰기). 주인 없는 지역은 이 AI 수비군",
   "levels": {
     "sido": {
       "requiredLegions": 30,
-      "seasonOnly": true
+      "seasonOnly": true,
+      "defense": {
+        "battleType": "field",
+        "map": "test_plain",
+        "maxMinutes": 15,
+        "camp": "camp_north",
+        "enemy": [
+          {
+            "id": "defender_01",
+            "general": "enemy_general_02",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "normal",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 3000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 3000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 3000
+              }
+            ]
+          },
+          {
+            "id": "defender_02",
+            "general": "enemy_general_03",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "normal",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 3000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 3000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 3000
+              }
+            ]
+          }
+        ]
+      }
     },
     "sigungu": {
-      "requiredLegions": 10
+      "requiredLegions": 10,
+      "defense": {
+        "battleType": "field",
+        "map": "test_plain",
+        "maxMinutes": 15,
+        "camp": "camp_north",
+        "enemy": [
+          {
+            "id": "defender_01",
+            "general": "enemy_general_02",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "normal",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 3000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 3000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 3000
+              }
+            ]
+          },
+          {
+            "id": "defender_02",
+            "general": "enemy_general_03",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "normal",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 3000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 3000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 3000
+              }
+            ]
+          }
+        ]
+      }
     },
     "eupmyeondong": {
-      "requiredLegions": 5
+      "requiredLegions": 5,
+      "defense": {
+        "battleType": "field",
+        "map": "test_plain",
+        "maxMinutes": 15,
+        "camp": "camp_north",
+        "enemy": [
+          {
+            "id": "defender_01",
+            "general": "enemy_general_02",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "normal",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 3000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 3000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 3000
+              }
+            ]
+          },
+          {
+            "id": "defender_02",
+            "general": "enemy_general_03",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "normal",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 3000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 3000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 3000
+              }
+            ]
+          }
+        ]
+      }
     },
     "ri": {
-      "requiredLegions": 1
+      "requiredLegions": 1,
+      "defense": {
+        "battleType": "field",
+        "map": "test_plain",
+        "maxMinutes": 10,
+        "camp": "camp_north",
+        "enemy": [
+          {
+            "id": "defender_01",
+            "general": "enemy_general_01",
+            "role": "commander",
+            "formation": "square",
+            "ai": "defensive",
+            "difficulty": "easy",
+            "supplyMinutes": 10,
+            "units": [
+              {
+                "slot": "vanguard",
+                "troopType": "infantry",
+                "troops": 2000
+              },
+              {
+                "slot": "center",
+                "troopType": "spearman",
+                "troops": 2000
+              },
+              {
+                "slot": "leftGuard",
+                "troopType": "archer",
+                "troops": 2000
+              }
+            ]
+          }
+        ]
+      }
     }
   },
   "regions": [

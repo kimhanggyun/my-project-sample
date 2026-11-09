@@ -29,6 +29,7 @@ namespace Game.Tests.Campaign
             public void RegisterHire(HireListingRequest r, Action<HireListingResponse> done) { if (Down) done(null); else _inner.RegisterHire(r, done); }
             public void Unregister(string id, Action<bool?> done) { if (Down) done(null); else _inner.Unregister(id, done); }
             public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
+            public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
         }
 
         private sealed class World

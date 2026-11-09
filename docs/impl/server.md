@@ -44,6 +44,7 @@
 | `POST /v1/games/{game}/hire/listings` | 내 서버 세이브의 장수·부대 등록 (같은 대상이면 갱신, Version +1). 가격이 추천 × 상한을 넘거나 · 내 것이 아니거나 · 출전 불가거나 · 등록 수 상한이면 422 | `HireListingResponse` |
 | `DELETE /v1/games/{game}/hire/listings/{id}` | 내 등록 해제 (남의 것·없는 것은 404) | 204 |
 | `GET /v1/games/{game}/mail` | 내 우편 (고용 보상). 받기는 행동 `mail.claim` | `MailListResponse` |
+| `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각). 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
 | `POST /v1/games/{game}/battles` | 전투 제출 (고용이 있으면 `Hires` + 쓴 `Compositions`, 서버가 등록 목록의 같은 판으로 재현하고 등록자에게 우편 보상, 등록 이력에 결과를 쌓는다. 고용 제한을 넘으면 422 `hireLimit`). 옛 세이브 위면 409(`staleSave`), 기록 시각이 범위 밖이면 422(`badTime`, R-42), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
 
 실행: `dotnet run --project server/Game.Server`. 설정:
@@ -108,4 +109,4 @@
 3. ~~오프라인 기록(행동·전투) 나중에 올리기, 기록 시각 (R-42)~~ (완료).
 4. 백엔드 선택 후 저장소·인증을 그쪽으로 (`IAccountStore` 대신 백엔드 저장소, 게스트 로그인 대신 백엔드 인증).
 5. ~~고용 서버 기반: 등록·목록·고용 출진·재현·등록자 우편 보상 (R-43)~~ (완료). 기기 쪽 고용 화면·우편 받기도 완료 (임시 화면). 고용 이력·하루 고용 수·대기시간 제한(R-44), 고용 인원 고르기(25~100%)도 완료. 다음: 목록 검색·정렬, 이력의 격파 병력·재생.
-6. 숨은 보상 확정·영토(territory.md)·대전(pvp.md)을 같은 검증 위에 올린다.
+6. ~~영토 전투·차지 (R-46)~~ (완료, 혼자 리 단계 + AI 수비군). 다음: 연합·수비 편성, 숨은 보상 확정, 대전(pvp.md)을 같은 검증 위에.
