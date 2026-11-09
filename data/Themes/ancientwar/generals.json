@@ -134,6 +134,27 @@
         "might": 0.4,
         "intellect": 0.5
       }
+    },
+    {
+      "id": "enemy_general_04",
+      "nameKey": "general.enemy_general_04",
+      "grade": "common",
+      "temperament": "arrogant",
+      "traits": [],
+      "innateSkills": [
+        "warCry"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 45,
+        "might": 46,
+        "intellect": 35
+      },
+      "growthRates": {
+        "leadership": 0.3,
+        "might": 0.5,
+        "intellect": 0.2
+      }
     }
   ]
 }
