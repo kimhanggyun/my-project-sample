@@ -56,6 +56,7 @@ namespace Game.Battle.Model.Combat
             new StatSource(),
             new TrainingSource(),
             new ReformingSource(),
+            new TagDamageTakenSource(),
             new TroopCounterSource(),
             new FormationCounterSource(),
             new DirectionSource(),
@@ -98,6 +99,31 @@ namespace Game.Battle.Model.Combat
         {
             var pp = a.Battle.Combat.ReformingDamageTakenPp;
             if (a.DefenderCorps.PendingFormation != null && pp != Fix.Zero) into.Add(new DamageModifier("reforming", pp, RuleFlagIds.Discipline));
+        }
+    }
+
+    /// <summary>받는 쪽 병종 태그의 방향 보정 (R-58): 창벽병 = 방원·횡진에서 정면 피해 ↓, 측면·배후 피해 ↑.</summary>
+    internal sealed class TagDamageTakenSource : IDamageModifierSource
+    {
+        public void Collect(AttackContext a, List<DamageModifier> into)
+        {
+            foreach (var kv in a.Battle.Combat.TagDamageTaken)
+            {
+                if (!a.Defender.Troop.HasTag(kv.Key)) continue;
+                var t = kv.Value;
+                if (a.Side == AttackSide.Front)
+                {
+                    if (t.FrontPp != Fix.Zero && (t.Formations.Count == 0 || Contains(t.Formations, a.DefenderCorps.Formation.Id)))
+                        into.Add(new DamageModifier("tagFront." + kv.Key, t.FrontPp));
+                }
+                else if (t.SidePp != Fix.Zero) into.Add(new DamageModifier("tagSide." + kv.Key, t.SidePp, RuleFlagIds.FlankBonus));
+            }
+        }
+
+        private static bool Contains(IReadOnlyList<string> list, string id)
+        {
+            foreach (var x in list) if (x == id) return true;
+            return false;
         }
     }
 

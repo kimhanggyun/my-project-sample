@@ -16,6 +16,17 @@ namespace Game.Data.Defs
         public SlotOffset(Fix x, Fix y) { X = x; Y = y; }
     }
 
+    /// <summary>태그 하나의 받는 피해 방향 보정 (combat.json tagEffects, R-58).</summary>
+    public sealed class TagDamageTaken
+    {
+        /// <summary>정면에서 받는 피해 %p (음수 = 덜 받음).</summary>
+        public Fix FrontPp { get; internal set; }
+        /// <summary>정면 보정이 붙는 진형 (비면 모든 진형).</summary>
+        public IReadOnlyList<string> Formations { get; internal set; } = new List<string>();
+        /// <summary>측면·배후에서 받는 피해 %p (진형과 무관).</summary>
+        public Fix SidePp { get; internal set; }
+    }
+
     /// <summary>전투 수치 (combat.json).</summary>
     public sealed class CombatRules
     {
@@ -81,6 +92,8 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, Fix> TagMoraleLossMultiplier { get; private set; } = new Dictionary<string, Fix>();
         /// <summary>태그 → 포위 포로 압력 배율 (R-58). 없으면 1.</summary>
         public IReadOnlyDictionary<string, Fix> TagCapturePressureMultiplier { get; private set; } = new Dictionary<string, Fix>();
+        /// <summary>태그 → 받는 피해 방향 보정 (R-58): 정면(진형 조건), 측면·배후.</summary>
+        public IReadOnlyDictionary<string, TagDamageTaken> TagDamageTaken { get; private set; } = new Dictionary<string, TagDamageTaken>();
         public Fix TrainingDefensePp { get; private set; }
         public Fix GeneralLeadershipToDefense { get; private set; }
         public int VisionUpdateEveryTicks { get; private set; }
@@ -134,6 +147,24 @@ namespace Game.Data.Defs
         public long TicksPerMinute => (Fix.FromInt(60) / TickSeconds).FloorToLong();
 
         private static Fix Opt(JObject o, string block, string key, string c) => Opt(o, block, key, c, Fix.Zero);
+
+        private static Dictionary<string, TagDamageTaken> TagDamageTakenOf(JObject o, string c)
+        {
+            var map = new Dictionary<string, TagDamageTaken>();
+            if (!(o["tagEffects"] is JObject te)) return map;
+            foreach (var p in te.Properties())
+            {
+                if (!(p.Value is JObject e) || (e["frontDamageTakenPp"] == null && e["sideDamageTakenPp"] == null)) continue;
+                string ctx = c + ".tagEffects." + p.Name;
+                map[p.Name] = new TagDamageTaken
+                {
+                    FrontPp = JsonUtil.FixOr(e, "frontDamageTakenPp", Fix.Zero, ctx),
+                    SidePp = JsonUtil.FixOr(e, "sideDamageTakenPp", Fix.Zero, ctx),
+                    Formations = JsonUtil.StringList(e, "formations"),
+                };
+            }
+            return map;
+        }
 
         private static Dictionary<string, Fix> TagEffect(JObject o, string key, string c)
         {
@@ -238,6 +269,7 @@ namespace Game.Data.Defs
                 MaxValorMoraleLossMultiplier = Opt(o, "valor", "maxMoraleLossMultiplier", c, Fix.OneValue),
                 TagMoraleLossMultiplier = TagEffect(o, "moraleLossMultiplier", c),
                 TagCapturePressureMultiplier = TagEffect(o, "capturePressureMultiplier", c),
+                TagDamageTaken = TagDamageTakenOf(o, c),
                 GeneralLeadershipToDefense = JsonUtil.RequireFix(general, "leadershipToDefense", c + ".general"),
                 SpawnSpacingCells = JsonUtil.RequireFix(o, "spawnSpacingCells", c),
                 VisionUpdateEveryTicks = (int)JsonUtil.RequireLong(vision, "updateEveryTicks", c + ".vision"),
