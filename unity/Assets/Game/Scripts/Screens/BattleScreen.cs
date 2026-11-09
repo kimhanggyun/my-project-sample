@@ -76,12 +76,28 @@ namespace Game.Unity.Screens
         private bool IsReplay => _playback != null;
         private BattleSetup Setup => IsReplay ? _playback.Setup : _plan.Setup;
 
+        /// <summary>이어하기 (R-55): 남긴 틱까지 돌려 둔 전투. 몇 초마다·앱이 뒤로 갈 때 기록을 새로 남긴다.</summary>
+        private readonly BattleSimulation _resumedSim;
+        private bool _autoFinish;
+        private float _suspendTimer;
+        private long _suspendedTick = -1;
+        private const float SuspendEverySeconds = 5f;
+
         public BattleScreen(SortiePlan plan) { _plan = plan; }
+        /// <param name="autoFinish">true면 모든 아군 군단을 위임하고 끝까지 돌린다 ([자동으로 끝내기]).</param>
+        public BattleScreen(ResumedBattle resumed, bool autoFinish = false) { _plan = resumed.Plan; _resumedSim = resumed.Simulation; _autoFinish = autoFinish; }
         public BattleScreen(ReplayPlayback playback) { _playback = playback; }
 
         public override void Build()
         {
-            _sim = new BattleSimulation(Setup);
+            _sim = _resumedSim ?? new BattleSimulation(Setup);
+            if (!IsReplay && _resumedSim == null)
+            {
+                // 가져간 군량을 쓴 세이브를 먼저 남기고, 이어하기 기록을 남긴다 (전투 중 꺼져도 이어서)
+                Ctx.Save();
+                Ctx.SuspendBattle(_plan, _sim);
+            }
+            if (_resumedSim != null && !_autoFinish) _paused = true; // 이어 할 때는 멈춘 채로 시작
             var ctx = _sim.Context;
             _ctl = new BattleControl(_sim, StoryFlow.PlayerTeam);
             _ctl.Refresh();
@@ -183,6 +199,7 @@ namespace Game.Unity.Screens
                 Ui.Size(Ui.Label(Root, T("ui.replay.playing"), 26, TextAnchor.MiddleCenter, Palette.TextDim), 48);
             }
 
+            if (_resumedSim != null) _logRead = _sim.Context.Log.Count; // 이어 할 때 지난 알림은 다시 띄우지 않는다
             _field.LookAt(_ctl.Selected);
             ReadNewEvents();
             Refresh();
@@ -197,6 +214,14 @@ namespace Game.Unity.Screens
         public override void Tick(float deltaTime)
         {
             if (_finished) return;
+            if (_autoFinish)
+            {
+                _autoFinish = false;
+                foreach (var c in _ctl.OwnCorps())
+                    if (!c.Delegated) _sim.Issue(new Game.Battle.Model.Commands.BattleCommand { CorpsId = c.Id, Kind = Game.Battle.Model.Commands.CommandKinds.Delegate, Mode = "on" });
+                SkipToEnd();
+                return;
+            }
             if (_noticeLeft > 0 && (_noticeLeft -= deltaTime) <= 0) _notice.text = "";
             int steps = 0;
             if (!_paused)
@@ -220,7 +245,27 @@ namespace Game.Unity.Screens
             _fxDelta = _paused ? 0f : deltaTime * Speeds[_speedIndex];
             if (steps > 0 || _dirty) Refresh();
             UpdateFieldView();
-            if (_sim.IsOver) Finish();
+            if (_sim.IsOver) { Finish(); return; }
+            if (!IsReplay && (_suspendTimer += deltaTime) >= SuspendEverySeconds)
+            {
+                _suspendTimer = 0f;
+                Suspend();
+            }
+        }
+
+        public override void OnAppPause(bool paused)
+        {
+            if (!paused || IsReplay || _finished) return;
+            _paused = true; // 앱이 뒤로 가면 전투를 멈춘다
+            _dirty = true;
+            Suspend();
+        }
+
+        private void Suspend()
+        {
+            if (_sim.IsOver || _sim.Tick == _suspendedTick) return;
+            _suspendedTick = _sim.Tick;
+            Ctx.SuspendBattle(_plan, _sim);
         }
 
         // ---- 입력 ----
@@ -296,6 +341,7 @@ namespace Game.Unity.Screens
             _finished = true;
             var result = _sim.Result;
             if (IsReplay) { App.Show(new ReplayListScreen(T("ui.replay.ended"))); return; }
+            Ctx.ClearSuspendedBattle(); // 결과를 반영하기 전에 지운다 (두 번 반영되지 않게)
             var report = Ctx.Flow.ApplyResult(Ctx.State, _plan, result);
             Ctx.Save();
             if (!Ctx.OnlineEnabled) { App.Show(new ResultScreen(_plan, result, report)); return; }

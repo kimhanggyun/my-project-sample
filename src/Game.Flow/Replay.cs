@@ -83,21 +83,7 @@ namespace Game.Flow
         /// <summary>끝난 전투를 녹화로 (출진 설정은 사본으로 떠 둔다).</summary>
         public static ReplayRecord Capture(SortiePlan plan, IReadOnlyList<BattleCommand> commands, BattleResult result, long nowUnixSeconds)
         {
-            var s = plan.Setup;
-            var bare = new BattleSetup
-            {
-                Seed = s.Seed,
-                MaxMinutes = s.MaxMinutes,
-                DefeatConditions = s.DefeatConditions,
-                Corps = s.Corps,
-                InitialExplored = s.InitialExplored,
-                Contests = s.Contests,
-                Wind = s.Wind,
-                Weather = s.Weather,
-                TimeOfDay = s.TimeOfDay,
-                Changes = s.Changes,
-                Events = s.Events,
-            };
+            var bare = BareSetup(plan.Setup);
             long start = 0, lost = 0;
             foreach (var c in result.Corps)
                 if (c.Team == StoryFlow.PlayerTeam) { start += c.StartTroops; lost += c.Losses; }
@@ -117,6 +103,22 @@ namespace Game.Flow
             };
             return Copy(record); // 출진 설정과 떼어 놓는다
         }
+
+        /// <summary>스텝 규칙(Defs·Map·Balance·Combat·Flags)을 뺀 전투 설정 (얕은 사본, 저장할 때 JSON으로 떼어 낸다).</summary>
+        public static BattleSetup BareSetup(BattleSetup s) => new BattleSetup
+        {
+            Seed = s.Seed,
+            MaxMinutes = s.MaxMinutes,
+            DefeatConditions = s.DefeatConditions,
+            Corps = s.Corps,
+            InitialExplored = s.InitialExplored,
+            Contests = s.Contests,
+            Wind = s.Wind,
+            Weather = s.Weather,
+            TimeOfDay = s.TimeOfDay,
+            Changes = s.Changes,
+            Events = s.Events,
+        };
 
         public static ReplayRecord Copy(ReplayRecord r) => Read(Write(r));
         public static string Write(ReplayRecord r) => ReplayJson.Write(r);
