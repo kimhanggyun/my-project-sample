@@ -291,5 +291,6 @@
   "ui.online.offline": "서버에 연결하지 못했습니다. 이 기기 세이브로 계속합니다.",
   "ui.online.accepted": "서버에서 전투 결과를 확인했습니다.",
   "ui.online.rejected": "서버 확인에 실패해 서버 세이브로 되돌렸습니다.",
+  "ui.online.queued": "서버에 연결하지 못해 이 기기에 반영했습니다. 다음 연결 때 서버에 올립니다.",
   "ui.online.verifying": "서버에서 전투 결과를 확인하는 중…"
 }

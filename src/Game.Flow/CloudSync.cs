@@ -59,6 +59,8 @@ namespace Game.Flow
         public const string Accepted = "accepted";
         /// <summary>서버가 전투를 거절: 서버 세이브로 되돌림.</summary>
         public const string Rejected = "rejected";
+        /// <summary>서버에 닿지 않아 기록(행동·전투)을 기기에 남겨 둠: 다음 연결 때 차례로 올린다 (R-42).</summary>
+        public const string Queued = "queued";
     }
 
     public sealed class SyncResult
@@ -129,6 +131,7 @@ namespace Game.Flow
                 Commands = new List<Game.Battle.Model.Commands.BattleCommand>(commands),
                 ClaimedHash = result.StateHash.ToString("x16"),
                 ClaimedTicks = result.Ticks,
+                PlayedAtUnixSeconds = plan.PreparedAtUnixSeconds,
             };
             bool all = true;
             foreach (var c in plan.Setup.Corps)
@@ -155,6 +158,73 @@ namespace Game.Flow
                 if (verdict == null || server == null) { done(new SyncResult { Outcome = SyncOutcomes.Offline, State = local, Revision = submission.BaseRevision }); return; }
                 done(new SyncResult { Outcome = verdict.Valid ? SyncOutcomes.Accepted : SyncOutcomes.Rejected, State = server, Revision = verdict.Save.Revision });
             });
+        }
+
+        /// <summary>
+        /// 남은 기록(link.Journal: 행동·전투, 한 순서)을 차례로 보낸다 (R-41, R-42). 이어진 행동은 한 묶음으로, 전투는 하나씩.
+        /// 받아들여질 때마다 기록을 지우고 link.Revision을 올린다. 끝까지 맞으면 Accepted + 마지막 서버 세이브.
+        /// 하나라도 거절되면 남은 기록을 모두 버리고 Rejected + 서버 세이브 (기기 세이브가 서버와 갈라졌으므로).
+        /// 서버에 닿지 않으면 남은 기록을 그대로 두고 Queued + 기기 상태 (다음에 이어서).
+        /// </summary>
+        public void FlushJournal(OnlineLink link, CampaignState local, Action<SyncResult> done)
+        {
+            CampaignState lastServer = null;
+            BattleVerdict lastBattle = null;
+
+            void Handle(int count, bool valid, CloudSave save, BattleVerdict battle)
+            {
+                if (battle != null) lastBattle = battle;
+                var server = save == null ? null : SaveJson.Read(save.Json);
+                if (!valid)
+                {
+                    link.Journal.Clear();
+                    if (server != null) { done(new SyncResult { Outcome = SyncOutcomes.Rejected, State = server, Revision = save.Revision, Verdict = lastBattle }); return; }
+                    _online.LoadSave(s =>
+                    {
+                        var st = s == null ? null : SaveJson.Read(s.Json);
+                        done(st == null
+                            ? new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }
+                            : new SyncResult { Outcome = SyncOutcomes.Rejected, State = st, Revision = s.Revision, Verdict = lastBattle });
+                    });
+                    return;
+                }
+                if (server == null) { done(new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }); return; }
+                link.Journal.RemoveRange(0, Math.Min(count, link.Journal.Count));
+                link.Revision = save.Revision;
+                lastServer = server;
+                Next();
+            }
+
+            void Next()
+            {
+                if (link.Journal.Count == 0)
+                {
+                    done(new SyncResult { Outcome = SyncOutcomes.Accepted, State = lastServer ?? local, Revision = link.Revision, Verdict = lastBattle });
+                    return;
+                }
+                var head = link.Journal[0];
+                if (head.Battle != null)
+                {
+                    head.Battle.BaseRevision = link.Revision;
+                    _online.SubmitBattle(head.Battle, v =>
+                    {
+                        if (v == null) { done(new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }); return; }
+                        Handle(1, v.Valid, v.Save, v);
+                    });
+                    return;
+                }
+                var actions = new List<PlayerAction>();
+                while (actions.Count < link.Journal.Count && actions.Count < PlayerActionRunner.MaxPerSubmission && link.Journal[actions.Count].Action != null)
+                    actions.Add(link.Journal[actions.Count].Action);
+                int n = actions.Count;
+                _online.SubmitActions(new ActionSubmission { BaseRevision = link.Revision, Actions = actions }, v =>
+                {
+                    if (v == null) { done(new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }); return; }
+                    Handle(n, v.Valid, v.Save, null);
+                });
+            }
+
+            Next();
         }
 
         /// <param name="localAfter">기기에서 결과를 반영한 상태 (서버에 닿지 않으면 그대로 쓴다).</param>
@@ -244,13 +314,9 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
-            var state = SaveJson.Read(_save.Json);
-            var v = new BattleVerifier(_defs, _source, _time).VerifyAndApply(state, s, out _);
-            if (v.Valid)
-            {
-                Keep(new CloudSave { Revision = _save.Revision + 1, Json = SaveJson.Write(state), SavedAtUnixSeconds = Now });
-                v.Save = Copy(_save);
-            }
+            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at);
+            if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
+            v.Save = Copy(_save);
             done?.Invoke(v);
         }
 
@@ -258,10 +324,10 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
-            var (ok, failed, json) = ActionVerifier.Apply(_actions, _save, s);
-            if (!ok) { done?.Invoke(new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = failed, Save = Copy(_save) }); return; }
-            Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = Now });
-            done?.Invoke(new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = Copy(_save) });
+            var v = ActionVerifier.Apply(_actions, _save, s, Now, out var json, out var at);
+            if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
+            v.Save = Copy(_save);
+            done?.Invoke(v);
         }
 
         private long Now => _time.UtcNow.ToUnixTimeSeconds();

@@ -48,7 +48,10 @@ namespace Game.Online
         public long UnixSeconds { get; set; }
     }
 
-    /// <summary>클라우드 세이브 한 벌. Revision은 저장할 때마다 1 오른다 (0 = 아직 없음).</summary>
+    /// <summary>
+    /// 클라우드 세이브 한 벌. Revision은 저장할 때마다 1 오른다 (0 = 아직 없음).
+    /// SavedAt = 이 세이브가 반영한 마지막 기록의 시각 (전투 출진 시각·행동 시각). 다음 기록은 이보다 이를 수 없다 (R-42).
+    /// </summary>
     public sealed class CloudSave
     {
         public long Revision { get; set; }
@@ -93,6 +96,8 @@ namespace Game.Online
         /// <summary>기기가 계산한 상태 지문(16진)·틱 수.</summary>
         public string ClaimedHash { get; set; }
         public long ClaimedTicks { get; set; }
+        /// <summary>출진 준비를 한 시각 (서버 시각 기준 unix 초, 0 = 지금). 서버는 이 시각으로 출진 준비·결과 반영을 다시 한다 (R-42, 오프라인 전투를 나중에 올릴 때).</summary>
+        public long PlayedAtUnixSeconds { get; set; }
     }
 
     public static class VerdictReasons
@@ -103,6 +108,8 @@ namespace Game.Online
         public const string Mismatch = "mismatch";
         /// <summary>기기 행동을 서버 세이브에 적용할 수 없음 (R-41).</summary>
         public const string BadAction = "badAction";
+        /// <summary>기록 시각이 허용 범위 밖 (서버 세이브 시각보다 이르거나, 미래이거나, 너무 오래됨, R-42).</summary>
+        public const string BadTime = "badTime";
     }
 
     public sealed class BattleVerdict
@@ -158,6 +165,8 @@ namespace Game.Online
         public long Count { get; set; }
         /// <summary>치료 비용: supply / gold.</summary>
         public string PayWith { get; set; }
+        /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
+        public long DoneAtUnixSeconds { get; set; }
     }
 
     /// <summary>행동 묶음 제출: 이 세이브 위에서 차례로 했다.</summary>

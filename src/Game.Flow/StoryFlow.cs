@@ -46,6 +46,8 @@ namespace Game.Flow
         public long AutoSupply { get; internal set; }
         public List<string> Errors { get; } = new List<string>();
         public bool Ok => Errors.Count == 0;
+        /// <summary>출진 준비를 한 시각 (시간 서비스 기준 unix 초). 서버는 이 시각으로 다시 준비한다 (R-42).</summary>
+        public long PreparedAtUnixSeconds { get; internal set; }
     }
 
     public sealed class UnitReport
@@ -117,7 +119,7 @@ namespace Game.Flow
         /// <summary>출진 준비: 상태는 바꾸지 않는다. 문제(편성·군량·해금)는 Errors로 돌려준다.</summary>
         public SortiePlan Prepare(CampaignState state, SortieRequest request)
         {
-            var plan = new SortiePlan();
+            var plan = new SortiePlan { PreparedAtUnixSeconds = _time.UtcNow.ToUnixTimeSeconds() };
             var step = StepDef.Load(_source, request.StepId);
             var map = MapDef.Load(_source, step.Map);
             plan.Step = step;

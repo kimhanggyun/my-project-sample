@@ -23,8 +23,29 @@ namespace Game.Online
         public string AccountId { get; set; }
         public string Token { get; set; }
         public long Revision { get; set; }
-        /// <summary>서버에 아직 반영되지 않은 행동 (서버에 닿지 않았을 때 남겨 두고 다음에 보낸다, R-41).</summary>
-        public List<PlayerAction> Pending { get; set; } = new List<PlayerAction>();
+        /// <summary>
+        /// 서버에 아직 반영되지 않은 기록 (행동·전투, 한 순서). 서버에 닿지 않으면 남겨 두고 다음에 차례로 보낸다 (R-41, R-42).
+        /// </summary>
+        public List<JournalEntry> Journal { get; set; } = new List<JournalEntry>();
+        /// <summary>예전 형식(행동만). 읽을 때 Journal로 옮긴다.</summary>
+        public List<PlayerAction> Pending { get; set; }
+
+        /// <summary>예전 형식을 옮긴다 (읽은 뒤 한 번).</summary>
+        public OnlineLink Upgrade()
+        {
+            if (Journal == null) Journal = new List<JournalEntry>();
+            if (Pending != null) foreach (var a in Pending) if (a != null) Journal.Add(new JournalEntry { Action = a });
+            Pending = null;
+            Journal.RemoveAll(e => e == null || (e.Action == null) == (e.Battle == null));
+            return this;
+        }
+    }
+
+    /// <summary>기록 하나: 행동 또는 전투 (둘 중 하나만).</summary>
+    public sealed class JournalEntry
+    {
+        public PlayerAction Action { get; set; }
+        public BattleSubmission Battle { get; set; }
     }
 
     /// <summary>
