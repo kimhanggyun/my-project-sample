@@ -38,6 +38,26 @@ app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
     var code = r.CodeOfPackage(app);
     return code == null ? Results.NotFound() : Json(new ResolveAppResponse { Game = code });
 });
+// 계정 (공통): 닉네임
+app.MapGet(OnlineRoutes.Me, (HttpRequest req, IPlatformStore p) =>
+    Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id) })));
+app.MapPost(OnlineRoutes.MyNickname, async (HttpRequest req, IPlatformStore p) =>
+{
+    var body = await Body<NicknameRequest>(req);
+    return Authed(req, p, id =>
+    {
+        var res = p.SetNickname(id, body?.Nickname);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
+app.MapGet("/v1/accounts/names", (HttpRequest req, IPlatformStore p) =>
+    Authed(req, p, id =>
+    {
+        string ids = req.Query.TryGetValue("ids", out var v) ? v.ToString() : "";
+        var list = new List<string>(ids.Split(',', StringSplitOptions.RemoveEmptyEntries));
+        if (list.Count > 200) list = list.GetRange(0, 200); // 한 번에 묻는 수 상한
+        return Json(new NamesResponse { Names = p.NicknamesOf(list) });
+    }));
 app.MapGet(OnlineRoutes.MyGames, (HttpRequest req, IPlatformStore p) =>
     Authed(req, p, id => Json(new GameListResponse { Games = new List<string>(p.GamesOf(id)) })));
 

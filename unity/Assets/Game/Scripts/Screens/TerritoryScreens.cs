@@ -24,6 +24,8 @@ namespace Game.Unity.Screens
         internal static Dictionary<string, TerritoryOwner> Owners;
         /// <summary>한 번 보여줄 알림 (수비 등록 결과 등).</summary>
         internal static string Notice;
+        /// <summary>이번에 주인 닉네임을 받았는지 (다시 그릴 때 또 묻지 않게, 위치를 다시 확인하면 새로).</summary>
+        internal static bool NamesFetched;
 
         public void Build(GameApp app, RectTransform root)
         {
@@ -51,7 +53,7 @@ namespace Game.Unity.Screens
             Ui.Button(root, ctx.T("ui.territory.locate"), () =>
             {
                 status.text = ctx.T("ui.territory.locating");
-                ctx.Location.Request(r => { Last = r; if (root != null) app.ShowMain("territory"); });
+                ctx.Location.Request(r => { Last = r; NamesFetched = false; if (root != null) app.ShowMain("territory"); });
             }, 100);
 
             var list = Ui.ScrollList(root, "Regions", 10, 8);
@@ -96,6 +98,14 @@ namespace Game.Unity.Screens
                 var owners = new Dictionary<string, TerritoryOwner>();
                 if (res != null) foreach (var o in res.Owners) owners[o.RegionId] = o;
                 Owners = owners;
+                if (res != null && !NamesFetched)
+                {
+                    // 주인 닉네임을 받은 뒤 다시 그린다 (한 번만)
+                    var ids = new List<string>();
+                    foreach (var o in res.Owners) ids.Add(o.OwnerAccountId);
+                    NamesFetched = true;
+                    ctx.LoadNames(ids, () => { if (root != null) app.ShowMain("territory"); });
+                }
                 foreach (var kv in ownerLabels)
                 {
                     if (kv.Value == null) continue;
@@ -106,7 +116,7 @@ namespace Game.Unity.Screens
                     kv.Value.text = res == null ? ctx.T("ui.hire.failed")
                         : !has ? ctx.T("ui.territory.owner")
                         : mineRegion ? Ui.Colored(ctx.T("ui.territory.mine"), Palette.Good) + "  " + Pending(ctx, o) + "\n" + defense
-                        : Ui.Colored(ctx.T("ui.territory.others"), Palette.Enemy) + "  " + defense;
+                        : Ui.Colored(ctx.T("ui.territory.othersNamed", ctx.DisplayName(o.OwnerAccountId)), Palette.Enemy) + "  " + defense;
                     if (mineRegion && cards.TryGetValue(kv.Key, out var card) && card != null)
                     {
                         string id = kv.Key;
@@ -136,6 +146,7 @@ namespace Game.Unity.Screens
     public sealed class AllianceScreen : GameScreen
     {
         private readonly string _notice;
+        private bool _namesLoaded;
         public AllianceScreen(string notice = null) { _notice = notice; }
 
         public override void Build()
@@ -153,6 +164,13 @@ namespace Game.Unity.Screens
                 Object.Destroy(loading.gameObject);
                 if (res == null) { Ui.Label(list, T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
                 Alliance mine = res.MineId == null ? null : res.Alliances.Find(a => a.Id == res.MineId);
+                if (mine != null && !_namesLoaded)
+                {
+                    // 연합원·신청자 닉네임을 받은 뒤 다시 그린다
+                    var ids = new List<string>(mine.Members);
+                    ids.AddRange(mine.Requests);
+                    Ctx.LoadNames(ids, () => { if (Root != null) App.Show(new AllianceScreen(_notice) { _namesLoaded = true }); });
+                }
                 if (mine != null)
                 {
                     var card = Ui.Card(list, "Mine", 20, 6);
@@ -206,8 +224,7 @@ namespace Game.Unity.Screens
             Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("territory"));
         }
 
-        /// <summary>계정 id 앞부분 (닉네임은 계정 단계에서).</summary>
-        private static string Short(string accountId) => accountId == null ? "?" : accountId.Length > 12 ? accountId.Substring(0, 12) + "…" : accountId;
+        private string Short(string accountId) => Ctx.DisplayName(accountId);
 
         private void Reopen(AllianceResponse r)
         {

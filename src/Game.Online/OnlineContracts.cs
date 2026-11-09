@@ -24,6 +24,11 @@ namespace Game.Online
         public const string Time = "/v1/time";
         public const string Games = "/v1/games";
         public const string MyGames = "/v1/me/games";
+        /// <summary>내 계정 (GET), 닉네임 정하기 (POST /v1/me/nickname).</summary>
+        public const string Me = "/v1/me";
+        public const string MyNickname = "/v1/me/nickname";
+        /// <summary>계정 id들 → 닉네임 (GET ?ids=a,b,c).</summary>
+        public static string Names(IEnumerable<string> ids) => "/v1/accounts/names?ids=" + Uri.EscapeDataString(string.Join(",", ids));
         public static string ResolveApp(string appId) => "/v1/games/resolve?app=" + Uri.EscapeDataString(appId ?? "");
         public static string Save(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/save";
         public static string Battles(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/battles";
@@ -45,6 +50,54 @@ namespace Game.Online
         public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
         public static string AllianceLeave(string game) => Alliances(game) + "/leave";
         public static string AllianceManage(string game) => Alliances(game) + "/manage";
+    }
+
+    /// <summary>
+    /// 닉네임 (공통 계정, 모든 게임에서 같은 이름): 앞뒤 공백을 뺀 2~10자, 글자·숫자·밑줄만, 다른 계정과 같으면 안 된다(대소문자 무시).
+    /// 계정 단위 규칙이라 게임 데이터가 아니라 여기 둔다.
+    /// </summary>
+    public static class NicknameRules
+    {
+        public const int Min = 2;
+        public const int Max = 10;
+        public const string Ok = "ok";
+        public const string BadName = "badName";
+        public const string Taken = "taken";
+
+        /// <summary>정리한 이름 (규칙에 맞지 않으면 null).</summary>
+        public static string Normalize(string name)
+        {
+            string n = (name ?? "").Trim();
+            if (n.Length < Min || n.Length > Max) return null;
+            foreach (char c in n) if (!char.IsLetterOrDigit(c) && c != '_') return null;
+            return n;
+        }
+    }
+
+    public sealed class ProfileResponse
+    {
+        public string AccountId { get; set; }
+        /// <summary>아직 없으면 null.</summary>
+        public string Nickname { get; set; }
+    }
+
+    public sealed class NicknameRequest
+    {
+        public string Nickname { get; set; }
+    }
+
+    public sealed class NicknameResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="NicknameRules"/> (ok / badName / taken).</summary>
+        public string Reason { get; set; }
+        public string Nickname { get; set; }
+    }
+
+    /// <summary>계정 id → 닉네임 (없는 계정·닉네임 없는 계정은 빠진다).</summary>
+    public sealed class NamesResponse
+    {
+        public Dictionary<string, string> Names { get; set; } = new Dictionary<string, string>();
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -520,6 +573,12 @@ namespace Game.Online
         void Unregister(string listingId, Action<bool?> done);
         void GetMail(Action<MailListResponse> done);
 
+        // ---- 계정 (닿지 않으면 null) ----
+        void GetProfile(Action<ProfileResponse> done);
+        void SetNickname(string nickname, Action<NicknameResponse> done);
+        /// <summary>계정 id들 → 닉네임.</summary>
+        void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done);
+
         /// <summary>영토 주인 목록 (닿지 않으면 null).</summary>
         void GetTerritory(Action<TerritoryResponse> done);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (보낸 우편, 닿지 않으면 null).</summary>
@@ -551,6 +610,9 @@ namespace Game.Online
         public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
+        public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
+        public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
+        public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
         public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);

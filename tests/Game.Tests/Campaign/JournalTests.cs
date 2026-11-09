@@ -30,6 +30,9 @@ namespace Game.Tests.Campaign
             public void Unregister(string id, Action<bool?> done) { if (Down) done(null); else _inner.Unregister(id, done); }
             public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
+            public void GetProfile(Action<ProfileResponse> done) { if (Down) done(null); else _inner.GetProfile(done); }
+            public void SetNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.SetNickname(n, done); }
+            public void GetNames(System.Collections.Generic.IReadOnlyCollection<string> ids, Action<NamesResponse> done) { if (Down) done(null); else _inner.GetNames(ids, done); }
             public void CollectTerritory(Action<MailListResponse> done) { if (Down) done(null); else _inner.CollectTerritory(done); }
             public void RegisterDefense(DefenseRequest r, Action<DefenseResponse> done) { if (Down) done(null); else _inner.RegisterDefense(r, done); }
             public void GetAlliances(Action<AllianceListResponse> done) { if (Down) done(null); else _inner.GetAlliances(done); }

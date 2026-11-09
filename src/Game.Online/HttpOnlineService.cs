@@ -162,6 +162,17 @@ namespace Game.Online
 
         private static AllianceResponse AllianceParse(int status, string body) => status == 200 || status == 422 ? Parse<AllianceResponse>(body) : null;
 
+        public void GetProfile(Action<ProfileResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.Me, null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<ProfileResponse>(body) : null));
+
+        /// <summary>200 = 정함, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void SetNickname(string nickname, Action<NicknameResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.MyNickname, OnlineJson.Write(new NicknameRequest { Nickname = nickname }), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<NicknameResponse>(body) : null));
+
+        public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.Names(accountIds), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<NamesResponse>(body) : null));
+
         private static T Parse<T>(string body) where T : class
         {
             if (string.IsNullOrEmpty(body)) return null;

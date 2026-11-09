@@ -279,6 +279,25 @@ namespace Game.Server.Tests
             Assert.Equal(2, accepted.Alliance.Members.Count);
         }
 
+        [Fact(DisplayName = "닉네임: 정하면 내 계정·이름 찾기에 나오고, 남이 쓰는 이름(대소문자 무시)·규칙 밖은 422")]
+        public async Task Nicknames()
+        {
+            var a = await SignedIn();
+            var b = await SignedIn();
+            string name = "N" + System.Guid.NewGuid().ToString("N").Substring(0, 6);
+            var set = await a.PostAsync(OnlineRoutes.MyNickname, Body(new NicknameRequest { Nickname = name }));
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+            var me = await Read<ProfileResponse>(await a.GetAsync(OnlineRoutes.Me));
+            Assert.Equal(name, me.Nickname);
+            Assert.Equal((HttpStatusCode)422, (await b.PostAsync(OnlineRoutes.MyNickname, Body(new NicknameRequest { Nickname = name.ToLowerInvariant() }))).StatusCode);
+            Assert.Equal((HttpStatusCode)422, (await b.PostAsync(OnlineRoutes.MyNickname, Body(new NicknameRequest { Nickname = "!" }))).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await a.PostAsync(OnlineRoutes.MyNickname, Body(new NicknameRequest { Nickname = name }))).StatusCode); // 내 이름 다시
+            var bMe = await Read<ProfileResponse>(await b.GetAsync(OnlineRoutes.Me));
+            var names = await Read<NamesResponse>(await b.GetAsync(OnlineRoutes.Names(new[] { me.AccountId, bMe.AccountId })));
+            Assert.Equal(name, names.Names[me.AccountId]);
+            Assert.False(names.Names.ContainsKey(bMe.AccountId)); // b는 아직 없음
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {

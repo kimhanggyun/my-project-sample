@@ -21,6 +21,11 @@ namespace Game.Server
         bool Join(string accountId, string gameCode, long nowUnixSeconds);
         /// <summary>계정이 가입한 게임 코드.</summary>
         IReadOnlyList<string> GamesOf(string accountId);
+
+        /// <summary>닉네임 (공통 계정). 정하기: 규칙에 맞고 다른 계정과 겹치지 않을 때 (대소문자 무시). 내 이름을 그대로 다시 정하는 건 된다.</summary>
+        NicknameResponse SetNickname(string accountId, string nickname);
+        string NicknameOf(string accountId);
+        Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds);
     }
 
     public interface IGameStore
@@ -68,6 +73,8 @@ namespace Game.Server
             public Dictionary<string, string> Tokens { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → (게임 코드 → 가입 시각).</summary>
             public Dictionary<string, Dictionary<string, long>> Memberships { get; set; } = new Dictionary<string, Dictionary<string, long>>();
+            /// <summary>계정 → 닉네임.</summary>
+            public Dictionary<string, string> Nicknames { get; set; } = new Dictionary<string, string>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
             public Dictionary<string, Dictionary<string, CloudSave>> Saves { get; set; } = new Dictionary<string, Dictionary<string, CloudSave>>();
             /// <summary>게임 코드 → 고용 등록 목록.</summary>
@@ -123,6 +130,35 @@ namespace Game.Server
                 list.Sort(StringComparer.Ordinal);
                 return list;
             }
+        }
+
+        public NicknameResponse SetNickname(string accountId, string nickname)
+        {
+            var n = NicknameRules.Normalize(nickname);
+            if (n == null) return new NicknameResponse { Ok = false, Reason = NicknameRules.BadName };
+            lock (_lock)
+            {
+                if (Data.Nicknames == null) Data.Nicknames = new Dictionary<string, string>();
+                foreach (var kv in Data.Nicknames)
+                    if (kv.Key != accountId && string.Equals(kv.Value, n, StringComparison.OrdinalIgnoreCase)) return new NicknameResponse { Ok = false, Reason = NicknameRules.Taken };
+                Data.Nicknames[accountId] = n;
+                Persist();
+                return new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n };
+            }
+        }
+
+        public string NicknameOf(string accountId)
+        {
+            lock (_lock) return Data.Nicknames != null && accountId != null && Data.Nicknames.TryGetValue(accountId, out var n) ? n : null;
+        }
+
+        public Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds)
+        {
+            var r = new Dictionary<string, string>();
+            lock (_lock)
+                foreach (var id in accountIds)
+                    if (id != null && Data.Nicknames != null && Data.Nicknames.TryGetValue(id, out var n)) r[id] = n;
+            return r;
         }
 
         public CloudSave GetSave(string gameCode, string accountId)

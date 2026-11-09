@@ -435,6 +435,30 @@ namespace Game.Flow
 
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(TerritoryLedger.View(TerritoryData, _owners, AccountId, Now, a => AllianceBook.Of(_alliances, a)));
 
+        /// <summary>닉네임 (가짜: 나 하나, 시장의 npc는 "상인").</summary>
+        private string _nickname;
+
+        public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(new ProfileResponse { AccountId = AccountId, Nickname = _nickname });
+
+        public void SetNickname(string nickname, Action<NicknameResponse> done)
+        {
+            var n = NicknameRules.Normalize(nickname);
+            if (n == null) { done?.Invoke(new NicknameResponse { Ok = false, Reason = NicknameRules.BadName }); return; }
+            _nickname = n;
+            done?.Invoke(new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n });
+        }
+
+        public void GetNames(IReadOnlyCollection<string> ids, Action<NamesResponse> done)
+        {
+            var r = new NamesResponse();
+            foreach (var id in ids)
+            {
+                if (id == AccountId && _nickname != null) r.Names[id] = _nickname;
+                else if (id == NpcAccount) r.Names[id] = "NPC";
+            }
+            done?.Invoke(r);
+        }
+
         /// <summary>연합 (가짜: 메모리만, 나 혼자).</summary>
         private readonly Dictionary<string, Alliance> _alliances = new Dictionary<string, Alliance>();
 
