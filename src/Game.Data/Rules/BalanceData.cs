@@ -29,6 +29,14 @@ namespace Game.Data.Rules
         public long RecruitGoldPerSoldier { get; private set; }
 
         public Fix HirePriceCapMultiplier { get; private set; }
+        public long HireGeneralBasePrice { get; private set; }
+        public long HireGeneralPricePerLevel { get; private set; }
+        public long HireUnitPricePerSoldier { get; private set; }
+        public long HireUnitPricePerTier { get; private set; }
+        public Fix HireUnitPricePerTraining { get; private set; }
+        public long HireSupplyPerGold { get; private set; }
+        public Fix HireOwnerRewardRatio { get; private set; }
+        public int HireMaxListingsPerKind { get; private set; }
 
         public Fix LightInjuryStatMultiplier { get; private set; }
 
@@ -67,6 +75,14 @@ namespace Game.Data.Rules
                 ConscriptSupplyPerSoldier = JsonUtil.RequireLong(casualty, "conscriptSupplyPerSoldier", c + ".casualty"),
                 RecruitGoldPerSoldier = JsonUtil.RequireLong(casualty, "recruitGoldPerSoldier", c + ".casualty"),
                 HirePriceCapMultiplier = JsonUtil.RequireFix(hire, "priceCapMultiplier", c + ".hire"),
+                HireGeneralBasePrice = JsonUtil.RequireLong(hire, "generalBasePrice", c + ".hire"),
+                HireGeneralPricePerLevel = JsonUtil.RequireLong(hire, "generalPricePerLevel", c + ".hire"),
+                HireUnitPricePerSoldier = JsonUtil.RequireLong(hire, "unitPricePerSoldier", c + ".hire"),
+                HireUnitPricePerTier = JsonUtil.RequireLong(hire, "unitPricePerTier", c + ".hire"),
+                HireUnitPricePerTraining = JsonUtil.RequireFix(hire, "unitPricePerTraining", c + ".hire"),
+                HireSupplyPerGold = JsonUtil.RequireLong(hire, "supplyPerGold", c + ".hire"),
+                HireOwnerRewardRatio = JsonUtil.RequireFix(hire, "ownerRewardRatio", c + ".hire"),
+                HireMaxListingsPerKind = (int)JsonUtil.RequireLong(hire, "maxListingsPerKind", c + ".hire"),
                 LightInjuryStatMultiplier = JsonUtil.RequireFix(injury, "lightStatMultiplier", c + ".generalInjury"),
                 SoldierBudget = JsonUtil.RequireLong(display, "soldierBudget", c + ".display"),
             };

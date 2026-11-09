@@ -73,6 +73,23 @@ app.MapPost("/v1/games/{game}/actions", async (string game, HttpRequest req, IPl
     });
 });
 
+// 고용 (R-43)
+app.MapGet("/v1/games/{game}/hire/listings", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.Listings(req.Query.TryGetValue("kind", out var k) ? k.ToString() : null))));
+app.MapPost("/v1/games/{game}/hire/listings", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<HireListingRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.RegisterHire(id, body);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
+app.MapDelete("/v1/games/{game}/hire/listings/{listing}", (string game, string listing, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => g.Unregister(id, listing) ? Results.NoContent() : Results.NotFound()));
+app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.MailOf(id))));
+
 app.Run();
 
 static IResult Json(object o, int status = StatusCodes.Status200OK) =>

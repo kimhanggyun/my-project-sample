@@ -133,6 +133,11 @@ namespace Game.Flow
                 ClaimedTicks = result.Ticks,
                 PlayedAtUnixSeconds = plan.PreparedAtUnixSeconds,
             };
+            if (plan.Hired != null && !plan.Hired.IsEmpty)
+            {
+                s.Hires = new List<HireUse>(plan.Hired.Uses);
+                s.Compositions = PlayerActionRunner.ToActionCorps(plan.Compositions);
+            }
             bool all = true;
             foreach (var c in plan.Setup.Corps)
                 if (c.Team == StoryFlow.PlayerTeam)
@@ -314,7 +319,7 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
-            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at);
+            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out _);
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
             v.Save = Copy(_save);
             done?.Invoke(v);

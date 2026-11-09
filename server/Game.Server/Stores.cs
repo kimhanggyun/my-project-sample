@@ -28,6 +28,20 @@ namespace Game.Server
         CloudSave GetSave(string gameCode, string accountId);
         /// <summary>baseRevision이 지금 세이브와 같을 때만 저장. (성공, 저장 뒤 또는 지금 세이브).</summary>
         (bool ok, CloudSave current) PutSave(string gameCode, string accountId, long baseRevision, string json, long nowUnixSeconds);
+
+        // ---- 고용 등록 (게임별, R-43) ----
+        /// <summary>같은 등록자·종류·대상(SourceId)이 있으면 갱신(Id 유지, Version +1), 없으면 새로 (Version 1).</summary>
+        HireListing UpsertListing(string gameCode, HireListing listing);
+        HireListing GetListing(string gameCode, string listingId);
+        /// <summary>kind가 null이면 전부. 등록 시각 순.</summary>
+        List<HireListing> Listings(string gameCode, string kind);
+        bool RemoveListing(string gameCode, string ownerAccountId, string listingId);
+
+        // ---- 우편 (게임별) ----
+        void AddMail(string gameCode, string accountId, Mail mail);
+        List<Mail> MailOf(string gameCode, string accountId);
+        /// <summary>우편을 지운다 (받음). 없으면 false.</summary>
+        bool TakeMail(string gameCode, string accountId, string mailId);
     }
 
     /// <summary>개발용 메모리 저장소 (공통 + 게임별을 한 객체에). 테스트·로컬 실행용.</summary>
@@ -43,6 +57,10 @@ namespace Game.Server
             public Dictionary<string, Dictionary<string, long>> Memberships { get; set; } = new Dictionary<string, Dictionary<string, long>>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
             public Dictionary<string, Dictionary<string, CloudSave>> Saves { get; set; } = new Dictionary<string, Dictionary<string, CloudSave>>();
+            /// <summary>게임 코드 → 고용 등록 목록.</summary>
+            public Dictionary<string, List<HireListing>> Listings { get; set; } = new Dictionary<string, List<HireListing>>();
+            /// <summary>게임 코드 → (계정 → 우편).</summary>
+            public Dictionary<string, Dictionary<string, List<Mail>>> Mail { get; set; } = new Dictionary<string, Dictionary<string, List<Mail>>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -107,6 +125,84 @@ namespace Game.Server
                 return (true, Copy(next));
             }
         }
+
+        private List<HireListing> ListingsOf(string gameCode)
+        {
+            if (Data.Listings == null) Data.Listings = new Dictionary<string, List<HireListing>>();
+            if (!Data.Listings.TryGetValue(gameCode, out var list)) Data.Listings[gameCode] = list = new List<HireListing>();
+            return list;
+        }
+
+        private List<Mail> Box(string gameCode, string accountId)
+        {
+            if (Data.Mail == null) Data.Mail = new Dictionary<string, Dictionary<string, List<Mail>>>();
+            if (!Data.Mail.TryGetValue(gameCode, out var g)) Data.Mail[gameCode] = g = new Dictionary<string, List<Mail>>();
+            if (!g.TryGetValue(accountId, out var box)) g[accountId] = box = new List<Mail>();
+            return box;
+        }
+
+        public HireListing UpsertListing(string gameCode, HireListing listing)
+        {
+            lock (_lock)
+            {
+                var list = ListingsOf(gameCode);
+                var old = list.Find(l => l.OwnerAccountId == listing.OwnerAccountId && l.Kind == listing.Kind && l.SourceId == listing.SourceId);
+                var next = Copy(listing);
+                if (old != null) { next.Id = old.Id; next.Version = old.Version + 1; list[list.IndexOf(old)] = next; }
+                else { next.Id = "h-" + NewId(6); next.Version = 1; list.Add(next); }
+                Persist();
+                return Copy(next);
+            }
+        }
+
+        public HireListing GetListing(string gameCode, string listingId)
+        {
+            lock (_lock) { var l = ListingsOf(gameCode).Find(x => x.Id == listingId); return l == null ? null : Copy(l); }
+        }
+
+        public List<HireListing> Listings(string gameCode, string kind)
+        {
+            lock (_lock) return ListingsOf(gameCode).FindAll(l => kind == null || l.Kind == kind).ConvertAll(Copy);
+        }
+
+        public bool RemoveListing(string gameCode, string ownerAccountId, string listingId)
+        {
+            lock (_lock)
+            {
+                int n = ListingsOf(gameCode).RemoveAll(l => l.Id == listingId && l.OwnerAccountId == ownerAccountId);
+                if (n > 0) Persist();
+                return n > 0;
+            }
+        }
+
+        public void AddMail(string gameCode, string accountId, Mail mail)
+        {
+            lock (_lock)
+            {
+                var m = Copy(mail);
+                m.Id = "m-" + NewId(6);
+                Box(gameCode, accountId).Add(m);
+                Persist();
+            }
+        }
+
+        public List<Mail> MailOf(string gameCode, string accountId)
+        {
+            lock (_lock) return Box(gameCode, accountId).ConvertAll(Copy);
+        }
+
+        public bool TakeMail(string gameCode, string accountId, string mailId)
+        {
+            lock (_lock)
+            {
+                int n = Box(gameCode, accountId).RemoveAll(m => m.Id == mailId);
+                if (n > 0) Persist();
+                return n > 0;
+            }
+        }
+
+        private static HireListing Copy(HireListing l) => OnlineJson.Read<HireListing>(OnlineJson.Write(l));
+        private static Mail Copy(Mail m) => OnlineJson.Read<Mail>(OnlineJson.Write(m));
 
         /// <summary>바뀐 뒤 (잠금 안에서) 부른다. 폴더 저장소가 디스크에 쓴다.</summary>
         protected virtual void Persist() { }

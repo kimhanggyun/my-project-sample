@@ -127,6 +127,62 @@ namespace Game.Server.Tests
             Assert.Equal(save.Revision, v.Save.Revision);
         }
 
+        [Fact(DisplayName = "R-43 고용: A가 부대 등록 → B가 목록에서 골라 고용해 전투(200) → A 우편에 보상 → A가 받으면 지갑에, 두 번은 422")]
+        public async Task HireFlow()
+        {
+            var a = await SignedIn();
+            var b = await SignedIn();
+            var listings = OnlineRoutes.HireListings(ServerSetup.DefaultGame);
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            var mail = OnlineRoutes.Mail(ServerSetup.DefaultGame);
+
+            var tooExpensive = await a.PostAsync(listings, Body(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "u06", Price = 99, PayWith = "gold" }));
+            Assert.Equal((HttpStatusCode)422, tooExpensive.StatusCode);
+            var reg = await a.PostAsync(listings, Body(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "u06", Price = 2, PayWith = "gold" }));
+            Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
+            var listing = (await Read<HireListingResponse>(reg)).Listing;
+            Assert.Equal((1L, 4000L), (listing.Version, listing.Troops));
+
+            var list = await Read<HireListResponse>(await b.GetAsync(listings + "?kind=unit"));
+            var seen = Assert.Single(list.Listings, l => l.Id == listing.Id);
+
+            // B: 서버 세이브로 출진 준비 (고용 500명을 general_a 군단의 정찰 칸에)
+            var save = await Read<CloudSave>(await b.GetAsync(Save));
+            var source = new FileDataSource(DataRoot);
+            var defs = DefinitionSet.Load(source, "ancientwar");
+            var flow = new StoryFlow(defs, source, new ManualTimeProvider(Clock));
+            var state = StrategyGameModule.FromJson(save.Json);
+            var hired = new HireRules(defs).Resolve(new[] { new HireUse { ListingId = seen.Id, Version = seen.Version, Count = 500 } }, id => id == seen.Id ? seen : null, null, state, out var err);
+            Assert.Null(err);
+            var comps = state.Compositions.Select(c => new Game.Campaign.Roster.CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new System.Collections.Generic.Dictionary<string, string>(c.Slots) }).ToList();
+            comps[0].Slots["rightWing"] = HireRules.UnitIdOf(seen.Id);
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 6, Delegate = true, Hired = hired, Compositions = comps });
+            Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+            var sim = new BattleSimulation(plan.Setup);
+            while (!sim.IsOver) sim.Step();
+            var battle = await b.PostAsync(Battles, Body(CloudSync.SubmissionOf(plan, sim.CommandLog, sim.Result, save.Revision)));
+            Assert.Equal(HttpStatusCode.OK, battle.StatusCode);
+
+            var box = await Read<MailListResponse>(await a.GetAsync(mail));
+            var reward = Assert.Single(box.Mail);
+            Assert.Equal((MailKinds.HireReward, "gold", 700L), (reward.Kind, reward.Resource, reward.Amount)); // 2 × 500 × 0.7
+            Assert.Empty((await Read<MailListResponse>(await b.GetAsync(mail))).Mail);
+
+            var aSave = await Read<CloudSave>(await a.GetAsync(Save));
+            long before = StrategyGameModule.FromJson(aSave.Json).Wallet["gold"];
+            var claim = await a.PostAsync(actions, Body(new ActionSubmission { BaseRevision = aSave.Revision, Actions = { PlayerActionRunner.ClaimMail(reward) } }));
+            Assert.Equal(HttpStatusCode.OK, claim.StatusCode);
+            var after = await Read<ActionVerdict>(claim);
+            Assert.Equal(before + 700, StrategyGameModule.FromJson(after.Save.Json).Wallet["gold"]);
+            Assert.Empty((await Read<MailListResponse>(await a.GetAsync(mail))).Mail);
+            var again = await a.PostAsync(actions, Body(new ActionSubmission { BaseRevision = after.Save.Revision, Actions = { PlayerActionRunner.ClaimMail(reward) } }));
+            Assert.Equal((HttpStatusCode)422, again.StatusCode);
+
+            // 해제: 남의 등록은 못 지운다
+            Assert.Equal(HttpStatusCode.NotFound, (await b.DeleteAsync(OnlineRoutes.HireListing(ServerSetup.DefaultGame, listing.Id))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await a.DeleteAsync(OnlineRoutes.HireListing(ServerSetup.DefaultGame, listing.Id))).StatusCode);
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {

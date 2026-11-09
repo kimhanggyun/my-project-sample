@@ -5,7 +5,7 @@
   "troopCap": { "minLeadership": 1, "maxLeadership": 100, "min": 5000, "max": 20000, "unitMax": 5000 },
   "supply": { "daysPerMinute": 7, "sortieMinutes": 3 },
   "casualty": { "woundedRatio": 0.4, "healCostRatio": 0.5, "conscriptSupplyPerSoldier": 10, "recruitGoldPerSoldier": 2 },
-  "hire": { "priceCapMultiplier": 2 },
+  "hire": { "priceCapMultiplier": 2, "generalBasePrice": 200, "generalPricePerLevel": 50, "unitPricePerSoldier": 1, "unitPricePerTier": 1, "unitPricePerTraining": 2, "supplyPerGold": 5, "ownerRewardRatio": 0.7, "maxListingsPerKind": 3 },
   "generalInjury": { "lightStatMultiplier": 0.9 },
   "display": { "soldierBudget": 300 }
 }
