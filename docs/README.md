@@ -50,6 +50,7 @@
 | [hiring.md](design/content/hiring.md) | 장수·부대 등록과 고용, 전투 이력 (온라인) | 확정 (보상 미결) |
 | [replay.md](design/content/replay.md) | 전투 녹화·재생, 공략 공유 | 기획 중 |
 | [pvp.md](design/content/pvp.md) | 유저 대전 1:1 · N:N | 확장 예정 (구조만 대비) |
+| [territory.md](design/content/territory.md) | 영토: 실제 지역(GPS) 땅따먹기, 지역 단계별 연합, 위치정보법·조작 방지 | 별도 컨텐츠, 기획 중 (서버 도입 후) |
 | [general-growth.md](design/content/general-growth.md) | 장수 키우기 (스킬북·특성서·대결 보상 먼저, 세부 성장은 TO-BE) | 일부 먼저 열림 |
 | [troop-growth.md](design/content/troop-growth.md) | 부대 키우기 | TO-BE |
 
