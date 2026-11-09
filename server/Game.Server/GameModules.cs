@@ -24,6 +24,14 @@ namespace Game.Server
         BattleVerdict SubmitBattle(string accountId, BattleSubmission submission);
         /// <summary>기기 행동(편성·구매·창설 …)을 서버 세이브에 다시 적용한다 (R-41).</summary>
         ActionVerdict SubmitActions(string accountId, ActionSubmission submission);
+
+        // ---- 고용 (R-43, hiring.md) ----
+        /// <summary>내 서버 세이브의 장수·부대를 등록 (같은 대상이면 갱신).</summary>
+        HireListingResponse RegisterHire(string accountId, HireListingRequest request);
+        /// <summary>등록 목록 (kind = general / unit / null = 전부).</summary>
+        HireListResponse Listings(string kind);
+        bool Unregister(string accountId, string listingId);
+        MailListResponse MailOf(string accountId);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -68,6 +76,7 @@ namespace Game.Server
         private readonly ITimeProvider _time;
         private readonly IGameStore _store;
         private readonly PlayerActionRunner _actions;
+        private readonly HireRules _hire;
 
         public StrategyGameModule(string code, IReadOnlyList<string> packageIds, IDataSource source, string theme, ITimeProvider time, IGameStore store)
         {
@@ -78,6 +87,7 @@ namespace Game.Server
             _time = time;
             _store = store;
             _actions = new PlayerActionRunner(_defs);
+            _hire = new HireRules(_defs);
         }
 
         public string Code { get; }
@@ -109,10 +119,17 @@ namespace Game.Server
             var save = LoadOrCreate(accountId);
             if (s == null || s.BaseRevision != save.Revision)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
-            var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at);
+            var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId);
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
+            // 고용 보상: 등록자 우편으로 (등록자 세이브는 직접 고치지 않는다 — 받을 때 행동 mail.claim)
+            if (hired != null)
+                foreach (var c in hired.Charges)
+                {
+                    long reward = _hire.OwnerReward(c.Cost);
+                    if (reward > 0) _store.AddMail(Code, c.OwnerAccountId, new Mail { Kind = MailKinds.HireReward, Resource = c.Resource, Amount = reward, ListingId = c.ListingId, CreatedAtUnixSeconds = Now });
+                }
             verdict.Save = current;
             return verdict;
         }
@@ -122,12 +139,39 @@ namespace Game.Server
             var save = LoadOrCreate(accountId);
             if (s == null || s.BaseRevision != save.Revision)
                 return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
-            var v = ActionVerifier.Apply(_actions, save, s, Now, out var json, out var at);
+            // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 하고, 한 묶음에서 두 번 받을 수 없다
+            var box = _store.MailOf(Code, accountId);
+            var claimed = new HashSet<string>(StringComparer.Ordinal);
+            bool ServerCheck(PlayerAction a)
+            {
+                if (a?.Kind != ActionKinds.MailClaim) return true;
+                var m = box.Find(x => x.Id == a.MailId);
+                return m != null && m.Resource == a.PayWith && m.Amount == a.Count && claimed.Add(m.Id);
+            }
+            var v = ActionVerifier.Apply(_actions, save, s, Now, out var json, out var at, ServerCheck);
             if (!v.Valid) { v.Save = save; return v; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
-            return ok ? new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current }
-                      : new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
+            if (!ok) return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
+            foreach (var id in claimed) _store.TakeMail(Code, accountId, id);
+            return new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current };
         }
+
+        public HireListingResponse RegisterHire(string accountId, HireListingRequest req)
+        {
+            var state = FromJson(LoadOrCreate(accountId).Json);
+            string source = req?.Kind == HireKinds.General ? req.GeneralId : req?.UnitId;
+            int existing = _store.Listings(Code, req?.Kind).FindAll(l => l.OwnerAccountId == accountId && l.SourceId != source).Count;
+            var r = _hire.Register(state, req, existing);
+            if (!r.Ok) return r;
+            r.Listing.OwnerAccountId = accountId;
+            r.Listing.CreatedAtUnixSeconds = Now;
+            r.Listing = _store.UpsertListing(Code, r.Listing);
+            return r;
+        }
+
+        public HireListResponse Listings(string kind) => new HireListResponse { Listings = _store.Listings(Code, kind) };
+        public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
+        public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
 
         public static string ToJson(CampaignState state) => SaveJson.Write(state);
         public static CampaignState FromJson(string json) => SaveJson.Read(json);

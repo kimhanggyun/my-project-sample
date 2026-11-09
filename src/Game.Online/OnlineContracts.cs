@@ -28,6 +28,12 @@ namespace Game.Online
         public static string Save(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/save";
         public static string Battles(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/battles";
         public static string Actions(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/actions";
+        /// <summary>고용 등록 목록 (GET ?kind=general|unit) / 등록 (POST).</summary>
+        public static string HireListings(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/hire/listings";
+        /// <summary>등록 하나 (DELETE = 해제).</summary>
+        public static string HireListing(string game, string id) => HireListings(game) + "/" + Uri.EscapeDataString(id);
+        /// <summary>받은 우편 (고용 보상 …). 받기는 행동 mail.claim.</summary>
+        public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -98,6 +104,111 @@ namespace Game.Online
         public long ClaimedTicks { get; set; }
         /// <summary>출진 준비를 한 시각 (서버 시각 기준 unix 초, 0 = 지금). 서버는 이 시각으로 출진 준비·결과 반영을 다시 한다 (R-42, 오프라인 전투를 나중에 올릴 때).</summary>
         public long PlayedAtUnixSeconds { get; set; }
+        /// <summary>고용한 장수·부대 (R-43). 서버는 등록 목록에서 같은 판(Version)의 스냅샷을 찾아 같은 출진을 만든다.</summary>
+        public List<HireUse> Hires { get; set; } = new List<HireUse>();
+        /// <summary>이 전투에 쓴 편성 (고용이 있으면 필수: 고용 장수·부대가 들어간 자리). 없으면 서버 세이브의 편성.</summary>
+        public List<ActionCorps> Compositions { get; set; }
+    }
+
+    public static class HireKinds
+    {
+        public const string General = "general";
+        public const string Unit = "unit";
+    }
+
+    /// <summary>
+    /// 고용 등록 하나 (hiring.md 2·3장): 등록 시점의 스냅샷. 서버가 등록자의 서버 세이브에서 만든다 (기기가 보낸 값을 믿지 않는다).
+    /// 같은 등록을 여러 유저가 동시에 고용해도 줄지 않는다 (R-26).
+    /// </summary>
+    public sealed class HireListing
+    {
+        public string Id { get; set; }
+        /// <summary><see cref="HireKinds"/>.</summary>
+        public string Kind { get; set; }
+        public string OwnerAccountId { get; set; }
+        /// <summary>등록자 세이브의 장수 id·부대 id (같은 대상을 다시 등록하면 갱신).</summary>
+        public string SourceId { get; set; }
+        /// <summary>스냅샷 판. 다시 등록(갱신)하면 오른다. 고용은 이 판을 가리킨다.</summary>
+        public long Version { get; set; }
+        /// <summary>스냅샷 JSON (장수 상태 또는 부대 상태).</summary>
+        public string SnapshotJson { get; set; }
+        /// <summary>장수: 1회 고용 가격, 부대: 1명당 가격.</summary>
+        public long Price { get; set; }
+        /// <summary>지불 자원: gold / supply (등록자가 고름).</summary>
+        public string PayWith { get; set; }
+        /// <summary>목록 표시용: 장수 정의 id·레벨 / 병종·등록 인원·훈련도(원본 정수).</summary>
+        public string GeneralId { get; set; }
+        public int Level { get; set; }
+        public string TroopType { get; set; }
+        public long Troops { get; set; }
+        public long TrainingRaw { get; set; }
+        public long CreatedAtUnixSeconds { get; set; }
+    }
+
+    /// <summary>등록 요청: 내 서버 세이브의 장수 또는 부대를 이 가격으로.</summary>
+    public sealed class HireListingRequest
+    {
+        public string Kind { get; set; }
+        public string GeneralId { get; set; }
+        public string UnitId { get; set; }
+        public long Price { get; set; }
+        public string PayWith { get; set; }
+    }
+
+    public static class HireReasons
+    {
+        public const string Ok = "ok";
+        public const string NotOwned = "notOwned";
+        public const string NotAvailable = "notAvailable";
+        public const string BadPrice = "badPrice";
+        public const string TooMany = "tooMany";
+        public const string BadRequest = "badRequest";
+    }
+
+    public sealed class HireListingResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="HireReasons"/>.</summary>
+        public string Reason { get; set; }
+        public HireListing Listing { get; set; }
+        /// <summary>추천 가격 (등록 화면 안내).</summary>
+        public long RecommendedPrice { get; set; }
+    }
+
+    public sealed class HireListResponse
+    {
+        public List<HireListing> Listings { get; set; } = new List<HireListing>();
+    }
+
+    /// <summary>전투에 고용 하나: 등록 id·판, 부대면 인원.</summary>
+    public sealed class HireUse
+    {
+        public string ListingId { get; set; }
+        public long Version { get; set; }
+        /// <summary>부대 고용 인원 (장수는 0).</summary>
+        public long Count { get; set; }
+    }
+
+    /// <summary>우편 하나 (고용 보상 등). 받으면(mail.claim) 세이브 지갑에 더해진다.</summary>
+    public sealed class Mail
+    {
+        public string Id { get; set; }
+        public string Kind { get; set; }
+        public string Resource { get; set; }
+        public long Amount { get; set; }
+        /// <summary>고용 보상이면 등록 id.</summary>
+        public string ListingId { get; set; }
+        public long CreatedAtUnixSeconds { get; set; }
+    }
+
+    public static class MailKinds
+    {
+        public const string HireReward = "hireReward";
+    }
+
+    public sealed class MailListResponse
+    {
+        public List<Mail> Mail { get; set; } = new List<Mail>();
     }
 
     public static class VerdictReasons
@@ -136,6 +247,8 @@ namespace Game.Online
         public const string UnitHeal = "unit.heal";
         public const string UnitCreate = "unit.create";
         public const string UnitDisband = "unit.disband";
+        /// <summary>우편 받기: MailId, Resource(SkillId 칸 대신 PayWith), Count = 양. 서버는 우편이 있는지 먼저 확인한다.</summary>
+        public const string MailClaim = "mail.claim";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>
@@ -163,8 +276,10 @@ namespace Game.Online
         public string UnitId { get; set; }
         public string TroopType { get; set; }
         public long Count { get; set; }
-        /// <summary>치료 비용: supply / gold.</summary>
+        /// <summary>치료 비용: supply / gold. 우편 받기: 받는 자원.</summary>
         public string PayWith { get; set; }
+        /// <summary>우편 받기: 우편 id.</summary>
+        public string MailId { get; set; }
         /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
         public long DoneAtUnixSeconds { get; set; }
     }

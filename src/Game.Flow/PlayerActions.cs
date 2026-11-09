@@ -35,8 +35,7 @@ namespace Game.Flow
                 if (a.Corps == null) return false;
                 var ed = new FormationEditor(defs, s, a.Situation);
                 ed.Draft.Clear();
-                foreach (var c in a.Corps)
-                    ed.Draft.Add(new CorpsComposition { GeneralId = c?.GeneralId, Formation = c?.Formation, Role = c?.Role, Slots = new Dictionary<string, string>(c?.Slots ?? new Dictionary<string, string>()) });
+                ed.Draft.AddRange(FromActionCorps(a.Corps));
                 return ed.Apply();
             }));
             Register(new Handler(ActionKinds.FormationRemovePreset, (s, a) => new FormationEditor(defs, s, a.Situation).RemovePreset()));
@@ -48,6 +47,29 @@ namespace Game.Flow
                 (a.PayWith == Economy.ResourceIds.Supply || a.PayWith == Economy.ResourceIds.Gold) && troops.Heal(s, a.UnitId, a.Count, a.PayWith) > 0));
             Register(new Handler(ActionKinds.UnitCreate, (s, a) => troops.Create(s, a.TroopType) != null));
             Register(new Handler(ActionKinds.UnitDisband, (s, a) => troops.Disband(s, a.UnitId)));
+            // 우편 받기: 서버는 우편이 있는지·양이 맞는지 먼저 본다 (ActionVerifier의 serverCheck)
+            Register(new Handler(ActionKinds.MailClaim, (s, a) =>
+            {
+                if (a.MailId == null || a.Count <= 0 || (a.PayWith != Economy.ResourceIds.Gold && a.PayWith != Economy.ResourceIds.Supply)) return false;
+                new Economy.Wallet(s.Wallet).Add(a.PayWith, a.Count);
+                return true;
+            }));
+        }
+
+        public static List<ActionCorps> ToActionCorps(IEnumerable<CorpsComposition> comps)
+        {
+            var list = new List<ActionCorps>();
+            foreach (var c in comps)
+                list.Add(new ActionCorps { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new Dictionary<string, string>(c.Slots) });
+            return list;
+        }
+
+        public static List<CorpsComposition> FromActionCorps(IEnumerable<ActionCorps> corps)
+        {
+            var list = new List<CorpsComposition>();
+            foreach (var c in corps)
+                list.Add(new CorpsComposition { GeneralId = c?.GeneralId, Formation = c?.Formation, Role = c?.Role, Slots = new Dictionary<string, string>(c?.Slots ?? new Dictionary<string, string>()) });
+            return list;
         }
 
         /// <summary>처리기를 더한다 (같은 종류가 있으면 바꾼다).</summary>
@@ -80,13 +102,11 @@ namespace Game.Flow
 
         // ---- 화면이 행동을 만드는 곳 ----
 
-        public static PlayerAction SaveFormation(string situation, IEnumerable<CorpsComposition> draft)
-        {
-            var list = new List<ActionCorps>();
-            foreach (var c in draft)
-                list.Add(new ActionCorps { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new Dictionary<string, string>(c.Slots) });
-            return new PlayerAction { Kind = ActionKinds.FormationSave, Situation = situation, Corps = list };
-        }
+        public static PlayerAction SaveFormation(string situation, IEnumerable<CorpsComposition> draft) =>
+            new PlayerAction { Kind = ActionKinds.FormationSave, Situation = situation, Corps = ToActionCorps(draft) };
+
+        public static PlayerAction ClaimMail(Mail mail) =>
+            new PlayerAction { Kind = ActionKinds.MailClaim, MailId = mail.Id, PayWith = mail.Resource, Count = mail.Amount };
 
         public static PlayerAction RemovePreset(string situation) => new PlayerAction { Kind = ActionKinds.FormationRemovePreset, Situation = situation };
         public static PlayerAction BuySkillBook(string skillId) => new PlayerAction { Kind = ActionKinds.SkillBookBuy, SkillId = skillId };
@@ -110,7 +130,9 @@ namespace Game.Flow
     public static class ActionVerifier
     {
         /// <summary>시각 검사(R-42: 세이브 시각 이후, 차례대로, 지금까지) → 적용(R-41). savedAt = 마지막 행동 시각 (새 세이브 시각).</summary>
-        public static ActionVerdict Apply(PlayerActionRunner runner, CloudSave save, ActionSubmission submission, long nowUnixSeconds, out string json, out long savedAt)
+        /// <param name="serverCheck">서버만 아는 조건 (예: 우편이 있는가). false면 그 순번에서 badAction. null이면 없음.</param>
+        public static ActionVerdict Apply(PlayerActionRunner runner, CloudSave save, ActionSubmission submission, long nowUnixSeconds, out string json, out long savedAt,
+            Func<PlayerAction, bool> serverCheck = null)
         {
             json = null;
             savedAt = save?.SavedAtUnixSeconds ?? 0;
@@ -123,7 +145,7 @@ namespace Game.Flow
                 var a = submission.Actions[i];
                 long at = RecordTime.Resolve(a?.DoneAtUnixSeconds ?? 0, nowUnixSeconds);
                 if (!RecordTime.Allowed(floor, at, nowUnixSeconds)) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadTime, FailedIndex = i };
-                if (!runner.Apply(state, a)) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = i };
+                if ((serverCheck != null && !serverCheck(a)) || !runner.Apply(state, a)) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = i };
                 floor = System.Math.Max(floor, at);
             }
             json = SaveJson.Write(state);

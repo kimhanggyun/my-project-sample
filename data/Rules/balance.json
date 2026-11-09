@@ -27,7 +27,16 @@
     "recruitGoldPerSoldier": 2
   },
   "hire": {
-    "priceCapMultiplier": 2
+    "_comment": "고용 (hiring.md). 수치는 예시 (open-values.md). 추천 가격(돈) = 장수: 기본 + 레벨당, 부대: 1명당 기본 + 단계당(1단계 위) + 훈련도 × 계수. 군량으로 받으면 × supplyPerGold. 등록자 보상 = 고용 비용 × 비율",
+    "priceCapMultiplier": 2,
+    "generalBasePrice": 200,
+    "generalPricePerLevel": 50,
+    "unitPricePerSoldier": 1,
+    "unitPricePerTier": 1,
+    "unitPricePerTraining": 2,
+    "supplyPerGold": 5,
+    "ownerRewardRatio": 0.7,
+    "maxListingsPerKind": 3
   },
   "generalInjury": {
     "lightStatMultiplier": 0.9

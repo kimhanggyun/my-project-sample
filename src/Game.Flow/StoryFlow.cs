@@ -33,6 +33,8 @@ namespace Game.Flow
         public bool Delegate { get; set; }
         /// <summary>이 장수들의 군단만 위임 (Delegate가 false일 때).</summary>
         public List<string> DelegateGenerals { get; set; } = new List<string>();
+        /// <summary>고용한 장수·부대 (R-43, <see cref="HireRules.Resolve"/>). 편성(Compositions)에서 장수 정의 id·"hire.등록id" 부대로 쓴다.</summary>
+        public HiredForces Hired { get; set; }
     }
 
     /// <summary>출진 준비 결과. 문제가 없으면 Setup으로 전투를 시작한다.</summary>
@@ -48,6 +50,10 @@ namespace Game.Flow
         public bool Ok => Errors.Count == 0;
         /// <summary>출진 준비를 한 시각 (시간 서비스 기준 unix 초). 서버는 이 시각으로 다시 준비한다 (R-42).</summary>
         public long PreparedAtUnixSeconds { get; internal set; }
+        /// <summary>고용 (없으면 null). 비용은 출진 확정 때 낸다.</summary>
+        public HiredForces Hired { get; internal set; }
+        /// <summary>이 출진에 쓴 편성 (제출 메시지에 싣는다, 고용이 있을 때 서버가 같은 편성을 쓰도록).</summary>
+        public List<CorpsComposition> Compositions { get; internal set; }
     }
 
     public sealed class UnitReport
@@ -123,9 +129,13 @@ namespace Game.Flow
             var step = StepDef.Load(_source, request.StepId);
             var map = MapDef.Load(_source, step.Map);
             plan.Step = step;
+            // 고용이 있으면 내 세이브 사본에 고용 장수·부대를 더한 것으로 편성 검사·군단 구성 (원본 세이브는 그대로, 결과는 내 것에만 반영)
+            var hired = request.Hired != null && !request.Hired.IsEmpty ? request.Hired : null;
+            if (hired != null) { state = WithHires(state, hired, plan.Errors); plan.Hired = hired; }
             if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");
 
             var comps = request.Compositions ?? state.CompositionsFor(step.BattleType); // 전장 유형에 맞는 편성 (R-35)
+            plan.Compositions = comps;
             int maxCorps = step.MaxCorps ?? _defs.Campaign.DefaultMaxCorps;
             if (comps.Count == 0) plan.Errors.Add("출전할 군단이 없습니다.");
             if (comps.Count > maxCorps) plan.Errors.Add($"출전 군단 {comps.Count}개가 이 스텝의 한도 {maxCorps}개를 넘습니다.");
@@ -191,6 +201,12 @@ namespace Game.Flow
             plan.SupplyTaken = take;
             if (take < 0) plan.Errors.Add("군량은 음수일 수 없습니다.");
             if (new Wallet(state.Wallet).Get(ResourceIds.Supply) < take) plan.Errors.Add($"군량이 모자랍니다 (필요 {take}, 보유 {new Wallet(state.Wallet).Get(ResourceIds.Supply)}).");
+            if (hired != null)
+                foreach (var kv in hired.Costs)
+                {
+                    long need = kv.Key == ResourceIds.Supply ? take + kv.Value : kv.Value;
+                    if (take >= 0 && new Wallet(state.Wallet).Get(kv.Key) < need) plan.Errors.Add($"고용 비용이 모자랍니다 ({kv.Key} 필요 {need}).");
+                }
             SplitSupply(setup, daily, take);
 
             // 적: 스텝 데이터
@@ -245,7 +261,32 @@ namespace Game.Flow
         public bool Confirm(CampaignState state, SortiePlan plan)
         {
             if (!plan.Ok) return false;
-            return new Wallet(state.Wallet).TrySpend(ResourceIds.Supply, plan.SupplyTaken);
+            var wallet = new Wallet(state.Wallet);
+            if (plan.Hired != null)
+            {
+                // 군량 + 고용 비용을 한꺼번에: 하나라도 모자라면 아무것도 내지 않는다
+                foreach (var kv in plan.Hired.Costs)
+                    if (wallet.Get(kv.Key) < (kv.Key == ResourceIds.Supply ? plan.SupplyTaken + kv.Value : kv.Value)) return false;
+                foreach (var kv in plan.Hired.Costs) if (!wallet.TrySpend(kv.Key, kv.Value)) return false;
+            }
+            return wallet.TrySpend(ResourceIds.Supply, plan.SupplyTaken);
+        }
+
+        /// <summary>세이브 사본 + 고용 장수·부대. 이미 가진 장수와 같은 장수는 고용할 수 없다.</summary>
+        private static CampaignState WithHires(CampaignState state, HiredForces hired, List<string> errors)
+        {
+            var view = SaveJson.Read(SaveJson.Write(state)) ?? state;
+            foreach (var g in hired.Generals)
+            {
+                if (view.FindGeneral(g.GeneralId) != null) { errors.Add($"이미 가진 장수 '{g.GeneralId}'는 고용할 수 없습니다."); continue; }
+                view.Generals.Add(g);
+            }
+            foreach (var u in hired.Units)
+            {
+                if (!HireRules.IsHiredUnit(u.UnitId) || view.FindUnit(u.UnitId) != null) { errors.Add($"고용 부대 id '{u.UnitId}'가 잘못되었습니다."); continue; }
+                view.Units.Add(u);
+            }
+            return view;
         }
 
         /// <summary>
