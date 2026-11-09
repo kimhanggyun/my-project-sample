@@ -69,6 +69,22 @@ namespace Game.Unity.Boot
             }
         }
 
+        private void OnApplicationPause(bool paused) => ForwardPause(paused);
+        private void OnApplicationQuit() => ForwardPause(true);
+
+        private void ForwardPause(bool paused)
+        {
+            if (_current == null) return;
+            try { _current.OnAppPause(paused); } catch (Exception e) { Debug.LogException(e); }
+        }
+
+        /// <summary>타이틀 다음: 하다 만 전투가 있으면 이어하기 물음, 없으면 메인 (R-55).</summary>
+        public void EnterGame()
+        {
+            if (Context.SuspendedBattle != null) Show(new ResumeBattleScreen());
+            else ShowMain();
+        }
+
         private void Update()
         {
             if (_current == null) return;

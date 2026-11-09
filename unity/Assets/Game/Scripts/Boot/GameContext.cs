@@ -92,6 +92,7 @@ namespace Game.Unity.Boot
             c.ReplayRules = ReplayRules.Load(data);
             c.ReplayService = new ReplayService(c.Flow);
             c.Replays = ReplayLibrary.Read(saveStore);
+            c.SuspendedBattle = BattleResume.Read(saveStore);
 
             var choices = ReadServiceChoices(config, serviceConfigFile);
             var cfg = new ServiceConfig(choices);
@@ -411,6 +412,33 @@ namespace Game.Unity.Boot
             var r = ReplayService.Capture(plan, commands, result, Clock.UtcNow.ToUnixTimeSeconds());
             Replays.Add(r, ReplayRules.MaxSaved);
             Replays.Write(_saveStore);
+            return r;
+        }
+
+        // ---- 전투 이어하기 (R-55, 기기에만) ----
+        /// <summary>하다 만 전투 (없으면 null).</summary>
+        public SuspendedBattle SuspendedBattle { get; private set; }
+
+        /// <summary>지금 전투를 이어하기 기록으로 남긴다 (고용 출진·끝난 전투는 남기지 않는다).</summary>
+        public void SuspendBattle(SortiePlan plan, Game.Battle.Model.Simulation.BattleSimulation sim)
+        {
+            var s = BattleResume.Capture(plan, sim, Clock.UtcNow.ToUnixTimeSeconds());
+            if (s == null) return;
+            SuspendedBattle = s;
+            BattleResume.Write(_saveStore, s);
+        }
+
+        public void ClearSuspendedBattle()
+        {
+            SuspendedBattle = null;
+            BattleResume.Clear(_saveStore);
+        }
+
+        /// <summary>남긴 틱까지 다시 돌린 전투. 이어 할 수 없으면 기록을 지우고 null (가져간 군량은 이미 썼다).</summary>
+        public ResumedBattle ResumeBattle()
+        {
+            var r = SuspendedBattle == null ? null : BattleResume.Restore(Flow, SuspendedBattle);
+            if (r == null) ClearSuspendedBattle();
             return r;
         }
 

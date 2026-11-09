@@ -14,7 +14,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(Root, T("ui.title.tapToStart"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 80);
             var status = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ui.Size(status, 220);
-            var start = Ui.Button(Root, T("ui.title.start"), () => App.ShowMain(), 160);
+            var start = Ui.Button(Root, T("ui.title.start"), () => App.EnterGame(), 160);
             // 온라인이면 서버 세이브를 받은 뒤 시작 (docs/impl/server.md 5장)
             if (Ctx.OnlineEnabled)
             {
