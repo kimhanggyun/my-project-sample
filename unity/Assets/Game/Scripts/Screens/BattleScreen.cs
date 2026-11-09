@@ -30,6 +30,7 @@ namespace Game.Unity.Screens
         private BattleControl _ctl;
         private SpeechPlanner _speech;
         private BattleField3D _field;
+        private MiniMapView _miniMap;
         private RectTransform _fieldArea;
         private readonly Dictionary<CorpsState, Text> _flagLabels = new Dictionary<CorpsState, Text>();
         private readonly Vector3[] _corners = new Vector3[4];
@@ -98,6 +99,7 @@ namespace Game.Unity.Screens
                 label.horizontalOverflow = HorizontalWrapMode.Overflow;
                 _flagLabels[c] = label;
             }
+            _miniMap = new MiniMapView(_fieldArea, _ctl, _field, 220f);
             _notice = Ui.Label(_fieldArea, "", 28, TextAnchor.UpperCenter, Palette.Text);
             _notice.rectTransform.anchorMin = new Vector2(0f, 1f);
             _notice.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -329,6 +331,7 @@ namespace Game.Unity.Screens
             _fieldArea.GetWorldCorners(_corners); // 오버레이 캔버스라 화면 픽셀 좌표
             _field.SetViewport(new Rect(_corners[0].x, _corners[0].y, _corners[2].x - _corners[0].x, _corners[2].y - _corners[0].y));
             _field.Draw();
+            _miniMap.Refresh();
             var ctx = _sim.Context;
             var cam = _field.Rig.Camera;
             foreach (var kv in _flagLabels)
