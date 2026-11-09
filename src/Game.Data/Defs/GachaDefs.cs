@@ -38,6 +38,12 @@ namespace Game.Data.Defs
         public IReadOnlyList<GachaGradeDef> Grades { get; private set; } = new List<GachaGradeDef>();
         public IReadOnlyDictionary<string, GachaBannerDef> Banners { get; private set; } = new Dictionary<string, GachaBannerDef>();
 
+        /// <summary>한계 돌파 단계마다 드는 조각 수 (단계 수 = 길이, R-57). 비면 한계 돌파 없음.</summary>
+        public IReadOnlyList<long> LimitBreakShards { get; private set; } = new List<long>();
+        /// <summary>한계 돌파 한 단계마다 오르는 레벨 상한.</summary>
+        public int LevelCapPerStage { get; private set; }
+        public int MaxLimitBreak => LimitBreakShards.Count;
+
         public static readonly GachaRules None = new GachaRules();
 
         public GachaGradeDef Grade(string id)
@@ -95,6 +101,19 @@ namespace Game.Data.Defs
                 banners[id] = def;
             }
             r.Banners = banners;
+            if (o["limitBreak"] is JObject lb)
+            {
+                var shards = new List<long>();
+                foreach (var t in (JArray)lb["shards"] ?? new JArray())
+                {
+                    long n = t.Value<long>();
+                    if (n < 1) throw new DataException($"{File}.limitBreak: 단계마다 조각은 1개 이상.");
+                    shards.Add(n);
+                }
+                r.LimitBreakShards = shards;
+                r.LevelCapPerStage = (int)JsonUtil.RequireLong(lb, "levelCapPerStage", File + ".limitBreak");
+                if (r.LevelCapPerStage < 0) throw new DataException($"{File}.limitBreak: levelCapPerStage는 0 이상.");
+            }
             return r;
         }
     }

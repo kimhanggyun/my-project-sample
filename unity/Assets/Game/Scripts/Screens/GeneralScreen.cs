@@ -40,6 +40,18 @@ namespace Game.Unity.Screens
                 if (Ctx.Defs.Stats.TryGetValue(id, out var sd)) parts.Add(T(sd.NameKey) + " " + CorpsValidator.EffectiveStat(Ctx.Defs, g, id).FloorToLong());
             Ui.Label(stats, string.Join("   ", parts));
 
+            // 한계 돌파 (R-57): 모집에서 겹친 장수의 조각으로 레벨 상한을 올린다
+            if (Ctx.Defs.Gacha.MaxLimitBreak > 0)
+            {
+                var lb = new LimitBreakService(Ctx.Defs);
+                var card = Ui.Card(list, "LimitBreak");
+                Ui.Label(card, T("ui.limitBreak.line", g.LimitBreak, Ctx.Defs.Gacha.MaxLimitBreak, LimitBreakService.MaxLevelOf(Ctx.Defs, g), LimitBreakService.Shards(Ctx.State, _generalId)));
+                var cost = lb.NextCost(g);
+                var check = lb.Check(Ctx.State, _generalId);
+                var b = Ui.Button(card, cost.HasValue ? T("ui.limitBreak.button", cost.Value) : T("ui.limitBreak.maxStage"), LimitBreak, 84, fontSize: 28);
+                Ui.SetEnabled(b, check == LimitBreakService.Ok);
+            }
+
             var known = Ui.Card(list, "Known");
             Ui.Label(known, T("ui.general.knownSkills"));
             var names = new List<string>();
@@ -82,6 +94,12 @@ namespace Game.Unity.Screens
             var r = books.Check(Ctx.State, _generalId, skillId);
             if (r == LearnCheck.Ok && !Ctx.Do(PlayerActionRunner.LearnSkill(_generalId, skillId))) r = books.Check(Ctx.State, _generalId, skillId);
             Reopen(r == LearnCheck.Ok ? T("ui.general.learned") : T("ui.learn." + r));
+        }
+
+        private void LimitBreak()
+        {
+            bool ok = Ctx.Do(PlayerActionRunner.LimitBreak(_generalId));
+            Reopen(ok ? T("ui.limitBreak.done", LimitBreakService.MaxLevelOf(Ctx.Defs, Ctx.State.FindGeneral(_generalId))) : T("ui.limitBreak." + new LimitBreakService(Ctx.Defs).Check(Ctx.State, _generalId)));
         }
 
         private void Reopen(string notice)

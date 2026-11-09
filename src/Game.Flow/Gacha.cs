@@ -134,4 +134,52 @@ namespace Game.Flow
             return top[top.Count - 1];
         }
     }
+
+    /// <summary>
+    /// 장수 한계 돌파 (generals.md 5장, R-57): 모집에서 겹친 장수의 조각으로 그 장수의 레벨 상한을 올린다.
+    /// 단계마다 드는 조각 수·오르는 상한은 gacha.json limitBreak (수치는 예시).
+    /// </summary>
+    public sealed class LimitBreakService
+    {
+        public const string Ok = "ok";
+        public const string NoGeneral = "noGeneral";
+        public const string MaxStage = "maxStage";
+        public const string NotEnoughShards = "notEnoughShards";
+
+        private readonly DefinitionSet _defs;
+        public LimitBreakService(DefinitionSet defs) { _defs = defs; }
+
+        /// <summary>이 장수의 레벨 상한 = 기본 상한 + 단계 × 단계당 상한.</summary>
+        public static int MaxLevelOf(DefinitionSet defs, GeneralState g) =>
+            defs.Levels.MaxLevel + (g == null ? 0 : g.LimitBreak) * defs.Gacha.LevelCapPerStage;
+
+        public static long Shards(CampaignState state, string generalId) =>
+            state.GeneralShards.TryGetValue(generalId, out var n) ? n : 0;
+
+        /// <summary>다음 단계에 드는 조각 (끝 단계면 null).</summary>
+        public long? NextCost(GeneralState g)
+        {
+            var list = _defs.Gacha.LimitBreakShards;
+            return g == null || g.LimitBreak >= list.Count ? (long?)null : list[g.LimitBreak];
+        }
+
+        public string Check(CampaignState state, string generalId)
+        {
+            var g = generalId == null ? null : state.FindGeneral(generalId);
+            if (g == null) return NoGeneral;
+            var cost = NextCost(g);
+            if (cost == null) return MaxStage;
+            return Shards(state, generalId) >= cost.Value ? Ok : NotEnoughShards;
+        }
+
+        public bool Apply(CampaignState state, string generalId)
+        {
+            if (Check(state, generalId) != Ok) return false;
+            var g = state.FindGeneral(generalId);
+            long left = Shards(state, generalId) - NextCost(g).Value;
+            if (left > 0) state.GeneralShards[generalId] = left; else state.GeneralShards.Remove(generalId);
+            g.LimitBreak++;
+            return true;
+        }
+    }
 }

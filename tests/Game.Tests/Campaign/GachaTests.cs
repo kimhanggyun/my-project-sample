@@ -117,5 +117,61 @@ namespace Game.Tests.Campaign
             Assert.Equal(SaveJson.Write(a), SaveJson.Write(b));
             Assert.Equal(a.GachaPity["standard"], SaveJson.Read(SaveJson.Write(a)).GachaPity["standard"]);
         }
-    }
+    
+        [Fact(DisplayName = "R-57 한계 돌파: 조각 1·1·2·2·3개로 다섯 단계, 단계마다 레벨 상한 +5 (50 → 75). 모자라거나 끝 단계면 안 됨")]
+        public void LimitBreak()
+        {
+            var svc = new LimitBreakService(Kit.D);
+            var s = Rich();
+            var g = s.FindGeneral("general_a");
+            Assert.Equal(50, LimitBreakService.MaxLevelOf(Kit.D, g));
+            Assert.Equal(LimitBreakService.NotEnoughShards, svc.Check(s, "general_a"));
+            Assert.Equal(LimitBreakService.NoGeneral, svc.Check(s, "general_h"));
+            s.GeneralShards["general_a"] = 10;
+            long[] costs = { 1, 1, 2, 2, 3 };
+            long left = 10;
+            foreach (var c in costs)
+            {
+                Assert.Equal(c, svc.NextCost(g));
+                Assert.True(svc.Apply(s, "general_a"));
+                left -= c;
+                Assert.Equal(left, LimitBreakService.Shards(s, "general_a"));
+            }
+            Assert.Equal(5, g.LimitBreak);
+            Assert.Equal(75, LimitBreakService.MaxLevelOf(Kit.D, g));
+            Assert.Equal(LimitBreakService.MaxStage, svc.Check(s, "general_a"));
+            Assert.False(svc.Apply(s, "general_a"));
+            Assert.Equal(1, LimitBreakService.Shards(s, "general_a"));
+        }
+
+        [Fact(DisplayName = "R-57 레벨 상한에 닿은 장수도 한계 돌파하면 다시 오른다 (전투 경험치도 같은 상한)")]
+        public void LimitBreakRaisesCap()
+        {
+            var L = Kit.D.Levels;
+            var rates = Kit.D.Generals["general_a"].GrowthRates;
+            var atCap = Game.Progression.LevelEngine.AddExp(L, rates, L.MaxLevel, 0, 10_000);
+            Assert.Equal((L.MaxLevel, 0), (atCap.Level, atCap.LevelsGained));
+            var raised = Game.Progression.LevelEngine.AddExp(L, rates, L.MaxLevel, 0, L.ExpToNext(L.MaxLevel), L.MaxLevel + 5);
+            Assert.Equal((L.MaxLevel + 1, 1), (raised.Level, raised.LevelsGained));
+            var top = Game.Progression.LevelEngine.AddExp(L, rates, L.MaxLevel, 0, 10_000_000, L.MaxLevel + 5);
+            Assert.Equal((L.MaxLevel + 5, 0L), (top.Level, top.Exp));
+        }
+
+        [Fact(DisplayName = "R-57 한계 돌파는 행동(general.limitBreak): 서버도 같은 규칙. 예전 세이브(단계 없음)는 0단계")]
+        public void LimitBreakAction()
+        {
+            var runner = new PlayerActionRunner(Kit.D);
+            var s = Rich();
+            Assert.False(runner.Apply(s, PlayerActionRunner.LimitBreak("general_a")));
+            s.GeneralShards["general_a"] = 1;
+            Assert.True(runner.Apply(s, PlayerActionRunner.LimitBreak("general_a")));
+            Assert.Equal(1, s.FindGeneral("general_a").LimitBreak);
+            Assert.False(s.GeneralShards.ContainsKey("general_a"));
+
+            var json = JObject.Parse(SaveJson.Write(s));
+            foreach (JObject g in (JArray)json["campaign"]["Generals"]) g.Remove("LimitBreak");
+            var old = SaveJson.Read(json.ToString());
+            Assert.All(old.Generals, g => Assert.Equal(0, g.LimitBreak));
+        }
+}
 }
