@@ -1,6 +1,6 @@
 # 스토리 탭 · 출진
 
-> 상태: 기획 확정 (구현 전) · 범위: Step 1(스텝 목록·대사), Step 2(출진·전투 연결)
+> 상태: 기획 확정 · 구현: 스텝 목록·출진·전투·결과, 스텝 6개 (2026-11-09, 임시 대사), 전·후 대사(`data/Dialogue/<스텝>.json`, [다음]·[건너뛰기]). 지도 형태 목록·공략 보기는 아직
 > 전체 흐름: [../flow.md](../flow.md) · 관련: [battle.md](battle.md), [formation.md](formation.md), [captivity.md](captivity.md), [economy.md](economy.md)
 
 ## 1. 흐름
@@ -34,7 +34,7 @@
 
 ## 3. 대사
 
-- 대사 파일은 스텝마다 전/후로 분리 (`stepNN_before`, `stepNN_after`) + 전투 중 이벤트 대사.
+- 대사 파일은 스텝마다 하나 (`data/Dialogue/stepNN.json`의 `before`·`after`, 줄마다 `speaker` 장수 id + `key` 문자열 키) + 전투 중 이벤트 대사(스텝의 events). 파일이 없으면 예전 한 줄 대사 `dialogue.<스텝>.start`.
 - 지금은 **임시 대사**를 넣고, 나중에 파일만 바꿔 넣는다.
 
 ```json

@@ -1,0 +1,23 @@
+{
+  "_comment": "스텝 전·후 대사 (story.md 3장). speaker = 장수 id, key = 문자열 키. 지금은 임시 대사",
+  "before": [
+    {
+      "speaker": "enemy_general_04",
+      "key": "dialogue.step04.before.1"
+    },
+    {
+      "speaker": "general_a",
+      "key": "dialogue.step04.before.2"
+    }
+  ],
+  "after": [
+    {
+      "speaker": "general_c",
+      "key": "dialogue.step04.after.1"
+    },
+    {
+      "speaker": "general_a",
+      "key": "dialogue.step04.after.2"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "id": "step03",
+  "nameKey": "step.step03.name",
+  "battleType": "field",
+  "map": "test_mountain_pass",
+  "maxCorps": 3,
+  "maxMinutes": 10,
+  "camp": "camp_north",
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "weather": "clear",
+  "timeOfDay": "day",
+  "contests": {
+    "duel": true,
+    "debate": true
+  },
+  "enemy": [
+    {
+      "id": "enemy_corps_31",
+      "general": "enemy_general_02",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "troops": 4100
+        },
+        {
+          "slot": "center",
+          "troopType": "spearman",
+          "troops": 4100
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 4100
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "archer",
+          "troops": 4100
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "infantry",
+          "troops": 4100
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "spearman",
+          "troops": 4100
+        }
+      ],
+      "role": "commander"
+    },
+    {
+      "id": "enemy_corps_32",
+      "general": "enemy_general_03",
+      "formation": "column",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "cavalry",
+          "troops": 3690
+        },
+        {
+          "slot": "center",
+          "troopType": "cavalry",
+          "troops": 3690
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "troops": 3690
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "cavalry",
+          "troops": 3690
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "cavalry",
+          "troops": 3690
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "unlockFormations": [
+      "line"
+    ],
+    "unlockSkills": [],
+    "gold": 300,
+    "exp": 600
+  },
+  "events": [
+    {
+      "id": "start",
+      "trigger": {
+        "type": "start"
+      },
+      "actions": [
+        {
+          "type": "dialogue",
+          "key": "dialogue.step03.battle"
+        }
+      ]
+    }
+  ],
+  "balanceTarget": {
+    "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
+    "winRateMin": 0.55,
+    "winRateMax": 0.85
+  }
+}
