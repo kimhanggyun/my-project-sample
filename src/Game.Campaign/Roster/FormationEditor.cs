@@ -6,6 +6,7 @@ namespace Game.Campaign.Roster
 {
     /// <summary>
     /// 부대 편성 편집 (formation.md 4장): 저장된 편성의 사본을 고치고, 검사(R-5)를 통과할 때만 저장한다.
+    /// 상황(전장 유형)을 주면 그 상황별 편성을 고친다. 아직 없으면 기본 편성을 복사해 시작하고, 저장하면 생긴다 (R-35).
     /// 화면은 이 객체만 부른다 (규칙은 <see cref="CorpsValidator"/>가 판정).
     /// </summary>
     public sealed class FormationEditor
@@ -17,13 +18,21 @@ namespace Game.Campaign.Roster
         private readonly CampaignState _state;
 
         public List<CorpsComposition> Draft { get; } = new List<CorpsComposition>();
+        /// <summary>고치는 상황 id (null = 기본 편성).</summary>
+        public string Situation { get; }
+        /// <summary>그 상황의 편성이 저장되어 있는지 (기본 편성은 항상 true).</summary>
+        public bool HasPreset => Situation == null || (_state.CompositionPresets.TryGetValue(Situation, out var p) && p != null && p.Count > 0);
 
-        public FormationEditor(DefinitionSet defs, CampaignState state)
+        public FormationEditor(DefinitionSet defs, CampaignState state, string situation = null)
         {
             _defs = defs;
             _state = state;
-            foreach (var c in state.Compositions) Draft.Add(Copy(c));
+            Situation = situation;
+            foreach (var c in Saved()) Draft.Add(Copy(c));
         }
+
+        /// <summary>지금 저장된 편성 (상황별 편성이 없으면 기본 편성).</summary>
+        private List<CorpsComposition> Saved() => _state.CompositionsFor(Situation);
 
         public int MaxCorps => _defs.Campaign.DefaultMaxCorps;
 
@@ -33,16 +42,28 @@ namespace Game.Campaign.Roster
         /// <summary>문제가 없으면 저장된 편성을 사본으로 바꾸고 true.</summary>
         public bool Apply()
         {
-            if (Errors().Count > 0) return false;
-            _state.Compositions = new List<CorpsComposition>();
-            foreach (var c in Draft) _state.Compositions.Add(Copy(c));
+            if (Errors().Count > 0 || Draft.Count == 0) return false;
+            var saved = new List<CorpsComposition>();
+            foreach (var c in Draft) saved.Add(Copy(c));
+            if (Situation == null) _state.Compositions = saved;
+            else _state.CompositionPresets[Situation] = saved;
             return true;
         }
 
+        /// <summary>상황별 편성을 지운다 (그 상황은 다시 기본 편성을 쓴다). 기본 편성은 지울 수 없다.</summary>
+        public bool RemovePreset()
+        {
+            if (Situation == null) return false;
+            return _state.CompositionPresets.Remove(Situation);
+        }
+
+        /// <summary>저장할 것이 있는지: 고쳤거나, 상황별 편성이 아직 없는데 새로 만들려는 경우.</summary>
         public bool Changed()
         {
-            if (Draft.Count != _state.Compositions.Count) return true;
-            for (int i = 0; i < Draft.Count; i++) if (!Same(Draft[i], _state.Compositions[i])) return true;
+            if (!HasPreset) return true;
+            var saved = Saved();
+            if (Draft.Count != saved.Count) return true;
+            for (int i = 0; i < Draft.Count; i++) if (!Same(Draft[i], saved[i])) return true;
             return false;
         }
 

@@ -25,6 +25,23 @@ namespace Game.Unity.Screens
             var list = Ui.ScrollList(root, "List", 12, 16);
             Ui.Fill((RectTransform)list.parent.parent);
 
+            // 상황 고르기: 기본 + 상황별 (전장 유형, R-35)
+            var situations = Ui.HScrollRow(list, "Situations", 84, 8, 0);
+            void SituationButton(string id, string label)
+            {
+                bool saved = id == null || ctx.State.CompositionPresets.ContainsKey(id);
+                var b = Ui.Button(situations, label + (saved ? "" : " ·"), () => { ctx.SelectFormationSituation(id); app.ShowMain("formation"); }, 76, fontSize: 28);
+                Ui.Size(b, width: 200);
+                b.targetGraphic.color = id == ed.Situation ? Palette.ButtonActive : Palette.Button;
+            }
+            SituationButton(null, ctx.T("ui.formation.default"));
+            foreach (var s in ctx.Defs.Campaign.FormationSituations) SituationButton(s, ctx.T("situation." + s));
+            if (ed.Situation != null)
+            {
+                Ui.Label(list, ctx.T("ui.formation.presetOf", ctx.T("situation." + ed.Situation)), Ui.FontBody);
+                if (!ed.HasPreset) Ui.Label(list, ctx.T("ui.formation.usingDefault"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            }
+
             Ui.Label(list, ctx.T("ui.formation.corpsHeader", ed.Draft.Count, ed.MaxCorps) + (ed.Changed() ? "  " + Ui.Colored(ctx.T("ui.formation.unsaved"), Palette.Bad) : ""), Ui.FontBody);
             for (int i = 0; i < ed.Draft.Count; i++)
             {
@@ -46,7 +63,9 @@ namespace Game.Unity.Screens
             var save = Ui.Button(row, ctx.T("ui.formation.save"), () => { if (ed.Apply()) { ctx.Save(); app.ShowMain("formation"); } }, 96, fontSize: 28);
             Ui.SetEnabled(save, errors.Count == 0 && ed.Changed());
             var revert = Ui.Button(row, ctx.T("ui.formation.revert"), () => { ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 96, fontSize: 28);
-            Ui.SetEnabled(revert, ed.Changed());
+            Ui.SetEnabled(revert, ed.Changed() && ed.HasPreset);
+            if (ed.Situation != null && ed.HasPreset)
+                Ui.Button(list, ctx.T("ui.formation.removePreset"), () => { if (ed.RemovePreset()) { ctx.Save(); ctx.DiscardFormationDraft(); } app.ShowMain("formation"); }, 84, new Color(0.45f, 0.22f, 0.20f), 28);
 
             // 병력 관리
             var troopsSvc = new TroopService(ctx.Defs);

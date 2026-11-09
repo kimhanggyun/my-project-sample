@@ -8,7 +8,14 @@ namespace Game.Campaign
     {
         public List<GeneralState> Generals { get; set; } = new List<GeneralState>();
         public List<UnitState> Units { get; set; } = new List<UnitState>();
+        /// <summary>기본 편성 (상황별 편성이 없는 전장에서 쓴다).</summary>
         public List<CorpsComposition> Compositions { get; set; } = new List<CorpsComposition>();
+        /// <summary>상황별 편성 (formation.md 4장): 상황 id(전장 유형 field·siege·naval …) → 편성. 없거나 비면 기본 편성.</summary>
+        public Dictionary<string, List<CorpsComposition>> CompositionPresets { get; set; } = new Dictionary<string, List<CorpsComposition>>();
+
+        /// <summary>그 상황(전장 유형)에 나갈 편성 (verification R-35): 상황별 편성이 있으면 그것, 없으면 기본 편성.</summary>
+        public List<CorpsComposition> CompositionsFor(string situation) =>
+            situation != null && CompositionPresets.TryGetValue(situation, out var p) && p != null && p.Count > 0 ? p : Compositions;
         public List<string> LearnedFormations { get; set; } = new List<string>();
         public List<string> ClearedSteps { get; set; } = new List<string>();
         public Dictionary<string, long> Wallet { get; set; } = new Dictionary<string, long>();

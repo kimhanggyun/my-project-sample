@@ -260,5 +260,12 @@
   "ui.contest.iRetreated": "물러났다.",
   "ui.contest.theyRetreated": "적장이 물러났다.",
   "ui.contest.draw": "무승부",
-  "general.enemy_general_04": "적장 정"
+  "general.enemy_general_04": "적장 정",
+  "situation.field": "야전",
+  "situation.siege": "성새전",
+  "situation.naval": "수상전",
+  "ui.formation.default": "기본",
+  "ui.formation.usingDefault": "이 상황은 아직 따로 편성이 없어 기본 편성으로 나갑니다. 고친 뒤 [저장]하면 이 상황 편성이 생깁니다.",
+  "ui.formation.presetOf": "{0} 편성",
+  "ui.formation.removePreset": "이 상황 편성 지우기"
 }

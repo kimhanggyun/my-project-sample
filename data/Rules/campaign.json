@@ -36,5 +36,10 @@
       "intermediate": 800,
       "advanced": 2000
     }
-  }
+  },
+  "formationSituations": [
+    "field",
+    "siege",
+    "naval"
+  ]
 }

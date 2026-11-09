@@ -123,7 +123,7 @@ namespace Game.Flow
             plan.Step = step;
             if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");
 
-            var comps = request.Compositions ?? state.Compositions;
+            var comps = request.Compositions ?? state.CompositionsFor(step.BattleType); // 전장 유형에 맞는 편성 (R-35)
             int maxCorps = step.MaxCorps ?? _defs.Campaign.DefaultMaxCorps;
             if (comps.Count == 0) plan.Errors.Add("출전할 군단이 없습니다.");
             if (comps.Count > maxCorps) plan.Errors.Add($"출전 군단 {comps.Count}개가 이 스텝의 한도 {maxCorps}개를 넘습니다.");
