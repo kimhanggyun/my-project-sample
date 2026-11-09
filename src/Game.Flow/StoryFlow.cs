@@ -159,7 +159,9 @@ namespace Game.Flow
                 {
                     Id = id,
                     Team = PlayerTeam,
-                    Role = comp.Role ?? (n == 1 ? CorpsRoles.Commander : null),
+                    // 대장은 첫 군단. 편성의 역할(선봉·측면·후위)은 진군 역할로 (battle.md 4.3.2)
+                    Role = n == 1 ? CorpsRoles.Commander : null,
+                    AdvanceRole = AdvanceRoles.IsValid(comp.Role) ? comp.Role : null,
                     Controller = Controllers.Player,
                     General = Snapshot(g),
                     Formation = comp.Formation,

@@ -172,6 +172,7 @@
 | R-29 | 같은 입력(시드·편성·명령 기록·데이터 버전)이면 같은 결과 | [structure.md](structure.md) |
 | R-30 | **상점 상품 데이터 검사**: 편의 기능이 아닌 상품은 "플레이로 얻는 경로"가 비어 있으면 안 된다 | [economy.md](content/economy.md) 0장 |
 | R-31 | **스킬북 습득**: 돈으로 산다(가격 = 스킬 단계별). 배우려면 책 1권 + 요구 능력치 + 습득 최소 조건(스킬마다, 없으면 통과; `any`면 하나만)을 모두 채워야 하고, 배우면 책이 1권 줄어든다. 못 배우면 책은 그대로 보관 | [generals.md](content/generals.md) 4장 |
+| R-34 | **역할 진군**: 플레이어 진군 명령에서 선봉(역할 없음 포함)은 가장 가까운 적으로, 측면은 기준선(아군 중심→적) 자기 쪽 옆으로 벌린 자리로 갔다가 가까워지면 돌아들고, 후위는 적과 `rearStandoffCells` 거리를 두고 멈춘다. AI의 진군은 역할과 무관 | [battle.md](content/battle.md) 4.3.2 |
 | R-33 | **병력 보충**: 징병(군량)·모병(돈)은 부대 최대 병력까지만 (병력 + 부상병 ≤ `troopCap.unitMax`). 남은 자리보다 많이 요청하면 남은 자리만큼, 비용이 모자라면 아무것도 바뀌지 않는다 | [formation.md](content/formation.md) 4.1 |
 | R-32 | **전투 기록**: 전투가 끝나면 아군 군단에 일어난 전투 이벤트마다 그 장수의 카운터 `battle.<이벤트 종류>`가 1 오른다 (적 군단 이벤트는 세지 않는다). 숨은 적 발견(`hiddenFound`: 간파를 쓴 군단, 또는 복병 준비를 들킨 경우 가장 가까운 적 군단), 복병 기습 당함(`ambushed`: 닿은 적 군단마다) | [generals.md](content/generals.md) 4장 |
 
@@ -192,6 +193,7 @@
 - 포로(포위·일기토·스위치)·바람·날씨·시간대·화계는 `tests/Game.Tests/Battle/EnvironmentCaptureTests.cs`.
 - 캠페인 흐름(출진 R-7, 결과 반영 R-8·R-9, 포로·등용·부상·성장·결속·스텝 해금)은 `tests/Game.Tests/Campaign/CampaignFlowTests.cs`.
 - 결속·스텝 연출·전투 이벤트·말풍선은 `tests/Game.Tests/Battle/EventSpeechTests.cs`, 장수 레벨·숨은 보상은 `tests/Game.Tests/Campaign/LevelSecretTests.cs`.
+- 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
 - 아직 테스트가 없는 것 (고용 동시성, 서버 도입 후): R-26.
@@ -223,3 +225,4 @@
 | v1 | 2026-11-03 | 최초 (`design-v1` 태그) |
 | v1.1 | 2026-11-09 | R-31 스킬북 습득 최소 조건, R-32 전투 기록 카운터, N-13 추가 |
 | v1.2 | 2026-11-09 | R-33 병력 보충 상한 추가 |
+| v1.3 | 2026-11-09 | R-34 역할 진군 추가 |

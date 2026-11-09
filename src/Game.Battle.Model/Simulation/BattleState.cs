@@ -43,6 +43,8 @@ namespace Game.Battle.Model.Simulation
         public Vec Point { get; set; }
         public string TargetCorpsId { get; set; }
         public string Mode { get; set; } = MoveModes.Normal;
+        /// <summary>진군을 군단 역할(<see cref="CorpsSetup.AdvanceRole"/>)대로 (플레이어의 진군·전군 진군 명령). AI의 진군은 역할을 쓰지 않는다.</summary>
+        public bool ByRole { get; set; }
     }
 
     public static class OrderKinds

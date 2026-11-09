@@ -26,6 +26,12 @@ namespace Game.Data.Defs
         public Fix MoveCellsPerSecondAtSpeed50 { get; private set; }
         public Fix ContactRadius { get; private set; }
         public Fix PerceptionCells { get; private set; }
+        /// <summary>역할 진군 (battle.md 4.3.2): 측면 군단이 적 옆으로 벌리는 거리(칸).</summary>
+        public Fix FlankOffsetCells { get; private set; }
+        /// <summary>측면 군단이 옆 자리에 이만큼 가까워지면 적에게 돌아든다.</summary>
+        public Fix FlankJoinCells { get; private set; }
+        /// <summary>후위 군단이 적과 두는 거리 (원거리 지원).</summary>
+        public Fix RearStandoffCells { get; private set; }
         public Fix FlankPp { get; private set; }
         public Fix RearPp { get; private set; }
         public Fix FrontDot { get; private set; }
@@ -119,6 +125,9 @@ namespace Game.Data.Defs
                 MoveCellsPerSecondAtSpeed50 = JsonUtil.RequireFix(o, "moveCellsPerSecondAtSpeed50", c),
                 ContactRadius = JsonUtil.RequireFix(o, "contactRadius", c),
                 PerceptionCells = JsonUtil.RequireFix(o, "perceptionCells", c),
+                FlankOffsetCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "flankOffsetCells", Fix.FromInt(6), c + ".advanceRoles"),
+                FlankJoinCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "flankJoinCells", Fix.FromInt(3), c + ".advanceRoles"),
+                RearStandoffCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "rearStandoffCells", Fix.FromInt(8), c + ".advanceRoles"),
                 FlankPp = JsonUtil.RequireFix(dir, "flankPp", c + ".direction"),
                 RearPp = JsonUtil.RequireFix(dir, "rearPp", c + ".direction"),
                 FrontDot = JsonUtil.RequireFix(dir, "frontDot", c + ".direction"),

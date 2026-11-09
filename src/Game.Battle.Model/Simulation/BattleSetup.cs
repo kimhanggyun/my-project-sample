@@ -139,6 +139,16 @@ namespace Game.Battle.Model.Simulation
         public const string Commander = "commander";
     }
 
+    /// <summary>진군 역할 (battle.md 4.3.2): 선봉은 앞장, 측면은 좌우로 벌려 돌아들고, 후위는 뒤에서 따르며 원거리 지원.</summary>
+    public static class AdvanceRoles
+    {
+        public const string Vanguard = "vanguard";
+        public const string Flank = "flank";
+        public const string Rear = "rear";
+
+        public static bool IsValid(string role) => role == null || role == Vanguard || role == Flank || role == Rear;
+    }
+
     public sealed class UnitSetup
     {
         /// <summary>캠페인 쪽 부대 id (결과를 돌려줄 때 쓴다). 없어도 된다.</summary>
@@ -156,6 +166,8 @@ namespace Game.Battle.Model.Simulation
         public string Team { get; set; }
         /// <summary>"commander"(대장) 등. 대장 군단이 빠지면 패배 조건 commander.</summary>
         public string Role { get; set; }
+        /// <summary>진군 역할 (<see cref="AdvanceRoles"/>, 편성에서 고름). 없으면 역할 없이 가장 가까운 적으로.</summary>
+        public string AdvanceRole { get; set; }
         /// <summary>"player" 또는 "ai".</summary>
         public string Controller { get; set; } = Controllers.Ai;
         /// <summary>AI 성향 id (<see cref="Ai.AiStanceIds"/>).</summary>

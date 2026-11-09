@@ -85,6 +85,8 @@ namespace Game.Battle.Model.Systems
                 {
                     var target = ctx.NearestEnemy(corps);
                     if (target == null) return ctx.AdvanceFallback(corps); // 안 보이면 마지막 목격 위치·적 시작 위치로
+                    if (order.ByRole && corps.Setup.AdvanceRole != null && corps.Setup.AdvanceRole != AdvanceRoles.Vanguard)
+                        return RoleDestination(ctx, corps, target, out chasing);
                     chasing = true;
                     return target.Anchor;
                 }
@@ -103,6 +105,42 @@ namespace Game.Battle.Model.Systems
                 default:
                     return null;
             }
+        }
+
+        /// <summary>
+        /// 역할 진군 (battle.md 4.3.2, verification R-34). 기준선 = 아군 중심 → 목표 적.
+        /// 측면: 기준선의 자기 쪽 옆으로 벌린 자리(목표 + 옆 × 거리)로 가서, 가까워지면 목표로 돌아든다.
+        /// 후위: 목표와 거리를 두고 멈춘다 (쫓지 않는다). 사거리 안의 적과는 어느 역할이든 싸운다 (R-20).
+        /// </summary>
+        private static Vec RoleDestination(BattleContext ctx, CorpsState corps, CorpsState target, out bool chasing)
+        {
+            var c = ctx.Combat;
+            chasing = false;
+            Fix sx = Fix.Zero, sy = Fix.Zero;
+            int n = 0;
+            foreach (var a in ctx.Corps)
+                if (a.Team == corps.Team && a.InBattle) { sx += a.Anchor.X; sy += a.Anchor.Y; n++; }
+            var center = n == 0 ? corps.Anchor : new Vec(sx / Fix.FromInt(n), sy / Fix.FromInt(n));
+            var toTarget = target.Anchor - center;
+            var dir = toTarget.LengthSquared > Fix.Zero ? toTarget.Normalized() : (target.Anchor - corps.Anchor).Normalized();
+
+            if (corps.Setup.AdvanceRole == AdvanceRoles.Flank)
+            {
+                var side = dir.RightOf();
+                if (side.Dot(corps.Anchor - center) < Fix.Zero) side = side * Fix.FromInt(-1);
+                var spot = target.Anchor + side * c.FlankOffsetCells;
+                if (Vec.DistanceSquared(corps.Anchor, spot) <= c.FlankJoinCells * c.FlankJoinCells || corps.Engaged)
+                {
+                    chasing = true;
+                    return target.Anchor;
+                }
+                return spot;
+            }
+
+            // 후위: 목표에서 내 쪽으로 거리를 둔 자리. 이미 그 거리 안이면 제자리.
+            var back = corps.Anchor - target.Anchor;
+            if (back.LengthSquared <= c.RearStandoffCells * c.RearStandoffCells) return corps.Anchor;
+            return target.Anchor + back.Normalized() * c.RearStandoffCells;
         }
 
         private static void Move(BattleContext ctx, CorpsState corps, List<TroopTypeDef> members)
