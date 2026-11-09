@@ -66,7 +66,7 @@ namespace Game.Unity.Screens
             foreach (var s in _report.Secrets) secrets.Add(Ctx.GeneralName(s.GeneralId) + ": " + s.SecretId);
             Section(body, "ui.result.secrets", secrets);
 
-            Ui.Button(Root, T("ui.result.toStory"), () => App.ShowMain(MainTab.Story), 140);
+            Ui.Button(Root, T("ui.result.toStory"), () => App.ShowMain("story"), 140);
         }
 
         private List<string> Names(List<string> generalIds)

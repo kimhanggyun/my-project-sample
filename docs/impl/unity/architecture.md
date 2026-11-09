@@ -35,10 +35,10 @@
   - 세이브: `FileSaveStore(Application.persistentDataPath)` + `CampaignSaveService`. 없으면 `StartingKitService.CreateNewGame`.
   - 외부 서비스: `ServiceRegistry.WithBuiltIns()` + `config/services.development.json`(개발 빌드·에디터) 또는 `services.production.json`(출시 빌드). 실제 SDK 구현은 여기서 등록을 더한다.
   - 시간: `SystemTimeProvider`. 출진 시드도 시간 서비스에서 만든다.
-- 화면: `GameScreen`을 상속해 추가한다 (`GameApp.Show(화면)`). 메인 화면의 탭은 `ITabView` 구현 + 탭 등록표에 한 줄.
+- 화면: `GameScreen`을 상속해 추가한다 (`GameApp.Show(화면)`). 메인 화면의 탭 목록·순서·상태는 `data/Ui/mainTabs.json`, 탭 내용은 `ITabView` 구현을 탭 id로 등록 (`MainScreen.Views`). 등록이 없거나 `tobe`면 "준비 중". 탭 바는 가로 스크롤.
   - 화면은 보여주기·입력만 한다. 출진 준비·확정·결과 반영은 `StoryFlow.Prepare/Confirm/ApplyResult`, 전투는 `BattleSimulation`, 말풍선은 `SpeechPlanner`.
   - 전투 화면은 실제 시간에 맞춰 **몇 틱을 돌릴지만** 정한다 (×1/×2/×4, 일시정지, 끝까지). 틱 계산은 고정이므로 화면 속도·프레임이 결과를 바꾸지 않는다 (R-29). 프레임 시간(float)은 화면 진행에만 쓰고 규칙 계산에 넘기지 않는다.
-  - 직접 지휘 (출진 화면의 [직접 지휘]): 3D 전장 + 선택 군단 패널(진군·대기·후퇴·위임, 이동 방식, 진형, 스킬) + 하단 [전군 진군]·군단 카드(누르면 선택 + 카메라 이동). 입력은 모두 `BattleControl`을 거친다. 일시정지 중에도 명령할 수 있고 다음 틱에 적용된다.
+  - 직접 지휘 (출진 화면의 [직접 지휘]): 3D 전장(화면 대부분) + 선택 군단 패널(접기·펴기: 정보 한 줄 / 명령 한 줄 + 스킬 한 줄) + 하단 [전군 진군]·군단 카드(누르면 선택 + 카메라 이동). 전황은 전장 위 알림, 대사·말풍선은 깃발 위. 입력은 모두 `BattleControl`을 거친다. 일시정지 중에도 명령할 수 있고 다음 틱에 적용된다.
   - 3D 전장 첫 단계 (`Scripts/Battle3D`, 아트 없이 단순 도형):
     - `BattleField3D`: 지형 텍스처 바닥(`FieldTexture`, 칸 = 픽셀, 안개 3단계·불 반영), 군단 깃발(기수), 병사(정육면체, `Graphics.RenderMeshInstanced`, 군단 방향으로 정렬), 선택 링, 이동 목적지 표식, 남은 이동 경로선, 지정 중인 스킬의 사거리 원, 안 보이게 된 적의 마지막 목격 위치(흐린 깃발). 보이지 않는 적은 그리지 않는다.
     - 지형 높이: 지형 규칙의 `height`(언덕 1, 산·절벽 2) × 0.8을 꼭짓점마다 맞닿은 칸의 평균으로 → 완만한 경사. 좌표는 전장 (x, y) → 월드 (x, 지형 높이, 깊이 − y). 누른 위치는 그 자리 높이의 평면과 몇 번 다시 만나 보며 맞춘다.

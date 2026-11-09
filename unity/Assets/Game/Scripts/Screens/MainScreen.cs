@@ -2,137 +2,154 @@ using System.Collections.Generic;
 using Game.Campaign.Roster;
 using Game.Data.Defs;
 using Game.Economy;
+using Game.Unity.Boot;
 using Game.Unity.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Game.Unity.Screens
 {
-    public enum MainTab { Story, Generals, Units, Compositions }
-
     /// <summary>
-    /// 메인 화면: 위 자원 막대 + 아래 탭. 탭 내용은 <see cref="ITabView"/>로 갈아 끼운다 (새 탭은 구현 추가 + 등록).
+    /// 메인 화면 (main-screen.md): 위 자원 막대 + 아래 탭 바(가로 스크롤). 탭 목록·순서·상태는 데이터(`Ui/mainTabs.json`),
+    /// 탭 내용은 <see cref="ITabView"/> 구현을 탭 id로 등록한다. 등록이 없거나 상태가 tobe면 "준비 중" 화면.
     /// </summary>
     public sealed class MainScreen : GameScreen
     {
-        private readonly MainTab _initial;
-        private RectTransform _content;
-        private readonly Dictionary<MainTab, Button> _tabButtons = new Dictionary<MainTab, Button>();
+        private const float TopBarHeight = 110f;
+        private const float TabBarHeight = 104f;
+        private const float MinTabWidth = 190f;
+        private const int VisibleTabs = 5;
 
-        public MainScreen(MainTab initial = MainTab.Story) { _initial = initial; }
-
-        /// <summary>탭 등록표: 탭 → (이름 키, 내용 만들기).</summary>
-        private static readonly List<(MainTab tab, string nameKey, System.Func<ITabView> make)> Tabs = new List<(MainTab, string, System.Func<ITabView>)>
+        /// <summary>탭 id → 내용. 새 탭은 구현을 만들고 여기에 한 줄 + mainTabs.json에 한 줄.</summary>
+        private static readonly Dictionary<string, System.Func<ITabView>> Views = new Dictionary<string, System.Func<ITabView>>
         {
-            (MainTab.Story, "ui.tab.story", () => new StoryTabView()),
-            (MainTab.Generals, "ui.tab.generals", () => new GeneralsTabView()),
-            (MainTab.Units, "ui.tab.units", () => new UnitsTabView()),
-            (MainTab.Compositions, "ui.tab.compositions", () => new CompositionsTabView()),
+            { "story", () => new StoryTabView() },
+            { "general", () => new GeneralsTabView() },
+            { "formation", () => new FormationTabView() },
         };
+
+        private readonly string _initial;
+        private RectTransform _content;
+        private readonly Dictionary<string, Button> _tabButtons = new Dictionary<string, Button>();
+
+        /// <param name="initialTab">처음 열 탭 id (없으면 첫 번째 사용 탭).</param>
+        public MainScreen(string initialTab = null) { _initial = initialTab; }
 
         public override void Build()
         {
             Ctx.Flow.Tick(Ctx.State); // 화면을 열 때마다 시간 경과 처리 (부상 회복·구출 기한)
-            var col = Ui.Column(Root, 0);
-            col.childForceExpandHeight = false;
+            Ui.Column(Root, 0);
 
             // 위: 자원 + 설정
-            var top = Ui.Row(Root, "TopBar", 140, 16);
+            var top = Ui.Row(Root, "TopBar", TopBarHeight, 16);
             Ui.Background(top, Palette.Bar);
-            top.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(24, 24, 16, 16);
+            top.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(24, 24, 14, 14);
             string res = T("resource.supply") + " " + Ctx.Resource(ResourceIds.Supply).ToString("N0") + "   "
                        + T("resource.gold") + " " + Ctx.Resource(ResourceIds.Gold).ToString("N0") + "   "
                        + T("resource.gem") + " " + Ctx.Resource(ResourceIds.Gem).ToString("N0");
             Ui.Size(Ui.Label(top, res, Ui.FontSmall), flexibleWidth: 4);
-            Ui.Size(Ui.Button(top, T("ui.top.settings"), () => App.Show(new SettingsScreen()), 108, fontSize: Ui.FontSmall), width: 180);
+            Ui.Size(Ui.Button(top, T("ui.top.settings"), () => App.Show(new SettingsScreen()), 80, fontSize: 28), width: 160);
 
             // 가운데: 탭 내용
             _content = Ui.Rect(Root, "Content");
             Ui.Size(_content, flexibleHeight: 1);
 
-            // 아래: 탭 버튼
-            var bottom = Ui.Row(Root, "Tabs", 160, 8);
-            Ui.Background(bottom, Palette.Bar);
-            bottom.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(8, 8, 12, 12);
-            foreach (var t in Tabs)
+            // 아래: 탭 바 (많아지면 가로 스크롤)
+            var tabs = new List<MainTabEntry>();
+            foreach (var t in Ctx.MainTabs) if (t.Status != MainTabEntry.Hidden) tabs.Add(t);
+            var barBg = Ui.Rect(Root, "TabBar");
+            Ui.Background(barBg, Palette.Bar);
+            Ui.Size(barBg, TabBarHeight);
+            var bar = Ui.HScrollRow(barBg, "Tabs", TabBarHeight, 6, 8);
+            Ui.Fill((RectTransform)bar.parent.parent);
+            float width = Mathf.Max(MinTabWidth, (GameApp.ReferenceWidth - 16f) / Mathf.Min(VisibleTabs, Mathf.Max(1, tabs.Count)) - 6f);
+            foreach (var t in tabs)
             {
-                var tab = t.tab;
-                _tabButtons[tab] = Ui.Button(bottom, T(t.nameKey), () => Select(tab), 136);
+                var tab = t;
+                var b = Ui.Button(bar, T(t.NameKey), () => Select(tab), TabBarHeight - 16, fontSize: 30);
+                Ui.Size(b, width: width);
+                if (t.Status != MainTabEntry.Active) b.GetComponentInChildren<Text>().color = Palette.TextDim;
+                _tabButtons[t.Id] = b;
             }
-            Select(_initial);
+
+            MainTabEntry first = null;
+            foreach (var t in tabs)
+            {
+                if (t.Id == _initial) { first = t; break; }
+                if (first == null && t.Status == MainTabEntry.Active) first = t;
+            }
+            if (first != null) Select(first);
         }
 
-        private void Select(MainTab tab)
+        private void Select(MainTabEntry tab)
         {
             Ui.Clear(_content);
-            foreach (var kv in _tabButtons) kv.Value.targetGraphic.color = kv.Key == tab ? Palette.ButtonActive : Palette.Button;
-            foreach (var t in Tabs)
-                if (t.tab == tab)
-                {
-                    var view = t.make();
-                    var root = Ui.Panel(_content, tab.ToString());
-                    view.Build(App, root);
-                }
+            foreach (var kv in _tabButtons) kv.Value.targetGraphic.color = kv.Key == tab.Id ? Palette.ButtonActive : Palette.Button;
+            var root = Ui.Panel(_content, tab.Id);
+            ITabView view = tab.Status == MainTabEntry.Active && Views.TryGetValue(tab.Id, out var make) ? make() : new ComingSoonTabView(tab);
+            view.Build(App, root);
         }
     }
 
     /// <summary>메인 화면의 탭 내용 하나.</summary>
     public interface ITabView
     {
-        void Build(Boot.GameApp app, RectTransform root);
+        void Build(GameApp app, RectTransform root);
     }
 
-    /// <summary>장수 목록 (읽기 전용, 육성 화면은 다음 단계).</summary>
+    /// <summary>준비 중인 탭 (main-screen.md 2장: TO-BE 탭은 자리를 두고 "준비 중" 화면).</summary>
+    public sealed class ComingSoonTabView : ITabView
+    {
+        private readonly MainTabEntry _tab;
+        public ComingSoonTabView(MainTabEntry tab) { _tab = tab; }
+
+        public void Build(GameApp app, RectTransform root)
+        {
+            Ui.Column(root, 24, 48).childAlignment = TextAnchor.MiddleCenter;
+            Ui.Size(Ui.Label(root, app.Context.T(_tab.NameKey), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
+            Ui.Label(root, app.Context.T("ui.tab.comingSoon"), Ui.FontBody, TextAnchor.MiddleCenter, Palette.TextDim);
+        }
+    }
+
+    /// <summary>장수 키우기 (일부): 지금은 보유 장수 목록. 스킬북·특성서·대결 전적 보상은 다음 단계.</summary>
     public sealed class GeneralsTabView : ITabView
     {
-        public void Build(Boot.GameApp app, RectTransform root)
+        public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
             var list = Ui.ScrollList(root, "List");
             Ui.Fill((RectTransform)list.parent.parent);
+            Ui.Label(list, ctx.T("ui.tab.generalNote"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             foreach (var g in ctx.State.Generals)
             {
                 var card = Ui.Card(list, g.GeneralId);
                 var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;
                 Ui.Label(card, ctx.T("ui.generals.line", ctx.GeneralName(g.GeneralId), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)));
             }
-            Ui.Label(list, ctx.T("ui.tab.comingSoon"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
         }
     }
 
-    /// <summary>부대 목록 (읽기 전용).</summary>
-    public sealed class UnitsTabView : ITabView
+    /// <summary>부대 편성 (일부): 지금은 현재 군단 편성과 보유 부대 목록. 편성 바꾸기는 다음 단계.</summary>
+    public sealed class FormationTabView : ITabView
     {
-        public void Build(Boot.GameApp app, RectTransform root)
+        public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
             var list = Ui.ScrollList(root, "List");
             Ui.Fill((RectTransform)list.parent.parent);
-            foreach (var u in ctx.State.Units)
-            {
-                string troop = ctx.Defs.TroopTypes.TryGetValue(u.TroopType, out var tt) ? ctx.T(tt.NameKey) : u.TroopType;
-                var card = Ui.Card(list, u.UnitId);
-                Ui.Label(card, ctx.T("ui.units.line", u.UnitId, troop, u.Troops.ToString("N0"), u.Wounded.ToString("N0"), u.Cohesion.FloorToLong()), Ui.FontSmall);
-            }
-            Ui.Label(list, ctx.T("ui.tab.comingSoon"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-        }
-    }
-
-    /// <summary>군단 편성 목록 (읽기 전용, 편성 바꾸기는 다음 단계).</summary>
-    public sealed class CompositionsTabView : ITabView
-    {
-        public void Build(Boot.GameApp app, RectTransform root)
-        {
-            var ctx = app.Context;
-            var list = Ui.ScrollList(root, "List");
-            Ui.Fill((RectTransform)list.parent.parent);
+            Ui.Label(list, ctx.T("ui.tab.formationNote"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             foreach (var c in ctx.State.Compositions)
             {
                 string formation = c.Formation != null && ctx.Defs.Formations.TryGetValue(c.Formation, out FormationDef f) ? ctx.T(f.NameKey) : c.Formation;
                 var card = Ui.Card(list, c.GeneralId);
                 Ui.Label(card, ctx.T("ui.compositions.line", ctx.GeneralName(c.GeneralId), formation, c.Slots.Count));
             }
-            Ui.Label(list, ctx.T("ui.tab.comingSoon"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            foreach (var u in ctx.State.Units)
+            {
+                string troop = ctx.Defs.TroopTypes.TryGetValue(u.TroopType, out var tt) ? ctx.T(tt.NameKey) : u.TroopType;
+                var card = Ui.Card(list, u.UnitId);
+                Ui.Label(card, ctx.T("ui.units.line", u.UnitId, troop, u.Troops.ToString("N0"), u.Wounded.ToString("N0"), u.Cohesion.FloorToLong()), Ui.FontSmall);
+            }
         }
     }
 }

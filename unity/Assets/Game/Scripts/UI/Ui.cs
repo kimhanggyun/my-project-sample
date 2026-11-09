@@ -174,6 +174,42 @@ namespace Game.Unity.UI
             return content;
         }
 
+        /// <summary>가로 스크롤 줄 (탭 바 등). 돌려주는 content 아래에 너비를 정한 항목을 넣는다.</summary>
+        public static RectTransform HScrollRow(Transform parent, string name, float height, int spacing = 8, int padding = 8)
+        {
+            var root = Rect(parent, name);
+            Size(root, height);
+            var scroll = root.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = true;
+            scroll.vertical = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 40f;
+
+            var viewport = Panel(root, "Viewport");
+            viewport.gameObject.AddComponent<RectMask2D>();
+            Background(viewport, new Color(0, 0, 0, 0));
+
+            var content = Rect(viewport, "Content");
+            content.anchorMin = new Vector2(0, 0);
+            content.anchorMax = new Vector2(0, 1);
+            content.pivot = new Vector2(0, 0.5f);
+            content.offsetMin = Vector2.zero;
+            content.offsetMax = Vector2.zero;
+            var g = content.gameObject.AddComponent<HorizontalLayoutGroup>();
+            g.spacing = spacing;
+            g.padding = new RectOffset(padding, padding, padding, padding);
+            g.childControlWidth = true;
+            g.childControlHeight = true;
+            g.childForceExpandWidth = false;
+            g.childForceExpandHeight = true;
+            var fit = content.gameObject.AddComponent<ContentSizeFitter>();
+            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = viewport;
+            scroll.content = content;
+            return content;
+        }
+
         /// <summary>카드 (배경 + 세로 묶음).</summary>
         public static RectTransform Card(Transform parent, string name, int padding = 24, int spacing = 8)
         {
