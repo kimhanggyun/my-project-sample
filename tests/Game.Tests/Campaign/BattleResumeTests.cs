@@ -4,6 +4,7 @@ using Game.Battle.Model.Simulation;
 using Game.Campaign;
 using Game.Flow;
 using Game.Foundation.Save;
+using Game.Online;
 using Xunit;
 
 namespace Game.Tests.Campaign
@@ -75,7 +76,7 @@ namespace Game.Tests.Campaign
             Assert.Equal(Game.Online.OnlineJson.Write(subA), Game.Online.OnlineJson.Write(subC));
         }
 
-        [Fact(DisplayName = "R-55 끝난 전투·고용 출진은 남기지 않고, 깨진 기록·없는 스텝·기록과 다르게 흐르면 이어 하지 않는다")]
+        [Fact(DisplayName = "R-55 끝난 전투는 남기지 않고, 깨진 기록·없는 스텝·기록과 다르게 흐르면 이어 하지 않는다")]
         public void NotResumable()
         {
             var (flow, _, plan) = Start("step01", 3, false);
@@ -101,5 +102,44 @@ namespace Game.Tests.Campaign
             sim.RunToEnd();
             Assert.Null(BattleResume.Capture(plan, sim, 1));
         }
-    }
+    
+        [Fact(DisplayName = "R-55 고용 출진도 이어 할 수 있다: 이어서 끝낸 전투를 가짜 서버에 올리면 같은 시장으로 재현해 받아들인다")]
+        public void HiredSortieResumes()
+        {
+            var clock = new ServerClock(Kit.Clock());
+            var fake = new LocalOnlineService(Kit.D, Kit.Source, Kit.Clock());
+            var sync = new CloudSync(fake, clock);
+            SyncResult start = null;
+            sync.Start(null, 0, r => start = r);
+            var state = start.State;
+            HireListResponse market = null;
+            fake.GetListings(null, x => market = x);
+            var unit = market.Listings.First(l => l.Kind == HireKinds.Unit && l.TroopType == "cavalry");
+            var draft = new HireDraft(Kit.D);
+            draft.Picks.Add(new HirePick { Listing = unit, CorpsIndex = 0, Count = 300 });
+            var (comps, hired) = draft.Build(state, "field", fake.AccountId, out var error);
+            Assert.Null(error);
+
+            var flow = new StoryFlow(Kit.D, Kit.Source, clock);
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 4, Delegate = true, Compositions = comps, Hired = hired });
+            Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+            Assert.True(flow.Confirm(state, plan));
+            var sim = new BattleSimulation(plan.Setup);
+            for (int i = 0; i < 150 && !sim.IsOver; i++) sim.Step();
+            var saved = BattleResume.Capture(plan, sim, 1);
+            Assert.NotNull(saved);
+            Assert.NotNull(saved.Hire);
+
+            var resumed = BattleResume.Restore(new StoryFlow(Kit.D, Kit.Source, clock), BattleResume.Copy(saved));
+            Assert.NotNull(resumed);
+            Assert.Equal(plan.Hired.Uses.Count, resumed.Plan.Hired.Uses.Count);
+            var rs = resumed.Simulation;
+            while (!rs.IsOver) rs.Step();
+            flow.ApplyResult(state, resumed.Plan, rs.Result);
+            SyncResult r = null;
+            sync.SubmitBattle(CloudSync.SubmissionOf(resumed.Plan, rs.CommandLog, rs.Result, start.Revision), state, x => r = x);
+            Assert.Equal(SyncOutcomes.Accepted, r.Outcome);
+            Assert.Equal(state.Wallet["gold"], r.State.Wallet["gold"]);
+        }
+}
 }

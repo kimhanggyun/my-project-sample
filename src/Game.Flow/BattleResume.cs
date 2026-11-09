@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Game.Battle.Model.Commands;
 using Game.Battle.Model.Simulation;
+using Game.Campaign;
 using Game.Campaign.Roster;
 using Game.Foundation.Save;
 using Game.Online;
@@ -31,6 +32,44 @@ namespace Game.Flow
         public List<CorpsComposition> Compositions { get; set; }
         public string Location { get; set; }
         public TerritoryDefense Defense { get; set; }
+        /// <summary>고용 (R-43): 비용은 출진 확정 때 이미 냈다. 결과 제출(고용 목록)과 이력에 쓴다. 없으면 null.</summary>
+        public SuspendedHire Hire { get; set; }
+    }
+
+    /// <summary><see cref="HiredForces"/>를 저장할 수 있는 모양으로.</summary>
+    public sealed class SuspendedHire
+    {
+        public List<GeneralState> Generals { get; set; } = new List<GeneralState>();
+        public List<UnitState> Units { get; set; } = new List<UnitState>();
+        public Dictionary<string, long> Costs { get; set; } = new Dictionary<string, long>();
+        public List<HireCharge> Charges { get; set; } = new List<HireCharge>();
+        public List<HireUse> Uses { get; set; } = new List<HireUse>();
+        public string StepId { get; set; }
+
+        public static SuspendedHire From(HiredForces h)
+        {
+            if (h == null || h.IsEmpty) return null;
+            return new SuspendedHire
+            {
+                Generals = new List<GeneralState>(h.Generals),
+                Units = new List<UnitState>(h.Units),
+                Costs = new Dictionary<string, long>(h.Costs),
+                Charges = new List<HireCharge>(h.Charges),
+                Uses = new List<HireUse>(h.Uses),
+                StepId = h.StepId,
+            };
+        }
+
+        public HiredForces ToForces()
+        {
+            var h = new HiredForces { StepId = StepId };
+            h.Generals.AddRange(Generals);
+            h.Units.AddRange(Units);
+            foreach (var kv in Costs) h.Costs[kv.Key] = kv.Value;
+            h.Charges.AddRange(Charges);
+            h.Uses.AddRange(Uses);
+            return h;
+        }
     }
 
     public sealed class ResumedBattle
@@ -42,10 +81,8 @@ namespace Game.Flow
 
     public static class BattleResume
     {
-        /// <summary>
-        /// 이어 하기를 남길 수 있는 출진인가. 고용이 있는 출진은 아직 남기지 않는다 (고용 비용·결과를 다시 맞추는 일은 이어서).
-        /// </summary>
-        public static bool Supports(SortiePlan plan) => plan?.Setup != null && (plan.Hired == null || plan.Hired.IsEmpty);
+        /// <summary>이어 하기를 남길 수 있는 출진인가 (고용 출진 포함).</summary>
+        public static bool Supports(SortiePlan plan) => plan?.Setup != null && plan.Step != null;
 
         /// <summary>지금 전투 상태를 남길 기록으로 (전투가 끝났으면 null).</summary>
         public static SuspendedBattle Capture(SortiePlan plan, BattleSimulation sim, long nowUnixSeconds)
@@ -65,6 +102,7 @@ namespace Game.Flow
                 Compositions = plan.Compositions,
                 Location = plan.Location,
                 Defense = plan.Defense,
+                Hire = SuspendedHire.From(plan.Hired),
             };
             return Copy(s);
         }
@@ -90,6 +128,7 @@ namespace Game.Flow
                     Compositions = s.Compositions,
                     Location = s.Location,
                     Defense = s.Defense,
+                    Hired = s.Hire?.ToForces(),
                 };
                 foreach (var kv in s.PlayerCorps) plan.PlayerCorps[kv.Key] = kv.Value;
 
