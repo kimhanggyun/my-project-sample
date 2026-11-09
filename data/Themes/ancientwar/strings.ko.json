@@ -244,5 +244,20 @@
   "ui.formation.removeCorps": "군단 빼기",
   "ui.formation.pickTitle": "제{0}군 {1} 칸에 넣을 부대",
   "ui.formation.clearSlot": "칸 비우기",
-  "ui.formation.inCorps": "제{0}군 {1}"
+  "ui.formation.inCorps": "제{0}군 {1}",
+  "ui.contest.duel": "일기토",
+  "ui.contest.debate": "논쟁",
+  "ui.contest.challenge": "적장이 대결을 청해 온다!",
+  "ui.contest.timer": "남은 시간 {0}초",
+  "ui.contest.start": "행동을 고르세요. 상대의 선택은 동시에 공개됩니다.",
+  "ui.contest.roundLine": "{0}라운드: 나 {1} / 상대 {2}",
+  "ui.contest.auto": "자동",
+  "ui.contest.next": "전투로",
+  "ui.contest.won": "승리!",
+  "ui.contest.lost": "패배…",
+  "ui.contest.wonFall": "적장을 쓰러뜨렸다!",
+  "ui.contest.lostFall": "쓰러졌다…",
+  "ui.contest.iRetreated": "물러났다.",
+  "ui.contest.theyRetreated": "적장이 물러났다.",
+  "ui.contest.draw": "무승부"
 }

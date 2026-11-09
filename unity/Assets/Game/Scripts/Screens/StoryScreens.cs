@@ -99,7 +99,7 @@ namespace Game.Unity.Screens
         {
             var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed(), Delegate = delegate_ });
             if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new StepScreen(_stepId)); return; }
-            App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start"));
+            App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start", !delegate_));
         }
 
         private string FormationName(string id) => Ctx.Defs.Formations.TryGetValue(id, out var f) ? T(f.NameKey) : id;
@@ -111,8 +111,10 @@ namespace Game.Unity.Screens
     {
         private readonly SortiePlan _plan;
         private readonly string _lineKey;
+        private readonly bool _playContests;
 
-        public DialogueScreen(SortiePlan plan, string lineKey) { _plan = plan; _lineKey = lineKey; }
+        /// <param name="playContests">전투 직전 대결(일기토·논쟁)을 직접 고를지 (직접 지휘). 아니면 AI가 고른다.</param>
+        public DialogueScreen(SortiePlan plan, string lineKey, bool playContests = false) { _plan = plan; _lineKey = lineKey; _playContests = playContests; }
 
         public override void Build()
         {
@@ -124,7 +126,9 @@ namespace Game.Unity.Screens
             Ui.Label(box, Ui.Colored(speaker, Palette.Ally), Ui.FontBody);
             bool has = Ctx.Defs.Strings.ContainsKey(_lineKey);
             Ui.Size(Ui.Label(box, has ? T(_lineKey) : "…", Ui.FontBody, TextAnchor.UpperLeft), 200);
-            Ui.Button(Root, T("ui.dialogue.next"), () => App.Show(new BattleScreen(_plan)), 140);
+            bool contest = _playContests && _plan.Setup.Contests.Count > 0;
+            Ui.Button(Root, contest ? T("ui.contest.challenge") : T("ui.dialogue.next"),
+                () => App.Show(contest ? (GameScreen)new ContestScreen(_plan, 0) : new BattleScreen(_plan)), 140);
         }
     }
 }
