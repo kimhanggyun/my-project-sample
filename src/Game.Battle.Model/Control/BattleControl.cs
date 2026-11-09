@@ -185,7 +185,7 @@ namespace Game.Battle.Model.Control
         {
             var list = Formations();
             if (list.Count < 2) return false;
-            int i = list.IndexOf(Selected.Formation.Id);
+            int i = list.IndexOf((Selected.PendingFormation ?? Selected.Formation).Id); // 바꾸는 중이면 그 다음 진형
             return ChangeFormation(list[(i + 1) % list.Count]);
         }
 

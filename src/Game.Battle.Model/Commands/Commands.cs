@@ -157,9 +157,22 @@ namespace Game.Battle.Model.Commands
     internal sealed class ChangeFormationHandler : ICommandHandler
     {
         public string Kind => CommandKinds.ChangeFormation;
+        /// <summary>지금 바꾸려는 진형(전환 중이면 그 진형)과 다른 진형만. 전환 중에 원래 진형을 고르면 전환을 그만둔다.</summary>
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
-            cmd.FormationId != null && ctx.Defs.Formations.ContainsKey(cmd.FormationId) && cmd.FormationId != corps.Formation.Id;
-        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
-            corps.Formation = ctx.Defs.Formations[cmd.FormationId];
+            cmd.FormationId != null && ctx.Defs.Formations.ContainsKey(cmd.FormationId) && cmd.FormationId != (corps.PendingFormation ?? corps.Formation).Id;
+
+        /// <summary>규율(R-56)에 따라 전환 시간이 걸린다. 시간이 0이거나 스위치 discipline이 꺼져 있으면 바로 바뀐다.</summary>
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            var target = ctx.Defs.Formations[cmd.FormationId];
+            if (target.Id == corps.Formation.Id) { corps.PendingFormation = null; corps.ReformTicksLeft = 0; return; }
+            var c = ctx.Combat;
+            var g = corps.Setup.General;
+            Fix seconds = ctx.IsEnabled(Combat.RuleFlagIds.Discipline) ? c.FormationChangeSecondsFor(c.Discipline(g.Leadership, g.Intellect)) : Fix.Zero;
+            long ticks = (seconds / c.TickSeconds).CeilToLong();
+            if (ticks <= 0) { corps.Formation = target; corps.PendingFormation = null; corps.ReformTicksLeft = 0; return; }
+            corps.PendingFormation = target;
+            corps.ReformTicksLeft = ticks;
+        }
     }
 }

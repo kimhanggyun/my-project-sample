@@ -103,5 +103,23 @@
     "restSkillPointMultiplier": 2,
     "coordinateWaitSec": 30,
     "coordinateResponseSec": 10
+  },
+  "discipline": {
+    "_comment": "규율 (battle.md 2.6, R-56): 통솔 위주 + 지략 일부. 규율 50이면 기본값, 높을수록 진형 전환이 빠르다. 전환 중에는 받는 피해가 늘고 이전 진형을 쓴다. 수치는 예시",
+    "leadershipWeight": 0.8,
+    "intellectWeight": 0.2,
+    "formationChangeSeconds": 3,
+    "changeCutPerPoint": 0.01,
+    "minChangeSeconds": 1,
+    "maxChangeSeconds": 6,
+    "reformingDamageTakenPp": 10
+  },
+  "valor": {
+    "_comment": "용맹 (battle.md 2.6, R-56): 무력 위주 + 통솔 일부. 용맹 50이면 기본값, 높을수록 병력 손실로 떨어지는 사기가 적다. 수치는 예시",
+    "mightWeight": 0.8,
+    "leadershipWeight": 0.2,
+    "moraleLossCutPerPoint": 0.005,
+    "minMoraleLossMultiplier": 0.6,
+    "maxMoraleLossMultiplier": 1.4
   }
 }

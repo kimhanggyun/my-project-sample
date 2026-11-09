@@ -220,7 +220,12 @@ namespace Game.Tests.Battle
             Assert.True(sim.Issue(new BattleCommand { CorpsId = "A", Kind = CommandKinds.ChangeFormation, FormationId = "column" }));
             sim.Step();
             var a = sim.Context.Corps[0];
+            // 규율(R-56)만큼 전환 시간이 걸린다: 그동안은 이전 진형
+            Assert.True(a.Reforming);
+            Assert.Equal("square", a.Formation.Id);
+            while (a.Reforming) sim.Step();
             Assert.Equal("column", a.Formation.Id);
+            sim.Step();
             var vanguard = a.Units.First(u => u.Slot == SlotIds.Vanguard);
             Assert.Equal(a.Anchor.Y - Fix.FromInt(4), vanguard.Position.Y); // 북쪽을 보고 4칸 앞
         }

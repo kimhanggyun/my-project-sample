@@ -130,6 +130,7 @@ namespace Game.Battle.Model.Simulation
             }
 
             Environment.EnvironmentSystem.Step(ctx);
+            FormationChangeSystem.Step(ctx);
             SkillSystem.Step(ctx);
             StatusSystem.Enforce(ctx);
             MovementSystem.Step(ctx);

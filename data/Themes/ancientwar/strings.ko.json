@@ -586,5 +586,6 @@
   "ui.resume.note": "이어하기는 멈춘 곳부터 멈춘 채로 시작합니다. 자동으로 끝내기는 모든 군단을 위임해 끝까지 진행합니다.",
   "ui.resume.continue": "이어하기",
   "ui.resume.autoFinish": "자동으로 끝내기",
-  "ui.resume.failed": "규칙·데이터가 바뀌어 지난 전투를 이어 할 수 없습니다.\n가져간 군량은 돌아오지 않습니다."
+  "ui.resume.failed": "규칙·데이터가 바뀌어 지난 전투를 이어 할 수 없습니다.\n가져간 군량은 돌아오지 않습니다.",
+  "ui.battle.reforming": "{0}→{1} 바꾸는 중"
 }

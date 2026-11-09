@@ -59,6 +59,24 @@ namespace Game.Data.Defs
         public Fix GeneralMightToAttack { get; private set; }
         /// <summary>훈련도 1일 때 공격·방어 보정 %p (없으면 0, R-52).</summary>
         public Fix TrainingAttackPp { get; private set; }
+        /// <summary>규율 = 통솔 × 가중치 + 지략 × 가중치 (R-56). 없으면 0 (진형 전환이 즉시).</summary>
+        public Fix DisciplineLeadershipWeight { get; private set; }
+        public Fix DisciplineIntellectWeight { get; private set; }
+        /// <summary>규율 50일 때 진형 전환 시간(초). 0이면 즉시 바뀐다.</summary>
+        public Fix FormationChangeSeconds { get; private set; }
+        /// <summary>규율 1점(50 기준)당 전환 시간 줄어드는 비율.</summary>
+        public Fix FormationChangeCutPerPoint { get; private set; }
+        public Fix MinFormationChangeSeconds { get; private set; }
+        public Fix MaxFormationChangeSeconds { get; private set; }
+        /// <summary>진형 전환 중인 군단이 받는 피해 %p.</summary>
+        public Fix ReformingDamageTakenPp { get; private set; }
+        /// <summary>용맹 = 무력 × 가중치 + 통솔 × 가중치 (R-56).</summary>
+        public Fix ValorMightWeight { get; private set; }
+        public Fix ValorLeadershipWeight { get; private set; }
+        /// <summary>용맹 1점(50 기준)당 손실 사기 하락이 줄어드는 비율. 0이면 영향 없음.</summary>
+        public Fix ValorMoraleLossCutPerPoint { get; private set; }
+        public Fix MinValorMoraleLossMultiplier { get; private set; }
+        public Fix MaxValorMoraleLossMultiplier { get; private set; }
         public Fix TrainingDefensePp { get; private set; }
         public Fix GeneralLeadershipToDefense { get; private set; }
         public int VisionUpdateEveryTicks { get; private set; }
@@ -110,6 +128,31 @@ namespace Game.Data.Defs
 
         /// <summary>1분에 몇 틱인지. 60 ÷ 틱 길이가 정수여야 한다.</summary>
         public long TicksPerMinute => (Fix.FromInt(60) / TickSeconds).FloorToLong();
+
+        private static Fix Opt(JObject o, string block, string key, string c) => Opt(o, block, key, c, Fix.Zero);
+        private static Fix Opt(JObject o, string block, string key, string c, Fix fallback) =>
+            o[block] is JObject b ? JsonUtil.FixOr(b, key, fallback, c + "." + block) : fallback;
+
+        /// <summary>규율 (R-56): 통솔 × 가중치 + 지략 × 가중치.</summary>
+        public Fix Discipline(Fix leadership, Fix intellect) => leadership * DisciplineLeadershipWeight + intellect * DisciplineIntellectWeight;
+        /// <summary>용맹 (R-56): 무력 × 가중치 + 통솔 × 가중치.</summary>
+        public Fix Valor(Fix might, Fix leadership) => might * ValorMightWeight + leadership * ValorLeadershipWeight;
+
+        /// <summary>진형 전환 시간(초) = 기본 × (1 − (규율 − 50) × 비율), 최소·최대 안. 기본이 0이면 0 (즉시).</summary>
+        public Fix FormationChangeSecondsFor(Fix discipline)
+        {
+            if (FormationChangeSeconds <= Fix.Zero) return Fix.Zero;
+            var s = FormationChangeSeconds * (Fix.OneValue - (discipline - Fix.FromInt(50)) * FormationChangeCutPerPoint);
+            return Fix.Clamp(s, MinFormationChangeSeconds, MaxFormationChangeSeconds);
+        }
+
+        /// <summary>손실 사기 하락 배율 = 1 − (용맹 − 50) × 비율, 최소·최대 안.</summary>
+        public Fix ValorMoraleLossMultiplier(Fix valor)
+        {
+            if (ValorMoraleLossCutPerPoint == Fix.Zero) return Fix.OneValue;
+            var m = Fix.OneValue - (valor - Fix.FromInt(50)) * ValorMoraleLossCutPerPoint;
+            return Fix.Clamp(m, MinValorMoraleLossMultiplier, MaxValorMoraleLossMultiplier);
+        }
 
         public static CombatRules From(JObject o)
         {
@@ -163,6 +206,18 @@ namespace Game.Data.Defs
                 GeneralMightToAttack = JsonUtil.RequireFix(general, "mightToAttack", c + ".general"),
                 TrainingAttackPp = o["training"] is JObject tr ? JsonUtil.FixOr(tr, "attackPp", Fix.Zero, c + ".training") : Fix.Zero,
                 TrainingDefensePp = o["training"] is JObject tr2 ? JsonUtil.FixOr(tr2, "defensePp", Fix.Zero, c + ".training") : Fix.Zero,
+                DisciplineLeadershipWeight = Opt(o, "discipline", "leadershipWeight", c),
+                DisciplineIntellectWeight = Opt(o, "discipline", "intellectWeight", c),
+                FormationChangeSeconds = Opt(o, "discipline", "formationChangeSeconds", c),
+                FormationChangeCutPerPoint = Opt(o, "discipline", "changeCutPerPoint", c),
+                MinFormationChangeSeconds = Opt(o, "discipline", "minChangeSeconds", c),
+                MaxFormationChangeSeconds = Opt(o, "discipline", "maxChangeSeconds", c),
+                ReformingDamageTakenPp = Opt(o, "discipline", "reformingDamageTakenPp", c),
+                ValorMightWeight = Opt(o, "valor", "mightWeight", c),
+                ValorLeadershipWeight = Opt(o, "valor", "leadershipWeight", c),
+                ValorMoraleLossCutPerPoint = Opt(o, "valor", "moraleLossCutPerPoint", c),
+                MinValorMoraleLossMultiplier = Opt(o, "valor", "minMoraleLossMultiplier", c, Fix.OneValue),
+                MaxValorMoraleLossMultiplier = Opt(o, "valor", "maxMoraleLossMultiplier", c, Fix.OneValue),
                 GeneralLeadershipToDefense = JsonUtil.RequireFix(general, "leadershipToDefense", c + ".general"),
                 SpawnSpacingCells = JsonUtil.RequireFix(o, "spawnSpacingCells", c),
                 VisionUpdateEveryTicks = (int)JsonUtil.RequireLong(vision, "updateEveryTicks", c + ".vision"),

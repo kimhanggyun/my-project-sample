@@ -35,6 +35,10 @@ namespace Game.Battle.Model.Combat
         public const string TerrainCombat = "terrainCombat";
         public const string HeightBonus = "heightBonus";
         public const string SupplyConsumption = "supplyConsumption";
+        /// <summary>규율: 진형 전환 시간·전환 중 취약 (R-56).</summary>
+        public const string Discipline = "discipline";
+        /// <summary>용맹: 손실 사기 하락 배율 (R-56).</summary>
+        public const string Valor = "valor";
     }
 
     public static class StatIds
@@ -51,6 +55,7 @@ namespace Game.Battle.Model.Combat
         {
             new StatSource(),
             new TrainingSource(),
+            new ReformingSource(),
             new TroopCounterSource(),
             new FormationCounterSource(),
             new DirectionSource(),
@@ -83,6 +88,16 @@ namespace Game.Battle.Model.Combat
             var c = a.Battle.Combat;
             Fix pp = a.Attacker.Training * c.TrainingAttackPp - a.Defender.Training * c.TrainingDefensePp;
             if (pp != Fix.Zero) into.Add(new DamageModifier("training", pp));
+        }
+    }
+
+    /// <summary>진형 전환 중인 군단은 피해를 더 받는다 (R-56, combat.json discipline.reformingDamageTakenPp).</summary>
+    internal sealed class ReformingSource : IDamageModifierSource
+    {
+        public void Collect(AttackContext a, List<DamageModifier> into)
+        {
+            var pp = a.Battle.Combat.ReformingDamageTakenPp;
+            if (a.DefenderCorps.PendingFormation != null && pp != Fix.Zero) into.Add(new DamageModifier("reforming", pp, RuleFlagIds.Discipline));
         }
     }
 
