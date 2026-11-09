@@ -68,5 +68,30 @@ namespace Game.Tests.Battle
             Assert.True(ba.CapturePressure > Fix.Zero, "포위가 되지 않았습니다.");
             Assert.Equal(ba.CapturePressure / 2, ha.CapturePressure);
         }
-    }
+    
+        /// <summary>창벽병 군단 A(진형 formation)가 보병 B와 맞붙어 첫 피해 뒤 20틱까지 잃은 병력.</summary>
+        private static long WallLosses(string formation, string wallJson)
+        {
+            var setup = WithTagEffects(Setup("test_plain", 11, null, Corps("A", "teamA", formation, "pikeWall"), Corps("B", "teamB", "square", "infantry")), wallJson);
+            var sim = new BattleSimulation(setup);
+            var a = sim.Context.FindCorps("A");
+            long start = a.Troops;
+            while (!sim.IsOver && a.Troops == start) sim.Step();
+            for (int i = 0; i < 20 && !sim.IsOver; i++) sim.Step();
+            return start - a.Troops;
+        }
+
+        [Fact(DisplayName = "R-58 창벽병: 방원·횡진에서는 정면 피해가 줄고 (−25%p), 다른 진형이면 정면 보정이 없다")]
+        public void PikeWallFront()
+        {
+            Assert.True(Defs.TroopTypes["pikeWall"].HasTag("wall"));
+            var w = Defs.Combat.TagDamageTaken["wall"];
+            Assert.Equal(Fix.FromInt(-25), w.FrontPp);
+            Assert.Equal(new[] { "circle", "line" }, w.Formations);
+            const string noFront = "{\"wall\": {\"frontDamageTakenPp\": 0}}";
+            Assert.True(WallLosses("circle", null) < WallLosses("circle", noFront));
+            Assert.True(WallLosses("line", null) < WallLosses("line", noFront));
+            Assert.Equal(WallLosses("column", null), WallLosses("column", noFront)); // 진형 조건 밖
+        }
+}
 }

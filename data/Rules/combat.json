@@ -123,12 +123,20 @@
     "maxMoraleLossMultiplier": 1.4
   },
   "tagEffects": {
-    "_comment": "병종 태그 효과 (troops.md 2장, R-58). moraleLossMultiplier = 손실 사기 하락 배율 (그 태그 병력 비율만큼 섞는다), capturePressureMultiplier = 포위 포로 압력이 쌓이는 배율 (그 태그 부대가 살아 있으면). 수치는 예시",
+    "_comment": "병종 태그 효과 (troops.md 2장, R-58). moraleLossMultiplier = 손실 사기 하락 배율 (그 태그 병력 비율만큼 섞는다), capturePressureMultiplier = 포위 포로 압력이 쌓이는 배율 (그 태그 부대가 살아 있으면). frontDamageTakenPp = 정면에서 받는 피해 %p (formations가 있으면 그 진형일 때만), sideDamageTakenPp = 측면·배후에서 받는 피해 %p. 수치는 예시",
     "elite": {
       "moraleLossMultiplier": 0.8
     },
     "bodyguard": {
       "capturePressureMultiplier": 0.5
+    },
+    "wall": {
+      "frontDamageTakenPp": -25,
+      "formations": [
+        "circle",
+        "line"
+      ],
+      "sideDamageTakenPp": 10
     }
   }
 }

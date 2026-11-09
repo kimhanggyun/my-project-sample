@@ -182,7 +182,8 @@
       "tags": [
         "polearm",
         "melee",
-        "elite"
+        "elite",
+        "wall"
       ],
       "supplyPerDay": 2,
       "attackRange": 3,
