@@ -34,8 +34,10 @@ namespace Game.Server
         bool Unregister(string accountId, string listingId);
         MailListResponse MailOf(string accountId);
 
-        /// <summary>영토 주인 목록 (R-46).</summary>
-        TerritoryResponse Territory();
+        /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
+        TerritoryResponse Territory(string accountId);
+        /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47).</summary>
+        MailListResponse CollectTerritory(string accountId);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -81,6 +83,7 @@ namespace Game.Server
         private readonly IGameStore _store;
         private readonly PlayerActionRunner _actions;
         private readonly HireRules _hire;
+        private readonly Game.Territory.TerritoryDefs _territory;
 
         public StrategyGameModule(string code, IReadOnlyList<string> packageIds, IDataSource source, string theme, ITimeProvider time, IGameStore store)
         {
@@ -92,6 +95,7 @@ namespace Game.Server
             _store = store;
             _actions = new PlayerActionRunner(_defs);
             _hire = new HireRules(_defs);
+            _territory = TerritoryBattles.TryLoad(source);
         }
 
         public string Code { get; }
@@ -128,7 +132,8 @@ namespace Game.Server
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
-            if (TerritoryBattles.Captures(s, verdict)) _store.SetTerritoryOwner(Code, TerritoryBattles.RegionOf(s.StepId), accountId, at);
+            if (TerritoryBattles.Captures(s, verdict))
+                _store.WithTerritory(Code, owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
             // 고용 보상: 등록자 우편으로 (등록자 세이브는 직접 고치지 않는다 — 받을 때 행동 mail.claim)
             if (hired != null)
             {
@@ -189,7 +194,10 @@ namespace Game.Server
         }
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
-        public TerritoryResponse Territory() => new TerritoryResponse { Owners = _store.TerritoryOwners(Code) };
+        public TerritoryResponse Territory(string accountId) => _store.WithTerritory(Code, owners => TerritoryLedger.View(_territory, owners, accountId, Now));
+
+        public MailListResponse CollectTerritory(string accountId) =>
+            new MailListResponse { Mail = _store.WithTerritory(Code, owners => TerritoryLedger.Collect(_territory, owners, accountId, Now, (who, m) => _store.AddMail(Code, who, m))) };
 
         public static string ToJson(CampaignState state) => SaveJson.Write(state);
         public static CampaignState FromJson(string json) => SaveJson.Read(json);

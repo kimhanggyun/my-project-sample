@@ -43,8 +43,8 @@ namespace Game.Server
         void AddHireLog(string gameCode, string accountId, IEnumerable<Game.Flow.HireLogEntry> entries);
 
         // ---- 영토 (게임별, R-46) ----
-        List<TerritoryOwner> TerritoryOwners(string gameCode);
-        void SetTerritoryOwner(string gameCode, string regionId, string accountId, long atUnixSeconds);
+        /// <summary>영토 주인 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장). 우편을 보내도 된다.</summary>
+        T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use);
 
         // ---- 우편 (게임별) ----
         void AddMail(string gameCode, string accountId, Mail mail);
@@ -233,23 +233,13 @@ namespace Game.Server
             return g;
         }
 
-        public List<TerritoryOwner> TerritoryOwners(string gameCode)
+        public T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use)
         {
             lock (_lock)
             {
-                var list = new List<TerritoryOwner>();
-                foreach (var o in OwnersOf(gameCode).Values) list.Add(new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds });
-                list.Sort((a, b) => string.CompareOrdinal(a.RegionId, b.RegionId));
-                return list;
-            }
-        }
-
-        public void SetTerritoryOwner(string gameCode, string regionId, string accountId, long atUnixSeconds)
-        {
-            lock (_lock)
-            {
-                OwnersOf(gameCode)[regionId] = new TerritoryOwner { RegionId = regionId, OwnerAccountId = accountId, SinceUnixSeconds = atUnixSeconds };
+                var r = use(OwnersOf(gameCode));
                 Persist();
+                return r;
             }
         }
 

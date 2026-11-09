@@ -18,6 +18,7 @@
 |---|---|
 | `src/Game.Online/OnlineContracts.cs` | 메시지: `SignInResponse`, `ServerTimeResponse`, `CloudSave`(Revision·세이브 JSON), `SavePutRequest/Response`, `BattleSubmission`, `BattleVerdict`. 경계 `IOnlineService`와 서버 없음 구현 `OfflineOnlineService`. JSON 설정 `OnlineJson` (Fix는 원본 정수) |
 | `src/Game.Flow/PlayerActions.cs` | 전투 밖 행동(`PlayerAction`: 편성 저장, 스킬북 구매·습득, 징병·모병·치료, 부대 창설·해산)을 규칙대로 적용하는 `PlayerActionRunner`(종류별 처리기 등록) + 서버 쪽 `ActionVerifier` (R-41) |
+| `src/Game.Flow/TerritoryLedger.cs` | 영토 주인·수입 장부: 차지(이전 주인 정산), 수입 받기(우편), 보기 (R-46, R-47) |
 | `src/Game.Flow/HireBook.cs` | 고용 이력(전투 결과 → 고용마다 승·패·퇴각·포로·궤멸, 잃은 병력)·제한(하루 고용 수, 같은 등록 대기시간) 계산 (R-44) |
 | `src/Game.Flow/Hiring.cs` | 고용 규칙 `HireRules`: 등록 스냅샷·추천 가격, 고용 해석(`HiredForces`: 고용 장수·부대·비용·등록자별 비용), 등록자 보상 (R-43) |
 | `src/Game.Flow/BattleVerifier.cs` | 서버 세이브 + 제출(출진 요청·시드·대결 선택·명령 기록)로 출진 준비 → 전투 재현 → 지문·틱 비교 → 맞으면 출진 확정 + 결과 반영 |
@@ -44,7 +45,8 @@
 | `POST /v1/games/{game}/hire/listings` | 내 서버 세이브의 장수·부대 등록 (같은 대상이면 갱신, Version +1). 가격이 추천 × 상한을 넘거나 · 내 것이 아니거나 · 출전 불가거나 · 등록 수 상한이면 422 | `HireListingResponse` |
 | `DELETE /v1/games/{game}/hire/listings/{id}` | 내 등록 해제 (남의 것·없는 것은 404) | 204 |
 | `GET /v1/games/{game}/mail` | 내 우편 (고용 보상). 받기는 행동 `mail.claim` | `MailListResponse` |
-| `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각). 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
+| `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
+| `POST /v1/games/{game}/territory/collect` | 내 지역의 쌓인 수입을 우편으로 (받은 시각 = 지금, R-47) | `MailListResponse` (보낸 우편) |
 | `POST /v1/games/{game}/battles` | 전투 제출 (고용이 있으면 `Hires` + 쓴 `Compositions`, 서버가 등록 목록의 같은 판으로 재현하고 등록자에게 우편 보상, 등록 이력에 결과를 쌓는다. 고용 제한을 넘으면 422 `hireLimit`). 옛 세이브 위면 409(`staleSave`), 기록 시각이 범위 밖이면 422(`badTime`, R-42), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
 
 실행: `dotnet run --project server/Game.Server`. 설정:
