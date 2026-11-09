@@ -244,6 +244,44 @@ namespace Game.Unity.Boot
 
         public void ClearHires() { _hires = null; _hireStep = null; }
 
+        // ---- 닉네임 (공통 계정) ----
+        /// <summary>내 닉네임 (아직 모르거나 없으면 null).</summary>
+        public string Nickname { get; private set; }
+        private readonly Dictionary<string, string> _names = new Dictionary<string, string>();
+
+        public void LoadProfile(Action<ProfileResponse> done) => Online.GetProfile(p =>
+        {
+            if (p != null) Nickname = p.Nickname;
+            done?.Invoke(p);
+        });
+
+        public void SetNickname(string nickname, Action<NicknameResponse> done) => Online.SetNickname(nickname, r =>
+        {
+            if (r != null && r.Ok) { Nickname = r.Nickname; if (AccountId != null) _names[AccountId] = r.Nickname; }
+            done?.Invoke(r);
+        });
+
+        /// <summary>모르는 계정의 닉네임을 받아 둔다 (화면에 이름으로 보이게). 다 받으면(또는 닿지 않으면) done.</summary>
+        public void LoadNames(IEnumerable<string> accountIds, Action done)
+        {
+            var missing = new List<string>();
+            foreach (var id in accountIds) if (id != null && !_names.ContainsKey(id) && !missing.Contains(id)) missing.Add(id);
+            if (missing.Count == 0 || !OnlineEnabled) { done?.Invoke(); return; }
+            Online.GetNames(missing, r =>
+            {
+                if (r != null) foreach (var kv in r.Names) _names[kv.Key] = kv.Value;
+                done?.Invoke();
+            });
+        }
+
+        /// <summary>계정 → 보일 이름: 닉네임, 없으면 id 앞부분.</summary>
+        public string DisplayName(string accountId)
+        {
+            if (accountId == null) return "?";
+            if (_names.TryGetValue(accountId, out var n)) return n;
+            return accountId.Length > 12 ? accountId.Substring(0, 12) + "…" : accountId;
+        }
+
         /// <summary>
         /// 로그인 (startup.md 2장): 지금은 게스트만 (기기 계정). 구글·Apple은 구현이 생기면 같은 자리에서 수단 id로 고른다.
         /// 되면 수단을 기록해 다음 실행에 자동 로그인.
