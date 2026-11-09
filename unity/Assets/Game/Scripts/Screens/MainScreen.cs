@@ -122,6 +122,7 @@ namespace Game.Unity.Screens
             var list = Ui.ScrollList(root, "List");
             Ui.Fill((RectTransform)list.parent.parent);
             Ui.Label(list, ctx.T("ui.tab.generalNote"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            if (ctx.Defs.Gacha.Banners.Count > 0) Ui.Button(list, ctx.T("ui.gacha.button"), () => app.Show(new GachaScreen()), 100, Palette.ButtonActive);
             foreach (var g in ctx.State.Generals)
             {
                 var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;

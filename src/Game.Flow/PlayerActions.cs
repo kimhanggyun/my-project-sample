@@ -47,6 +47,8 @@ namespace Game.Flow
                 (a.PayWith == Economy.ResourceIds.Supply || a.PayWith == Economy.ResourceIds.Gold) && troops.Heal(s, a.UnitId, a.Count, a.PayWith) > 0));
             Register(new Handler(ActionKinds.UnitCreate, (s, a) => troops.Create(s, a.TroopType) != null));
             Register(new Handler(ActionKinds.UnitDisband, (s, a) => troops.Disband(s, a.UnitId)));
+            var gacha = new GachaService(defs);
+            Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
             // 우편 받기: 서버는 우편이 있는지·양이 맞는지 먼저 본다 (ActionVerifier의 serverCheck)
             Register(new Handler(ActionKinds.MailClaim, (s, a) =>
             {
@@ -104,6 +106,9 @@ namespace Game.Flow
 
         public static PlayerAction SaveFormation(string situation, IEnumerable<CorpsComposition> draft) =>
             new PlayerAction { Kind = ActionKinds.FormationSave, Situation = situation, Corps = ToActionCorps(draft) };
+
+        public static PlayerAction DrawGacha(string bannerId, int count, ulong seed) =>
+            new PlayerAction { Kind = ActionKinds.GachaDraw, BannerId = bannerId, Count = count, Seed = seed };
 
         public static PlayerAction ClaimMail(Mail mail) =>
             new PlayerAction { Kind = ActionKinds.MailClaim, MailId = mail.Id, PayWith = mail.Resource, Count = mail.Amount };

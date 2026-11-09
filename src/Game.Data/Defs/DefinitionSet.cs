@@ -46,6 +46,8 @@ namespace Game.Data.Defs
         public SpeechRules Speech { get; private set; }
         public LevelRules Levels { get; private set; }
         public IReadOnlyList<SecretDef> Secrets { get; private set; }
+        /// <summary>장수 모집 (Rules/gacha.json, 없으면 모집 없음).</summary>
+        public GachaRules Gacha { get; private set; } = GachaRules.None;
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -249,6 +251,7 @@ namespace Game.Data.Defs
                 AddUnique(generals, id, def, "generals.json");
             }
             set.Generals = generals;
+            if (source.Exists(RulesDir + GachaRules.File)) set.Gacha = GachaRules.From(Read(RulesDir + GachaRules.File), set.Generals);
 
             set.StartingKit = ReadStartingKit(Read(theme + "startingKit.json"));
 

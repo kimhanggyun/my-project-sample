@@ -28,6 +28,10 @@ namespace Game.Campaign
         /// <summary>보관 중인 스킬북·특성서 (id → 개수). 요구 능력치가 모자라 아직 못 배운 숨은 보상도 여기로.</summary>
         public Dictionary<string, long> SkillBooks { get; set; } = new Dictionary<string, long>();
         public Dictionary<string, long> TraitBooks { get; set; } = new Dictionary<string, long>();
+        /// <summary>모집(뽑기) 천장 계산: 모집 id → 천장 등급이 마지막으로 나온 뒤 모집한 수 (R-51).</summary>
+        public Dictionary<string, int> GachaPity { get; set; } = new Dictionary<string, int>();
+        /// <summary>장수 조각: 이미 가진 장수가 또 나오면 1개 (한계 돌파에 쓴다, 다음 단계).</summary>
+        public Dictionary<string, long> GeneralShards { get; set; } = new Dictionary<string, long>();
 
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);

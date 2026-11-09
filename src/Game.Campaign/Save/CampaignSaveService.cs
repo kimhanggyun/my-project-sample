@@ -20,14 +20,14 @@ namespace Game.Campaign.Save
     public sealed class CampaignSaveService
     {
         /// <summary>v2: 포로 목록, 스텝별 탐색 기억, 장수 포로 정보·기록 카운터·받은 성장 보상. v3: 숨은 보상 도감, 스킬북·특성서 보관함. v4: 상황별 편성.</summary>
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
         public const string DefaultKey = "campaign";
 
         private readonly ISaveStore _store;
         private readonly Dictionary<int, ISaveMigration> _migrations = new Dictionary<int, ISaveMigration>();
 
         /// <summary>게임에 들어 있는 변환기 (예전 세이브를 지금 형식으로).</summary>
-        public static readonly IReadOnlyList<ISaveMigration> BuiltInMigrations = new ISaveMigration[] { new V1ToV2(), new V2ToV3(), new V3ToV4() };
+        public static readonly IReadOnlyList<ISaveMigration> BuiltInMigrations = new ISaveMigration[] { new V1ToV2(), new V2ToV3(), new V3ToV4(), new V4ToV5() };
 
         private static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {
@@ -103,6 +103,19 @@ namespace Game.Campaign.Save
             if (c["FoundSecrets"] == null) c["FoundSecrets"] = new JArray();
             if (c["SkillBooks"] == null) c["SkillBooks"] = new JObject();
             if (c["TraitBooks"] == null) c["TraitBooks"] = new JObject();
+        }
+    }
+
+    /// <summary>v4 → v5: 모집 천장·장수 조각을 빈 값으로.</summary>
+    internal sealed class V4ToV5 : ISaveMigration
+    {
+        public int FromVersion => 4;
+
+        public void Apply(JObject save)
+        {
+            var c = (JObject)save["campaign"];
+            if (c["GachaPity"] == null) c["GachaPity"] = new JObject();
+            if (c["GeneralShards"] == null) c["GeneralShards"] = new JObject();
         }
     }
 

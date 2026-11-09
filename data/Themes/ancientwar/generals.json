@@ -155,6 +155,115 @@
         "might": 0.5,
         "intellect": 0.2
       }
+    },
+    {
+      "id": "general_d",
+      "nameKey": "general.general_d",
+      "grade": "rare",
+      "temperament": "brave",
+      "traits": [],
+      "innateSkills": [
+        "warCry"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 55,
+        "might": 70,
+        "intellect": 40
+      },
+      "growthRates": {
+        "leadership": 0.4,
+        "might": 0.6,
+        "intellect": 0.2
+      }
+    },
+    {
+      "id": "general_e",
+      "nameKey": "general.general_e",
+      "grade": "rare",
+      "temperament": "calm",
+      "traits": [],
+      "innateSkills": [
+        "reveal"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 50,
+        "might": 40,
+        "intellect": 70
+      },
+      "growthRates": {
+        "leadership": 0.3,
+        "might": 0.2,
+        "intellect": 0.6
+      }
+    },
+    {
+      "id": "general_f",
+      "nameKey": "general.general_f",
+      "grade": "hero",
+      "temperament": "calm",
+      "traits": [],
+      "innateSkills": [
+        "rally",
+        "regroup"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 75,
+        "might": 60,
+        "intellect": 55
+      },
+      "growthRates": {
+        "leadership": 0.7,
+        "might": 0.4,
+        "intellect": 0.3
+      }
+    },
+    {
+      "id": "general_g",
+      "nameKey": "general.general_g",
+      "grade": "hero",
+      "temperament": "brave",
+      "traits": [],
+      "innateSkills": [
+        "warCry",
+        "taunt"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 60,
+        "might": 80,
+        "intellect": 45
+      },
+      "growthRates": {
+        "leadership": 0.4,
+        "might": 0.7,
+        "intellect": 0.3
+      }
+    },
+    {
+      "id": "general_h",
+      "nameKey": "general.general_h",
+      "grade": "legend",
+      "temperament": "cautious",
+      "traits": [],
+      "innateSkills": [
+        "fireAttack",
+        "ambush",
+        "reveal"
+      ],
+      "recruitable": true,
+      "stats": {
+        "leadership": 70,
+        "might": 55,
+        "intellect": 85
+      },
+      "growthRates": {
+        "leadership": 0.5,
+        "might": 0.3,
+        "intellect": 0.8
+      }
     }
   ]
 }
