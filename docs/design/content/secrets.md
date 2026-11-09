@@ -1,6 +1,6 @@
 # 숨은 보상 (이스터 에그)
 
-> 상태: 기획 중 (구현 전)
+> 상태: 1차 구현 (규칙 R-53, 예시 목록 8개 · 도감 화면 · 결과 화면 발견 알림). 특성 효과·특별 연출·말풍선은 이어서
 > 관련: [skills.md](skills.md), [traits.md](traits.md), [story.md](story.md), [general-growth.md](general-growth.md) 2.3(보상 규칙 엔진), [generals.md](generals.md)
 
 ---
@@ -88,4 +88,22 @@
 - [x] 도감 → 채택 (못 찾은 것은 ???)
 - [x] 힌트 → 채택 (대사·말풍선·도감)
 - [x] 요구 능력치 부족 → 스킬북·특성서로 보관
-- [ ] 첫 버전 숨은 보상 목록 — 지금은 예시 4개 (`data/Rules/secrets.json`)
+- [ ] 첫 버전 숨은 보상 목록 — 지금은 예시 8개 (`data/Rules/secrets.json`, 아래 7장)
+- [ ] 특성 효과 — 지금 특성은 이름(`trait.<id>`)만 있고 전투 효과 없음 (traits.md)
+- [ ] 발견 연출 (특별 연출 + 장수 말풍선) — 지금은 결과 화면 "숨은 보상 발견" 카드에 「이름」 장수 → 보상
+
+## 7. 지금 목록 (예시)
+
+| id | 조건 | 보상 | 위임 출진 60판 중 |
+|---|---|---|---|
+| secret_step01_light_losses | step01 손실 10% 이하로 이김 | 지휘 장수: 스킬 화계 | 몇 판 |
+| secret_fire_two_corps | 아군 불로 적 2군단 이상 | 화계 쓴 장수: 특성 화공 전문가 | 직접 지휘 |
+| secret_rain_no_archers | 비 오는 날 궁병 없이 이김 | 지휘 장수: 특성 빗속 행군 | 비 스텝이 아직 없음 |
+| secret_duel_fall | 일기토로 적장을 쓰러뜨림 | 이긴 장수: 특성 일기당천 | 가끔 |
+| secret_step03_fire_three | step03 아군 불로 적 3군단 이상 | 화계 쓴 장수: 특성 화염의 달인 | 직접 지휘 |
+| secret_step04_iron_wall | step04 손실 5% 이하로 이김 | 지휘 장수: 스킬 재정비 | 3판 |
+| secret_step05_dusk_charge | step05(저물녘) 궁병 없이 이김 | 지휘 장수: 특성 야습 | 기본 편성 0판 (궁병을 빼야 함) |
+| secret_step06_unbroken | step06 손실 10% 이하로 이김 | 지휘 장수: 특성 불굴 | 3판 |
+
+- 이름은 `secret.<id>`, 힌트는 `hint.<id>`, 특성 이름은 `trait.<id>` (문구 데이터). 테스트가 모두 있는지 본다.
+- "드물다"의 기준(지금): 위임 출진 60판 중 1~10판 (`StepSecretRare`).

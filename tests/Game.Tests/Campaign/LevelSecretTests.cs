@@ -145,6 +145,74 @@ namespace Game.Tests.Campaign
             }
         }
 
+        [Fact(DisplayName = "숨은 보상마다 이름·힌트 문구가 있고, 보상 스킬은 있는 스킬, 특성은 이름이 있다")]
+        public void Strings()
+        {
+            foreach (var s in Kit.D.Secrets)
+            {
+                Assert.True(Kit.D.Strings.ContainsKey("secret." + s.Id), s.Id + ": 이름");
+                Assert.True(s.HintKey != null && Kit.D.Strings.ContainsKey(s.HintKey), s.Id + ": 힌트");
+                Assert.True(s.RewardSkill != null || s.RewardTrait != null, s.Id + ": 보상 없음");
+                if (s.RewardSkill != null) Assert.True(Kit.D.Skills.ContainsKey(s.RewardSkill), s.Id + ": 스킬 " + s.RewardSkill);
+                if (s.RewardTrait != null) Assert.True(Kit.D.Strings.ContainsKey("trait." + s.RewardTrait), s.Id + ": 특성 " + s.RewardTrait);
+                if (s.Step != null) Assert.Contains(s.Step, Kit.D.StepIndex.Order);
+            }
+        }
+
+        private static CampaignState StartOf(string stepId)
+        {
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            foreach (var id in Kit.D.StepIndex.Order) { if (id == stepId) break; s.ClearedSteps.Add(id); }
+            return s;
+        }
+
+        /// <summary>위임 출진 고정 시드 60개 중 숨은 보상이 나온 판 수 (숨은 보상은 드물어야 한다).</summary>
+        private static int Hits(string stepId, string secretId, System.Action<SortiePlan> tweak = null)
+        {
+            int hits = 0;
+            for (ulong seed = 1; seed <= 60; seed++)
+            {
+                var state = StartOf(stepId);
+                var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
+                var plan = flow.Prepare(state, new SortieRequest { StepId = stepId, Seed = seed, Delegate = true });
+                Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+                tweak?.Invoke(plan);
+                flow.Confirm(state, plan);
+                var result = BattleSimulation.Run(plan.Setup);
+                var report = flow.ApplyResult(state, plan, result);
+                var f = report.Secrets.FirstOrDefault(x => x.SecretId == secretId);
+                if (f == null) continue;
+                hits++;
+                Assert.True(report.Won);
+                Assert.Contains(secretId, state.FoundSecrets);
+            }
+            return hits;
+        }
+
+        [Theory(DisplayName = "스텝 숨은 보상은 나올 수 있지만 드물다 (위임 출진 60판 중 1~10판)")]
+        [InlineData("step04", "secret_step04_iron_wall")]
+        [InlineData("step06", "secret_step06_unbroken")]
+        public void StepSecretRare(string stepId, string secretId)
+        {
+            int hits = Hits(stepId, secretId);
+            Assert.InRange(hits, 1, 10);
+        }
+
+        [Fact(DisplayName = "저물녘 숲(step05)은 궁병 없이 이겨야 숨은 보상: 기본 편성(궁병 있음)으로는 안 나온다")]
+        public void DuskChargeNeedsNoArchers()
+        {
+            const string id = "secret_step05_dusk_charge";
+            Assert.Equal(0, Hits("step05", id));
+            int hits = Hits("step05", id, plan =>
+            {
+                foreach (var c in plan.Setup.Corps)
+                    if (c.Team == StoryFlow.PlayerTeam)
+                        foreach (var u in c.Units)
+                            if (Kit.D.TroopTypes[u.TroopType].HasTag("ranged")) u.TroopType = "infantry";
+            });
+            Assert.True(hits > 0, "궁병을 보병으로 바꿔 이긴 판이 없습니다.");
+        }
+
         [Fact(DisplayName = "v2 세이브는 v3로 바뀌고 도감·보관함은 빈 값")]
         public void SaveV3()
         {

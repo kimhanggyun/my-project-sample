@@ -70,7 +70,7 @@ namespace Game.Unity.Screens
             foreach (var kv in _report.LevelUps) levels.Add(T("ui.result.levelLine", Ctx.GeneralName(kv.Key), kv.Value.Level, kv.Value.LevelsGained));
             Section(body, "ui.result.levelUps", levels);
             var secrets = new List<string>();
-            foreach (var s in _report.Secrets) secrets.Add(Ctx.GeneralName(s.GeneralId) + ": " + s.SecretId);
+            foreach (var s in _report.Secrets) secrets.Add(SecretText.Found(Ctx, s));
             Section(body, "ui.result.secrets", secrets);
 
             bool territory = _plan.Step.IsTerritory; // 영토 전투면 영토 탭으로

@@ -17,6 +17,8 @@ namespace Game.Unity.Screens
             var list = Ui.ScrollList(root, "Steps");
             Ui.Fill((RectTransform)list.parent.parent);
             Ui.Size(Ui.Label(list, ctx.T("ui.story.header"), Ui.FontTitle, TextAnchor.MiddleLeft), 120);
+            int found = SecretText.FoundCount(ctx, out int total);
+            if (total > 0) Ui.Button(list, ctx.T("ui.codex.button", found, total), () => app.Show(new CodexScreen()), 100, Palette.Card);
 
             var steps = new List<(string id, bool rescue)>();
             foreach (var id in ctx.Defs.StepIndex.Order) steps.Add((id, false));
