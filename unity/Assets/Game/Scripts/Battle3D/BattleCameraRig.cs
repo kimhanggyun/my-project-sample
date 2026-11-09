@@ -38,7 +38,7 @@ namespace Game.Unity.Battle3D
         /// <summary>손가락 아래 땅이 손가락을 따라오도록 옮긴다.</summary>
         public void Pan(Vector2 fromScreen, Vector2 toScreen)
         {
-            if (!Ground(fromScreen, out var a) || !Ground(toScreen, out var b)) return;
+            if (!Ground(fromScreen, 0f, out var a) || !Ground(toScreen, 0f, out var b)) return;
             Focus += a - b;
             Apply();
         }
@@ -51,13 +51,13 @@ namespace Game.Unity.Battle3D
             Apply();
         }
 
-        /// <summary>화면 위치 → 땅(높이 0) 위의 점.</summary>
-        public bool Ground(Vector2 screen, out Vector3 point)
+        /// <summary>화면 위치 → 높이 height인 수평면 위의 점.</summary>
+        public bool Ground(Vector2 screen, float height, out Vector3 point)
         {
             var ray = Camera.ScreenPointToRay(new Vector3(screen.x, screen.y, 0f));
             point = default;
             if (Mathf.Abs(ray.direction.y) < 1e-4f) return false;
-            float t = -ray.origin.y / ray.direction.y;
+            float t = (height - ray.origin.y) / ray.direction.y;
             if (t < 0f) return false;
             point = ray.origin + ray.direction * t;
             return true;

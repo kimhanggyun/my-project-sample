@@ -10,17 +10,24 @@ using UnityEngine.Rendering;
 namespace Game.Unity.Battle3D
 {
     /// <summary>
-    /// (첫 단계) 3D 전장: 지형 텍스처 바닥 + 안개, 군단 깃발(기수), 병사(단순 도형, GPU 인스턴싱), 선택 링, 이동 목적지 표식.
-    /// 전투 상태는 읽기만 한다. 좌표: 전장 (x, y) 칸 → 월드 (x, 0, 높이 − y). 아트·애니메이션은 이후 단계.
+    /// 3D 전장 (단순 도형): 높이가 있는 지형 바닥 + 안개, 군단 깃발(기수), 병사(GPU 인스턴싱, 군단 방향으로 정렬), 선택 링,
+    /// 이동 경로선·목적지, 스킬 사거리 원, 안 보이게 된 적의 마지막 목격 위치(흐린 깃발).
+    /// 전투 상태는 읽기만 한다. 좌표: 전장 (x, y) 칸 → 월드 (x, 지형 높이, 깊이 − y). 아트·애니메이션은 이후 단계.
     /// </summary>
     public sealed class BattleField3D
     {
         private const float SoldierSpacing = 0.32f;
+        /// <summary>지형 높이 1단계의 월드 높이.</summary>
+        private const float HeightScale = 0.8f;
+        private const int RangeSegments = 48;
         private static readonly Vector3 SoldierScale = new Vector3(0.18f, 0.36f, 0.18f);
         private static readonly Color AllyColor = new Color(0.30f, 0.50f, 0.95f);
         private static readonly Color EnemyColor = new Color(0.90f, 0.30f, 0.25f);
         private static readonly Color SelectedColor = new Color(1f, 0.85f, 0.25f);
         private static readonly Color ConfusedColor = new Color(0.6f, 0.6f, 0.6f);
+        private static readonly Color LastSeenColor = new Color(0.55f, 0.35f, 0.35f);
+        private static readonly Color PathColor = new Color(1f, 1f, 1f);
+        private static readonly Color RangeColor = new Color(0.95f, 0.75f, 0.30f);
 
         private readonly BattleControl _ctl;
         private readonly GameObject _root;
@@ -31,6 +38,11 @@ namespace Game.Unity.Battle3D
         private readonly List<Object> _owned = new List<Object>();
         private readonly Dictionary<Color, (Material material, List<Matrix4x4> matrices)> _batches = new Dictionary<Color, (Material, List<Matrix4x4>)>();
         private readonly Dictionary<CorpsState, Transform> _flags = new Dictionary<CorpsState, Transform>();
+        private readonly Dictionary<CorpsState, Transform> _lastSeen = new Dictionary<CorpsState, Transform>();
+        private readonly float[] _vertexHeights;
+        private readonly LineRenderer _path;
+        private readonly LineRenderer _range;
+        private readonly List<Vector3> _pathPoints = new List<Vector3>();
         private readonly Transform _ring;
         private readonly Transform _target;
         private Matrix4x4[] _buffer = new Matrix4x4[64];
@@ -38,6 +50,7 @@ namespace Game.Unity.Battle3D
         public BattleCameraRig Rig { get; }
         public int Width { get; }
         public int Height { get; }
+        public Texture2D MapTexture => _texture.Texture;
 
         public BattleField3D(BattleControl ctl)
         {
@@ -77,7 +90,8 @@ namespace Game.Unity.Battle3D
             _texture.Refresh();
             var ground = new GameObject("Ground");
             ground.transform.SetParent(_root.transform, false);
-            ground.AddComponent<MeshFilter>().sharedMesh = Own(GroundMesh(Width, _depth));
+            _vertexHeights = VertexHeights(ctx);
+            ground.AddComponent<MeshFilter>().sharedMesh = Own(GroundMesh(Width, Height, _vertexHeights));
             var groundMat = Own(NewMaterial(Color.white));
             groundMat.mainTexture = _texture.Texture;
             ground.AddComponent<MeshRenderer>().sharedMaterial = groundMat;
@@ -89,14 +103,14 @@ namespace Game.Unity.Battle3D
             var allyFlag = Own(NewMaterial(AllyColor));
             var enemyFlag = Own(NewMaterial(EnemyColor));
             var poleMat = Own(NewMaterial(new Color(0.35f, 0.25f, 0.15f)));
+            var lastSeenMat = Own(NewMaterial(LastSeenColor));
             foreach (var c in ctx.Corps)
             {
-                var flag = new GameObject("Flag " + c.Id).transform;
-                flag.SetParent(_root.transform, false);
-                Part(flag, cylinder, poleMat, new Vector3(0f, 0.9f, 0f), new Vector3(0.06f, 0.9f, 0.06f));
-                Part(flag, _cube, c.Team == ctl.Team ? allyFlag : enemyFlag, new Vector3(0.35f, 1.55f, 0f), new Vector3(0.7f, 0.45f, 0.04f));
-                _flags[c] = flag;
+                _flags[c] = Flag("Flag " + c.Id, cylinder, poleMat, c.Team == ctl.Team ? allyFlag : enemyFlag);
+                if (c.Team != ctl.Team) _lastSeen[c] = Flag("LastSeen " + c.Id, cylinder, lastSeenMat, lastSeenMat);
             }
+            _path = Line("Path", PathColor, 0.12f, false);
+            _range = Line("Range", RangeColor, 0.12f, true);
 
             _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
             _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
@@ -110,7 +124,23 @@ namespace Game.Unity.Battle3D
         }
 
         /// <summary>전장 좌표 → 월드.</summary>
-        public Vector3 ToWorld(Vec p) => new Vector3((float)p.X.ToDisplayDouble(), 0f, _depth - (float)p.Y.ToDisplayDouble());
+        public Vector3 ToWorld(Vec p)
+        {
+            float x = (float)p.X.ToDisplayDouble(), z = _depth - (float)p.Y.ToDisplayDouble();
+            return new Vector3(x, GroundHeight(x, z), z);
+        }
+
+        /// <summary>바닥 메시와 같은 높이 (꼭짓점 높이의 쌍선형 보간).</summary>
+        public float GroundHeight(float x, float z)
+        {
+            x = Mathf.Clamp(x, 0f, Width);
+            z = Mathf.Clamp(z, 0f, Height);
+            int i = Mathf.Min((int)x, Width - 1), j = Mathf.Min((int)z, Height - 1);
+            float fx = x - i, fz = z - j;
+            float h00 = _vertexHeights[j * (Width + 1) + i], h10 = _vertexHeights[j * (Width + 1) + i + 1];
+            float h01 = _vertexHeights[(j + 1) * (Width + 1) + i], h11 = _vertexHeights[(j + 1) * (Width + 1) + i + 1];
+            return Mathf.Lerp(Mathf.Lerp(h00, h10, fx), Mathf.Lerp(h01, h11, fx), fz);
+        }
 
         /// <summary>
         /// 화면 위치 → 전장 좌표. 입력 경계에서 한 번만 고정소수점으로 바꾸고, 명령 기록에는 그 값이 남는다 (리플레이 결정성).
@@ -118,7 +148,10 @@ namespace Game.Unity.Battle3D
         public bool ScreenToField(Vector2 screen, out Vec point)
         {
             point = default;
-            if (!Rig.Ground(screen, out var w)) return false;
+            if (!Rig.Ground(screen, 0f, out var w)) return false;
+            // 높이가 있는 땅: 그 자리 높이의 평면과 다시 만나 보며 가까워진다 (몇 번이면 충분)
+            for (int k = 0; k < 4; k++)
+                if (!Rig.Ground(screen, GroundHeight(w.x, w.z), out w)) return false;
             point = new Vec(Fix.FromRaw((long)Mathf.Round(w.x * Fix.One)), Fix.FromRaw((long)Mathf.Round((_depth - w.z) * Fix.One)));
             return true;
         }
@@ -143,16 +176,56 @@ namespace Game.Unity.Battle3D
                 bool shown = c.InBattle && ctx.IsVisibleTo(_ctl.Team, c);
                 kv.Value.gameObject.SetActive(shown);
                 if (!shown) continue;
-                kv.Value.position = ToWorld(c.Anchor);
-                kv.Value.localScale = Vector3.one * flagScale;
+                Place(kv.Value, c.Anchor, flagScale);
             }
+            ctx.Vision.TryGetValue(_ctl.Team, out var vision);
+            foreach (var kv in _lastSeen)
+            {
+                var c = kv.Key;
+                bool show = !ctx.IsVisibleTo(_ctl.Team, c) && vision != null && vision.LastSeen.TryGetValue(c.Id, out var seen) && Place(kv.Value, seen, flagScale * 0.8f);
+                kv.Value.gameObject.SetActive(show);
+            }
+
             var sel = _ctl.Selected;
             bool ring = sel != null && sel.InBattle;
             _ring.gameObject.SetActive(ring);
-            if (ring) _ring.position = ToWorld(sel.Anchor) + new Vector3(0f, 0.01f, 0f);
+            if (ring) _ring.position = ToWorld(sel.Anchor) + new Vector3(0f, 0.02f, 0f);
             bool target = ring && sel.Order.Kind == OrderKinds.MoveTo;
             _target.gameObject.SetActive(target);
-            if (target) _target.position = ToWorld(sel.Order.Point) + new Vector3(0f, 0.03f, 0f);
+            if (target) _target.position = ToWorld(sel.Order.Point) + new Vector3(0f, 0.04f, 0f);
+
+            // 남은 이동 경로
+            _pathPoints.Clear();
+            if (ring && sel.Path != null && sel.PathIndex < sel.Path.Count)
+            {
+                _pathPoints.Add(ToWorld(sel.Anchor) + Vector3.up * 0.1f);
+                for (int i = sel.PathIndex; i < sel.Path.Count; i++) _pathPoints.Add(ToWorld(sel.Path[i].Center) + Vector3.up * 0.1f);
+            }
+            _path.positionCount = _pathPoints.Count;
+            for (int i = 0; i < _pathPoints.Count; i++) _path.SetPosition(i, _pathPoints[i]);
+
+            // 지정 중인 스킬의 사거리
+            Fix? range = ring && _ctl.TargetingSkill != null && ctx.Defs.Skills.TryGetValue(_ctl.TargetingSkill, out var skill) ? skill.Range : null;
+            _range.gameObject.SetActive(range.HasValue);
+            if (range.HasValue)
+            {
+                var center = ToWorld(sel.Anchor);
+                float r = (float)range.Value.ToDisplayDouble();
+                _range.positionCount = RangeSegments;
+                for (int i = 0; i < RangeSegments; i++)
+                {
+                    float a = i * Mathf.PI * 2f / RangeSegments;
+                    float x = center.x + Mathf.Cos(a) * r, z = center.z + Mathf.Sin(a) * r;
+                    _range.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.1f, z));
+                }
+            }
+        }
+
+        private bool Place(Transform t, Vec at, float scale)
+        {
+            t.position = ToWorld(at);
+            t.localScale = Vector3.one * scale;
+            return true;
         }
 
         /// <summary>병사 그리기. 매 프레임 부른다 (인스턴싱은 그 프레임에만 그려진다).</summary>
@@ -164,6 +237,8 @@ namespace Game.Unity.Battle3D
             {
                 if (!c.InBattle || !ctx.IsVisibleTo(_ctl.Team, c)) continue;
                 Color teamColor = c == _ctl.Selected ? SelectedColor : c.Team == _ctl.Team ? AllyColor : EnemyColor;
+                var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
+                var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
                 foreach (var u in c.Units)
                 {
                     if (!u.Alive) continue;
@@ -174,8 +249,9 @@ namespace Game.Unity.Battle3D
                     float half = (side - 1) * SoldierSpacing / 2f;
                     for (int i = 0; i < n; i++)
                     {
-                        var p = center + new Vector3(i % side * SoldierSpacing - half, SoldierScale.y / 2f, i / side * SoldierSpacing - half);
-                        list.Add(Matrix4x4.TRS(p, Quaternion.identity, SoldierScale));
+                        var p = center + rot * new Vector3(i % side * SoldierSpacing - half, 0f, half - i / side * SoldierSpacing);
+                        p.y = GroundHeight(p.x, p.z) + SoldierScale.y / 2f;
+                        list.Add(Matrix4x4.TRS(p, rot, SoldierScale));
                     }
                 }
             }
@@ -228,13 +304,80 @@ namespace Game.Unity.Battle3D
             return m;
         }
 
-        /// <summary>전장 크기 바닥 사각형. UV (0,0) = 월드 (0,0,0) = 전장 왼쪽 아래.</summary>
-        private static Mesh GroundMesh(float w, float d)
+        private Transform Flag(string name, Mesh cylinder, Material pole, Material cloth)
         {
+            var flag = new GameObject(name).transform;
+            flag.SetParent(_root.transform, false);
+            Part(flag, cylinder, pole, new Vector3(0f, 0.9f, 0f), new Vector3(0.06f, 0.9f, 0.06f));
+            Part(flag, _cube, cloth, new Vector3(0.35f, 1.55f, 0f), new Vector3(0.7f, 0.45f, 0.04f));
+            return flag;
+        }
+
+        private LineRenderer Line(string name, Color color, float width, bool loop)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(_root.transform, false);
+            var line = go.AddComponent<LineRenderer>();
+            line.sharedMaterial = Own(NewMaterial(color));
+            line.widthMultiplier = width;
+            line.loop = loop;
+            line.positionCount = 0;
+            line.useWorldSpace = true;
+            line.shadowCastingMode = ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            return line;
+        }
+
+        /// <summary>꼭짓점 (W+1)×(H+1) 높이: 맞닿은 칸(최대 4개) 높이의 평균 → 언덕·산이 완만한 경사가 된다.</summary>
+        private static float[] VertexHeights(BattleContext ctx)
+        {
+            var f = ctx.Field;
+            int w = f.Width, h = f.Height;
+            var heights = new float[(w + 1) * (h + 1)];
+            for (int j = 0; j <= h; j++)
+                for (int i = 0; i <= w; i++)
+                {
+                    float sum = 0f;
+                    int n = 0;
+                    for (int dx = -1; dx <= 0; dx++)
+                        for (int dz = -1; dz <= 0; dz++)
+                        {
+                            int cx = i + dx, wz = j + dz; // 월드 z 줄 → 전장 y = 높이 − 1 − wz
+                            if (cx < 0 || cx >= w || wz < 0 || wz >= h) continue;
+                            sum += f.RuleAt(new Cell(cx, h - 1 - wz)).Height;
+                            n++;
+                        }
+                    heights[j * (w + 1) + i] = n == 0 ? 0f : sum / n * HeightScale;
+                }
+            return heights;
+        }
+
+        /// <summary>높이가 있는 바닥 격자. UV (0,0) = 월드 (0, ·, 0) = 전장 왼쪽 아래.</summary>
+        private static Mesh GroundMesh(int w, int d, float[] heights)
+        {
+            var verts = new Vector3[(w + 1) * (d + 1)];
+            var uv = new Vector2[verts.Length];
+            for (int j = 0; j <= d; j++)
+                for (int i = 0; i <= w; i++)
+                {
+                    int k = j * (w + 1) + i;
+                    verts[k] = new Vector3(i, heights[k], j);
+                    uv[k] = new Vector2((float)i / w, (float)j / d);
+                }
+            var tris = new int[w * d * 6];
+            int t = 0;
+            for (int j = 0; j < d; j++)
+                for (int i = 0; i < w; i++)
+                {
+                    int a = j * (w + 1) + i, b = a + (w + 1);
+                    tris[t++] = a; tris[t++] = b; tris[t++] = b + 1;
+                    tris[t++] = a; tris[t++] = b + 1; tris[t++] = a + 1;
+                }
             var mesh = new Mesh { name = "Ground" };
-            mesh.vertices = new[] { new Vector3(0, 0, 0), new Vector3(0, 0, d), new Vector3(w, 0, d), new Vector3(w, 0, 0) };
-            mesh.uv = new[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0) };
-            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            if (verts.Length > 65000) mesh.indexFormat = IndexFormat.UInt32;
+            mesh.vertices = verts;
+            mesh.uv = uv;
+            mesh.triangles = tris;
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
