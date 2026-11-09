@@ -587,5 +587,13 @@
   "ui.resume.continue": "이어하기",
   "ui.resume.autoFinish": "자동으로 끝내기",
   "ui.resume.failed": "규칙·데이터가 바뀌어 지난 전투를 이어 할 수 없습니다.\n가져간 군량은 돌아오지 않습니다.",
-  "ui.battle.reforming": "{0}→{1} 바꾸는 중"
+  "ui.battle.reforming": "{0}→{1} 바꾸는 중",
+  "troop.guard": "근위병",
+  "troop.pikeWall": "창벽병",
+  "troop.heavyCrossbow": "강노병",
+  "troop.ironCavalry": "철기",
+  "troop.desc.guard": "정예. 방어가 매우 높고 방패로 화살을 막는다. 느리고 군량이 든다.",
+  "troop.desc.pikeWall": "정예. 기병 정면을 막는 창벽. 거의 움직이지 못한다.",
+  "troop.desc.heavyCrossbow": "정예. 긴 사거리와 관통. 매우 느리고 근접에 약하다.",
+  "troop.desc.ironCavalry": "정예. 가장 강한 돌격 기병. 군량이 매우 많이 들고 장창에 약하다."
 }
