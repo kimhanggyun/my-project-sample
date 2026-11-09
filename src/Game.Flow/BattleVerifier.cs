@@ -30,7 +30,8 @@ namespace Game.Flow
         /// <param name="accountId">제출한 계정 (내 등록은 고용할 수 없다).</param>
         /// <param name="hired">맞으면 고용 내역 (서버가 등록자 보상을 만든다). 고용이 없으면 null.</param>
         public static BattleVerdict VerifySave(DefinitionSet defs, IDataSource source, CloudSave save, BattleSubmission s, long nowUnixSeconds, out string json, out long at,
-            out HiredForces hired, System.Func<string, HireListing> findListing = null, string accountId = null, IReadOnlyList<HireLogEntry> hireLog = null)
+            out HiredForces hired, System.Func<string, HireListing> findListing = null, string accountId = null, IReadOnlyList<HireLogEntry> hireLog = null,
+            System.Func<string, TerritoryDefense> findDefense = null)
         {
             json = null;
             hired = null;
@@ -46,16 +47,24 @@ namespace Game.Flow
                 if (hired == null) return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
                 if (HireBook.CheckLimits(defs.Balance, hireLog, s.Hires, at) != null) { hired = null; return new BattleVerdict { Valid = false, Reason = VerdictReasons.HireLimit }; }
             }
+            // 영토: 서버의 지금 수비 편성과 같은 판이어야 같은 전투 (R-48)
+            TerritoryDefense defense = null;
+            if (TerritoryBattles.IsTerritoryStep(s.StepId))
+            {
+                defense = findDefense?.Invoke(TerritoryBattles.RegionOf(s.StepId));
+                if ((defense?.Version ?? 0) != s.DefenseVersion) { hired = null; return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie }; }
+            }
             var clock = new ManualTimeProvider(System.DateTimeOffset.FromUnixTimeSeconds(at));
-            var v = new BattleVerifier(defs, source, clock).VerifyAndApply(state, s, hired, out _);
+            var v = new BattleVerifier(defs, source, clock).VerifyAndApply(state, s, hired, defense, out _);
             if (!v.Valid) hired = null;
             if (v.Valid) json = SaveJson.Write(state);
             at = System.Math.Min(at, nowUnixSeconds);
             return v;
         }
 
-        public static SortieRequest RequestOf(BattleSubmission s, HiredForces hired = null) => new SortieRequest
+        public static SortieRequest RequestOf(BattleSubmission s, HiredForces hired = null, TerritoryDefense defense = null) => new SortieRequest
         {
+            Defense = defense,
             Compositions = s.Compositions == null ? null : PlayerActionRunner.FromActionCorps(s.Compositions),
             Location = s.Location,
             Hired = hired,
@@ -70,13 +79,15 @@ namespace Game.Flow
         /// <summary>
         /// 검증하고 맞으면 state에 반영한다 (출진 확정 → 결과 반영). 틀리면 state는 그대로.
         /// </summary>
-        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, out BattleReport report) => VerifyAndApply(state, s, null, out report);
+        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, out BattleReport report) => VerifyAndApply(state, s, null, null, out report);
 
-        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, out BattleReport report)
+        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, out BattleReport report) => VerifyAndApply(state, s, hired, null, out report);
+
+        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, TerritoryDefense defense, out BattleReport report)
         {
             report = null;
             SortiePlan plan;
-            try { plan = _flow.Prepare(state, RequestOf(s, hired)); }
+            try { plan = _flow.Prepare(state, RequestOf(s, hired, defense)); }
             catch (System.Exception) { return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie }; }
             if (!plan.Ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
 

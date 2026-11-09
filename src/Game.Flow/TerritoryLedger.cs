@@ -22,6 +22,20 @@ namespace Game.Flow
             owners[regionId] = new TerritoryOwner { RegionId = regionId, OwnerAccountId = accountId, SinceUnixSeconds = at, CollectedUnixSeconds = at };
         }
 
+        /// <summary>수비 편성 등록 (R-48): 그 지역의 주인만. 판 = 앞 판 + 1. 되면 등록한 것, 아니면 null.</summary>
+        public static TerritoryDefense RegisterDefense(Dictionary<string, TerritoryOwner> owners, string regionId, string accountId, TerritoryDefense defense, long at)
+        {
+            if (defense == null || !owners.TryGetValue(regionId ?? "", out var o) || o.OwnerAccountId != accountId) return null;
+            defense.Version = (o.Defense?.Version ?? 0) + 1;
+            defense.RegisteredAtUnixSeconds = at;
+            o.Defense = defense;
+            return defense;
+        }
+
+        /// <summary>그 지역의 지금 수비 편성 (없으면 null = AI 수비군).</summary>
+        public static TerritoryDefense DefenseOf(Dictionary<string, TerritoryOwner> owners, string regionId) =>
+            regionId != null && owners.TryGetValue(regionId, out var o) ? o.Defense : null;
+
         /// <summary>수입 받기 (R-47): 내 지역마다 쌓인 수입을 우편으로, 받은 시각 = 지금. 보낸 우편 목록.</summary>
         public static List<Mail> Collect(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string accountId, long now, Action<string, Mail> sendMail)
         {
@@ -42,7 +56,7 @@ namespace Game.Flow
             var r = new TerritoryResponse();
             foreach (var o in owners.Values)
             {
-                var copy = new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds, CollectedUnixSeconds = o.CollectedUnixSeconds };
+                var copy = new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds, CollectedUnixSeconds = o.CollectedUnixSeconds, Defense = o.Defense };
                 if (o.OwnerAccountId == accountId && defs != null && defs.Regions.TryGetValue(o.RegionId, out var region))
                     copy.Pending = defs.Accrued(region, o.CollectedUnixSeconds, now);
                 r.Owners.Add(copy);

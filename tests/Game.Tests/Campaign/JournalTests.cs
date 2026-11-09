@@ -31,6 +31,7 @@ namespace Game.Tests.Campaign
             public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
             public void CollectTerritory(Action<MailListResponse> done) { if (Down) done(null); else _inner.CollectTerritory(done); }
+            public void RegisterDefense(DefenseRequest r, Action<DefenseResponse> done) { if (Down) done(null); else _inner.RegisterDefense(r, done); }
         }
 
         private sealed class World

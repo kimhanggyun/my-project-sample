@@ -139,6 +139,11 @@ namespace Game.Online
         public void CollectTerritory(Action<MailListResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryCollect(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
+        /// <summary>200 = 등록, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryDefense(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<DefenseResponse>(body) : null));
+
         private static T Parse<T>(string body) where T : class
         {
             if (string.IsNullOrEmpty(body)) return null;

@@ -20,6 +20,10 @@ namespace Game.Unity.Screens
     {
         /// <summary>마지막 확인 결과 (탭을 다시 열어도 보이게, 위치를 다시 묻지 않는다).</summary>
         internal static LocationResult Last;
+        /// <summary>마지막으로 받은 주인 목록 (공격할 때 그 지역의 수비 편성을 넘긴다).</summary>
+        internal static Dictionary<string, TerritoryOwner> Owners;
+        /// <summary>한 번 보여줄 알림 (수비 등록 결과 등).</summary>
+        internal static string Notice;
 
         public void Build(GameApp app, RectTransform root)
         {
@@ -32,6 +36,7 @@ namespace Game.Unity.Screens
             }
             Ui.Label(root, ctx.T("ui.territory.note"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
             var status = Ui.Label(root, "", Ui.FontSmall);
+            if (Notice != null) { Ui.Label(root, Notice, 26, TextAnchor.MiddleLeft, Palette.Good); Notice = null; }
             if (ctx.OnlineEnabled)
             {
                 var tools = Ui.Row(root, "Income", 88, 8);
@@ -65,6 +70,7 @@ namespace Game.Unity.Screens
             var here = new HashSet<string>();
             foreach (var r in path) here.Add(r.Id);
             var ownerLabels = new Dictionary<string, UnityEngine.UI.Text>();
+            var cards = new Dictionary<string, RectTransform>();
             foreach (var r in locator.Attackable(Last.Point))
             {
                 var card = Ui.Card(list, r.Id, 20, 6);
@@ -72,11 +78,12 @@ namespace Game.Unity.Screens
                 string tags = (here.Contains(r.Id) ? ctx.T("ui.territory.current") : "") + (level.SeasonOnly ? ctx.T("ui.territory.season") : "");
                 Ui.Label(card, ctx.T("ui.territory.regionLine", ctx.T(r.NameKey), ctx.T("ui.territory.level." + r.Level), ctx.Territory.RequiredLegions(r), tags), Ui.FontSmall);
                 ownerLabels[r.Id] = Ui.Label(card, ctx.OnlineEnabled ? ctx.T("ui.hire.loading") : ctx.T("ui.territory.ownerUnknown"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+                cards[r.Id] = card;
                 string err = TerritoryBattles.CheckSortie(ctx.Territory, r.Id, Last.Point.ToString());
                 if (err == null)
                 {
                     string id = r.Id;
-                    var b = Ui.Button(card, ctx.T("ui.territory.attack"), () => app.Show(new TerritorySortieScreen(id, Last.Point.ToString())), 72, fontSize: 26);
+                    var b = Ui.Button(card, ctx.T("ui.territory.attack"), () => app.Show(new TerritorySortieScreen(id, Last.Point.ToString(), Owners != null && Owners.TryGetValue(id, out var ow) ? ow.Defense : null)), 72, fontSize: 26);
                     Ui.SetEnabled(b, ctx.OnlineEnabled);
                 }
                 else Ui.Label(card, err, 22, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -87,13 +94,26 @@ namespace Game.Unity.Screens
                 if (list == null) return;
                 var owners = new Dictionary<string, TerritoryOwner>();
                 if (res != null) foreach (var o in res.Owners) owners[o.RegionId] = o;
+                Owners = owners;
                 foreach (var kv in ownerLabels)
                 {
                     if (kv.Value == null) continue;
+                    bool has = owners.TryGetValue(kv.Key, out var o);
+                    bool mineRegion = has && o.OwnerAccountId == ctx.AccountId;
+                    string defense = has ? (o.Defense != null ? ctx.T("ui.territory.defenseOwner", o.Defense.Corps.Count) : ctx.T("ui.territory.defenseAi")) : "";
                     kv.Value.text = res == null ? ctx.T("ui.hire.failed")
-                        : !owners.TryGetValue(kv.Key, out var o) ? ctx.T("ui.territory.owner")
-                        : o.OwnerAccountId == ctx.AccountId ? Ui.Colored(ctx.T("ui.territory.mine"), Palette.Good) + "  " + Pending(ctx, o)
-                        : Ui.Colored(ctx.T("ui.territory.others"), Palette.Enemy);
+                        : !has ? ctx.T("ui.territory.owner")
+                        : mineRegion ? Ui.Colored(ctx.T("ui.territory.mine"), Palette.Good) + "  " + Pending(ctx, o) + "\n" + defense
+                        : Ui.Colored(ctx.T("ui.territory.others"), Palette.Enemy) + "  " + defense;
+                    if (mineRegion && cards.TryGetValue(kv.Key, out var card) && card != null)
+                    {
+                        string id = kv.Key;
+                        Ui.Button(card, ctx.T("ui.territory.registerDefense"), () => ctx.RegisterDefense(id, r =>
+                        {
+                            Notice = r == null ? ctx.T("ui.hire.failed") : r.Ok ? ctx.T("ui.territory.defenseRegistered", r.Defense.Version) : ctx.T("ui.territory.defense." + r.Reason);
+                            if (root != null) app.ShowMain("territory");
+                        }), 72, fontSize: 26);
+                    }
                 }
             });
         }
@@ -115,8 +135,10 @@ namespace Game.Unity.Screens
     {
         private readonly string _regionId;
         private readonly string _location;
+        private readonly TerritoryDefense _defense;
 
-        public TerritorySortieScreen(string regionId, string location) { _regionId = regionId; _location = location; }
+        /// <param name="defense">주인의 수비 편성 (없으면 AI 수비군).</param>
+        public TerritorySortieScreen(string regionId, string location, TerritoryDefense defense = null) { _regionId = regionId; _location = location; _defense = defense; }
 
         private string StepId => TerritoryBattles.StepIdOf(_regionId);
 
@@ -128,12 +150,14 @@ namespace Game.Unity.Screens
             var body = Ui.ScrollList(Root, "Info", 12, 8);
             Ui.Size(body.parent.parent, flexibleHeight: 1);
             var info = Ui.Card(body, "Defense");
-            Ui.Label(info, T("ui.territory.defense"));
-            foreach (var e in step.Enemy)
+            Ui.Label(info, T(_defense != null ? "ui.territory.defenseOwnerTitle" : "ui.territory.defense"));
+            var plan0 = Ctx.Flow.Prepare(Ctx.State, Request(false));
+            foreach (var c in plan0.Setup.Corps)
             {
+                if (c.Team != StoryFlow.EnemyTeam) continue;
                 long troops = 0;
-                foreach (var u in e.Units) troops += u.Troops;
-                Ui.Label(info, Ui.Colored(Ctx.GeneralName(e.General), Palette.Enemy) + "  " + troops.ToString("N0"), Ui.FontSmall);
+                foreach (var u in c.Units) troops += u.Troops;
+                Ui.Label(info, Ui.Colored(Ctx.GeneralName(c.General.Id), Palette.Enemy) + "  " + troops.ToString("N0"), Ui.FontSmall);
             }
             Ui.Label(info, T("ui.step.maxMinutes", step.MaxMinutes), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(info, T("ui.territory.captureNote"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -151,12 +175,12 @@ namespace Game.Unity.Screens
             Ui.SetEnabled(delegated, plan.Ok && Ctx.OnlineEnabled);
         }
 
-        private SortieRequest Request(bool delegate_) => new SortieRequest { StepId = StepId, Seed = Ctx.NewSeed(), Delegate = delegate_, Location = _location };
+        private SortieRequest Request(bool delegate_) => new SortieRequest { StepId = StepId, Seed = Ctx.NewSeed(), Delegate = delegate_, Location = _location, Defense = _defense };
 
         private void Sortie(StepDef step, bool delegate_)
         {
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(delegate_));
-            if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new TerritorySortieScreen(_regionId, _location)); return; }
+            if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new TerritorySortieScreen(_regionId, _location, _defense)); return; }
             App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start", !delegate_));
         }
     }

@@ -93,6 +93,15 @@ app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStor
 // 영토 (R-46)
 app.MapGet("/v1/games/{game}/territory", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.Territory(id))));
+app.MapPost("/v1/games/{game}/territory/defense", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<DefenseRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.RegisterDefense(id, body);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
 app.MapPost("/v1/games/{game}/territory/collect", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.CollectTerritory(id))));
 

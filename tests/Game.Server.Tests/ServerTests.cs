@@ -234,6 +234,20 @@ namespace Game.Server.Tests
             var collect = await c.PostAsync(OnlineRoutes.TerritoryCollect(ServerSetup.DefaultGame), null);
             Assert.Equal(HttpStatusCode.OK, collect.StatusCode);
             Assert.Empty((await Read<MailListResponse>(collect)).Mail);
+
+            // 수비 편성 (R-48): 주인이 등록하면 목록에 판과 함께 보이고, 그 뒤 AI 수비군(판 0)으로 싸운 제출은 거절
+            var defenseRoute = OnlineRoutes.TerritoryDefense(ServerSetup.DefaultGame);
+            Assert.Equal((HttpStatusCode)422, (await c.PostAsync(defenseRoute, Body(new DefenseRequest { RegionId = "dev_zone_a2" }))).StatusCode); // 내 지역 아님
+            var reg = await c.PostAsync(defenseRoute, Body(new DefenseRequest { RegionId = "dev_zone_a1" }));
+            Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
+            Assert.Equal(1, (await Read<DefenseResponse>(reg)).Defense.Version);
+            Assert.Equal(1, Assert.Single((await Read<TerritoryResponse>(await c.GetAsync(territory))).Owners).Defense.Version);
+            var now = await Read<CloudSave>(await c.GetAsync(Save));
+            var plan2 = flow.Prepare(StrategyGameModule.FromJson(now.Json), new SortieRequest { StepId = "territory.dev_zone_a1", Seed = 30, Delegate = true, Location = here });
+            var sim2 = new BattleSimulation(plan2.Setup);
+            while (!sim2.IsOver) sim2.Step();
+            var stale = await c.PostAsync(Battles, Body(CloudSync.SubmissionOf(plan2, sim2.CommandLog, sim2.Result, now.Revision)));
+            Assert.Equal((HttpStatusCode)422, stale.StatusCode);
         }
 
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>

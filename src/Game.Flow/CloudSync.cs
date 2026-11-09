@@ -133,6 +133,7 @@ namespace Game.Flow
                 ClaimedTicks = result.Ticks,
                 PlayedAtUnixSeconds = plan.PreparedAtUnixSeconds,
                 Location = plan.Location,
+                DefenseVersion = plan.Defense?.Version ?? 0,
             };
             if (plan.Hired != null && !plan.Hired.IsEmpty)
             {
@@ -330,7 +331,8 @@ namespace Game.Flow
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
             _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
-            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog);
+            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog,
+                region => TerritoryLedger.DefenseOf(_owners, region));
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
             if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
             if (v.Valid && hired != null)
@@ -435,6 +437,15 @@ namespace Game.Flow
 
         public void CollectTerritory(Action<MailListResponse> done) =>
             done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m)) });
+
+        public void RegisterDefense(DefenseRequest req, Action<DefenseResponse> done)
+        {
+            LoadSave(_ => { });
+            var d = TerritoryDefenses.Snapshot(_defs, SaveJson.Read(_save.Json), req?.Situation, out var error);
+            if (d == null) { done?.Invoke(new DefenseResponse { Ok = false, Reason = error }); return; }
+            var r = TerritoryLedger.RegisterDefense(_owners, req.RegionId, AccountId, d, Now);
+            done?.Invoke(r == null ? new DefenseResponse { Ok = false, Reason = TerritoryDefenses.NotOwner } : new DefenseResponse { Ok = true, Reason = "ok", Defense = r });
+        }
 
         private void SendMail(string account, Mail m)
         {
