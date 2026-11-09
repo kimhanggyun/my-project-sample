@@ -35,3 +35,8 @@ Thumbs.db
 # 빌드 직전에 data/·config/를 복사한 생성물 (Game ▸ Copy Data For Build)
 /unity/Assets/GameDataBuild/
 /unity/Assets/GameDataBuild.meta
+
+# Unity Android 빌드 중간 생성물
+/unity/.utmp/
+/unity/*_BurstDebugInformation_DoNotShip/
+/unity/*_BackUpThisFolder_ButDontShipItWithYourGame/
