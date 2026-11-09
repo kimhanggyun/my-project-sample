@@ -18,10 +18,10 @@ src/                       규칙 모듈 (netstandard2.1, C# 9 — Unity 호환)
 ├─ Game.Online/            부대 고용 계산
 └─ Game.Flow/              흐름(조립): 스텝 + 편성 → BattleSetup, BattleResult → 진행 상태 (6장)
 tests/Game.Tests/          단위·규칙(R)·수치(N)·데이터 검사·의존 방향 테스트, 기준 전투(Golden/), Unity 패키지 검사
-unity/                     Unity 6.3 LTS 프로젝트. src/를 로컬 패키지로 가져온다 (unity/architecture.md 0.5)
-tools/unity_meta.py        src/ 파일의 Unity .meta 생성
+unity/                     Unity 6.3 LTS 프로젝트. src/를 로컬 패키지로 가져온다 (unity/architecture.md 0.5). 화면 코드는 unity/Assets/Game/ (0.6)
+tools/unity_meta.py        src/·unity/Assets/ 파일의 Unity .meta 생성
 build/                     .NET 빌드 결과물 (저장소에 넣지 않음)
-data/                      규칙 데이터(Rules/), 맵(Maps/), 스텝(Steps/), 테마 데이터(Themes/<테마>/) — Unity에서는 StreamingAssets로 복사
+data/                      규칙 데이터(Rules/), 맵(Maps/), 스텝(Steps/), 테마 데이터(Themes/<테마>/) — Unity 빌드 직전 Resources로 복사 (에디터는 직접 읽음)
 config/                    외부 서비스 설정 (services.<환경>.json) — 규칙 스위치와 별개
 .github/workflows/         push·PR마다 빌드·테스트
 ```
