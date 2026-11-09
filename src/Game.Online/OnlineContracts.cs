@@ -40,6 +40,10 @@ namespace Game.Online
         public static string TerritoryCollect(string game) => Territory(game) + "/collect";
         /// <summary>내 지역에 수비 편성 등록 (POST, R-48).</summary>
         public static string TerritoryDefense(string game) => Territory(game) + "/defense";
+        /// <summary>연합 목록 (GET) / 만들기 (POST, R-49).</summary>
+        public static string Alliances(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/alliances";
+        public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
+        public static string AllianceLeave(string game) => Alliances(game) + "/leave";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -132,6 +136,53 @@ namespace Game.Online
         public Dictionary<string, long> Pending { get; set; }
         /// <summary>주인이 등록한 수비 편성 (없으면 null = AI 수비군, R-48). 공격하는 사람도 본다 (고용 등록처럼).</summary>
         public TerritoryDefense Defense { get; set; }
+        /// <summary>주인이 든 연합 (없으면 null, R-49).</summary>
+        public string OwnerAllianceId { get; set; }
+        public string OwnerAllianceName { get; set; }
+    }
+
+    /// <summary>연합 하나 (territory.md 6장, R-49). 한 계정은 한 연합에만.</summary>
+    public sealed class Alliance
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string LeaderAccountId { get; set; }
+        /// <summary>연합원 계정 (들어온 순서, 첫째가 처음 만든 사람).</summary>
+        public List<string> Members { get; set; } = new List<string>();
+        public long CreatedAtUnixSeconds { get; set; }
+    }
+
+    public sealed class AllianceListResponse
+    {
+        public List<Alliance> Alliances { get; set; } = new List<Alliance>();
+        /// <summary>요청한 계정의 연합 id (없으면 null).</summary>
+        public string MineId { get; set; }
+        public int MemberMax { get; set; }
+    }
+
+    public sealed class AllianceRequest
+    {
+        public string Name { get; set; }
+    }
+
+    public static class AllianceReasons
+    {
+        public const string Ok = "ok";
+        public const string BadName = "badName";
+        public const string NameTaken = "nameTaken";
+        public const string AlreadyMember = "alreadyMember";
+        public const string Full = "full";
+        public const string NotFound = "notFound";
+        public const string NotMember = "notMember";
+    }
+
+    public sealed class AllianceResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="AllianceReasons"/>.</summary>
+        public string Reason { get; set; }
+        /// <summary>지금 내 연합 (탈퇴했거나 없으면 null).</summary>
+        public Alliance Alliance { get; set; }
     }
 
     /// <summary>수비 편성 스냅샷 (R-48): 등록할 때 주인의 서버 세이브에서 만든다. 다시 등록하면 Version이 오른다.</summary>
@@ -448,6 +499,12 @@ namespace Game.Online
         void CollectTerritory(Action<MailListResponse> done);
         /// <summary>내 지역에 수비 편성 등록 (닿지 않으면 null).</summary>
         void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done);
+
+        // ---- 연합 (R-49). 닿지 않으면 null ----
+        void GetAlliances(Action<AllianceListResponse> done);
+        void CreateAlliance(string name, Action<AllianceResponse> done);
+        void JoinAlliance(string allianceId, Action<AllianceResponse> done);
+        void LeaveAlliance(Action<AllianceResponse> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -468,6 +525,10 @@ namespace Game.Online
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
+        public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);
+        public void CreateAlliance(string name, Action<AllianceResponse> done) => done?.Invoke(null);
+        public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);
+        public void LeaveAlliance(Action<AllianceResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

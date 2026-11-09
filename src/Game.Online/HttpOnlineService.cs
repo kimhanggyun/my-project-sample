@@ -144,6 +144,21 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.TerritoryDefense(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<DefenseResponse>(body) : null));
 
+        public void GetAlliances(Action<AllianceListResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.Alliances(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<AllianceListResponse>(body) : null));
+
+        /// <summary>200 = 됨, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void CreateAlliance(string name, Action<AllianceResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.Alliances(_game), OnlineJson.Write(new AllianceRequest { Name = name }), Token, (status, body) => done?.Invoke(AllianceParse(status, body)));
+
+        public void JoinAlliance(string allianceId, Action<AllianceResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.AllianceJoin(_game, allianceId), null, Token, (status, body) => done?.Invoke(AllianceParse(status, body)));
+
+        public void LeaveAlliance(Action<AllianceResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.AllianceLeave(_game), null, Token, (status, body) => done?.Invoke(AllianceParse(status, body)));
+
+        private static AllianceResponse AllianceParse(int status, string body) => status == 200 || status == 422 ? Parse<AllianceResponse>(body) : null;
+
         private static T Parse<T>(string body) where T : class
         {
             if (string.IsNullOrEmpty(body)) return null;

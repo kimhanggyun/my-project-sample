@@ -433,7 +433,21 @@ namespace Game.Flow
         private Game.Territory.TerritoryDefs _territory;
         private Game.Territory.TerritoryDefs TerritoryData => _territory ?? (_territory = TerritoryBattles.TryLoad(_source));
 
-        public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(TerritoryLedger.View(TerritoryData, _owners, AccountId, Now));
+        public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(TerritoryLedger.View(TerritoryData, _owners, AccountId, Now, a => AllianceBook.Of(_alliances, a)));
+
+        /// <summary>연합 (가짜: 메모리만, 나 혼자).</summary>
+        private readonly Dictionary<string, Alliance> _alliances = new Dictionary<string, Alliance>();
+
+        public void GetAlliances(Action<AllianceListResponse> done) =>
+            done?.Invoke(TerritoryData == null ? null : AllianceBook.List(TerritoryData, _alliances, AccountId));
+
+        public void CreateAlliance(string name, Action<AllianceResponse> done) =>
+            done?.Invoke(TerritoryData == null ? null : AllianceBook.Create(TerritoryData, _alliances, AccountId, name, "a-" + (_alliances.Count + 1) + "-" + Now, Now));
+
+        public void JoinAlliance(string allianceId, Action<AllianceResponse> done) =>
+            done?.Invoke(TerritoryData == null ? null : AllianceBook.Join(TerritoryData, _alliances, AccountId, allianceId));
+
+        public void LeaveAlliance(Action<AllianceResponse> done) => done?.Invoke(AllianceBook.Leave(_alliances, AccountId));
 
         public void CollectTerritory(Action<MailListResponse> done) =>
             done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m)) });

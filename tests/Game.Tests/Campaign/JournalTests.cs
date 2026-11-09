@@ -32,6 +32,10 @@ namespace Game.Tests.Campaign
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
             public void CollectTerritory(Action<MailListResponse> done) { if (Down) done(null); else _inner.CollectTerritory(done); }
             public void RegisterDefense(DefenseRequest r, Action<DefenseResponse> done) { if (Down) done(null); else _inner.RegisterDefense(r, done); }
+            public void GetAlliances(Action<AllianceListResponse> done) { if (Down) done(null); else _inner.GetAlliances(done); }
+            public void CreateAlliance(string n, Action<AllianceResponse> done) { if (Down) done(null); else _inner.CreateAlliance(n, done); }
+            public void JoinAlliance(string id, Action<AllianceResponse> done) { if (Down) done(null); else _inner.JoinAlliance(id, done); }
+            public void LeaveAlliance(Action<AllianceResponse> done) { if (Down) done(null); else _inner.LeaveAlliance(done); }
         }
 
         private sealed class World

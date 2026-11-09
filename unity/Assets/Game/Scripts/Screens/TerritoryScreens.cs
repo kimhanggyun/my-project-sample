@@ -46,6 +46,7 @@ namespace Game.Unity.Screens
                     app.Show(new MailScreen(r == null ? ctx.T("ui.hire.failed") : r.Mail.Count == 0 ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.collected", r.Mail.Count), "territory"));
                 }), 88, fontSize: 28);
                 Ui.Button(tools, ctx.T("ui.hire.mail"), () => app.Show(new MailScreen(null, "territory")), 88, fontSize: 28);
+                Ui.Button(tools, ctx.T("ui.alliance.button"), () => app.Show(new AllianceScreen()), 88, fontSize: 28);
             }
             Ui.Button(root, ctx.T("ui.territory.locate"), () =>
             {
@@ -101,6 +102,7 @@ namespace Game.Unity.Screens
                     bool has = owners.TryGetValue(kv.Key, out var o);
                     bool mineRegion = has && o.OwnerAccountId == ctx.AccountId;
                     string defense = has ? (o.Defense != null ? ctx.T("ui.territory.defenseOwner", o.Defense.Corps.Count) : ctx.T("ui.territory.defenseAi")) : "";
+                    if (has && o.OwnerAllianceName != null) defense = ctx.T("ui.territory.ownerAlliance", o.OwnerAllianceName) + "  " + defense;
                     kv.Value.text = res == null ? ctx.T("ui.hire.failed")
                         : !has ? ctx.T("ui.territory.owner")
                         : mineRegion ? Ui.Colored(ctx.T("ui.territory.mine"), Palette.Good) + "  " + Pending(ctx, o) + "\n" + defense
@@ -125,6 +127,66 @@ namespace Game.Unity.Screens
             var parts = new List<string>();
             foreach (var kv in o.Pending) parts.Add(ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
             return ctx.T("ui.territory.pending", string.Join(" · ", parts));
+        }
+    }
+
+    /// <summary>
+    /// 연합 (territory.md 6장, R-49): 내 연합(이름·인원·[탈퇴]) 또는 만들기(이름 입력), 다른 연합 목록과 [가입] (지금은 신청 없이 바로).
+    /// </summary>
+    public sealed class AllianceScreen : GameScreen
+    {
+        private readonly string _notice;
+        public AllianceScreen(string notice = null) { _notice = notice; }
+
+        public override void Build()
+        {
+            Ui.Column(Root, 12, 32);
+            Ui.Size(Ui.Label(Root, T("ui.alliance.title"), Ui.FontTitle), 110);
+            Ui.Label(Root, T("ui.alliance.note"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
+            var list = Ui.ScrollList(Root, "Alliances", 10, 8);
+            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            Ctx.LoadAlliances(res =>
+            {
+                if (list == null) return;
+                Object.Destroy(loading.gameObject);
+                if (res == null) { Ui.Label(list, T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                Alliance mine = res.MineId == null ? null : res.Alliances.Find(a => a.Id == res.MineId);
+                if (mine != null)
+                {
+                    var card = Ui.Card(list, "Mine", 20, 6);
+                    Ui.Label(card, T("ui.alliance.mine", mine.Name, mine.Members.Count, res.MemberMax) + (mine.LeaderAccountId == Ctx.AccountId ? "  " + T("ui.alliance.leader") : ""), Ui.FontSmall);
+                    Ui.Button(card, T("ui.alliance.leave"), () => Ctx.LeaveAlliance(r => Reopen(r)), 72, new Color(0.45f, 0.22f, 0.20f), 26);
+                }
+                else
+                {
+                    var card = Ui.Card(list, "Create", 20, 6);
+                    Ui.Label(card, T("ui.alliance.createTitle"), Ui.FontSmall);
+                    var name = Ui.TextInput(card, T("ui.alliance.namePlaceholder"), 12, 88, 30);
+                    Ui.Button(card, T("ui.alliance.create"), () => Ctx.CreateAlliance(name.text, r => Reopen(r)), 72, fontSize: 26);
+                }
+                Ui.Label(list, T("ui.alliance.others"), Ui.FontBody);
+                int shown = 0;
+                foreach (var a in res.Alliances)
+                {
+                    if (a.Id == res.MineId) continue;
+                    shown++;
+                    var card = Ui.Card(list, a.Id, 20, 6);
+                    Ui.Label(card, T("ui.alliance.line", a.Name, a.Members.Count, res.MemberMax), Ui.FontSmall);
+                    string id = a.Id;
+                    var join = Ui.Button(card, T("ui.alliance.join"), () => Ctx.JoinAlliance(id, r => Reopen(r)), 72, fontSize: 26);
+                    Ui.SetEnabled(join, mine == null && a.Members.Count < res.MemberMax);
+                }
+                if (shown == 0) Ui.Label(list, T("ui.alliance.none"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            });
+            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("territory"));
+        }
+
+        private void Reopen(AllianceResponse r)
+        {
+            if (Root == null) return;
+            App.Show(new AllianceScreen(r == null ? T("ui.hire.failed") : T("ui.alliance.result." + r.Reason)));
         }
     }
 

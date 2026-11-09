@@ -1,6 +1,11 @@
 {
-  "_comment": "영토 지역 (territory.md 2·3장). 개발용 가상 지역 몇 곳 (사각형, 실제 행정구역 아님). 실제 경계는 공개 행정구역 경계 자료로 교체. levels = 단계별 기본값(requiredLegions = 차지에 필요한 군단 수, seasonOnly = 시즌 행사로만), regions = id·level·parent·boundary([위도, 경도] 꼭짓점)·neighbors(같은 단계, 서로)·requiredLegions(덮어쓰기)·battleMap(영토 전투 지형, 다음 단계). 이름 = 문자열 region.<id>. defense = 영토 전투 (스텝과 같은 형식: map·maxMinutes·camp·enemy …, 단계 기본값 → 지역 덮어쓰기). 주인 없는 지역은 이 AI 수비군. income = 차지한 지역에서 시간당 쌓이는 자원 (자원 id → 양, 예시 값), incomeCapHours = 받지 않고 쌓이는 최대 시간",
+  "_comment": "영토 지역 (territory.md 2·3장). 개발용 가상 지역 몇 곳 (사각형, 실제 행정구역 아님). 실제 경계는 공개 행정구역 경계 자료로 교체. levels = 단계별 기본값(requiredLegions = 차지에 필요한 군단 수, seasonOnly = 시즌 행사로만), regions = id·level·parent·boundary([위도, 경도] 꼭짓점)·neighbors(같은 단계, 서로)·requiredLegions(덮어쓰기)·battleMap(영토 전투 지형, 다음 단계). 이름 = 문자열 region.<id>. defense = 영토 전투 (스텝과 같은 형식: map·maxMinutes·camp·enemy …, 단계 기본값 → 지역 덮어쓰기). 주인 없는 지역은 이 AI 수비군. income = 차지한 지역에서 시간당 쌓이는 자원 (자원 id → 양, 예시 값), incomeCapHours = 받지 않고 쌓이는 최대 시간. alliance = 연합 설정 (memberMax 인원 상한, nameMin·nameMax 이름 길이, 예시 값)",
   "incomeCapHours": 24,
+  "alliance": {
+    "memberMax": 30,
+    "nameMin": 2,
+    "nameMax": 12
+  },
   "levels": {
     "sido": {
       "requiredLegions": 30,
