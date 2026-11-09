@@ -122,9 +122,10 @@ namespace Game.Unity.Screens
             Ui.Label(list, ctx.T("ui.tab.generalNote"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             foreach (var g in ctx.State.Generals)
             {
-                var card = Ui.Card(list, g.GeneralId);
                 var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;
-                Ui.Label(card, ctx.T("ui.generals.line", ctx.GeneralName(g.GeneralId), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)));
+                string id = g.GeneralId;
+                var b = Ui.Button(list, ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)), () => app.Show(new GeneralScreen(id)), 110, Palette.Card);
+                b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
             }
         }
     }

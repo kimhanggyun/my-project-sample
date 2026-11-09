@@ -26,6 +26,8 @@ namespace Game.Battle.Model.Vision
         public string Team { get; internal set; }
         public Vec Center { get; internal set; }
         public Fix Radius { get; internal set; }
+        /// <summary>간파를 쓴 군단 (없으면 null).</summary>
+        public string SourceCorpsId { get; internal set; }
         public long TicksLeft { get; internal set; }
 
         public bool Covers(Vec p) => Vec.DistanceSquared(p, Center) <= Radius * Radius;
@@ -113,6 +115,8 @@ namespace Game.Battle.Model.Vision
                 foreach (var u in e.Units)
                     if (u.Alive && z.Covers(u.Position))
                     {
+                        if ((e.Hidden || e.HasStatus(StatusIds.AmbushSetup)) && z.SourceCorpsId != null)
+                            Events.EventLog.Add(ctx, Events.EventKinds.HiddenFound, z.SourceCorpsId, e.Id);
                         if (e.Hidden) Skills.StealthSystem.Expose(e);
                         e.RemoveStatus(StatusIds.AmbushSetup);
                         return true;

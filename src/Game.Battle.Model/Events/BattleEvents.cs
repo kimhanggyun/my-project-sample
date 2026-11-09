@@ -27,6 +27,10 @@ namespace Game.Battle.Model.Events
         public const string MoraleCritical = "moraleCritical";
         public const string Reinforced = "reinforced";
         public const string Dialogue = "dialogue";
+        /// <summary>숨은 적(은신·복병 준비 중)을 찾아냄. 군단 = 찾은 군단, 값 = 숨은 군단.</summary>
+        public const string HiddenFound = "hiddenFound";
+        /// <summary>복병 기습을 당함. 군단 = 당한 군단, 값 = 복병 군단.</summary>
+        public const string Ambushed = "ambushed";
     }
 
     internal static class EventLog

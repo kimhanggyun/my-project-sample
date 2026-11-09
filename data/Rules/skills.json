@@ -60,7 +60,21 @@
           "confusionSec": 4,
           "moraleDamage": 15
         }
-      ]
+      ],
+      "learn": {
+        "_comment": "복병을 당해 봐야 안다: 복병 기습을 1번 이상 당함 또는 숨은 적을 1번 이상 찾아냄",
+        "any": true,
+        "counters": [
+          {
+            "counter": "battle.ambushed",
+            "atLeast": 1
+          },
+          {
+            "counter": "battle.hiddenFound",
+            "atLeast": 1
+          }
+        ]
+      }
     },
     {
       "id": "fireAttack",
@@ -95,7 +109,16 @@
         {
           "type": "ignite"
         }
-      ]
+      ],
+      "learn": {
+        "_comment": "불을 겪어 봐야 쓴다: 불에 1번 이상 당함",
+        "counters": [
+          {
+            "counter": "battle.fireHit",
+            "atLeast": 1
+          }
+        ]
+      }
     },
     {
       "id": "arrowRain",
