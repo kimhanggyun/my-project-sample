@@ -70,11 +70,18 @@ namespace Game.Unity.Screens
         private readonly List<Button> _orderButtons = new List<Button>();
         private string _skillRowKey;
 
+        /// <summary>녹화 재생 (replay.md 3장): 명령은 기록대로, 화면 입력은 받지 않는다. 끝나면 내 녹화 목록으로.</summary>
+        private readonly ReplayPlayback _playback;
+        private int _nextCommand;
+        private bool IsReplay => _playback != null;
+        private BattleSetup Setup => IsReplay ? _playback.Setup : _plan.Setup;
+
         public BattleScreen(SortiePlan plan) { _plan = plan; }
+        public BattleScreen(ReplayPlayback playback) { _playback = playback; }
 
         public override void Build()
         {
-            _sim = new BattleSimulation(_plan.Setup);
+            _sim = new BattleSimulation(Setup);
             var ctx = _sim.Context;
             _ctl = new BattleControl(_sim, StoryFlow.PlayerTeam);
             _ctl.Refresh();
@@ -90,7 +97,7 @@ namespace Game.Unity.Screens
             Ui.Size(_clock, flexibleWidth: 2);
             _pauseButton = Ui.Button(top, "", TogglePause, TopHeight, fontSize: 28);
             _speedButton = Ui.Button(top, "", NextSpeed, TopHeight, fontSize: 28);
-            Ui.Button(top, T("ui.battle.skip"), SkipToEnd, TopHeight, fontSize: 28);
+            Ui.Button(top, T(IsReplay ? "ui.replay.stop" : "ui.battle.skip"), IsReplay ? (System.Action)(() => App.Show(new ReplayListScreen())) : SkipToEnd, TopHeight, fontSize: 28);
 
             // ② 전장 (3D 카메라가 이 영역에 그린다. 위에 깔린 투명 판이 누름·끌기·확대를 받는다)
             App.SetBackdrop(false);
@@ -168,6 +175,14 @@ namespace Game.Unity.Screens
                 _cards.Add((corps, b, b.GetComponentInChildren<Text>()));
             }
 
+            if (IsReplay)
+            {
+                // 재생: 명령 패널·군단 카드는 숨기고 "녹화 재생 중" 표시
+                panel.gameObject.SetActive(false);
+                bottom.gameObject.SetActive(false);
+                Ui.Size(Ui.Label(Root, T("ui.replay.playing"), 26, TextAnchor.MiddleCenter, Palette.TextDim), 48);
+            }
+
             _field.LookAt(_ctl.Selected);
             ReadNewEvents();
             Refresh();
@@ -189,6 +204,7 @@ namespace Game.Unity.Screens
                 _accumulator += deltaTime * Speeds[_speedIndex];
                 while (_accumulator >= _tickSeconds && steps < MaxTicksPerFrame && !_sim.IsOver)
                 {
+                    if (IsReplay) _nextCommand = _playback.IssueDue(_sim, _nextCommand);
                     _sim.Step();
                     _accumulator -= _tickSeconds;
                     steps++;
@@ -211,7 +227,7 @@ namespace Game.Unity.Screens
 
         private void OnFieldTap(Vector2 screen)
         {
-            if (_finished || !_field.ScreenToField(screen, out var point)) return;
+            if (_finished || IsReplay || !_field.ScreenToField(screen, out var point)) return;
             OnTap(_ctl.Tap(point));
         }
 
@@ -268,7 +284,7 @@ namespace Game.Unity.Screens
 
         private void SkipToEnd()
         {
-            if (_finished) return;
+            if (_finished || IsReplay) return;
             _sim.RunToEnd();
             ReadNewEvents();
             Finish();
@@ -279,6 +295,7 @@ namespace Game.Unity.Screens
             if (_finished) return;
             _finished = true;
             var result = _sim.Result;
+            if (IsReplay) { App.Show(new ReplayListScreen(T("ui.replay.ended"))); return; }
             var report = Ctx.Flow.ApplyResult(Ctx.State, _plan, result);
             Ctx.Save();
             if (!Ctx.OnlineEnabled) { App.Show(new ResultScreen(_plan, result, report)); return; }
@@ -297,7 +314,7 @@ namespace Game.Unity.Screens
                 var e = events[_logRead];
                 string who = CorpsName(e.CorpsId);
                 var corps = e.CorpsId == null ? null : _sim.Context.FindCorps(e.CorpsId);
-                if (e.Kind == EventKinds.CoordinateWaiting && corps != null && corps.Team == _ctl.Team && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
+                if (!IsReplay && e.Kind == EventKinds.CoordinateWaiting && corps != null && corps.Team == _ctl.Team && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
                 {
                     _promptCorps = corps.Id;
                     _promptText.text = T("ui.cmd.coordinatePrompt", GeneralOf(corps));
@@ -348,7 +365,7 @@ namespace Game.Unity.Screens
             _dirty = false;
             var ctx = _sim.Context;
             long elapsed = (ctx.Combat.TickSeconds * ctx.Tick).FloorToLong();
-            long max = (_plan.Setup.MaxMinutes * 60).FloorToLong();
+            long max = (Setup.MaxMinutes * 60).FloorToLong();
             _clock.text = T("ui.battle.time", elapsed, max);
             SetLabel(_pauseButton, _paused ? T("ui.battle.resume") : T("ui.battle.pause"));
             SetLabel(_speedButton, T("ui.battle.speed", Speeds[_speedIndex]));

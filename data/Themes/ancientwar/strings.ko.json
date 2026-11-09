@@ -565,5 +565,20 @@
   "ui.result.secretLine": "「{0}」 {1} → {2}",
   "ui.result.secretStored": "{0} (보관함)",
   "ui.result.secretSkill": "스킬 {0}",
-  "ui.result.secretTrait": "특성 {0}"
+  "ui.result.secretTrait": "특성 {0}",
+  "ui.replay.button": "내 녹화 ({0})",
+  "ui.replay.title": "내 녹화",
+  "ui.replay.count": "저장한 녹화 {0} / {1}",
+  "ui.replay.note": "녹화는 이 기기에만 저장됩니다. 가득 차면 가장 오래된 것부터 지워집니다.",
+  "ui.replay.empty": "저장한 녹화가 없습니다. 전투 결과 화면에서 [녹화 저장]을 누르세요.",
+  "ui.replay.line": "{0}:{1} · 손실 {2} / {3} · {4}",
+  "ui.replay.play": "재생",
+  "ui.replay.delete": "삭제",
+  "ui.replay.save": "녹화 저장",
+  "ui.replay.saved": "저장했습니다 ({0}/{1})",
+  "ui.replay.playing": "녹화 재생 중 — 명령은 녹화대로 들어갑니다",
+  "ui.replay.stop": "그만 보기",
+  "ui.replay.ended": "녹화 재생이 끝났습니다.",
+  "ui.replay.versionChanged": "규칙·데이터가 바뀌어 이 녹화는 다시 볼 수 없습니다.",
+  "ui.replay.broken": "이 녹화를 읽을 수 없습니다."
 }

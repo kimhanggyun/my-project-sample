@@ -3,6 +3,7 @@ using Game.Battle.Model.Simulation;
 using Game.Flow;
 using Game.Unity.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.Unity.Screens
 {
@@ -73,12 +74,23 @@ namespace Game.Unity.Screens
             foreach (var s in _report.Secrets) secrets.Add(SecretText.Found(Ctx, s));
             Section(body, "ui.result.secrets", secrets);
 
+            // 녹화 저장 (replay.md 3장): 기기에만, 한도를 넘으면 가장 오래된 것부터 지운다
+            Button save = null;
+            save = Ui.Button(Root, T("ui.replay.save"), () =>
+            {
+                Ctx.SaveReplay(_plan, _result.Commands, _result);
+                SetLabel(save, T("ui.replay.saved", Ctx.Replays.Items.Count, Ctx.ReplayRules.MaxSaved));
+                Ui.SetEnabled(save, false);
+            }, 100, Palette.Card);
+
             bool territory = _plan.Step.IsTerritory; // 영토 전투면 영토 탭으로
             // 이긴 스토리 스텝에 뒤 대사가 있으면 그것부터 (story.md 1.3)
             bool after = !territory && _report.Won && AfterDialogueScreen.Has(Ctx, _plan.Step.Id);
             Ui.Button(Root, T(territory ? "ui.result.toTerritory" : after ? "ui.result.toAfter" : "ui.result.toStory"),
                 () => { if (after) App.Show(new AfterDialogueScreen(_plan.Step.Id)); else App.ShowMain(territory ? "territory" : "story"); }, 140);
         }
+
+        private static void SetLabel(Button b, string text) => b.GetComponentInChildren<Text>().text = text;
 
         private List<string> Names(List<string> generalIds)
         {
