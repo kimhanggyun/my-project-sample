@@ -52,6 +52,10 @@ namespace Game.Unity.Screens
 
         private Text _clock;
         private Button _collapseButton;
+        private Button _queueButton;
+        private RectTransform _prompt;
+        private Text _promptText;
+        private string _promptCorps;
         private RectTransform _panelBody;
         private bool _collapsed;
         private Text _selectedInfo;
@@ -108,6 +112,21 @@ namespace Game.Unity.Screens
                 _flagLabels[c] = label;
             }
             _miniMap = new MiniMapView(_fieldArea, _ctl, _field, 220f);
+
+            // 협공 대기 물음 (battle.md 4.3.4): [계속 대기] [공격]
+            _prompt = Ui.Rect(_fieldArea, "Prompt");
+            _prompt.anchorMin = new Vector2(0.05f, 0f);
+            _prompt.anchorMax = new Vector2(0.95f, 0f);
+            _prompt.pivot = new Vector2(0.5f, 0f);
+            _prompt.sizeDelta = new Vector2(0f, 190f);
+            _prompt.anchoredPosition = new Vector2(0f, 16f);
+            Ui.Background(_prompt, new Color(0.1f, 0.1f, 0.12f, 0.9f));
+            Ui.Column(_prompt, 8, 12);
+            _promptText = Ui.Label(_prompt, "", 28, TextAnchor.MiddleCenter);
+            var pr = Ui.Row(_prompt, "Buttons", 90, 10);
+            Ui.Button(pr, T("ui.cmd.keepWaiting"), () => { Report(_ctl.KeepCoordinating(_promptCorps)); ClosePrompt(); }, 90, fontSize: 28);
+            Ui.Button(pr, T("ui.cmd.attackNow"), () => { Report(_ctl.AttackNow(_promptCorps)); ClosePrompt(); }, 90, Palette.ButtonActive, 28);
+            _prompt.gameObject.SetActive(false);
             _notice = Ui.Label(_fieldArea, "", 28, TextAnchor.UpperCenter, Palette.Text);
             _notice.rectTransform.anchorMin = new Vector2(0f, 1f);
             _notice.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -133,6 +152,10 @@ namespace Game.Unity.Screens
             _moveModeButton = Ui.Button(orders, "", NextMoveMode, RowHeight, fontSize: 24);
             _formationButton = Ui.Button(orders, "", () => Report(_ctl.NextFormation()), RowHeight, fontSize: 24);
             _orderButtons.Add(_formationButton);
+            var plans = Ui.Row(_panelBody, "Plans", RowHeight, 6);
+            _queueButton = Ui.Button(plans, "", () => { _ctl.SetQueueing(!_ctl.Queueing); _dirty = true; }, RowHeight, fontSize: 24);
+            _orderButtons.Add(Ui.Button(plans, T("ui.cmd.rest"), () => Report(_ctl.Rest()), RowHeight, fontSize: 24));
+            _orderButtons.Add(Ui.Button(plans, T("ui.cmd.coordinate"), () => Report(_ctl.Coordinate()), RowHeight, fontSize: 24));
             _skillRow = Ui.Row(_panelBody, "Skills", RowHeight, 6);
 
             // ⑤ 하단: 전군 진군 + 군단 카드
@@ -271,6 +294,12 @@ namespace Game.Unity.Screens
                 var e = events[_logRead];
                 string who = CorpsName(e.CorpsId);
                 var corps = e.CorpsId == null ? null : _sim.Context.FindCorps(e.CorpsId);
+                if (e.Kind == EventKinds.CoordinateWaiting && corps != null && corps.Team == _ctl.Team && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
+                {
+                    _promptCorps = corps.Id;
+                    _promptText.text = T("ui.cmd.coordinatePrompt", GeneralOf(corps));
+                    _prompt.gameObject.SetActive(true);
+                }
                 if (e.Kind == EventKinds.SkillUsed && corps != null && _sim.Context.IsVisibleTo(_ctl.Team, corps))
                     _field.Effects.SkillUsed(_field.ToWorld(corps.Anchor), corps.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
                 if (e.Kind == EventKinds.Dialogue) { Add(who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; }
@@ -288,6 +317,12 @@ namespace Game.Unity.Screens
 
         /// <summary>전황 한 줄: 전장 위 알림으로 잠깐 보여준다 (대사·말풍선은 깃발 위).</summary>
         private void Add(string line) => Notice(line);
+
+        private void ClosePrompt()
+        {
+            _promptCorps = null;
+            _prompt.gameObject.SetActive(false);
+        }
 
         private void ToggleCollapse()
         {
@@ -342,6 +377,13 @@ namespace Game.Unity.Screens
             }
 
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
+            SetLabel(_queueButton, _ctl.Queueing ? T("ui.cmd.queueOn", _ctl.QueueCount, ctx.Combat.OrderQueueMax) : T("ui.cmd.queueOff", _ctl.QueueCount));
+            _queueButton.targetGraphic.color = _ctl.Queueing ? Palette.ButtonActive : Palette.Button;
+            if (_promptCorps != null)
+            {
+                var pc = ctx.FindCorps(_promptCorps);
+                if (pc == null || !pc.Coordinating) ClosePrompt();
+            }
         }
 
         /// <summary>매 프레임: 카메라 화면 영역, 병사 그리기, 깃발 위 이름.</summary>
@@ -402,8 +444,11 @@ namespace Game.Unity.Screens
 
         private string OrderName(CorpsState c)
         {
-            if (c.PendingSkill != null) return T("ui.order.skill");
-            return T("ui.order." + c.Order.Kind);
+            string name = c.PendingSkill != null ? T("ui.order.skill")
+                : c.Resting ? T("ui.order.rest")
+                : c.Coordinating ? T("ui.order.coordinate")
+                : T("ui.order." + c.Order.Kind);
+            return c.Queue.Count > 0 ? name + " " + T("ui.order.queued", c.Queue.Count) : name;
         }
 
         private static void SetLabel(Button b, string text) => b.GetComponentInChildren<Text>().text = text;

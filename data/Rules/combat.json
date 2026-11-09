@@ -90,5 +90,13 @@
     "flankOffsetCells": 6,
     "flankJoinCells": 3,
     "rearStandoffCells": 8
+  },
+  "orders": {
+    "_comment": "명령 예약·휴식·협공 대기 (battle.md 4.3.4~4.3.5). 수치는 예시.",
+    "queueMax": 5,
+    "restMoraleMultiplier": 2,
+    "restSkillPointMultiplier": 2,
+    "coordinateWaitSec": 30,
+    "coordinateResponseSec": 10
   }
 }

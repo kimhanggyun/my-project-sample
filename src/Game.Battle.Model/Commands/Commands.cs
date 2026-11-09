@@ -21,6 +21,8 @@ namespace Game.Battle.Model.Commands
         public string Mode { get; set; }
         /// <summary>useSkill의 스킬 id.</summary>
         public string SkillId { get; set; }
+        /// <summary>예약: 지금 명령 뒤에 넣는다 (경유, battle.md 4.3.5). 지금 명령이 대기면 바로 실행.</summary>
+        public bool Queued { get; set; }
 
         public BattleCommand Clone() => (BattleCommand)MemberwiseClone();
     }
@@ -33,7 +35,7 @@ namespace Game.Battle.Model.Commands
         public const string MoveTo = "moveTo";
         /// <summary>군단 지정 공격.</summary>
         public const string Attack = "attack";
-        /// <summary>대기 (사거리 안의 적과는 싸운다, R-20).</summary>
+        /// <summary>대기 (사거리 안의 적과는 싸운다, R-20). Mode: normal / rest(휴식) / coordinate(협공 대기, TargetCorpsId = 함께 칠 적, 없으면 가장 가까운 적).</summary>
         public const string Hold = "hold";
         /// <summary>퇴각.</summary>
         public const string Retreat = "retreat";
@@ -117,10 +119,22 @@ namespace Game.Battle.Model.Commands
     internal sealed class HoldHandler : ICommandHandler
     {
         public string Kind => CommandKinds.Hold;
-        public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) => true;
+        public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            if (!HoldModes.IsValid(cmd.Mode)) return false;
+            if (cmd.Mode == HoldModes.Coordinate && cmd.TargetCorpsId != null)
+            {
+                var t = ctx.FindCorps(cmd.TargetCorpsId);
+                return t != null && t.Team != corps.Team && t.InBattle;
+            }
+            return true;
+        }
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
-            corps.AssignOrder(new CorpsOrder());
+            var mode = cmd.Mode ?? HoldModes.Normal;
+            corps.AssignOrder(new CorpsOrder { Mode = mode, TargetCorpsId = mode == HoldModes.Coordinate ? cmd.TargetCorpsId : null });
+            corps.CoordinateSinceTick = ctx.Tick;
+            corps.CoordinateAsked = false;
         }
     }
 

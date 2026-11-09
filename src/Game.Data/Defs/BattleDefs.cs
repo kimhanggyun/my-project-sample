@@ -32,6 +32,14 @@ namespace Game.Data.Defs
         public Fix FlankJoinCells { get; private set; }
         /// <summary>후위 군단이 적과 두는 거리 (원거리 지원).</summary>
         public Fix RearStandoffCells { get; private set; }
+        /// <summary>명령 예약 상한 (battle.md 4.3.5).</summary>
+        public int OrderQueueMax { get; private set; }
+        /// <summary>휴식 중 사기·책략 점수 회복 배율 (4.3.4).</summary>
+        public Fix RestMoraleMultiplier { get; private set; }
+        public Fix RestSkillPointMultiplier { get; private set; }
+        /// <summary>협공 대기: 이만큼 기다리면 한 번 묻고, 응답 시간이 더 지나면 단독 공격 (4.3.4).</summary>
+        public Fix CoordinateWaitSec { get; private set; }
+        public Fix CoordinateResponseSec { get; private set; }
         public Fix FlankPp { get; private set; }
         public Fix RearPp { get; private set; }
         public Fix FrontDot { get; private set; }
@@ -128,6 +136,11 @@ namespace Game.Data.Defs
                 FlankOffsetCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "flankOffsetCells", Fix.FromInt(6), c + ".advanceRoles"),
                 FlankJoinCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "flankJoinCells", Fix.FromInt(3), c + ".advanceRoles"),
                 RearStandoffCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "rearStandoffCells", Fix.FromInt(8), c + ".advanceRoles"),
+                OrderQueueMax = (int)((o["orders"] as JObject)?.Value<long?>("queueMax") ?? 5),
+                RestMoraleMultiplier = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restMoraleMultiplier", Fix.FromInt(2), c + ".orders"),
+                RestSkillPointMultiplier = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restSkillPointMultiplier", Fix.FromInt(2), c + ".orders"),
+                CoordinateWaitSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateWaitSec", Fix.FromInt(30), c + ".orders"),
+                CoordinateResponseSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateResponseSec", Fix.FromInt(10), c + ".orders"),
                 FlankPp = JsonUtil.RequireFix(dir, "flankPp", c + ".direction"),
                 RearPp = JsonUtil.RequireFix(dir, "rearPp", c + ".direction"),
                 FrontDot = JsonUtil.RequireFix(dir, "frontDot", c + ".direction"),

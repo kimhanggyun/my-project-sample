@@ -30,6 +30,10 @@
     "fireHit": {
       "kind": "warning",
       "lineKey": "speech.fireHit"
+    },
+    "coordinateWaiting": {
+      "kind": "report",
+      "lineKey": "speech.coordinateWaiting"
     }
   },
   "kindPriority": {

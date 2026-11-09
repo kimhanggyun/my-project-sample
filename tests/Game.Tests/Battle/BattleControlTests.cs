@@ -165,5 +165,26 @@ namespace Game.Tests.Battle
             Assert.Equal(live.StateHash, replay.StateHash);
             Assert.Equal(live.Ticks, replay.Ticks);
         }
+
+        [Fact(DisplayName = "예약 모드: 빈 땅·적 누름과 휴식·협공이 예약 명령이 된다")]
+        public void QueueingMode()
+        {
+            var (sim, ctl) = Make();
+            var a = Own(ctl, "general_a");
+            ctl.Select(a.Id);
+            Assert.True(ctl.MoveTo(EmptyPoint(sim.Context, a)));
+            ctl.SetQueueing(true);
+            Assert.Equal(TapResult.Move, ctl.Tap(new Vec(Fix.FromInt(3), Fix.FromInt(20))));
+            Assert.True(sim.CommandLog.Last().Queued);
+            Assert.True(ctl.Coordinate());
+            Assert.Equal((CommandKinds.Hold, HoldModes.Coordinate, true), (sim.CommandLog.Last().Kind, sim.CommandLog.Last().Mode, sim.CommandLog.Last().Queued));
+            sim.Step();
+            Assert.Equal(2, ctl.QueueCount);
+            ctl.SetQueueing(false);
+            Assert.True(ctl.Rest());
+            sim.Step();
+            Assert.Equal(0, ctl.QueueCount); // 예약 아닌 새 명령이 예약을 비움
+            Assert.True(a.Resting);
+        }
     }
 }
