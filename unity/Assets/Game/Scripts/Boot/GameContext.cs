@@ -31,6 +31,11 @@ namespace Game.Unity.Boot
         /// <summary>메인 화면 하단 탭 (Ui/mainTabs.json).</summary>
         public IReadOnlyList<MainTabEntry> MainTabs { get; private set; }
 
+        private Game.Campaign.Roster.FormationEditor _formation;
+        /// <summary>편성 편집 중인 사본 (화면을 오가도 유지). 저장·되돌리기 전까지 출진에는 저장된 편성이 쓰인다.</summary>
+        public Game.Campaign.Roster.FormationEditor Formation => _formation ?? (_formation = new Game.Campaign.Roster.FormationEditor(Defs, State));
+        public void DiscardFormationDraft() => _formation = null;
+
         public IAuthService Auth { get; private set; }
         public IStoreService Store { get; private set; }
         public IRewardedAdService RewardedAd { get; private set; }
@@ -87,6 +92,7 @@ namespace Game.Unity.Boot
         public void ResetSave()
         {
             State = StartingKitService.CreateNewGame(Defs);
+            _formation = null;
             Saves.Save(State);
         }
 
