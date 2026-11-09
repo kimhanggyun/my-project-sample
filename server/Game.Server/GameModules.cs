@@ -38,6 +38,8 @@ namespace Game.Server
         TerritoryResponse Territory(string accountId);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47).</summary>
         MailListResponse CollectTerritory(string accountId);
+        /// <summary>내 지역에 수비 편성 등록 (R-48).</summary>
+        DefenseResponse RegisterDefense(string accountId, DefenseRequest request);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -128,7 +130,7 @@ namespace Game.Server
             if (s == null || s.BaseRevision != save.Revision)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
             var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
-                _store.HireLog(Code, accountId, Now));
+                _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, owners => TerritoryLedger.DefenseOf(owners, region)));
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
@@ -195,6 +197,14 @@ namespace Game.Server
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
         public TerritoryResponse Territory(string accountId) => _store.WithTerritory(Code, owners => TerritoryLedger.View(_territory, owners, accountId, Now));
+
+        public DefenseResponse RegisterDefense(string accountId, DefenseRequest req)
+        {
+            var d = TerritoryDefenses.Snapshot(_defs, FromJson(LoadOrCreate(accountId).Json), req?.Situation, out var error);
+            if (d == null) return new DefenseResponse { Ok = false, Reason = error };
+            var r = _store.WithTerritory(Code, owners => TerritoryLedger.RegisterDefense(owners, req.RegionId, accountId, d, Now));
+            return r == null ? new DefenseResponse { Ok = false, Reason = TerritoryDefenses.NotOwner } : new DefenseResponse { Ok = true, Reason = "ok", Defense = r };
+        }
 
         public MailListResponse CollectTerritory(string accountId) =>
             new MailListResponse { Mail = _store.WithTerritory(Code, owners => TerritoryLedger.Collect(_territory, owners, accountId, Now, (who, m) => _store.AddMail(Code, who, m))) };

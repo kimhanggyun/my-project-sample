@@ -38,6 +38,8 @@ namespace Game.Online
         public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
         /// <summary>내 지역의 쌓인 수입을 우편으로 받기 (POST).</summary>
         public static string TerritoryCollect(string game) => Territory(game) + "/collect";
+        /// <summary>내 지역에 수비 편성 등록 (POST, R-48).</summary>
+        public static string TerritoryDefense(string game) => Territory(game) + "/defense";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -114,6 +116,8 @@ namespace Game.Online
         public List<ActionCorps> Compositions { get; set; }
         /// <summary>영토 전투: 공격자 위치 "위도,경도" (서버가 공격할 수 있는 지역인지 본다, R-46).</summary>
         public string Location { get; set; }
+        /// <summary>영토 전투: 상대한 수비 편성의 판 (0 = AI 수비군). 서버의 지금 판과 다르면 거절 (R-48).</summary>
+        public long DefenseVersion { get; set; }
     }
 
     /// <summary>지역 하나의 주인 (다른 유저의 위치는 담지 않는다, territory.md 4장).</summary>
@@ -126,6 +130,46 @@ namespace Game.Online
         public long CollectedUnixSeconds { get; set; }
         /// <summary>요청한 계정이 주인일 때만: 지금 받을 수 있는 수입 (자원 id → 양).</summary>
         public Dictionary<string, long> Pending { get; set; }
+        /// <summary>주인이 등록한 수비 편성 (없으면 null = AI 수비군, R-48). 공격하는 사람도 본다 (고용 등록처럼).</summary>
+        public TerritoryDefense Defense { get; set; }
+    }
+
+    /// <summary>수비 편성 스냅샷 (R-48): 등록할 때 주인의 서버 세이브에서 만든다. 다시 등록하면 Version이 오른다.</summary>
+    public sealed class TerritoryDefense
+    {
+        public long Version { get; set; }
+        public long RegisteredAtUnixSeconds { get; set; }
+        public List<DefenseCorps> Corps { get; set; } = new List<DefenseCorps>();
+    }
+
+    public sealed class DefenseCorps
+    {
+        /// <summary>장수 상태 JSON (출전 가능 상태로).</summary>
+        public string GeneralJson { get; set; }
+        public string Formation { get; set; }
+        public List<DefenseUnit> Units { get; set; } = new List<DefenseUnit>();
+    }
+
+    public sealed class DefenseUnit
+    {
+        public string Slot { get; set; }
+        /// <summary>부대 상태 JSON (부상병 없이).</summary>
+        public string UnitJson { get; set; }
+    }
+
+    /// <summary>수비 편성 등록: 내 지역에, 내 서버 세이브의 편성(상황, null = 기본)으로.</summary>
+    public sealed class DefenseRequest
+    {
+        public string RegionId { get; set; }
+        public string Situation { get; set; }
+    }
+
+    public sealed class DefenseResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary>ok / notOwner / badFormation.</summary>
+        public string Reason { get; set; }
+        public TerritoryDefense Defense { get; set; }
     }
 
     public sealed class TerritoryResponse
@@ -402,6 +446,8 @@ namespace Game.Online
         void GetTerritory(Action<TerritoryResponse> done);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (보낸 우편, 닿지 않으면 null).</summary>
         void CollectTerritory(Action<MailListResponse> done);
+        /// <summary>내 지역에 수비 편성 등록 (닿지 않으면 null).</summary>
+        void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -421,6 +467,7 @@ namespace Game.Online
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
+        public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

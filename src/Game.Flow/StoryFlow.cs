@@ -13,6 +13,7 @@ using Game.Economy;
 using Game.Foundation.Math;
 using Game.Foundation.Random;
 using Game.Foundation.Time;
+using Game.Online;
 using Game.Progression;
 
 namespace Game.Flow
@@ -37,6 +38,8 @@ namespace Game.Flow
         public HiredForces Hired { get; set; }
         /// <summary>영토 전투일 때 공격자의 위치 "위도,경도" (공격할 수 있는 지역인지, R-46).</summary>
         public string Location { get; set; }
+        /// <summary>영토 전투에서 주인이 등록한 수비 편성 (없으면 지역의 AI 수비군, R-48).</summary>
+        public TerritoryDefense Defense { get; set; }
     }
 
     /// <summary>출진 준비 결과. 문제가 없으면 Setup으로 전투를 시작한다.</summary>
@@ -58,6 +61,8 @@ namespace Game.Flow
         public List<CorpsComposition> Compositions { get; internal set; }
         /// <summary>영토 전투의 위치 (제출 메시지에 싣는다).</summary>
         public string Location { get; internal set; }
+        /// <summary>영토 전투에서 상대한 주인의 수비 편성 (없으면 null).</summary>
+        public TerritoryDefense Defense { get; internal set; }
     }
 
     public sealed class UnitReport
@@ -235,8 +240,14 @@ namespace Game.Flow
                 }
             SplitSupply(setup, daily, take);
 
-            // 적: 스텝 데이터
-            foreach (var e in step.Enemy)
+            // 적: 영토 주인의 수비 편성이 있으면 그것으로 (R-48), 아니면 스텝 데이터
+            bool ownerDefense = step.IsTerritory && request.Defense != null && request.Defense.Corps != null && request.Defense.Corps.Count > 0;
+            if (ownerDefense)
+            {
+                plan.Defense = request.Defense;
+                AddDefense(setup, request.Defense, balance, plan.Errors);
+            }
+            foreach (var e in ownerDefense ? new List<StepEnemyCorpsDef>() : new List<StepEnemyCorpsDef>(step.Enemy))
             {
                 var gd = _defs.Generals[e.General];
                 var cs = new CorpsSetup
@@ -281,6 +292,42 @@ namespace Game.Flow
             PlanContests(step, setup, request);
             plan.Setup = setup;
             return plan;
+        }
+
+        /// <summary>수비 편성 → 적 군단 (AI 수비 태세, 군량 10분 분량). 장수는 성장·배운 스킬까지 그대로.</summary>
+        private void AddDefense(BattleSetup setup, TerritoryDefense defense, Game.Data.Rules.BalanceData balance, List<string> errors)
+        {
+            int k = 0;
+            foreach (var dc in defense.Corps)
+            {
+                GeneralState g = null;
+                try { g = OnlineJson.Read<GeneralState>(dc.GeneralJson); } catch (System.Exception) { }
+                if (g == null || !_defs.Generals.ContainsKey(g.GeneralId ?? "") || dc.Formation == null) { errors.Add("수비 편성을 읽을 수 없습니다."); return; }
+                string id = "D" + (++k);
+                var cs = new CorpsSetup
+                {
+                    Id = id,
+                    Team = EnemyTeam,
+                    Role = k == 1 ? CorpsRoles.Commander : null,
+                    Controller = Controllers.Ai,
+                    AiStance = Game.Battle.Model.Ai.AiStanceIds.Defensive,
+                    AiDifficulty = "normal",
+                    General = Snapshot(g),
+                    Formation = dc.Formation,
+                    KnownFormations = new List<string> { dc.Formation },
+                };
+                long daily = 0;
+                foreach (var du in dc.Units)
+                {
+                    UnitState u = null;
+                    try { u = OnlineJson.Read<UnitState>(du.UnitJson); } catch (System.Exception) { }
+                    if (u == null || !_defs.TroopTypes.TryGetValue(u.TroopType ?? "", out var tt) || !SlotIds.IsValid(du.Slot)) { errors.Add("수비 편성의 부대를 읽을 수 없습니다."); return; }
+                    cs.Units.Add(new UnitSetup { UnitId = id + "_" + du.Slot, Slot = du.Slot, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion });
+                    daily = checked(daily + u.Troops * tt.SupplyPerDay);
+                }
+                cs.Supply = (Fix.FromInt(10) * (daily * balance.SupplyDaysPerMinute)).CeilToLong();
+                setup.Corps.Add(cs);
+            }
         }
 
         /// <summary>출진 확정: 보유 군량에서 가져갈 군량을 뺀다.</summary>
@@ -353,9 +400,12 @@ namespace Game.Flow
             wallet.Add(ResourceIds.Supply, report.SupplyReturned + report.SupplyCaptured);
 
             var injuries = Injuries;
+            // 부상은 내 군단의 장수만 (수비 편성에는 같은 장수가 있을 수 있다)
+            var mine = new HashSet<string>();
+            foreach (var c in plan.Setup.Corps) if (c.Team == PlayerTeam && c.General != null) mine.Add(c.General.Id);
             foreach (var kv in result.GeneralInjuries)
             {
-                if (state.FindGeneral(kv.Key) == null) continue;
+                if (!mine.Contains(kv.Key) || state.FindGeneral(kv.Key) == null) continue;
                 injuries.Apply(state, kv.Key, kv.Value);
                 report.Injuries[kv.Key] = kv.Value;
             }
@@ -363,6 +413,7 @@ namespace Game.Flow
             var captivity = Captivity;
             foreach (var cap in result.Captures)
             {
+                if (cap.CapturedByTeam == PlayerTeam && plan.Defense != null) continue; // 다른 유저의 수비 편성 장수는 포로로 데려오지 않는다 (스냅샷)
                 if (cap.CapturedByTeam == PlayerTeam)
                 {
                     captivity.AddPrisoner(state, cap.GeneralId, cap.BrainwashBonus);
