@@ -17,6 +17,7 @@
 | 위치 | 내용 |
 |---|---|
 | `src/Game.Online/OnlineContracts.cs` | 메시지: `SignInResponse`, `ServerTimeResponse`, `CloudSave`(Revision·세이브 JSON), `SavePutRequest/Response`, `BattleSubmission`, `BattleVerdict`. 경계 `IOnlineService`와 서버 없음 구현 `OfflineOnlineService`. JSON 설정 `OnlineJson` (Fix는 원본 정수) |
+| `src/Game.Flow/PlayerActions.cs` | 전투 밖 행동(`PlayerAction`: 편성 저장, 스킬북 구매·습득, 징병·모병·치료, 부대 창설·해산)을 규칙대로 적용하는 `PlayerActionRunner`(종류별 처리기 등록) + 서버 쪽 `ActionVerifier` (R-41) |
 | `src/Game.Flow/BattleVerifier.cs` | 서버 세이브 + 제출(출진 요청·시드·대결 선택·명령 기록)로 출진 준비 → 전투 재현 → 지문·틱 비교 → 맞으면 출진 확정 + 결과 반영 |
 | `server/Game.Server` | **참고 서버** (ASP.NET Core, net8.0). 개발·테스트용. 공통 계정(`IPlatformStore`: 계정·토큰·게임 가입 기록) + 게임별 데이터(`IGameStore`: (게임 코드, 계정)별 세이브), 게임 등록표(`GameRegistry` + `IGameModule`). 저장소는 메모리 또는 폴더 |
 | `tests/Game.Server.Tests` | 참고 서버 HTTP 테스트 (`dotnet test GameCore.sln`에 포함) |
@@ -35,7 +36,8 @@
 | `GET /v1/games/resolve?app=…` | (공통) 앱 id(package명·번들 id) → 게임 코드. 없으면 404 | `ResolveAppResponse` |
 | `GET /v1/me/games` | (공통) 내가 가입한(들어온 적 있는) 게임 | `GameListResponse` |
 | `GET /v1/games/{game}/save` | 그 게임 세이브 받기. 처음이면 가입 기록 + 새 게임 (Revision 1). 없는 게임이면 404 | `CloudSave` |
-| `PUT /v1/games/{game}/save` | `BaseRevision` 위에만 저장. 다르거나 읽을 수 없는 세이브면 409 + 서버 사본 | `SavePutResponse` |
+| `PUT /v1/games/{game}/save` | **처음 가져오기 전용**: 서버 세이브가 새 게임(Revision 1)이고 `BaseRevision` 위일 때만. 아니면(또는 읽을 수 없는 세이브) 409 + 서버 사본 | `SavePutResponse` |
+| `POST /v1/games/{game}/actions` | 행동 묶음 제출 (R-41). 서버 세이브에 차례로 적용, 옛 세이브 위면 409(`staleSave`), 하나라도 안 되면 422(`badAction` + 순번, 아무것도 반영 안 함), 맞으면 새 세이브 | `ActionVerdict` |
 | `POST /v1/games/{game}/battles` | 전투 제출. 옛 세이브 위면 409(`staleSave`), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
 
 실행: `dotnet run --project server/Game.Server`. 설정:
@@ -68,6 +70,7 @@
 | `Game.Online.IOnlineTransport` | HTTP 경계. Unity = `UnityWebTransport`(UnityWebRequest, 시간 초과 10초), 테스트 = HttpClient |
 | `Game.Online.HttpOnlineService` | 게임 코드별 주소로 서버를 부른다. 게스트 토큰은 `OnlineLink`로 기기에 보관해 다음 실행에 다시 쓴다 |
 | `Game.Flow.CloudSync` | 시작: 로그인 → 서버 시각(`ServerClock`) → 서버 세이브. **처음 연결**(보관한 Revision 0)이고 기기 쪽 클리어 스텝이 더 많으면 기기 세이브를 올리고, 아니면 서버 세이브를 받아 쓴다. 전투 뒤: 제출(`SubmissionOf`: 출진 준비 + 명령 기록 + 기기 결과) → 맞으면 서버 세이브를 받아 쓰고, 거절되면 서버 세이브로 되돌린다. 서버에 닿지 않으면 기기 결과 그대로 |
+| `GameContext.Do(행동)` | 화면은 세이브를 직접 고치지 않고 행동을 만든다 → 기기에서 적용·저장 → 온라인이면 서버로 (`FlushActions`). 맞으면 서버 세이브, 거절되면 서버 세이브로 되돌림. 서버에 닿지 않으면 `OnlineLink.Pending`에 남겨 두고 다음 시작·다음 행동·전투 제출 전에 다시 보낸다. 전투 제출 전에는 남은 행동을 먼저 보낸다 (서버가 같은 편성으로 출진하도록) |
 | `Game.Flow.LocalOnlineService` | **가짜 서버** (online = fake): 기기 안에서 같은 규칙(Revision·전투 검증). 세이브는 기기 저장소의 `fake-server`에 남는다 |
 | `Game.Flow.ServerClock` | 기기 시각 + 서버 시각과의 차이. 시간 규칙(부상 회복·구출 기한)을 서버와 같게 |
 
@@ -84,11 +87,13 @@
 3. **폰에서 참고 서버로**: `onlineUrl`을 PC의 같은 와이파이 주소(예: `http://192.168.0.10:5000`)로, 서버는 `--urls http://0.0.0.0:5000`로 실행하고 PC 방화벽에서 5000 포트를 허용.
 
 ### 알아둘 점
-- 지금 `PUT /save`는 형식만 맞으면 받는다 (처음 연결 때 기기 진행을 올리기 위해). 실제 서비스에서는 진행(스텝 클리어·보상)이 서버 검증으로만 바뀌도록 막아야 한다 — 백엔드 단계 과제.
+- 진행은 전투 제출(R-40)과 행동 제출(R-41)로만 바뀐다. `PUT /save`는 처음 연결 때 기기 진행을 가져오는 데만 쓴다 (서버 세이브가 새 게임일 때). 그 처음 가져오기도 실제 서비스에서는 막거나 상한을 둘지 정한다 (기기 세이브를 고쳐 올릴 수 있으므로) — 출시 전 과제.
+- 새 행동(예: 장비, 상점)을 더할 때는 `ActionKinds`에 종류를, `PlayerActionRunner`에 처리기를 더하고 화면은 `Ctx.Do`를 부른다. 세이브를 직접 고치고 `Save()`만 부르면 서버에 반영되지 않아 다음 전투가 거절될 수 있다.
 - 서버에 닿지 않을 때 한 전투는 기기에만 반영된다 (다음 시작 때 서버 세이브가 주인이므로 사라질 수 있다). 오프라인 전투를 나중에 올리는 방식은 미정.
 
 ## 6. 다음 단계
 
 1. ~~기기 쪽 HTTP 구현 + 서비스 설정 `online` + 로그인 → 세이브 받기 → 전투 제출 흐름~~ (5장, 완료).
-2. 백엔드 선택 후 저장소·인증을 그쪽으로 (`IAccountStore` 대신 백엔드 저장소, 게스트 로그인 대신 백엔드 인증).
-3. 고용(hiring.md)·숨은 보상 확정·영토(territory.md)·대전(pvp.md)을 같은 검증 위에 올린다.
+2. ~~전투 밖 행동을 서버가 같은 규칙으로 적용 (R-41), 세이브 통째 올리기는 처음 가져오기만~~ (완료).
+3. 백엔드 선택 후 저장소·인증을 그쪽으로 (`IAccountStore` 대신 백엔드 저장소, 게스트 로그인 대신 백엔드 인증).
+4. 고용(hiring.md)·숨은 보상 확정·영토(territory.md)·대전(pvp.md)을 같은 검증 위에 올린다.

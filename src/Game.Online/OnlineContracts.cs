@@ -27,6 +27,7 @@ namespace Game.Online
         public static string ResolveApp(string appId) => "/v1/games/resolve?app=" + Uri.EscapeDataString(appId ?? "");
         public static string Save(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/save";
         public static string Battles(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/battles";
+        public static string Actions(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/actions";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -56,7 +57,10 @@ namespace Game.Online
         public long SavedAtUnixSeconds { get; set; }
     }
 
-    /// <summary>세이브 올리기: 내가 받은 Revision 위에만 쓴다 (다르면 충돌, 서버 사본을 돌려준다).</summary>
+    /// <summary>
+    /// 세이브 올리기 = 처음 연결 때 기기 진행 가져오기 전용 (R-41): 서버 세이브가 아직 새 게임(Revision 1)이고 내가 받은 Revision 위일 때만.
+    /// 그 밖에는 충돌로 서버 사본을 돌려준다. 진행은 전투 제출(R-40)과 행동 제출(R-41)로만 바뀐다.
+    /// </summary>
     public sealed class SavePutRequest
     {
         public long BaseRevision { get; set; }
@@ -97,6 +101,8 @@ namespace Game.Online
         public const string StaleSave = "staleSave";
         public const string BadSortie = "badSortie";
         public const string Mismatch = "mismatch";
+        /// <summary>기기 행동을 서버 세이브에 적용할 수 없음 (R-41).</summary>
+        public const string BadAction = "badAction";
     }
 
     public sealed class BattleVerdict
@@ -108,6 +114,67 @@ namespace Game.Online
         public long Ticks { get; set; }
         public string Winner { get; set; }
         /// <summary>반영한 뒤의 세이브 (Valid일 때). 기기는 이것을 받아 쓴다.</summary>
+        public CloudSave Save { get; set; }
+    }
+
+    /// <summary>기기 행동 종류 (verification R-41). 새 행동은 종류를 더하고 처리기를 등록한다.</summary>
+    public static class ActionKinds
+    {
+        public const string FormationSave = "formation.save";
+        public const string FormationRemovePreset = "formation.removePreset";
+        public const string SkillBookBuy = "skillBook.buy";
+        public const string SkillLearn = "skill.learn";
+        public const string UnitConscript = "unit.conscript";
+        public const string UnitRecruit = "unit.recruit";
+        public const string UnitHeal = "unit.heal";
+        public const string UnitCreate = "unit.create";
+        public const string UnitDisband = "unit.disband";
+    }
+
+    /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>
+    public sealed class ActionCorps
+    {
+        public string GeneralId { get; set; }
+        public string Formation { get; set; }
+        public string Role { get; set; }
+        public Dictionary<string, string> Slots { get; set; } = new Dictionary<string, string>();
+    }
+
+    /// <summary>
+    /// 전투 밖에서 기기가 한 행동 하나 (편성 저장, 스킬북 구매·습득, 징병·모병·치료, 부대 창설·해산).
+    /// 서버는 세이브를 통째로 받지 않고 같은 규칙 코드로 행동을 다시 적용한다 (R-41). 종류마다 쓰는 칸만 채운다.
+    /// </summary>
+    public sealed class PlayerAction
+    {
+        /// <summary><see cref="ActionKinds"/>.</summary>
+        public string Kind { get; set; }
+        /// <summary>편성: 상황 id (null = 기본 편성).</summary>
+        public string Situation { get; set; }
+        public List<ActionCorps> Corps { get; set; }
+        public string GeneralId { get; set; }
+        public string SkillId { get; set; }
+        public string UnitId { get; set; }
+        public string TroopType { get; set; }
+        public long Count { get; set; }
+        /// <summary>치료 비용: supply / gold.</summary>
+        public string PayWith { get; set; }
+    }
+
+    /// <summary>행동 묶음 제출: 이 세이브 위에서 차례로 했다.</summary>
+    public sealed class ActionSubmission
+    {
+        public long BaseRevision { get; set; }
+        public List<PlayerAction> Actions { get; set; } = new List<PlayerAction>();
+    }
+
+    public sealed class ActionVerdict
+    {
+        public bool Valid { get; set; }
+        /// <summary><see cref="VerdictReasons"/> (ok / staleSave / badAction).</summary>
+        public string Reason { get; set; }
+        /// <summary>적용하지 못한 첫 행동의 순번 (없으면 -1). 하나라도 실패하면 아무것도 반영하지 않는다.</summary>
+        public int FailedIndex { get; set; } = -1;
+        /// <summary>반영한 뒤의 세이브 (Valid), 아니면 서버에 있는 세이브.</summary>
         public CloudSave Save { get; set; }
     }
 
@@ -124,6 +191,7 @@ namespace Game.Online
         void LoadSave(Action<CloudSave> done);
         void PutSave(SavePutRequest request, Action<SavePutResponse> done);
         void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done);
+        void SubmitActions(ActionSubmission submission, Action<ActionVerdict> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -136,6 +204,7 @@ namespace Game.Online
         public void LoadSave(Action<CloudSave> done) => done?.Invoke(null);
         public void PutSave(SavePutRequest request, Action<SavePutResponse> done) => done?.Invoke(null);
         public void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done) => done?.Invoke(null);
+        public void SubmitActions(ActionSubmission submission, Action<ActionVerdict> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

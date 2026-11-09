@@ -63,6 +63,16 @@ app.MapPost("/v1/games/{game}/battles", async (string game, HttpRequest req, IPl
     });
 });
 
+app.MapPost("/v1/games/{game}/actions", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<ActionSubmission>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var v = g.SubmitActions(id, body);
+        return v.Valid ? Json(v) : Json(v, v.Reason == VerdictReasons.StaleSave ? StatusCodes.Status409Conflict : StatusCodes.Status422UnprocessableEntity);
+    });
+});
+
 app.Run();
 
 static IResult Json(object o, int status = StatusCodes.Status200OK) =>

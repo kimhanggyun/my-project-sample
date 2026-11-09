@@ -22,6 +22,8 @@ namespace Game.Server
         CloudSave LoadOrCreate(string accountId);
         SavePutResponse Put(string accountId, SavePutRequest request);
         BattleVerdict SubmitBattle(string accountId, BattleSubmission submission);
+        /// <summary>기기 행동(편성·구매·창설 …)을 서버 세이브에 다시 적용한다 (R-41).</summary>
+        ActionVerdict SubmitActions(string accountId, ActionSubmission submission);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -65,6 +67,7 @@ namespace Game.Server
         private readonly IDataSource _source;
         private readonly ITimeProvider _time;
         private readonly IGameStore _store;
+        private readonly PlayerActionRunner _actions;
 
         public StrategyGameModule(string code, IReadOnlyList<string> packageIds, IDataSource source, string theme, ITimeProvider time, IGameStore store)
         {
@@ -74,6 +77,7 @@ namespace Game.Server
             _defs = DefinitionSet.Load(source, theme);
             _time = time;
             _store = store;
+            _actions = new PlayerActionRunner(_defs);
         }
 
         public string Code { get; }
@@ -88,10 +92,14 @@ namespace Game.Server
             return ok ? current : _store.GetSave(Code, accountId);
         }
 
+        /// <summary>
+        /// 처음 연결 때 기기 진행 가져오기 전용 (R-41): 서버 세이브가 아직 새 게임(Revision 1)일 때만, 형식이 맞는 세이브만.
+        /// 그 뒤의 진행은 전투 제출(R-40)·행동 제출(R-41)로만 바뀐다.
+        /// </summary>
         public SavePutResponse Put(string accountId, SavePutRequest req)
         {
-            // 형식이 맞는 세이브만 받는다 (서버가 읽을 수 없는 세이브는 거절)
-            if (req?.Json == null || FromJson(req.Json) == null) return new SavePutResponse { Ok = false, Current = _store.GetSave(Code, accountId) };
+            var save = LoadOrCreate(accountId);
+            if (save.Revision != 1 || req?.Json == null || FromJson(req.Json) == null) return new SavePutResponse { Ok = false, Current = save };
             var (ok, current) = _store.PutSave(Code, accountId, req.BaseRevision, req.Json, Now);
             return new SavePutResponse { Ok = ok, Current = current };
         }
@@ -108,6 +116,18 @@ namespace Game.Server
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             verdict.Save = current;
             return verdict;
+        }
+
+        public ActionVerdict SubmitActions(string accountId, ActionSubmission s)
+        {
+            var save = LoadOrCreate(accountId);
+            if (s == null || s.BaseRevision != save.Revision)
+                return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
+            var (applied, failed, json) = ActionVerifier.Apply(_actions, save, s);
+            if (!applied) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = failed, Save = save };
+            var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, Now);
+            return ok ? new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current }
+                      : new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
         }
 
         public static string ToJson(CampaignState state) => SaveJson.Write(state);

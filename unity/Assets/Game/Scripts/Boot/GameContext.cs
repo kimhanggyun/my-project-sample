@@ -58,6 +58,8 @@ namespace Game.Unity.Boot
         public ServerClock Clock { get; private set; }
         public IOnlineService Online { get; private set; }
         public CloudSync Sync { get; private set; }
+        /// <summary>전투 밖 행동(편성·구매·창설 …)의 규칙. 기기와 서버가 같은 것을 쓴다 (R-41).</summary>
+        public PlayerActionRunner Actions { get; private set; }
         /// <summary>설정 이름: off / fake / http.</summary>
         public string OnlineMode { get; private set; } = OnlineConfig.Off;
         public OnlineLink Link { get; private set; } = new OnlineLink();
@@ -77,6 +79,7 @@ namespace Game.Unity.Boot
             c.Saves = new CampaignSaveService(saveStore);
             c.State = c.Saves.Load() ?? StartingKitService.CreateNewGame(c.Defs);
             c.MainTabs = MainTabEntry.Load(data);
+            c.Actions = new PlayerActionRunner(c.Defs);
 
             var choices = ReadServiceChoices(config, serviceConfigFile);
             var cfg = new ServiceConfig(choices);
@@ -115,16 +118,73 @@ namespace Game.Unity.Boot
             return choices;
         }
 
-        /// <summary>시작할 때: 로그인 → 서버 시각 → 서버 세이브를 받아 쓴다 (꺼져 있거나 닿지 않으면 기기 세이브 그대로). done은 끝나면 한 번.</summary>
+        /// <summary>
+        /// 시작할 때: 로그인 → 서버 시각 → 서버 세이브를 받아 쓴다 (꺼져 있거나 닿지 않으면 기기 세이브 그대로).
+        /// 지난번에 보내지 못한 행동이 있으면 이어서 보낸다. done은 끝나면 한 번.
+        /// </summary>
         public void StartSync(Action done)
         {
             if (!OnlineEnabled) { done?.Invoke(); return; }
             Sync.Start(State, Link.Revision, r =>
             {
                 OnlineStatus = r.Outcome;
+                if (r.Outcome == SyncOutcomes.Uploaded) Link.Pending.Clear(); // 올린 기기 세이브에 이미 들어 있다
                 if (r.Outcome != SyncOutcomes.Offline) Adopt(r);
-                done?.Invoke();
+                if (r.Outcome == SyncOutcomes.Offline) { done?.Invoke(); return; }
+                FlushActions(done);
             });
+        }
+
+        /// <summary>
+        /// 전투 밖 행동 하나 (R-41): 규칙대로 적용·저장하고, 온라인이면 서버로 보낸다 (서버가 같은 규칙으로 다시 적용).
+        /// 규칙상 안 되면 false (아무것도 바뀌지 않음).
+        /// </summary>
+        public bool Do(PlayerAction action)
+        {
+            if (!Actions.Apply(State, action)) return false;
+            Save();
+            if (OnlineEnabled)
+            {
+                Link.Pending.Add(action);
+                WriteLink();
+                FlushActions(null);
+            }
+            return true;
+        }
+
+        private bool _flushing;
+        private readonly List<Action> _afterFlush = new List<Action>();
+
+        /// <summary>
+        /// 남은 행동을 서버로 보낸다. 맞으면 서버 세이브를, 거절되면 서버 세이브로 되돌린다. 닿지 않으면 남겨 두고 다음에 다시.
+        /// 보내는 동안 새로 한 행동은 서버 세이브 위에 다시 적용해 이어서 보낸다. done은 다 끝나면 (또는 닿지 않으면) 한 번.
+        /// </summary>
+        public void FlushActions(Action done)
+        {
+            if (done != null) _afterFlush.Add(done);
+            if (_flushing) return;
+            if (!OnlineEnabled || Link.Pending.Count == 0) { RunAfterFlush(); return; }
+            _flushing = true;
+            var sent = new List<PlayerAction>(Link.Pending);
+            Sync.SubmitActions(new ActionSubmission { BaseRevision = Link.Revision, Actions = sent }, State, r =>
+            {
+                _flushing = false;
+                if (r.Outcome == SyncOutcomes.Offline) { RunAfterFlush(); return; }
+                if (r.Outcome == SyncOutcomes.Rejected) OnlineStatus = r.Outcome;
+                var later = Link.Pending.GetRange(sent.Count, Link.Pending.Count - sent.Count);
+                Link.Pending.Clear();
+                Adopt(r);
+                foreach (var a in later) if (Actions.Apply(State, a)) Link.Pending.Add(a);
+                if (later.Count > 0) { Save(); WriteLink(); }
+                if (Link.Pending.Count > 0) FlushActions(null); else RunAfterFlush();
+            });
+        }
+
+        private void RunAfterFlush()
+        {
+            var list = new List<Action>(_afterFlush);
+            _afterFlush.Clear();
+            foreach (var a in list) a?.Invoke();
         }
 
         /// <summary>
@@ -134,12 +194,15 @@ namespace Game.Unity.Boot
         public void SubmitBattle(SortiePlan plan, IReadOnlyList<Game.Battle.Model.Commands.BattleCommand> commands, Game.Battle.Model.Simulation.BattleResult result, Action<SyncResult> done)
         {
             if (!OnlineEnabled) { done?.Invoke(null); return; }
-            Sync.SubmitBattle(CloudSync.SubmissionOf(plan, commands, result, Link.Revision), State, r =>
+            // 전투 전에 한 행동(편성 저장 …)을 먼저 서버에 반영해야 서버가 같은 출진을 만든다
+            var local = State;
+            FlushActions(() => Sync.SubmitBattle(CloudSync.SubmissionOf(plan, commands, result, Link.Revision), local, r =>
             {
                 OnlineStatus = r.Outcome;
                 if (r.Outcome != SyncOutcomes.Offline) Adopt(r);
+                else if (State != local) { State = local; _formation = null; Save(); } // 행동만 반영되고 전투는 못 보냄: 기기 결과 그대로
                 done?.Invoke(r);
-            });
+            }));
         }
 
         private void Adopt(SyncResult r)

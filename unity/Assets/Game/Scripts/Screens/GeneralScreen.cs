@@ -72,15 +72,15 @@ namespace Game.Unity.Screens
 
         private void Buy(SkillBookService books, string skillId)
         {
-            bool ok = books.Buy(Ctx.State, skillId);
-            if (ok) Ctx.Save();
+            bool ok = Ctx.Do(PlayerActionRunner.BuySkillBook(skillId));
             Reopen(ok ? T("ui.general.bought") : T("ui.general.cannotBuy"));
         }
 
         private void Learn(SkillBookService books, string skillId)
         {
-            var r = books.Learn(Ctx.State, _generalId, skillId);
-            if (r == LearnCheck.Ok) Ctx.Save();
+            // 안 되는 까닭을 먼저 보고, 되면 행동으로 (서버도 같은 규칙으로 적용, R-41)
+            var r = books.Check(Ctx.State, _generalId, skillId);
+            if (r == LearnCheck.Ok && !Ctx.Do(PlayerActionRunner.LearnSkill(_generalId, skillId))) r = books.Check(Ctx.State, _generalId, skillId);
             Reopen(r == LearnCheck.Ok ? T("ui.general.learned") : T("ui.learn." + r));
         }
 
