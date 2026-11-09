@@ -316,6 +316,14 @@ namespace Game.Online
         void PutSave(SavePutRequest request, Action<SavePutResponse> done);
         void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done);
         void SubmitActions(ActionSubmission submission, Action<ActionVerdict> done);
+
+        // ---- 고용·우편 (R-43). 서버에 닿지 않으면 null ----
+        /// <param name="kind">general / unit / null = 전부.</param>
+        void GetListings(string kind, Action<HireListResponse> done);
+        void RegisterHire(HireListingRequest request, Action<HireListingResponse> done);
+        /// <summary>해제: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
+        void Unregister(string listingId, Action<bool?> done);
+        void GetMail(Action<MailListResponse> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -329,6 +337,10 @@ namespace Game.Online
         public void PutSave(SavePutRequest request, Action<SavePutResponse> done) => done?.Invoke(null);
         public void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done) => done?.Invoke(null);
         public void SubmitActions(ActionSubmission submission, Action<ActionVerdict> done) => done?.Invoke(null);
+        public void GetListings(string kind, Action<HireListResponse> done) => done?.Invoke(null);
+        public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => done?.Invoke(null);
+        public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
+        public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

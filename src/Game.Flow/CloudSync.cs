@@ -272,7 +272,13 @@ namespace Game.Flow
         private readonly ITimeProvider _time;
         private readonly ISaveStore _persist;
         private readonly PlayerActionRunner _actions;
+        private readonly HireRules _hire;
+        /// <summary>고용 시장: 가짜 등록(data/Dev/fakeHireMarket.json, 계정 "npc") + 내가 등록한 것. 메모리만.</summary>
+        private readonly List<HireListing> _market = new List<HireListing>();
         private CloudSave _save;
+
+        public const string FakeMarketFile = "Dev/fakeHireMarket.json";
+        public const string NpcAccount = "npc";
 
         public const string PersistKey = "fake-server";
 
@@ -284,6 +290,8 @@ namespace Game.Flow
             _time = time;
             _persist = persist;
             _actions = new PlayerActionRunner(defs);
+            _hire = new HireRules(defs);
+            LoadFakeMarket();
             if (persist != null && persist.Exists(PersistKey))
                 try { _save = OnlineJson.Read<CloudSave>(persist.Read(PersistKey)); } catch (Exception) { _save = null; }
         }
@@ -319,7 +327,7 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
-            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out _);
+            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out _, FindListing, AccountId);
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
             v.Save = Copy(_save);
             done?.Invoke(v);
@@ -334,6 +342,72 @@ namespace Game.Flow
             v.Save = Copy(_save);
             done?.Invoke(v);
         }
+
+        private void LoadFakeMarket()
+        {
+            if (_source == null || !_source.Exists(FakeMarketFile)) return;
+            try
+            {
+                int n = 0;
+                foreach (Newtonsoft.Json.Linq.JObject o in (Newtonsoft.Json.Linq.JArray)Newtonsoft.Json.Linq.JObject.Parse(_source.ReadText(FakeMarketFile))["listings"])
+                {
+                    var l = new HireListing
+                    {
+                        Id = "npc-" + (++n), Version = 1, OwnerAccountId = NpcAccount, Kind = o.Value<string>("kind"),
+                        Price = o.Value<long>("price"), PayWith = o.Value<string>("payWith"),
+                    };
+                    if (l.Kind == HireKinds.General)
+                    {
+                        var g = new Game.Campaign.Roster.GeneralState { GeneralId = o.Value<string>("generalId"), Level = o.Value<int?>("level") ?? 1 };
+                        if (!_defs.Generals.ContainsKey(g.GeneralId ?? "")) continue;
+                        l.GeneralId = g.GeneralId; l.Level = g.Level; l.SourceId = g.GeneralId;
+                        l.SnapshotJson = OnlineJson.Write(g);
+                    }
+                    else
+                    {
+                        var u = new Game.Campaign.Roster.UnitState { UnitId = "npc" + n, TroopType = o.Value<string>("troopType"), Troops = o.Value<long>("troops"), Training = JsonUtil.FixOr(o, "training", Game.Foundation.Math.Fix.Zero, FakeMarketFile) };
+                        if (!_defs.TroopTypes.ContainsKey(u.TroopType ?? "")) continue;
+                        l.TroopType = u.TroopType; l.Troops = u.Troops; l.TrainingRaw = u.Training.Raw; l.SourceId = u.UnitId;
+                        l.SnapshotJson = OnlineJson.Write(u);
+                    }
+                    _market.Add(l);
+                }
+            }
+            catch (Exception) { _market.Clear(); }
+        }
+
+        private HireListing FindListing(string id) => _market.Find(l => l.Id == id);
+
+        public void GetListings(string kind, Action<HireListResponse> done)
+        {
+            var r = new HireListResponse();
+            foreach (var l in _market) if (kind == null || l.Kind == kind) r.Listings.Add(OnlineJson.Read<HireListing>(OnlineJson.Write(l)));
+            done?.Invoke(r);
+        }
+
+        public void RegisterHire(HireListingRequest req, Action<HireListingResponse> done)
+        {
+            LoadSave(_ => { });
+            string source = req?.Kind == HireKinds.General ? req.GeneralId : req?.UnitId;
+            int existing = _market.FindAll(l => l.OwnerAccountId == AccountId && l.Kind == req?.Kind && l.SourceId != source).Count;
+            var r = _hire.Register(SaveJson.Read(_save.Json), req, existing);
+            if (r.Ok)
+            {
+                var old = _market.Find(l => l.OwnerAccountId == AccountId && l.Kind == r.Listing.Kind && l.SourceId == r.Listing.SourceId);
+                r.Listing.OwnerAccountId = AccountId;
+                r.Listing.CreatedAtUnixSeconds = Now;
+                r.Listing.Id = old?.Id ?? "mine-" + (_market.Count + 1);
+                r.Listing.Version = (old?.Version ?? 0) + 1;
+                if (old != null) _market[_market.IndexOf(old)] = r.Listing; else _market.Add(r.Listing);
+            }
+            done?.Invoke(r);
+        }
+
+        public void Unregister(string listingId, Action<bool?> done) =>
+            done?.Invoke(_market.RemoveAll(l => l.Id == listingId && l.OwnerAccountId == AccountId) > 0);
+
+        /// <summary>가짜 시장의 등록자는 고용하지 않으므로 우편은 없다.</summary>
+        public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse());
 
         private long Now => _time.UtcNow.ToUnixTimeSeconds();
         private static CloudSave Copy(CloudSave s) => new CloudSave { Revision = s.Revision, Json = s.Json, SavedAtUnixSeconds = s.SavedAtUnixSeconds };

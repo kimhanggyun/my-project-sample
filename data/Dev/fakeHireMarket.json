@@ -1,0 +1,9 @@
+{
+  "_comment": "가짜 서버(online = fake)의 고용 시장: 다른 유저가 등록한 것처럼 보이는 예시 등록 (개발용, 실제 서버에는 없음). kind = general(generalId·level) / unit(troopType·troops·training). price·payWith = 등록 가격·지불 자원",
+  "listings": [
+    { "kind": "general", "generalId": "enemy_general_04", "level": 3, "price": 300, "payWith": "gold" },
+    { "kind": "general", "generalId": "enemy_general_02", "level": 5, "price": 1500, "payWith": "supply" },
+    { "kind": "unit", "troopType": "cavalry", "troops": 3000, "training": 0.5, "price": 2, "payWith": "gold" },
+    { "kind": "unit", "troopType": "archer", "troops": 4000, "training": 0.2, "price": 5, "payWith": "supply" }
+  ]
+}

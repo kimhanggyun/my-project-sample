@@ -79,9 +79,16 @@ namespace Game.Unity.Screens
             foreach (var s in step.RewardSkills) parts.Add(SkillName(s));
             Ui.Label(rewards, parts.Count == 0 ? T("ui.common.none") : string.Join(", ", parts), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
 
+            // 고용 (온라인일 때, R-43): 고른 것을 편성 사본에 넣어 출진 준비에 넘긴다
+            var request = Request(step, false, out var hireError);
+            if (Ctx.HiringAvailable) HireCard(body, step);
+
             // 출진 준비 (상태는 바꾸지 않는다)
-            var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed() });
+            var plan = Ctx.Flow.Prepare(Ctx.State, request);
             var sortie = Ui.Card(body, "Sortie");
+            if (hireError != null) Ui.Label(sortie, Ui.Colored(hireError, Palette.Bad), Ui.FontSmall);
+            if (plan.Hired != null)
+                foreach (var kv in plan.Hired.Costs) Ui.Label(sortie, T("ui.hire.cost", kv.Value.ToString("N0") + " " + T("resource." + kv.Key)), Ui.FontSmall);
             Ui.Label(sortie, T("ui.step.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
             foreach (var err in plan.Errors) Ui.Label(sortie, Ui.Colored(err, Palette.Bad), Ui.FontSmall);
 
@@ -90,15 +97,52 @@ namespace Game.Unity.Screens
             Ui.Button(row, T("ui.common.back"), () => App.ShowMain("story"));
             var direct = Ui.Button(row, T("ui.step.directSortie"), () => Sortie(step, false));
             var delegated = Ui.Button(row, T("ui.step.delegateSortie"), () => Sortie(step, true));
-            Ui.SetEnabled(direct, plan.Ok);
-            Ui.SetEnabled(delegated, plan.Ok);
+            Ui.SetEnabled(direct, plan.Ok && hireError == null);
+            Ui.SetEnabled(delegated, plan.Ok && hireError == null);
         }
 
-        /// <summary>직접 지휘(위임 꺼짐) 또는 위임 출진. 확정할 때 준비를 다시 한다 (시드·위임 여부).</summary>
+        /// <summary>출진 요청: 고른 고용이 있으면 그 편성(사본)과 고용을 싣는다.</summary>
+        private SortieRequest Request(StepDef step, bool delegate_, out string hireError)
+        {
+            hireError = null;
+            var request = new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed(), Delegate = delegate_ };
+            var draft = Ctx.HiresFor(_stepId);
+            if (draft.IsEmpty) return request;
+            var (comps, hired) = draft.Build(Ctx.State, step.BattleType, Ctx.AccountId, out hireError);
+            if (hireError != null) return request;
+            request.Compositions = comps;
+            request.Hired = hired;
+            return request;
+        }
+
+        private void HireCard(RectTransform body, StepDef step)
+        {
+            var card = Ui.Card(body, "Hire");
+            Ui.Label(card, T("ui.hire.sortieTitle"));
+            var draft = Ctx.HiresFor(_stepId);
+            var comps = Ctx.State.CompositionsFor(step.BattleType);
+            foreach (var p in draft.Picks)
+            {
+                string id = p.Listing.Id;
+                string who = p.CorpsIndex < comps.Count ? Ctx.GeneralName(comps[p.CorpsIndex].GeneralId) : "?";
+                string text = p.Listing.Kind == Game.Online.HireKinds.General
+                    ? T("ui.hire.pickGeneral", Ctx.GeneralName(p.Listing.GeneralId), p.CorpsIndex + 1, who)
+                    : T("ui.hire.pickUnit", FormationTabView.TroopName(Ctx, p.Listing.TroopType), p.Count.ToString("N0"), p.CorpsIndex + 1, who);
+                var row = Ui.Row(card, id, 72, 8);
+                Ui.Size(Ui.Label(row, text, 26), flexibleWidth: 3);
+                Ui.Size(Ui.Button(row, T("ui.hire.remove"), () => { draft.Remove(id); App.Show(new StepScreen(_stepId)); }, 72, fontSize: 26), width: 160);
+            }
+            var buttons = Ui.Row(card, "HireButtons", 80, 8);
+            Ui.Button(buttons, T("ui.hire.hireGeneral"), () => App.Show(new HirePickScreen(_stepId, Game.Online.HireKinds.General)), 80, fontSize: 28);
+            Ui.Button(buttons, T("ui.hire.hireUnit"), () => App.Show(new HirePickScreen(_stepId, Game.Online.HireKinds.Unit)), 80, fontSize: 28);
+        }
+
+        /// <summary>직접 지휘(위임 꺼짐) 또는 위임 출진. 확정할 때 준비를 다시 한다 (시드·위임 여부). 고용 비용도 확정 때 낸다.</summary>
         private void Sortie(StepDef step, bool delegate_)
         {
-            var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed(), Delegate = delegate_ });
-            if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new StepScreen(_stepId)); return; }
+            var plan = Ctx.Flow.Prepare(Ctx.State, Request(step, delegate_, out var hireError));
+            if (hireError != null || !Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new StepScreen(_stepId)); return; }
+            Ctx.ClearHires();
             App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start", !delegate_));
         }
 

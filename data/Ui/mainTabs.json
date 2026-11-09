@@ -6,7 +6,7 @@
     { "id": "troop", "nameKey": "ui.tab.troop", "status": "tobe" },
     { "id": "formation", "nameKey": "ui.tab.formation", "status": "active" },
     { "id": "territory", "nameKey": "ui.tab.territory", "status": "tobe" },
-    { "id": "hiring", "nameKey": "ui.tab.hiring", "status": "tobe" },
+    { "id": "hiring", "nameKey": "ui.tab.hiring", "status": "active" },
     { "id": "pvp", "nameKey": "ui.tab.pvp", "status": "tobe" }
   ]
 }
