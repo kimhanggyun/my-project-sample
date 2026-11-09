@@ -130,6 +130,11 @@ namespace Game.Battle.Model.Simulation
         public string Team => Setup.Team;
         public CorpsSetup Setup { get; internal set; }
         public FormationDef Formation { get; internal set; }
+        /// <summary>바꾸는 중인 진형 (R-56). 다 바뀔 때까지 지금 진형(Formation)을 쓰고, 받는 피해가 늘어난다. 없으면 null.</summary>
+        public FormationDef PendingFormation { get; internal set; }
+        /// <summary>진형 전환이 끝나기까지 남은 틱.</summary>
+        public long ReformTicksLeft { get; internal set; }
+        public bool Reforming => PendingFormation != null;
         public TemperamentDef Temperament { get; internal set; }
         public Vec Anchor { get; internal set; }
         public Vec Facing { get; internal set; }

@@ -142,7 +142,11 @@ namespace Game.Tests.Battle
             Assert.True(ctl.NextFormation());
             Assert.True(ctl.SetDelegate(true));
             sim.Step();
-            Assert.NotEqual(before, a.Formation.Id);
+            Assert.True(a.Reforming); // 규율(R-56)만큼 전환 시간
+            string target = a.PendingFormation.Id;
+            Assert.NotEqual(before, target);
+            while (a.Reforming) sim.Step();
+            Assert.Equal(target, a.Formation.Id);
             Assert.True(a.Delegated);
             Assert.True(ctl.SetDelegate(false));
             sim.Step();

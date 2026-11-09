@@ -424,6 +424,7 @@ namespace Game.Unity.Screens
             else
             {
                 string formation = ctx.Defs.Formations.TryGetValue(sel.Formation.Id, out var f) ? T(f.NameKey) : sel.Formation.Id;
+                if (sel.Reforming) formation = T("ui.battle.reforming", formation, T(sel.PendingFormation.NameKey)); // 규율만큼 전환 시간 (R-56)
                 string status = T("ui.corps." + StatusKey(sel.Status));
                 _selectedInfo.text = T(_collapsed ? "ui.cmd.selectedShort" : "ui.cmd.selectedLine", CorpsName(sel.Id), formation, sel.Troops.ToString("N0"), sel.StartTroops.ToString("N0"),
                     sel.Morale.FloorToLong(), sel.SkillPoints.Points.FloorToLong(), status, OrderName(sel));

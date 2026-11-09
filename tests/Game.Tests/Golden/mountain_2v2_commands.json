@@ -1,31 +1,31 @@
 {
   "winner": "teamA",
   "endReason": "defeat",
-  "ticks": 1005,
-  "elapsedSeconds": "100.5",
+  "ticks": 1030,
+  "elapsedSeconds": "103",
   "commands": 3,
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "3ca51279a655a6e1",
+  "stateHash": "71fdb0cfad5ad22b",
   "corps": [
     {
       "id": "A1",
       "team": "teamA",
       "status": "Active",
       "startTroops": 5000,
-      "remainingTroops": 4703,
-      "losses": 297,
+      "remainingTroops": 4721,
+      "losses": 279,
       "startSupply": 1000000,
-      "remainingSupply": 943225,
-      "finalMorale": "43.09",
+      "remainingSupply": 941810,
+      "finalMorale": "53.63",
       "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "spearman",
           "start": 1000,
-          "remaining": 703
+          "remaining": 721
         },
         {
           "slot": "center",
@@ -62,20 +62,20 @@
     {
       "id": "A2",
       "team": "teamA",
-      "status": "Retreating",
+      "status": "Active",
       "startTroops": 4200,
-      "remainingTroops": 2884,
-      "losses": 1316,
+      "remainingTroops": 2820,
+      "losses": 1380,
       "startSupply": 1000000,
-      "remainingSupply": 913321,
-      "finalMorale": "14.8088",
+      "remainingSupply": 911468,
+      "finalMorale": "16.257",
       "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "cavalry",
           "start": 700,
-          "remaining": 557
+          "remaining": 529
         },
         {
           "slot": "center",
@@ -93,7 +93,7 @@
           "slot": "rightWing",
           "troopType": "cavalry",
           "start": 700,
-          "remaining": 239
+          "remaining": 191
         },
         {
           "slot": "leftGuard",
@@ -105,7 +105,7 @@
           "slot": "rightGuard",
           "troopType": "cavalry",
           "start": 700,
-          "remaining": 688
+          "remaining": 700
         }
       ]
     },
@@ -114,18 +114,18 @@
       "team": "teamB",
       "status": "Retreated",
       "startTroops": 5000,
-      "remainingTroops": 3791,
-      "losses": 1209,
+      "remainingTroops": 3759,
+      "losses": 1241,
       "startSupply": 1000000,
-      "remainingSupply": 944380,
-      "finalMorale": "22.58",
+      "remainingSupply": 942896,
+      "finalMorale": "21.62",
       "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "spearman",
           "start": 900,
-          "remaining": 170
+          "remaining": 168
         },
         {
           "slot": "center",
@@ -137,13 +137,13 @@
           "slot": "leftWing",
           "troopType": "spearman",
           "start": 900,
-          "remaining": 463
+          "remaining": 464
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
           "start": 900,
-          "remaining": 900
+          "remaining": 899
         },
         {
           "slot": "leftGuard",
@@ -155,7 +155,7 @@
           "slot": "rightGuard",
           "troopType": "archer",
           "start": 700,
-          "remaining": 658
+          "remaining": 628
         }
       ]
     },
@@ -164,11 +164,11 @@
       "team": "teamB",
       "status": "Retreated",
       "startTroops": 4800,
-      "remainingTroops": 3544,
-      "losses": 1256,
+      "remainingTroops": 3422,
+      "losses": 1378,
       "startSupply": 1000000,
-      "remainingSupply": 946016,
-      "finalMorale": "17.267",
+      "remainingSupply": 944122,
+      "finalMorale": "17.3519",
       "skillPointsLeft": "50",
       "units": [
         {
@@ -187,13 +187,13 @@
           "slot": "leftWing",
           "troopType": "cavalry",
           "start": 800,
-          "remaining": 464
+          "remaining": 369
         },
         {
           "slot": "rightWing",
           "troopType": "cavalry",
           "start": 800,
-          "remaining": 717
+          "remaining": 689
         },
         {
           "slot": "leftGuard",
@@ -205,7 +205,7 @@
           "slot": "rightGuard",
           "troopType": "cavalry",
           "start": 800,
-          "remaining": 781
+          "remaining": 782
         }
       ]
     }

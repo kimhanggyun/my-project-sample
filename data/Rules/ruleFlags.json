@@ -126,6 +126,12 @@
     "releaseReward": {
       "default": true,
       "parent": "capture"
+    },
+    "discipline": {
+      "default": true
+    },
+    "valor": {
+      "default": true
     }
   }
 }

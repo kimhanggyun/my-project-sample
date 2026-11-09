@@ -353,6 +353,23 @@ namespace Game.Battle.Model.Systems
         }
     }
 
+    /// <summary>진형 전환 (R-56): 남은 틱이 다 되면 바꾸던 진형으로.</summary>
+    internal static class FormationChangeSystem
+    {
+        public static void Step(BattleContext ctx)
+        {
+            foreach (var corps in ctx.Corps)
+            {
+                if (corps.PendingFormation == null) continue;
+                if (!corps.InBattle) { corps.PendingFormation = null; corps.ReformTicksLeft = 0; continue; }
+                if (--corps.ReformTicksLeft > 0) continue;
+                corps.Formation = corps.PendingFormation;
+                corps.PendingFormation = null;
+                corps.ReformTicksLeft = 0;
+            }
+        }
+    }
+
     /// <summary>사기: 병력 손실·측면 피격·군량 바닥으로 떨어지고, 싸우지 않을 때 시작값까지 회복.</summary>
     internal static class MoraleSystem
     {
@@ -366,7 +383,12 @@ namespace Game.Battle.Model.Systems
                 Fix m = corps.Morale;
                 long start = corps.StartTroops;
                 if (corps.LostThisTick > 0 && start > 0)
-                    m -= c.MoraleLossPerPercentTroops * Fix.FromRatio(corps.LostThisTick * 100, start);
+                {
+                    Fix loss = c.MoraleLossPerPercentTroops * Fix.FromRatio(corps.LostThisTick * 100, start);
+                    // 용맹 (R-56): 용맹이 높은 장수의 군단은 손실에 덜 흔들린다
+                    if (ctx.IsEnabled(RuleFlagIds.Valor)) loss = loss * c.ValorMoraleLossMultiplier(c.Valor(corps.Setup.General.Might, corps.Setup.General.Leadership));
+                    m -= loss;
+                }
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;
                 // 휴식은 싸우게 되면 깨진다 (battle.md 4.3.4)
                 if (corps.Resting && (corps.Engaged || corps.BeingHit)) corps.Order.Mode = HoldModes.Normal;
