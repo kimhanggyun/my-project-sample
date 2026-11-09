@@ -332,7 +332,7 @@ namespace Game.Flow
             _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
             var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog);
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
-            if (v.Valid && TerritoryBattles.Captures(s, v)) _owners[TerritoryBattles.RegionOf(s.StepId)] = new TerritoryOwner { RegionId = TerritoryBattles.RegionOf(s.StepId), OwnerAccountId = AccountId, SinceUnixSeconds = at };
+            if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
             if (v.Valid && hired != null)
             {
                 foreach (var u in hired.Uses) _hireLog.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
@@ -346,8 +346,16 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
-            var v = ActionVerifier.Apply(_actions, _save, s, Now, out var json, out var at);
-            if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
+            // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 (참고 서버와 같은 검사)
+            var claimed = new HashSet<string>(StringComparer.Ordinal);
+            bool ServerCheck(PlayerAction x)
+            {
+                if (x?.Kind != ActionKinds.MailClaim) return true;
+                var m = _mail.Find(y => y.Id == x.MailId);
+                return m != null && m.Resource == x.PayWith && m.Amount == x.Count && claimed.Add(m.Id);
+            }
+            var v = ActionVerifier.Apply(_actions, _save, s, Now, out var json, out var at, ServerCheck);
+            if (v.Valid) { Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at }); _mail.RemoveAll(m => claimed.Contains(m.Id)); }
             v.Save = Copy(_save);
             done?.Invoke(v);
         }
@@ -419,15 +427,24 @@ namespace Game.Flow
         /// <summary>영토 주인 (가짜: 메모리만, 이긴 영토 전투로).</summary>
         private readonly Dictionary<string, TerritoryOwner> _owners = new Dictionary<string, TerritoryOwner>();
 
-        public void GetTerritory(Action<TerritoryResponse> done)
+        private readonly List<Mail> _mail = new List<Mail>();
+        private Game.Territory.TerritoryDefs _territory;
+        private Game.Territory.TerritoryDefs TerritoryData => _territory ?? (_territory = TerritoryBattles.TryLoad(_source));
+
+        public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(TerritoryLedger.View(TerritoryData, _owners, AccountId, Now));
+
+        public void CollectTerritory(Action<MailListResponse> done) =>
+            done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m)) });
+
+        private void SendMail(string account, Mail m)
         {
-            var r = new TerritoryResponse();
-            foreach (var o in _owners.Values) r.Owners.Add(new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds });
-            done?.Invoke(r);
+            if (account != AccountId) return; // 가짜 서버에는 나 말고 다른 유저가 없다
+            m.Id = "m-" + (_mail.Count + 1) + "-" + m.CreatedAtUnixSeconds;
+            _mail.Add(m);
         }
 
-        /// <summary>가짜 시장의 등록자는 고용하지 않으므로 우편은 없다.</summary>
-        public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse());
+        /// <summary>우편: 영토 수입만 (가짜 시장의 등록자는 내 등록을 고용하지 않는다).</summary>
+        public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse { Mail = new List<Mail>(_mail) });
 
         private long Now => _time.UtcNow.ToUnixTimeSeconds();
         private static CloudSave Copy(CloudSave s) => new CloudSave { Revision = s.Revision, Json = s.Json, SavedAtUnixSeconds = s.SavedAtUnixSeconds };

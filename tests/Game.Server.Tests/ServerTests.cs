@@ -230,6 +230,10 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.OK, (await c.PostAsync(Battles, Body(won))).StatusCode);
             var owner = Assert.Single((await Read<TerritoryResponse>(await c.GetAsync(territory))).Owners);
             Assert.Equal("dev_zone_a1", owner.RegionId);
+            Assert.NotNull(owner.Pending); // 내 지역: 쌓인 수입 (시계가 멈춰 있어 0)
+            var collect = await c.PostAsync(OnlineRoutes.TerritoryCollect(ServerSetup.DefaultGame), null);
+            Assert.Equal(HttpStatusCode.OK, collect.StatusCode);
+            Assert.Empty((await Read<MailListResponse>(collect)).Mail);
         }
 
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>

@@ -34,6 +34,8 @@ namespace Game.Territory
         public bool SeasonOnly { get; internal set; }
         /// <summary>주인 없는 지역의 AI 수비군 (스텝과 같은 JSON 형식: map·maxMinutes·camp·enemy …).</summary>
         public JObject Defense { get; internal set; }
+        /// <summary>차지한 동안 시간당 쌓이는 자원 (자원 id → 양, R-47).</summary>
+        public IReadOnlyDictionary<string, long> IncomePerHour { get; internal set; }
     }
 
     /// <summary>지역 하나: 경계(다각형), 상위 지역, 이웃, 필요 군단 수(덮어쓰기), 전투 템플릿.</summary>
@@ -65,6 +67,22 @@ namespace Game.Territory
         public IReadOnlyDictionary<string, RegionDef> Regions { get; private set; }
         /// <summary>파일 순서 (같은 단계에서 겹치면 앞의 것).</summary>
         public IReadOnlyList<RegionDef> Ordered { get; private set; }
+        /// <summary>받지 않고 쌓이는 최대 시간 (그 뒤로는 더 쌓이지 않는다).</summary>
+        public long IncomeCapHours { get; private set; }
+
+        private static Dictionary<string, long> ReadIncome(JObject o, string ctx)
+        {
+            var d = new Dictionary<string, long>();
+            if (o == null) return d;
+            foreach (var p in o.Properties())
+            {
+                if (p.Name.StartsWith("_")) continue;
+                long v = JsonUtil.RequireLong(o, p.Name, ctx + ".income");
+                if (v < 0) throw new DataException($"{ctx}.income.{p.Name}: 0 이상이어야 합니다.");
+                d[p.Name] = v;
+            }
+            return d;
+        }
 
         public static TerritoryDefs Load(IDataSource source)
         {
@@ -80,6 +98,7 @@ namespace Game.Territory
                     RequiredLegions = (int)JsonUtil.RequireLong(o, "requiredLegions", File + ".levels." + p.Name),
                     SeasonOnly = o.Value<bool?>("seasonOnly") ?? false,
                     Defense = o["defense"] as JObject,
+                    IncomePerHour = ReadIncome(o["income"] as JObject, File + ".levels." + p.Name),
                 };
                 if (levels[p.Name].Defense == null || !(levels[p.Name].Defense["enemy"] is JArray en) || en.Count == 0)
                     throw new DataException($"{File}.levels.{p.Name}: 수비군(defense.enemy)이 있어야 합니다.");
@@ -135,11 +154,28 @@ namespace Game.Territory
                     if (!((List<string>)other.Neighbors).Contains(r.Id)) throw new DataException($"{File}: 이웃은 서로여야 합니다 ('{r.Id}' → '{n}').");
                 }
             }
-            return new TerritoryDefs { Levels = levels, Regions = regions, Ordered = ordered };
+            long cap = root.Value<long?>("incomeCapHours") ?? 24;
+            if (cap < 1) throw new DataException($"{File}: incomeCapHours는 1 이상.");
+            return new TerritoryDefs { Levels = levels, Regions = regions, Ordered = ordered, IncomeCapHours = cap };
         }
 
         /// <summary>그 지역을 차지하려면 필요한 군단 수: 지역별 값, 없으면 단계 기본값.</summary>
         public int RequiredLegions(RegionDef r) => r.RequiredLegionsOverride ?? Levels[r.Level].RequiredLegions;
+
+        /// <summary>
+        /// 쌓인 수입 (R-47): 자원마다 시간당 양 × 쌓인 초 ÷ 3600 (내림). 쌓인 초 = 지금 − 마지막으로 받은(또는 차지한) 시각, 최대 incomeCapHours.
+        /// </summary>
+        public Dictionary<string, long> Accrued(RegionDef r, long sinceUnixSeconds, long nowUnixSeconds)
+        {
+            var result = new Dictionary<string, long>();
+            long seconds = System.Math.Max(0, System.Math.Min(nowUnixSeconds - sinceUnixSeconds, IncomeCapHours * 3600));
+            foreach (var kv in Levels[r.Level].IncomePerHour)
+            {
+                long v = kv.Value * seconds / 3600;
+                if (v > 0) result[kv.Key] = v;
+            }
+            return result;
+        }
 
         /// <summary>그 지역의 AI 수비군 (단계 기본값 + 지역 덮어쓰기, 사본).</summary>
         public JObject DefenseFor(RegionDef r)

@@ -193,7 +193,9 @@ namespace Game.Unity.Screens
     public sealed class MailScreen : GameScreen
     {
         private readonly string _notice;
-        public MailScreen(string notice = null) { _notice = notice; }
+        private readonly string _backTab;
+        /// <param name="backTab">[뒤로]로 돌아갈 메인 탭 (고용 / 영토).</param>
+        public MailScreen(string notice = null, string backTab = "hiring") { _notice = notice; _backTab = backTab; }
 
         public override void Build()
         {
@@ -214,11 +216,12 @@ namespace Game.Unity.Screens
                 {
                     var item = m;
                     var card = Ui.Card(list, m.Id, 20, 6);
-                    Ui.Label(card, T("ui.hire.mailLine", m.Amount.ToString("N0"), T("resource." + m.Resource)), Ui.FontSmall);
-                    Ui.Button(card, T("ui.hire.claim"), () => App.Show(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"))), 72, fontSize: 26);
+                    Ui.Label(card, T(m.Kind == MailKinds.TerritoryIncome ? "ui.mail.territoryIncome" : "ui.hire.mailLine", m.Amount.ToString("N0"), T("resource." + m.Resource),
+                        m.RegionId != null ? T("region." + m.RegionId) : ""), Ui.FontSmall);
+                    Ui.Button(card, T("ui.hire.claim"), () => App.Show(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
                 }
             });
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("hiring"));
+            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain(_backTab));
         }
     }
 

@@ -92,7 +92,9 @@ app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStor
 
 // 영토 (R-46)
 app.MapGet("/v1/games/{game}/territory", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
-    InGame(req, p, r, game, Now(), (id, g) => Json(g.Territory())));
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.Territory(id))));
+app.MapPost("/v1/games/{game}/territory/collect", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.CollectTerritory(id))));
 
 app.Run();
 

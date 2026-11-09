@@ -32,6 +32,16 @@ namespace Game.Unity.Screens
             }
             Ui.Label(root, ctx.T("ui.territory.note"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
             var status = Ui.Label(root, "", Ui.FontSmall);
+            if (ctx.OnlineEnabled)
+            {
+                var tools = Ui.Row(root, "Income", 88, 8);
+                Ui.Button(tools, ctx.T("ui.territory.collect"), () => ctx.CollectTerritory(r =>
+                {
+                    if (root == null) return;
+                    app.Show(new MailScreen(r == null ? ctx.T("ui.hire.failed") : r.Mail.Count == 0 ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.collected", r.Mail.Count), "territory"));
+                }), 88, fontSize: 28);
+                Ui.Button(tools, ctx.T("ui.hire.mail"), () => app.Show(new MailScreen(null, "territory")), 88, fontSize: 28);
+            }
             Ui.Button(root, ctx.T("ui.territory.locate"), () =>
             {
                 status.text = ctx.T("ui.territory.locating");
@@ -82,10 +92,19 @@ namespace Game.Unity.Screens
                     if (kv.Value == null) continue;
                     kv.Value.text = res == null ? ctx.T("ui.hire.failed")
                         : !owners.TryGetValue(kv.Key, out var o) ? ctx.T("ui.territory.owner")
-                        : o.OwnerAccountId == ctx.AccountId ? Ui.Colored(ctx.T("ui.territory.mine"), Palette.Good)
+                        : o.OwnerAccountId == ctx.AccountId ? Ui.Colored(ctx.T("ui.territory.mine"), Palette.Good) + "  " + Pending(ctx, o)
                         : Ui.Colored(ctx.T("ui.territory.others"), Palette.Enemy);
                 }
             });
+        }
+
+        /// <summary>쌓인 수입 한 줄 (R-47).</summary>
+        private static string Pending(GameContext ctx, TerritoryOwner o)
+        {
+            if (o.Pending == null || o.Pending.Count == 0) return ctx.T("ui.territory.pendingNone");
+            var parts = new List<string>();
+            foreach (var kv in o.Pending) parts.Add(ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
+            return ctx.T("ui.territory.pending", string.Join(" · ", parts));
         }
     }
 

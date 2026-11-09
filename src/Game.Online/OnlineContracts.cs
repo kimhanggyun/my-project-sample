@@ -36,6 +36,8 @@ namespace Game.Online
         public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
         /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
         public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
+        /// <summary>내 지역의 쌓인 수입을 우편으로 받기 (POST).</summary>
+        public static string TerritoryCollect(string game) => Territory(game) + "/collect";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -120,6 +122,10 @@ namespace Game.Online
         public string RegionId { get; set; }
         public string OwnerAccountId { get; set; }
         public long SinceUnixSeconds { get; set; }
+        /// <summary>마지막으로 수입을 받은 시각 (처음엔 차지한 시각).</summary>
+        public long CollectedUnixSeconds { get; set; }
+        /// <summary>요청한 계정이 주인일 때만: 지금 받을 수 있는 수입 (자원 id → 양).</summary>
+        public Dictionary<string, long> Pending { get; set; }
     }
 
     public sealed class TerritoryResponse
@@ -259,12 +265,16 @@ namespace Game.Online
         public long Amount { get; set; }
         /// <summary>고용 보상이면 등록 id.</summary>
         public string ListingId { get; set; }
+        /// <summary>영토 수입이면 지역 id.</summary>
+        public string RegionId { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
     }
 
     public static class MailKinds
     {
         public const string HireReward = "hireReward";
+        /// <summary>영토 수입 (차지한 지역에서 쌓인 자원, R-47). ListingId 칸 대신 RegionId.</summary>
+        public const string TerritoryIncome = "territoryIncome";
     }
 
     public sealed class MailListResponse
@@ -390,6 +400,8 @@ namespace Game.Online
 
         /// <summary>영토 주인 목록 (닿지 않으면 null).</summary>
         void GetTerritory(Action<TerritoryResponse> done);
+        /// <summary>내 지역의 쌓인 수입을 우편으로 (보낸 우편, 닿지 않으면 null).</summary>
+        void CollectTerritory(Action<MailListResponse> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -408,6 +420,7 @@ namespace Game.Online
         public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
+        public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

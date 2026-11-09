@@ -179,6 +179,7 @@
 | R-44 | **고용 제한·이력**: 한 계정의 지난 24시간 고용 수 + 이번 전투의 고용 수 ≤ 하루 상한(hire.dailyMax), 같은 등록은 마지막 고용 시각 + 대기시간(hire.cooldownMinutes)이 지나야 다시 고용 (시각 = 전투 기록 시각, R-42). 넘으면 `hireLimit`. 이력은 서버가 재현해 확정한 전투로만 쌓는다: 고용이 든 군단(장수 = 지휘한 군단, 부대 = 들어간 군단)의 상태로 포로 → 포로, 궤멸 → 궤멸, 퇴각 → 퇴각, 그 밖은 아군 승리면 승 아니면 패. 잃은 병력은 장수 = 군단 전체, 부대 = 그 부대. 최근 전투는 hire.recentMax개. 다시 등록해도 이력은 이어진다 | [hiring.md](content/hiring.md) 3·4장 |
 | R-45 | **좌표 → 지역·공격 가능 지역**: 좌표는 백만분의 1도 정수. 지역은 큰 단계(시·도)부터 그 상위 지역 안에서 경계 다각형이 점을 품는(경계선 위 포함) 첫 지역을 찾아 가장 작은 단계까지 내려간다. 공격할 수 있는 지역 = 찾은 단계마다 지금 지역 + 그 이웃(같은 단계, 서로). 차지에 필요한 군단 수 = 지역 값, 없으면 단계 기본값 | [territory.md](content/territory.md) 2·3장 |
 | R-46 | **영토 전투·차지**: 지역의 수비군(단계 기본값 + 지역 덮어쓰기, 지역 지형)으로 스텝 "territory.<지역>"을 만든다. 출진 조건: 혼자 차지할 수 있는 단계(필요 군단 1, 시즌 행사 단계 아님) · 공격자 위치에서 공격할 수 있는 지역(R-45). 결과 반영은 스토리와 같되 스텝 클리어·첫 보상·탐색 기억·구출은 없다. 서버가 재현해 맞고 아군이 이기면 그 지역 주인 = 공격자 (이전 주인은 바뀐다) | [territory.md](content/territory.md) 5장 |
+| R-47 | **영토 수입**: 차지한 지역마다 단계의 시간당 자원(income)이 쌓인다. 쌓인 양 = 시간당 양 × 쌓인 초 ÷ 3600 (내림), 쌓인 초 = 지금 − 마지막으로 받은(처음엔 차지한) 시각, 최대 incomeCapHours. 받기는 서버가 우편으로 보내고(받은 시각 = 지금) 우편은 행동 mail.claim으로 받는다. 남에게 빼앗기면 그때까지 쌓인 것을 이전 주인에게 우편으로 정산하고, 새 주인은 차지한 시각부터. 이미 내 지역을 다시 이기면 그대로 | [territory.md](content/territory.md) 6장 |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
@@ -214,7 +215,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
+- 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
 ## 9. 기준 전투
@@ -255,3 +256,4 @@
 | v1.11 | 2026-11-09 | R-44 고용 제한(하루 고용 수·대기시간)·이력 추가 |
 | v1.12 | 2026-11-09 | R-45 좌표 → 지역·공격 가능 지역 추가 |
 | v1.13 | 2026-11-09 | R-46 영토 전투·차지 추가 |
+| v1.14 | 2026-11-09 | R-47 영토 수입 추가 |
