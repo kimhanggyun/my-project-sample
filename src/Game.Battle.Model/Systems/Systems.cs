@@ -188,6 +188,7 @@ namespace Game.Battle.Model.Systems
                 corps.HitFromSide = false;
                 corps.BeingHit = false;
                 corps.LostThisTick = 0;
+                foreach (var u in corps.Units) u.AttackTarget = null;
             }
             int variance = (int)c.DamageVariancePp.FloorToLong();
             _attack.Battle = ctx;
@@ -220,6 +221,7 @@ namespace Game.Battle.Model.Systems
                     Fix baseDamage = Fix.FromInt(u.Troops) * c.BaseDamagePerTroopPerSecond * c.TickSeconds;
                     var result = calculator.Calculate(baseDamage, _mods);
                     v.PendingLoss += result.Final;
+                    u.AttackTarget = v;
                     a.Engaged = true;
                     dc.BeingHit = true;
                     if (_attack.Side != AttackSide.Front && ctx.IsEnabled(RuleFlagIds.FlankBonus)) dc.HitFromSide = true;
