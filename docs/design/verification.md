@@ -186,6 +186,7 @@
 | R-51 | **장수 모집**: 재화를 내고 1회·10회 (모자라면 아무것도 바뀌지 않음). 한 번마다: 천장 횟수에 닿았으면 천장 등급, 10회의 마지막에 아직 보장 등급 이상이 없으면 보장 등급 이상 중에서(확률 비율), 아니면 등급 확률(누적 비교)로 등급을 고르고, 그 등급의 목록 장수 중 고르게 하나. 천장 등급 이상이 나오면 천장 수를 0으로, 아니면 +1. 이미 있는 장수는 조각 +1, 없으면 레벨 1로 들어온다. 같은 세이브·같은 시드면 같은 결과. 공개 확률 = 등급 확률 ÷ 그 등급 장수 수 | [generals.md](content/generals.md) 5장 |
 | R-52 | **부대 키우기**: 훈련 = 돈(병력+부상병 1,000명당 goldPer1000, 올림)을 내고 훈련도 +step, 상한 max. 승급 = 데이터의 from → to(to의 부모가 from)만, 훈련도 ≥ 조건·조건 스텝 클리어·돈이 모두 될 때, 병력·부상병·훈련도·결속은 그대로. 전투 보정 = 공격 부대 훈련도 × attackPp − 방어 부대 훈련도 × defensePp (%p, 훈련도 0이면 보정 없음) | [troop-growth.md](content/troop-growth.md) |
 | R-53 | **숨은 보상**: 전투가 끝나면 데이터의 숨은 보상마다 (스텝 지정이면 그 스텝만, victory면 이겼을 때만) 조건을 **모두** 만족하면 받는 장수(지휘 장수 / 일기토로 쓰러뜨린 장수 / 그 스킬을 쓴 장수)에게 스킬·특성. 요구 능력치가 모자라거나 이미 가졌으면 스킬북·특성서로 보관. once면 계정당 한 번. 도감은 찾은 것만 이름·보상, 못 찾은 것은 "???"와 힌트. 예: step04 손실 5% 이하로 이김 → 지휘 장수에게 재정비, step05 궁병 없이 이김 → 특성 야습 (기본 편성은 궁병이 있어 안 나옴) | [content/secrets.md](content/secrets.md) |
+| R-54 | **전투 녹화**: 녹화 = 전투 설정(스텝 규칙을 뺀 것: 시드·군단·대결·탐색·연출·환경) + 명령 기록 + 결과 지문. 재생은 스텝 규칙(데이터·맵·보정·스위치)을 **지금 데이터**로 다시 채워 같은 틱에 같은 명령을 넣는다 → 같은 결과 지문. 지문이 다르면 "규칙이 바뀌어 다시 볼 수 없음", 스텝이 없거나 형식이 다르면 "읽을 수 없음". 내 녹화는 새것이 앞, 한도(maxSaved)를 넘으면 가장 오래된 것부터 지움 | [content/replay.md](content/replay.md) |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
@@ -221,7 +222,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`.
+- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`.
 - 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, 연합(R-49, R-50)은 `Campaign/AllianceTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
@@ -270,3 +271,4 @@
 | v1.18 | 2026-11-09 | R-51 장수 모집 추가 |
 | v1.19 | 2026-11-09 | R-52 부대 키우기(훈련·승급·훈련도 보정) 추가 |
 | v1.20 | 2026-11-09 | R-53 숨은 보상(조건·받는 장수·보관·한 번만·도감) 추가 |
+| v1.21 | 2026-11-09 | R-54 전투 녹화(저장·재생·버전 확인) 추가 |

@@ -89,6 +89,9 @@ namespace Game.Unity.Boot
             c.Startup = StartupFlow.Load(data);
             c.StartupRecord = StartupFlow.ReadRecord(saveStore);
             c.Actions = new PlayerActionRunner(c.Defs);
+            c.ReplayRules = ReplayRules.Load(data);
+            c.ReplayService = new ReplayService(c.Flow);
+            c.Replays = ReplayLibrary.Read(saveStore);
 
             var choices = ReadServiceChoices(config, serviceConfigFile);
             var cfg = new ServiceConfig(choices);
@@ -396,6 +399,25 @@ namespace Game.Unity.Boot
         public long Resource(string id) => new Wallet(State.Wallet).Get(id);
 
         public void Save() => Saves.Save(State);
+
+        // ---- 전투 녹화 (replay.md, 기기에만) ----
+        public ReplayRules ReplayRules { get; private set; }
+        public ReplayService ReplayService { get; private set; }
+        public ReplayLibrary Replays { get; private set; } = new ReplayLibrary();
+
+        /// <summary>끝난 전투를 내 녹화에 더한다. 한도를 넘으면 가장 오래된 녹화를 지운다.</summary>
+        public ReplayRecord SaveReplay(SortiePlan plan, IReadOnlyList<Game.Battle.Model.Commands.BattleCommand> commands, Game.Battle.Model.Simulation.BattleResult result)
+        {
+            var r = ReplayService.Capture(plan, commands, result, Clock.UtcNow.ToUnixTimeSeconds());
+            Replays.Add(r, ReplayRules.MaxSaved);
+            Replays.Write(_saveStore);
+            return r;
+        }
+
+        public void DeleteReplay(string id)
+        {
+            if (Replays.Remove(id)) Replays.Write(_saveStore);
+        }
 
         /// <summary>세이브를 지우고 새 게임 상태로.</summary>
         public void ResetSave()

@@ -126,6 +126,19 @@ namespace Game.Flow
         public StepDef LoadStep(string stepId) =>
             TerritoryBattles.IsTerritoryStep(stepId) ? TerritoryBattles.StepFor(Territory, TerritoryBattles.RegionOf(stepId)) : StepDef.Load(_source, stepId);
 
+        /// <summary>
+        /// 스텝에서 정해지는 전투 규칙 (데이터·맵·보정·스위치)을 채운다. 녹화 재생이 기록에 없는 부분을 지금 데이터로 다시 채울 때 쓴다 (replay.md 2·4장).
+        /// <see cref="Prepare"/>와 같은 값이어야 한다 (녹화 테스트가 같은 결과인지 본다).
+        /// </summary>
+        public void ApplyStepRules(BattleSetup setup, StepDef step)
+        {
+            setup.Defs = _defs;
+            setup.Map = MapDef.Load(_source, step.Map);
+            setup.Balance = _defs.ResolveBalance(step.BalanceOverrides);
+            setup.Combat = _defs.ResolveCombat(step.CombatOverrides);
+            setup.Flags = _defs.ResolveFlags(step.RuleOverrides);
+        }
+
         public StoryFlow(DefinitionSet defs, IDataSource source, ITimeProvider time)
         {
             _defs = defs;
