@@ -51,6 +51,8 @@ namespace Game.Battle.Model.Simulation
         public bool IsOver => Result != null;
         public BattleResult Result { get; private set; }
         public IReadOnlyList<BattleCommand> CommandLog => _log;
+        /// <summary>전투 직전 대결 결과 (만들 때 이미 끝난다, setup.Contests 순서).</summary>
+        public IReadOnlyList<Contests.ContestResult> PreBattleContests => _contests;
 
         public BattleSimulation(BattleSetup setup, BattleExtensions extensions = null)
         {

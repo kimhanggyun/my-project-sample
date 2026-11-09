@@ -104,13 +104,7 @@ namespace Game.Battle.Model.Contests
         }
 
         /// <summary>지금 고를 수 있는 행동 id (필살은 기운이 가득 찼을 때만).</summary>
-        public List<string> Available(ContestFighter f)
-        {
-            var list = new List<string>();
-            foreach (var a in Def.Actions)
-                if (!a.RequiresFullCharge || f.Charge >= Def.SpecialCharge) list.Add(a.Id);
-            return list;
-        }
+        public List<string> Available(ContestFighter f) => Def.AvailableFor(f.Charge);
 
         public bool CanChoose(ContestFighter f, string actionId) => Available(f).Contains(actionId);
 

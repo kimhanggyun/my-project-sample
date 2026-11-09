@@ -39,6 +39,15 @@ namespace Game.Data.Defs
         /// <summary>결과 종류(win, fall, retreat, draw) → 전투 영향 값.</summary>
         public IReadOnlyDictionary<string, JObject> BattleEffects { get; internal set; }
 
+        /// <summary>기운(charge)이 이만큼일 때 고를 수 있는 행동 id (필살은 기운이 가득 찼을 때만).</summary>
+        public List<string> AvailableFor(Fix charge)
+        {
+            var list = new List<string>();
+            foreach (var a in Actions)
+                if (!a.RequiresFullCharge || charge >= SpecialCharge) list.Add(a.Id);
+            return list;
+        }
+
         public ContestActionDef Action(string id)
         {
             foreach (var a in Actions) if (a.Id == id) return a;
