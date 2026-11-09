@@ -105,7 +105,9 @@ namespace Game.Unity.UI
             g.childControlHeight = true;
             g.childForceExpandWidth = true;
             g.childForceExpandHeight = true;
-            Size(rt, height);
+            // 줄 높이는 고정: 자식을 세로로 채우게 하면(force expand) 줄 자체가 남는 세로 공간을 나눠 가져
+            // 버튼 줄·상단 막대가 커지고 전장 같은 flexible 영역이 작아진다
+            Size(rt, height).flexibleHeight = 0;
             return rt;
         }
 

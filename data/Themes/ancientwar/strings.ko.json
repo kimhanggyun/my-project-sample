@@ -602,5 +602,18 @@
   "ui.limitBreak.done": "한계 돌파! 레벨 상한 {0}",
   "ui.limitBreak.ok": "한계 돌파할 수 있습니다",
   "ui.limitBreak.noGeneral": "없는 장수입니다",
-  "ui.limitBreak.notEnoughShards": "조각이 모자랍니다 (모집에서 같은 장수가 또 나오면 조각 1개)"
+  "ui.limitBreak.notEnoughShards": "조각이 모자랍니다 (모집에서 같은 장수가 또 나오면 조각 1개)",
+  "battleType.field": "야전",
+  "battleType.siege": "공성전",
+  "battleType.fortress": "성새전",
+  "weather.clear": "맑음",
+  "weather.heat": "무더위",
+  "weather.cold": "혹한",
+  "weather.rain": "비",
+  "weather.fog": "안개",
+  "weather.gale": "강풍",
+  "timeOfDay.day": "낮",
+  "timeOfDay.dusk": "저녁",
+  "timeOfDay.night": "밤",
+  "battleType.naval": "수전"
 }

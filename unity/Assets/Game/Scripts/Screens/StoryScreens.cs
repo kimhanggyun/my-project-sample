@@ -60,9 +60,9 @@ namespace Game.Unity.Screens
             Ui.Size(body.parent.parent, flexibleHeight: 1);
 
             var info = Ui.Card(body, "Conditions");
-            Ui.Label(info, T("ui.step.battleType", step.BattleType));
+            Ui.Label(info, T("ui.step.battleType", T("battleType." + step.BattleType)));
             Ui.Label(info, T("ui.step.maxMinutes", step.MaxMinutes));
-            Ui.Label(info, T("ui.step.conditions", step.Weather, step.TimeOfDay));
+            Ui.Label(info, T("ui.step.conditions", T("weather." + step.Weather), T("timeOfDay." + step.TimeOfDay)));
             int reserve = 0;
             foreach (var e in step.Enemy) if (e.Reserve) reserve++;
             Ui.Label(info, T("ui.step.enemies", step.Enemy.Count, reserve));

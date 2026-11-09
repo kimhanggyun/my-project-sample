@@ -51,6 +51,33 @@ namespace Game.Unity.EditorTools
             Debug.Log("data/·config/를 " + BuildDataCopier.TargetRoot + "로 복사했습니다 (git에는 넣지 않습니다).");
         }
 
+        /// <summary>
+        /// 주요 화면을 차례로 열어 PNG로 저장 (Play 중에만). 저장 위치: 저장소/captures/날짜_시각/ (git에는 넣지 않음).
+        /// Game 뷰 해상도를 폰 세로(예: 1080x2400)로 두고 누른다.
+        /// </summary>
+        [MenuItem("Game/Capture All Screens")]
+        public static void CaptureAllScreens()
+        {
+            if (!EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("화면 캡처", "Play를 누른 뒤 (타이틀 이후) 다시 고르세요.", "확인");
+                return;
+            }
+            var app = Object.FindFirstObjectByType<GameApp>();
+            if (app == null || app.Context == null) { Debug.LogWarning("GameApp이 준비되지 않았습니다."); return; }
+            string folder = Path.Combine(GameDataPaths.RepoRoot, "captures", System.DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+            var tour = app.StartScreenTour(folder);
+            EditorApplication.CallbackFunction wait = null;
+            wait = () =>
+            {
+                if (!tour.Done && EditorApplication.isPlaying) return;
+                EditorApplication.update -= wait;
+                if (tour.Done) EditorUtility.RevealInFinder(folder);
+            };
+            EditorApplication.update += wait;
+            Debug.Log("화면 캡처를 시작합니다: " + folder);
+        }
+
         [MenuItem("Game/Open Save Folder")]
         public static void OpenSaveFolder() => EditorUtility.RevealInFinder(Application.persistentDataPath);
     }

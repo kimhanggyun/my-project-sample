@@ -119,6 +119,14 @@ namespace Game.Unity.Boot
         /// <summary>화면 전체 배경. 3D 전장처럼 카메라 화면을 보여줄 때 끈다 (화면을 닫을 때 다시 켠다).</summary>
         public void SetBackdrop(bool on) { if (_backdrop != null) _backdrop.enabled = on; }
 
+        /// <summary>개발용: 주요 화면을 차례로 열어 PNG로 저장한다 (<see cref="ScreenTour"/>).</summary>
+        public ScreenTour StartScreenTour(string folder)
+        {
+            var tour = new ScreenTour(this, folder);
+            StartCoroutine(tour.Run());
+            return tour;
+        }
+
         public void ShowTitle() => Show(new TitleScreen());
         public void ShowMain(string tabId = null) => Show(new MainScreen(tabId));
 
