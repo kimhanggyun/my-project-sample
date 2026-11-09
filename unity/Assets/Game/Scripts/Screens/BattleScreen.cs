@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Text;
+using Game.Battle.Model.Control;
 using Game.Battle.Model.Events;
 using Game.Battle.Model.Simulation;
 using Game.Flow;
+using Game.Unity.Boot;
 using Game.Unity.UI;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,31 +12,45 @@ using UnityEngine.UI;
 namespace Game.Unity.Screens
 {
     /// <summary>
-    /// (임시) 전투 화면: 3D 전장 전까지 글자로 상황을 보여준다. 전투 계산은 <see cref="BattleSimulation"/>이 고정 틱으로 하고,
-    /// 이 화면은 실제 시간에 맞춰 틱을 몇 번 돌릴지만 정한다 (화면 속도가 결과를 바꾸지 않는다, R-29).
+    /// (임시) 전투 화면: 2D 전장 + 명령 버튼 (battle.md 4장의 배치를 단순화). 3D 전장은 다음 단계.
+    /// 전투 계산은 <see cref="BattleSimulation"/>이 고정 틱으로 하고, 이 화면은 실제 시간에 맞춰 틱을 몇 번 돌릴지만 정한다 (R-29).
+    /// 입력은 모두 <see cref="BattleControl"/>을 거쳐 명령으로 들어간다 (일시정지 중에도 명령 가능, 다음 틱에 적용).
     /// </summary>
     public sealed class BattleScreen : GameScreen
     {
-        /// <summary>한 프레임에 돌릴 최대 틱 (느린 기기에서 멈춘 듯 보이지 않게).</summary>
         private const int MaxTicksPerFrame = 40;
-        private const int LogLines = 14;
+        private const int LogLines = 5;
+        private const float NoticeSeconds = 2.5f;
         private static readonly int[] Speeds = { 1, 2, 4 };
+        private static readonly string[] MoveModesInOrder = { MoveModes.Normal, MoveModes.Forced, MoveModes.AttackMove };
 
         private readonly SortiePlan _plan;
         private BattleSimulation _sim;
+        private BattleControl _ctl;
         private SpeechPlanner _speech;
+        private BattleMapView _map;
         private float _tickSeconds;
         private float _accumulator;
         private int _speedIndex;
         private bool _paused;
         private int _logRead;
         private bool _finished;
+        private float _noticeLeft;
+        private bool _dirty = true;
 
         private Text _clock;
         private Text _logText;
+        private Text _selectedInfo;
+        private Text _notice;
         private Button _pauseButton;
         private Button _speedButton;
-        private readonly List<(CorpsState corps, Text text)> _rows = new List<(CorpsState, Text)>();
+        private Button _delegateButton;
+        private Button _moveModeButton;
+        private Button _formationButton;
+        private RectTransform _skillRow;
+        private readonly List<(CorpsState corps, Button button, Text text)> _cards = new List<(CorpsState, Button, Text)>();
+        private readonly List<Button> _orderButtons = new List<Button>();
+        private string _skillRowKey;
         private readonly LinkedList<string> _log = new LinkedList<string>();
 
         public BattleScreen(SortiePlan plan) { _plan = plan; }
@@ -43,69 +59,142 @@ namespace Game.Unity.Screens
         {
             _sim = new BattleSimulation(_plan.Setup);
             var ctx = _sim.Context;
+            _ctl = new BattleControl(_sim, StoryFlow.PlayerTeam);
+            _ctl.Refresh();
             _tickSeconds = (float)ctx.Combat.TickSeconds.ToDisplayDouble();
             _speech = new SpeechPlanner(ctx.Defs, ctx.Flags, ctx.Combat.TickSeconds,
                 id => { var c = ctx.FindCorps(id); return c != null && c.Setup.Controller == Controllers.Ai; });
 
-            Ui.Column(Root, 12, 24);
-            Ui.Size(Ui.Label(Root, T(_plan.Step.NameKey), Ui.FontBody, TextAnchor.MiddleCenter), 80);
-            _clock = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-            Ui.Size(_clock, 56);
+            Ui.Column(Root, 8, 16);
 
-            var corpsCard = Ui.Card(Root, "Corps", 20, 6);
-            foreach (var team in new[] { StoryFlow.PlayerTeam, StoryFlow.EnemyTeam })
-            {
-                bool ally = team == StoryFlow.PlayerTeam;
-                Ui.Label(corpsCard, Ui.Colored(T(ally ? "ui.battle.ally" : "ui.battle.enemy"), ally ? Palette.Ally : Palette.Enemy), Ui.FontSmall);
-                foreach (var c in ctx.Corps)
-                    if (c.Team == team) _rows.Add((c, Ui.Label(corpsCard, "", 28)));
-            }
+            // ① 상단: 시간 + 일시정지·배속·끝까지
+            var top = Ui.Row(Root, "Top", 96, 8);
+            _clock = Ui.Label(top, "", Ui.FontSmall, TextAnchor.MiddleLeft);
+            Ui.Size(_clock, flexibleWidth: 2);
+            _pauseButton = Ui.Button(top, "", TogglePause, 96, fontSize: Ui.FontSmall);
+            _speedButton = Ui.Button(top, "", NextSpeed, 96, fontSize: Ui.FontSmall);
+            Ui.Button(top, T("ui.battle.skip"), SkipToEnd, 96, fontSize: Ui.FontSmall);
 
-            var logCard = Ui.Card(Root, "Log", 20, 6);
+            // ② 전장
+            _map = new BattleMapView(Root, _ctl, Ctx, OnTap);
+            float width = GameApp.ReferenceWidth - 32;
+            Ui.Size(_map.Rect, Mathf.Clamp(_map.HeightFor(width), 480f, 860f));
+            _notice = Ui.Label(Root, "", 28, TextAnchor.MiddleCenter, Palette.TextDim);
+            Ui.Size(_notice, 40);
+
+            // ③④ 선택 군단 정보 + 명령
+            var panel = Ui.Card(Root, "Selected", 16, 8);
+            _selectedInfo = Ui.Label(panel, "", 28);
+            var orders = Ui.Row(panel, "Orders", 96, 8);
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.advance"), () => Report(_ctl.Advance()), 96, fontSize: Ui.FontSmall));
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.hold"), () => Report(_ctl.Hold()), 96, fontSize: Ui.FontSmall));
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.retreat"), () => Report(_ctl.Retreat()), 96, fontSize: Ui.FontSmall));
+            _delegateButton = Ui.Button(orders, "", ToggleDelegate, 96, fontSize: Ui.FontSmall);
+            _orderButtons.Add(_delegateButton);
+            var row2 = Ui.Row(panel, "Modes", 96, 8);
+            _moveModeButton = Ui.Button(row2, "", NextMoveMode, 96, fontSize: Ui.FontSmall);
+            _formationButton = Ui.Button(row2, "", () => Report(_ctl.NextFormation()), 96, fontSize: Ui.FontSmall);
+            _orderButtons.Add(_formationButton);
+            _skillRow = Ui.Row(panel, "Skills", 96, 8);
+
+            // 전황 (말풍선·대사)
+            var logCard = Ui.Card(Root, "Log", 16, 4);
             Ui.Size(logCard, flexibleHeight: 1);
-            Ui.Label(logCard, T("ui.battle.log"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-            _logText = Ui.Label(logCard, "", 28, TextAnchor.UpperLeft);
+            _logText = Ui.Label(logCard, "", 26, TextAnchor.UpperLeft);
 
-            var row = Ui.Row(Root, "Controls", Ui.ButtonHeight);
-            _pauseButton = Ui.Button(row, T("ui.battle.pause"), TogglePause);
-            _speedButton = Ui.Button(row, "", NextSpeed);
-            Ui.Button(row, T("ui.battle.skip"), SkipToEnd);
+            // ⑤ 하단: 전군 진군 + 군단 카드
+            var bottom = Ui.Row(Root, "Cards", 120, 8);
+            Ui.Size(Ui.Button(bottom, T("ui.cmd.advanceAll"), () => Report(_ctl.AdvanceAll() > 0), 120, Palette.ButtonActive, Ui.FontSmall), width: 200);
+            foreach (var c in _ctl.OwnCorps())
+            {
+                var corps = c;
+                var b = Ui.Button(bottom, "", () => { _ctl.Select(corps.Id); _dirty = true; }, 120, fontSize: 24);
+                _cards.Add((corps, b, b.GetComponentInChildren<Text>()));
+            }
 
             ReadNewEvents();
             Refresh();
         }
 
+        public override void Close() => _map?.Close();
+
         public override void Tick(float deltaTime)
         {
-            if (_finished || _paused) return;
-            _accumulator += deltaTime * Speeds[_speedIndex];
+            if (_finished) return;
+            if (_noticeLeft > 0 && (_noticeLeft -= deltaTime) <= 0) _notice.text = "";
             int steps = 0;
-            while (_accumulator >= _tickSeconds && steps < MaxTicksPerFrame && !_sim.IsOver)
+            if (!_paused)
             {
-                _sim.Step();
-                _accumulator -= _tickSeconds;
-                steps++;
+                _accumulator += deltaTime * Speeds[_speedIndex];
+                while (_accumulator >= _tickSeconds && steps < MaxTicksPerFrame && !_sim.IsOver)
+                {
+                    _sim.Step();
+                    _accumulator -= _tickSeconds;
+                    steps++;
+                }
+                if (steps >= MaxTicksPerFrame) _accumulator = 0f; // 밀린 시간은 버린다
             }
-            if (steps >= MaxTicksPerFrame) _accumulator = 0f; // 밀린 시간은 버린다 (따라잡으려다 더 느려지지 않게)
             if (steps > 0)
             {
+                _ctl.Refresh();
                 ReadNewEvents();
-                Refresh();
             }
+            if (steps > 0 || _dirty) Refresh();
             if (_sim.IsOver) Finish();
         }
 
-        private void TogglePause()
+        // ---- 입력 ----
+
+        private void OnTap(TapResult r)
         {
-            _paused = !_paused;
-            Refresh();
+            switch (r)
+            {
+                case TapResult.Selected: break;
+                case TapResult.Attack: Notice(T("ui.cmd.done.attack")); break;
+                case TapResult.Move: Notice(T("ui.cmd.done.move")); break;
+                case TapResult.Skill: Notice(T("ui.cmd.done.skill")); break;
+                case TapResult.Rejected: Notice(T("ui.cmd.rejected")); break;
+                default: if (_ctl.Selected == null) Notice(T("ui.cmd.selectFirst")); break;
+            }
+            _dirty = true;
         }
 
-        private void NextSpeed()
+        private void Report(bool accepted)
         {
-            _speedIndex = (_speedIndex + 1) % Speeds.Length;
-            Refresh();
+            Notice(accepted ? T("ui.cmd.accepted") : T("ui.cmd.rejected"));
+            _dirty = true;
         }
+
+        private void Notice(string text)
+        {
+            _notice.text = text;
+            _noticeLeft = NoticeSeconds;
+        }
+
+        private void ToggleDelegate()
+        {
+            if (_ctl.Selected == null) return;
+            Report(_ctl.SetDelegate(!_ctl.Selected.Delegated));
+        }
+
+        private void NextMoveMode()
+        {
+            int i = System.Array.IndexOf(MoveModesInOrder, _ctl.MoveMode);
+            _ctl.SetMoveMode(MoveModesInOrder[(i + 1) % MoveModesInOrder.Length]);
+            _dirty = true;
+        }
+
+        private void PressSkill(string skillId)
+        {
+            bool ok = _ctl.PressSkill(skillId);
+            if (_ctl.TargetingSkill != null) Notice(T("ui.cmd.pickTarget"));
+            else if (ok) Notice(T("ui.cmd.accepted"));
+            else Notice(T("ui.cmd.cancelled"));
+            _dirty = true;
+        }
+
+        private void TogglePause() { _paused = !_paused; _dirty = true; }
+        private void NextSpeed() { _speedIndex = (_speedIndex + 1) % Speeds.Length; _dirty = true; }
 
         private void SkipToEnd()
         {
@@ -125,7 +214,8 @@ namespace Game.Unity.Screens
             App.Show(new ResultScreen(_plan, result, report));
         }
 
-        /// <summary>전투 기록에 새로 쌓인 이벤트 → 말풍선·전황 글.</summary>
+        // ---- 표시 ----
+
         private void ReadNewEvents()
         {
             var events = _sim.Context.Log;
@@ -147,38 +237,87 @@ namespace Game.Unity.Screens
             while (_log.Count > LogLines) _log.RemoveFirst();
         }
 
+        private string GeneralOf(CorpsState c) => c.Setup.General != null ? Ctx.GeneralName(c.Setup.General.Id) : c.Id;
+
         private string CorpsName(string corpsId)
         {
             var c = corpsId == null ? null : _sim.Context.FindCorps(corpsId);
             if (c == null) return corpsId ?? "";
-            string name = c.Setup.General != null ? Ctx.GeneralName(c.Setup.General.Id) : c.Id;
-            return Ui.Colored(name, c.Team == StoryFlow.PlayerTeam ? Palette.Ally : Palette.Enemy);
+            return Ui.Colored(GeneralOf(c), c.Team == StoryFlow.PlayerTeam ? Palette.Ally : Palette.Enemy);
         }
 
         private void Refresh()
         {
+            _dirty = false;
             var ctx = _sim.Context;
             long elapsed = (ctx.Combat.TickSeconds * ctx.Tick).FloorToLong();
             long max = (_plan.Setup.MaxMinutes * 60).FloorToLong();
             _clock.text = T("ui.battle.time", elapsed, max);
+            SetLabel(_pauseButton, _paused ? T("ui.battle.resume") : T("ui.battle.pause"));
+            SetLabel(_speedButton, T("ui.battle.speed", Speeds[_speedIndex]));
 
-            foreach (var (corps, text) in _rows)
+            _map.Refresh();
+
+            var sel = _ctl.Selected;
+            bool can = _ctl.CanCommand(sel);
+            if (sel == null) _selectedInfo.text = T("ui.cmd.selectFirst");
+            else
             {
-                string status = T("ui.corps." + StatusKey(corps.Status));
-                string line = T("ui.battle.corpsLine", CorpsName(corps.Id), corps.Troops.ToString("N0"), corps.StartTroops.ToString("N0"),
-                    corps.Morale.FloorToLong(), corps.Supply.ToString("N0"));
-                line += "  [" + status + "]";
-                if (corps.Delegated) line += " " + T("ui.battle.delegated");
-                text.text = corps.InBattle ? line : Ui.Colored(line, Palette.TextDim);
+                string formation = ctx.Defs.Formations.TryGetValue(sel.Formation.Id, out var f) ? T(f.NameKey) : sel.Formation.Id;
+                string status = T("ui.corps." + StatusKey(sel.Status));
+                _selectedInfo.text = T("ui.cmd.selectedLine", CorpsName(sel.Id), formation, sel.Troops.ToString("N0"), sel.StartTroops.ToString("N0"),
+                    sel.Morale.FloorToLong(), sel.SkillPoints.Points.FloorToLong(), status, OrderName(sel));
+            }
+            foreach (var b in _orderButtons) Ui.SetEnabled(b, can);
+            SetLabel(_delegateButton, sel != null && sel.Delegated ? T("ui.cmd.delegateOff") : T("ui.cmd.delegateOn"));
+            SetLabel(_moveModeButton, T("ui.cmd.moveMode", T("ui.moveMode." + _ctl.MoveMode)));
+            SetLabel(_formationButton, T("ui.cmd.formation"));
+            if (can && _ctl.Formations().Count < 2) Ui.SetEnabled(_formationButton, false);
+            RefreshSkills(can);
+
+            foreach (var (corps, button, text) in _cards)
+            {
+                string line = GeneralOf(corps) + "\n" + corps.Troops.ToString("N0") + (corps.Delegated ? " " + T("ui.battle.delegated") : "");
+                text.text = corps.InBattle ? line : Ui.Colored(line + "\n" + T("ui.corps." + StatusKey(corps.Status)), Palette.TextDim);
+                button.targetGraphic.color = corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled;
             }
 
             var sb = new StringBuilder();
             foreach (var l in _log) sb.AppendLine(l);
             _logText.text = sb.ToString();
-
-            _pauseButton.GetComponentInChildren<Text>().text = _paused ? T("ui.battle.resume") : T("ui.battle.pause");
-            _speedButton.GetComponentInChildren<Text>().text = T("ui.battle.speed", Speeds[_speedIndex]);
         }
+
+        /// <summary>스킬 버튼은 선택 군단·점수·지정 모드가 바뀔 때만 다시 만든다.</summary>
+        private void RefreshSkills(bool can)
+        {
+            var skills = can ? _ctl.Skills() : new List<SkillOption>();
+            var key = new StringBuilder(_ctl.Selected?.Id ?? "-").Append('|').Append(_ctl.TargetingSkill);
+            foreach (var s in skills) key.Append('|').Append(s.SkillId).Append(s.Affordable).Append(s.UsesLeft);
+            if (key.ToString() == _skillRowKey) return;
+            _skillRowKey = key.ToString();
+            Ui.Clear(_skillRow);
+            if (skills.Count == 0)
+            {
+                Ui.Label(_skillRow, T("ui.cmd.noSkills"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+                return;
+            }
+            foreach (var s in skills)
+            {
+                string id = s.SkillId;
+                string label = T(s.NameKey) + " " + s.Cost.FloorToLong() + "·" + s.UsesLeft;
+                var b = Ui.Button(_skillRow, label, () => PressSkill(id), 96, fontSize: 26);
+                Ui.SetEnabled(b, s.Affordable);
+                if (_ctl.TargetingSkill == id) b.targetGraphic.color = Palette.ButtonActive;
+            }
+        }
+
+        private string OrderName(CorpsState c)
+        {
+            if (c.PendingSkill != null) return T("ui.order.skill");
+            return T("ui.order." + c.Order.Kind);
+        }
+
+        private static void SetLabel(Button b, string text) => b.GetComponentInChildren<Text>().text = text;
 
         private static string StatusKey(CorpsStatus s)
         {

@@ -1,0 +1,263 @@
+using System.Collections.Generic;
+using Game.Battle.Model.Commands;
+using Game.Battle.Model.Geometry;
+using Game.Battle.Model.Simulation;
+using Game.Battle.Model.Skills;
+using Game.Data.Defs;
+using Game.Foundation.Math;
+
+namespace Game.Battle.Model.Control
+{
+    /// <summary>스킬 버튼 하나에 보여줄 것.</summary>
+    public sealed class SkillOption
+    {
+        public string SkillId { get; internal set; }
+        public string NameKey { get; internal set; }
+        /// <summary><see cref="SkillDef.TargetType"/>: "self"면 누르자마자 쓴다, 나머지는 대상 지정.</summary>
+        public string TargetType { get; internal set; }
+        public Fix Cost { get; internal set; }
+        public int UsesLeft { get; internal set; }
+        /// <summary>점수·횟수가 되는가 (조건·대상은 쓸 때 다시 확인한다).</summary>
+        public bool Affordable { get; internal set; }
+    }
+
+    /// <summary>전장을 눌렀을 때 일어난 일 (화면이 알림·표시에 쓴다).</summary>
+    public enum TapResult
+    {
+        /// <summary>아무 일 없음 (전장 밖, 선택 없는 빈 땅, 보이지 않는 적).</summary>
+        None,
+        /// <summary>아군 군단을 골랐다.</summary>
+        Selected,
+        /// <summary>적 군단을 공격 대상으로 명령했다.</summary>
+        Attack,
+        /// <summary>그 지점으로 이동 명령.</summary>
+        Move,
+        /// <summary>지정 중이던 스킬을 썼다 (사거리 밖이면 다가간 뒤).</summary>
+        Skill,
+        /// <summary>명령을 받지 않았다 (퇴각 중, 도발, 조건·대상 불가 …).</summary>
+        Rejected,
+    }
+
+    /// <summary>
+    /// 전투 화면의 입력 계층 (battle.md 4.1·4.3): 선택 상태를 한 곳에서 관리하고, 누름·버튼을 <see cref="BattleCommand"/>로 바꿔
+    /// <see cref="BattleSimulation.Issue"/>에 넣는다. 받을지 말지는 전투 규칙이 정한다 (여기서는 규칙을 계산하지 않는다).
+    /// 엔진과 무관하므로 3D 화면·글자 화면·테스트가 같은 것을 쓴다. 좌표는 전장 칸 단위.
+    /// </summary>
+    public sealed class BattleControl
+    {
+        private readonly BattleSimulation _sim;
+
+        public BattleControl(BattleSimulation sim, string team)
+        {
+            _sim = sim;
+            Team = team;
+        }
+
+        /// <summary>이 기기 플레이어의 팀.</summary>
+        public string Team { get; }
+        public BattleContext Context => _sim.Context;
+
+        /// <summary>선택된 아군 군단 (없으면 null).</summary>
+        public CorpsState Selected { get; private set; }
+        /// <summary>대상 지정 중인 스킬 id (없으면 null).</summary>
+        public string TargetingSkill { get; private set; }
+        /// <summary>빈 땅을 눌렀을 때 쓰는 이동 방식 (<see cref="MoveModes"/>).</summary>
+        public string MoveMode { get; private set; } = MoveModes.Normal;
+        /// <summary>군단을 고르는 여유 반경 (칸). 화면이 터치 크기에 맞게 바꾼다.</summary>
+        public Fix PickRadius { get; set; } = Fix.FromInt(2);
+
+        /// <summary>이 플레이어가 지휘하는 군단 (예비 포함, 순서는 전투 순서).</summary>
+        public List<CorpsState> OwnCorps()
+        {
+            var list = new List<CorpsState>();
+            foreach (var c in Context.Corps)
+                if (c.Team == Team && c.Setup.Controller == Controllers.Player) list.Add(c);
+            return list;
+        }
+
+        public bool CanCommand(CorpsState c) => c != null && c.Team == Team && c.Setup.Controller == Controllers.Player && c.Status == CorpsStatus.Active;
+
+        public bool Select(string corpsId)
+        {
+            var c = Context.FindCorps(corpsId);
+            if (c == null || c.Team != Team || c.Setup.Controller != Controllers.Player) return false;
+            Selected = c;
+            TargetingSkill = null;
+            return true;
+        }
+
+        public void ClearSelection()
+        {
+            Selected = null;
+            TargetingSkill = null;
+        }
+
+        /// <summary>선택이 전투에서 빠졌으면 다음 지휘 가능 군단으로 (없으면 해제). 매 틱 뒤에 부른다.</summary>
+        public void Refresh()
+        {
+            if (Selected != null && Selected.InBattle) return;
+            Selected = null;
+            TargetingSkill = null;
+            foreach (var c in OwnCorps())
+                if (CanCommand(c)) { Selected = c; return; }
+        }
+
+        public void SetMoveMode(string mode)
+        {
+            if (mode == MoveModes.Normal || mode == MoveModes.Forced || mode == MoveModes.AttackMove) MoveMode = mode;
+        }
+
+        // ---- 버튼 명령 ----
+
+        /// <summary>전군 진군 (하단 고정 버튼, 4.3.2): 지휘 가능한 모든 군단. 받은 군단 수.</summary>
+        public int AdvanceAll()
+        {
+            int n = 0;
+            foreach (var c in OwnCorps())
+                if (CanCommand(c) && Issue(c, CommandKinds.Advance)) n++;
+            return n;
+        }
+
+        public bool Advance() => Issue(Selected, CommandKinds.Advance);
+        public bool Hold() => Issue(Selected, CommandKinds.Hold);
+        public bool Retreat() => Issue(Selected, CommandKinds.Retreat);
+
+        public bool MoveTo(Vec point, string mode = null) =>
+            Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; });
+
+        public bool Attack(string targetCorpsId) =>
+            Issue(Selected, CommandKinds.Attack, c => c.TargetCorpsId = targetCorpsId);
+
+        public bool ChangeFormation(string formationId) =>
+            Issue(Selected, CommandKinds.ChangeFormation, c => c.FormationId = formationId);
+
+        public bool SetDelegate(bool on) =>
+            Issue(Selected, CommandKinds.Delegate, c => c.Mode = on ? "on" : "off");
+
+        /// <summary>선택 군단이 바꿀 수 있는 진형 (편성에서 배운 진형, 없으면 지금 진형만).</summary>
+        public List<string> Formations()
+        {
+            var list = new List<string>();
+            if (Selected == null) return list;
+            foreach (var f in Selected.Setup.KnownFormations)
+                if (Context.Defs.Formations.ContainsKey(f) && !list.Contains(f)) list.Add(f);
+            if (!list.Contains(Selected.Formation.Id)) list.Insert(0, Selected.Formation.Id);
+            return list;
+        }
+
+        /// <summary>선택 군단의 다음 진형으로 (진형 버튼 한 번 누름).</summary>
+        public bool NextFormation()
+        {
+            var list = Formations();
+            if (list.Count < 2) return false;
+            int i = list.IndexOf(Selected.Formation.Id);
+            return ChangeFormation(list[(i + 1) % list.Count]);
+        }
+
+        // ---- 스킬 (4.2) ----
+
+        public List<SkillOption> Skills()
+        {
+            var list = new List<SkillOption>();
+            if (Selected == null || Selected.KnownSkills == null) return list;
+            foreach (var s in Selected.KnownSkills)
+                list.Add(new SkillOption
+                {
+                    SkillId = s.Id,
+                    NameKey = s.NameKey,
+                    TargetType = s.TargetType,
+                    Cost = s.Cost,
+                    UsesLeft = Selected.SkillPoints.UsesLeft(s.Id),
+                    Affordable = Selected.SkillPoints.CanUse(s.Id, s.Cost, true),
+                });
+            return list;
+        }
+
+        /// <summary>
+        /// 스킬 버튼: 자신 대상이면 바로 쓰고 true. 대상이 필요하면 지정 모드로 들어가고 true (다음 누름이 대상).
+        /// 같은 스킬을 다시 누르면 지정 모드를 끝낸다 (false).
+        /// </summary>
+        public bool PressSkill(string skillId)
+        {
+            if (!CanCommand(Selected) || !Context.Defs.Skills.TryGetValue(skillId ?? "", out var skill)) return false;
+            if (TargetingSkill == skillId) { TargetingSkill = null; return false; }
+            if (skill.TargetType == SkillTargets.Self)
+            {
+                TargetingSkill = null;
+                return Issue(Selected, CommandKinds.UseSkill, c => c.SkillId = skillId);
+            }
+            TargetingSkill = skillId;
+            return true;
+        }
+
+        public void CancelTargeting() => TargetingSkill = null;
+
+        // ---- 전장 누름 (4.1) ----
+
+        /// <summary>
+        /// 전장의 한 점을 눌렀다. 지정 중인 스킬이 있으면 그 대상, 아니면 아군 = 선택, 보이는 적 = (선택이 있으면) 공격, 빈 땅 = (선택이 있으면) 이동.
+        /// </summary>
+        public TapResult Tap(Vec point)
+        {
+            var map = Context.Field.Map;
+            if (!map.InBounds((int)point.X.FloorToLong(), (int)point.Y.FloorToLong())) return TapResult.None;
+            var hit = Pick(point);
+
+            if (TargetingSkill != null && CanCommand(Selected))
+            {
+                var skill = Context.Defs.Skills[TargetingSkill];
+                string id = TargetingSkill;
+                bool ok;
+                if (skill.TargetType == SkillTargets.EnemyCorps || skill.TargetType == SkillTargets.AllyCorps)
+                {
+                    if (hit == null) return TapResult.None; // 군단을 골라야 한다: 지정 모드 유지
+                    ok = Issue(Selected, CommandKinds.UseSkill, c => { c.SkillId = id; c.TargetCorpsId = hit.Id; });
+                }
+                else ok = Issue(Selected, CommandKinds.UseSkill, c => { c.SkillId = id; c.X = point.X; c.Y = point.Y; });
+                TargetingSkill = null;
+                return ok ? TapResult.Skill : TapResult.Rejected;
+            }
+
+            if (hit != null && hit.Team == Team)
+            {
+                if (hit.Setup.Controller != Controllers.Player) return TapResult.None;
+                Select(hit.Id);
+                return TapResult.Selected;
+            }
+            if (Selected == null) return TapResult.None;
+            if (hit != null) return Attack(hit.Id) ? TapResult.Attack : TapResult.Rejected;
+            return MoveTo(point) ? TapResult.Move : TapResult.Rejected;
+        }
+
+        /// <summary>
+        /// 그 점에서 고를 군단: 여유 반경 안에서 가장 가까운 부대원의 군단, 같은 거리면 아군 우선 (4.1). 보이지 않는 적·전투 밖 군단은 고르지 않는다.
+        /// </summary>
+        public CorpsState Pick(Vec point)
+        {
+            CorpsState best = null;
+            Fix bestD = Fix.Zero;
+            Fix r2 = PickRadius * PickRadius;
+            foreach (var c in Context.Corps)
+            {
+                if (!c.InBattle || !Context.IsVisibleTo(Team, c)) continue;
+                foreach (var u in c.Units)
+                {
+                    if (!u.Alive) continue;
+                    Fix d = Vec.DistanceSquared(u.Position, point);
+                    if (d > r2) continue;
+                    bool better = best == null || d < bestD || (d == bestD && c.Team == Team && best.Team != Team);
+                    if (better) { best = c; bestD = d; }
+                }
+            }
+            return best;
+        }
+
+        private bool Issue(CorpsState corps, string kind, System.Action<BattleCommand> fill = null)
+        {
+            if (corps == null) return false;
+            var cmd = new BattleCommand { CorpsId = corps.Id, Kind = kind };
+            fill?.Invoke(cmd);
+            return _sim.Issue(cmd);
+        }
+    }
+}
