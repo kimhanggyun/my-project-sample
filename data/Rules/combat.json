@@ -121,5 +121,14 @@
     "moraleLossCutPerPoint": 0.005,
     "minMoraleLossMultiplier": 0.6,
     "maxMoraleLossMultiplier": 1.4
+  },
+  "tagEffects": {
+    "_comment": "병종 태그 효과 (troops.md 2장, R-58). moraleLossMultiplier = 손실 사기 하락 배율 (그 태그 병력 비율만큼 섞는다), capturePressureMultiplier = 포위 포로 압력이 쌓이는 배율 (그 태그 부대가 살아 있으면). 수치는 예시",
+    "elite": {
+      "moraleLossMultiplier": 0.8
+    },
+    "bodyguard": {
+      "capturePressureMultiplier": 0.5
+    }
   }
 }

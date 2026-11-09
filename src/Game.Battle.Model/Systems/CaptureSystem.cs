@@ -30,7 +30,8 @@ namespace Game.Battle.Model.Systems
                     c.CapturePressure = Fix.Zero;
                     continue;
                 }
-                c.CapturePressure = Fix.Min(Fix.OneValue, c.CapturePressure + k.CapturePressurePerSecond * k.CaptureCheckEverySec);
+                // 근위병 등 (R-58): 장수를 지키는 부대가 있으면 압력이 더디게 쌓인다
+                c.CapturePressure = Fix.Min(Fix.OneValue, c.CapturePressure + k.CapturePressurePerSecond * k.CaptureCheckEverySec * TagEffects.CapturePressureMultiplier(k, c));
                 Fix escape = Fix.Min(Fix.OneValue, c.Setup.General.Might * k.CaptureEscapePerMightPoint);
                 if (ctx.Random.Chance(escape))
                 {

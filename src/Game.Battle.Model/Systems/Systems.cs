@@ -353,6 +353,38 @@ namespace Game.Battle.Model.Systems
         }
     }
 
+    /// <summary>병종 태그 효과 (R-58, combat.json tagEffects).</summary>
+    internal static class TagEffects
+    {
+        /// <summary>손실 사기 하락 배율: 태그마다 1 − (그 태그 병력 비율) × (1 − 배율)을 곱한다.</summary>
+        public static Fix MoraleLossMultiplier(CombatRules c, CorpsState corps)
+        {
+            var map = c.TagMoraleLossMultiplier;
+            if (map.Count == 0) return Fix.OneValue;
+            long total = 0;
+            foreach (var u in corps.Units) total += u.Troops;
+            if (total <= 0) return Fix.OneValue;
+            Fix m = Fix.OneValue;
+            foreach (var kv in map)
+            {
+                long tagged = 0;
+                foreach (var u in corps.Units) if (u.Alive && u.Troop.HasTag(kv.Key)) tagged += u.Troops;
+                if (tagged > 0) m = m * (Fix.OneValue - Fix.FromRatio(tagged, total) * (Fix.OneValue - kv.Value));
+            }
+            return m;
+        }
+
+        /// <summary>포위 포로 압력 배율: 그 태그 부대가 하나라도 살아 있으면 배율을 곱한다.</summary>
+        public static Fix CapturePressureMultiplier(CombatRules c, CorpsState corps)
+        {
+            Fix m = Fix.OneValue;
+            foreach (var kv in c.TagCapturePressureMultiplier)
+                foreach (var u in corps.Units)
+                    if (u.Alive && u.Troop.HasTag(kv.Key)) { m = m * kv.Value; break; }
+            return m;
+        }
+    }
+
     /// <summary>진형 전환 (R-56): 남은 틱이 다 되면 바꾸던 진형으로.</summary>
     internal static class FormationChangeSystem
     {
@@ -387,6 +419,7 @@ namespace Game.Battle.Model.Systems
                     Fix loss = c.MoraleLossPerPercentTroops * Fix.FromRatio(corps.LostThisTick * 100, start);
                     // 용맹 (R-56): 용맹이 높은 장수의 군단은 손실에 덜 흔들린다
                     if (ctx.IsEnabled(RuleFlagIds.Valor)) loss = loss * c.ValorMoraleLossMultiplier(c.Valor(corps.Setup.General.Might, corps.Setup.General.Leadership));
+                    loss = loss * TagEffects.MoraleLossMultiplier(c, corps); // 정예 등 (R-58)
                     m -= loss;
                 }
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;

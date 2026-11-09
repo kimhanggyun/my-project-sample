@@ -190,6 +190,7 @@
 | R-55 | **전투 이어하기**: 전투 중 남긴 기록(설정 + 그때까지의 명령 + 멈춘 틱 + 출진 정보)으로 같은 틱까지 다시 돌린 뒤 이어서 끝까지 하면, 꺼지지 않은 전투와 결과 지문·명령 기록·결과 반영·서버 제출이 모두 같다. 스텝이 없거나 형식이 다르거나 기록대로 명령이 들어가지 않으면 이어 하지 않는다. 끝난 전투는 기록을 남기지 않는다. 고용 출진도 이어 하며, 이어서 끝낸 전투를 올리면 서버가 같은 시장으로 재현해 받아들인다 | [content/battle.md](content/battle.md) 4.5 |
 | R-56 | **규율·용맹**: 규율 = 통솔 × 0.8 + 지략 × 0.2, 용맹 = 무력 × 0.8 + 통솔 × 0.2. 진형 전환 시간 = 3초 × (1 − (규율 − 50) × 0.01) (1~6초, 틱 올림): 통솔 80·지략 50 → **23틱**, 50·50 → 30틱, 20·20 → 39틱. 전환 중에는 이전 진형을 쓰고 받는 피해 +10%p, 원래 진형을 고르면 전환을 그만둔다. 손실 사기 하락 × (1 − (용맹 − 50) × 0.005) (0.6~1.4배): 용맹 74 → 0.88배. 스위치 discipline·valor를 끄면 바로 바뀌고 배율 1 | [content/battle.md](content/battle.md) 2.6 |
 | R-57 | **한계 돌파**: 장수의 조각(모집에서 겹친 장수)으로 단계를 올린다. 단계마다 조각 1·1·2·2·3개 (끝 단계 5), 레벨 상한 = 기본 50 + 단계 × 5. 조각이 모자라거나 끝 단계면 안 됨. 조각 10개로 5단계 → 상한 75, 조각 1개 남음. 상한에 닿아 경험치가 0이던 장수도 돌파하면 다시 오른다. 행동 general.limitBreak (서버도 같은 규칙), 예전 세이브는 0단계 | [content/generals.md](content/generals.md) 5장 |
+| R-58 | **병종 태그 효과**: 손실 사기 하락 × 태그마다 (1 − 그 태그 병력 비율 × (1 − 배율)), 포위 포로 압력 × 배율(그 태그 부대가 살아 있으면). 지금 정예(elite) 사기 0.8, 근위(bodyguard) 포로 압력 0.5. 전원이 그 태그면 배율 그대로: 사기 배율 0.5면 첫 손실의 사기 하락이 정확히 절반, 포로 압력 배율 0.5면 처음 쌓인 압력이 정확히 절반 | [content/troops.md](content/troops.md) 2장 |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
@@ -225,7 +226,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`, 전투 이어하기(R-55)는 `BattleResumeTests.cs`, 규율·용맹(R-56)은 `tests/Game.Tests/Battle/DisciplineValorTests.cs`, 한계 돌파(R-57)는 `GachaTests.cs`.
+- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`, 전투 이어하기(R-55)는 `BattleResumeTests.cs`, 규율·용맹(R-56)은 `tests/Game.Tests/Battle/DisciplineValorTests.cs`, 한계 돌파(R-57)는 `GachaTests.cs`, 병종 태그 효과(R-58)는 `tests/Game.Tests/Battle/TagEffectTests.cs`.
 - 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, 연합(R-49, R-50)은 `Campaign/AllianceTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
@@ -278,3 +279,4 @@
 | v1.22 | 2026-11-09 | R-55 전투 이어하기 추가 |
 | v1.23 | 2026-11-09 | R-56 규율·용맹 1차 추가 (기준 전투 3개 갱신: 진형 전환 시간) |
 | v1.24 | 2026-11-09 | R-57 한계 돌파 추가 |
+| v1.25 | 2026-11-09 | R-58 병종 태그 효과 추가 |
