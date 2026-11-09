@@ -25,6 +25,25 @@
 - IL2CPP 코드 제거로 리플렉션(세이브·데이터의 Newtonsoft)이 깨지지 않게 `unity/Assets/link.xml`에서 규칙 어셈블리를 보존한다.
 - `unity/Assets/Tests/EditMode/GameCoreSmokeTests`: Unity(Mono)에서 데이터 검사와 step01 전투를 돌려 **.NET과 같은 상태 지문**인지 확인한다 (런타임과 무관한 결정성). 규칙·데이터를 바꾸면 기대값을 다시 계산한다.
 
+## 0.6 화면 뼈대 (Step 1b-2, 임시 화면)
+
+목적: 3D·아트 없이 **부팅 → 타이틀 → 메인 → 스토리 → 위임 출진 → 결과** 흐름을 Unity에서 끝까지 돌려 본다. 화면은 코드로 만든 uGUI(기준 1080×1920 세로)이며, 화면 디자인 단계에서 갈아 끼운다.
+
+- 위치: `unity/Assets/Game/Scripts` (어셈블리 `Game.Unity`), `unity/Assets/Game/Editor` (`Game.Unity.Editor`, 에디터 전용).
+- 조립 지점: `GameApp`(MonoBehaviour, Boot 씬에 하나) → `GameContext.Create(데이터, 설정, 세이브 저장소, 시간, 서비스 설정 파일)`.
+  - 데이터: 에디터는 저장소의 `data/`·`config/`를 그대로 읽는다. 빌드는 빌드 직전(`IPreprocessBuildWithReport`)에 `Assets/GameDataBuild/Resources/GameData/`로 복사한 것을 `ResourcesDataSource`로 읽는다 (Android 압축 패키지 안에서도 동기 읽기). 복사본은 git에서 뺀다.
+  - 세이브: `FileSaveStore(Application.persistentDataPath)` + `CampaignSaveService`. 없으면 `StartingKitService.CreateNewGame`.
+  - 외부 서비스: `ServiceRegistry.WithBuiltIns()` + `config/services.development.json`(개발 빌드·에디터) 또는 `services.production.json`(출시 빌드). 실제 SDK 구현은 여기서 등록을 더한다.
+  - 시간: `SystemTimeProvider`. 출진 시드도 시간 서비스에서 만든다.
+- 화면: `GameScreen`을 상속해 추가한다 (`GameApp.Show(화면)`). 메인 화면의 탭은 `ITabView` 구현 + 탭 등록표에 한 줄.
+  - 화면은 보여주기·입력만 한다. 출진 준비·확정·결과 반영은 `StoryFlow.Prepare/Confirm/ApplyResult`, 전투는 `BattleSimulation`, 말풍선은 `SpeechPlanner`.
+  - 전투 화면은 실제 시간에 맞춰 **몇 틱을 돌릴지만** 정한다 (×1/×2/×4, 일시정지, 끝까지). 틱 계산은 고정이므로 화면 속도·프레임이 결과를 바꾸지 않는다 (R-29). 프레임 시간(float)은 화면 진행에만 쓰고 규칙 계산에 넘기지 않는다.
+  - 결과를 반영하면 바로 저장한다. 전투 중에 앱을 끄면 출진(군량 차감)은 저장되지 않은 상태로 남는다 (전투 이어하기는 이후 단계).
+- 문구: 화면 문구는 테마 문자열의 `ui.*` 키. `UnityPackageTests`가 화면 코드의 `ui.*` 키가 문자열 파일에 있는지 확인한다.
+- 에디터 메뉴 `Game ▸ Setup Boot Scene`: Boot 씬(카메라 + GameApp)을 만들어 빌드 목록 맨 앞에 두고 세로 화면으로 설정한다. `Game ▸ Copy Data For Build`, `Game ▸ Open Save Folder`.
+- `unity/Assets`의 `.meta`도 `python3 tools/unity_meta.py`로 만든다 (Unity가 만든 것은 그대로 둔다). `UnityPackageTests`가 빠진 `.meta`를 잡는다.
+- 한글 글꼴: 지금은 내장 글꼴 + OS 글꼴 대체. 정식 글꼴(라이선스 확인)은 화면 디자인 단계에서 넣는다.
+
 ## 1. 어셈블리(모듈) 구성
 
 의존 방향은 위에서 아래로만 흐른다.
@@ -64,7 +83,7 @@ Assets/
 ├─ Tests/
 ├─ Scenes/          Boot(스플래시·로그인), Title, Main(하단 탭), Battle, Result
 ├─ Themes/<테마>/     테마별 그림·모델·UI 스킨·사운드
-└─ StreamingAssets/Data/   Rules/ (공통 규칙) + Themes/<테마>/ (이름·스토리·장수 등)
+└─ (빌드) Resources/GameData/data/ Rules/ (공통 규칙) + Themes/<테마>/ (이름·스토리·장수 등)
 ```
 
 ---
@@ -362,7 +381,7 @@ StepData ─▶ BattleFactory ─(StatCalculator)─▶ 전투 ─▶ BattleResu
 | `StartupFlow` | 앱 시작 순서: 스플래시 → 버전 확인(`IVersionCheck`, 서버 전까지 건너뜀) → 로그인 → 약관 동의 → 타이틀 → 메인 |
 | `ConsentService` | 첫 실행 약관 동의 기록 |
 | `GameServices` | 서비스 묶음 (간단한 의존성 주입 지점) |
-| `IDataRepository` / `JsonDataRepository` | StreamingAssets JSON 로딩·캐시 |
+| `IDataRepository` / `JsonDataRepository` | JSON 로딩·캐시 (빌드: Resources, 에디터: 저장소 data/) |
 | `ISaveService` / `JsonSaveService` | 세이브 슬롯 저장·불러오기 |
 | `SaveData` | 현재 스텝, 장수별 `GeneralProgress`, `CampaignState`(장수 상태·포로·구출 전투), 플레이 기록 |
 | `SettingsService` | 사운드, 배속 기본값, 언어 |

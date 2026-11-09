@@ -19,7 +19,7 @@
 | 대량 병사 | GPU 인스턴싱, 애니메이션 굽기, 거리별 단순화, 품질 자동 조정 | 성능 | 화면 병사 최대한 많이 |
 | 대량 처리 확장 | 필요 시 DOTS | 병사 수천 단위 | |
 | 언어 | C# (규칙은 Unity 비의존 순수 C#) | 서버에서도 같은 코드로 전투 재현 | 결정적 전투, 서버 검증 |
-| 데이터 | JSON (StreamingAssets), Newtonsoft.Json (`com.unity.nuget.newtonsoft-json`) | 텍스트 편집, 클라우드에서도 수정 | 데이터 주도 |
+| 데이터 | JSON (빌드 시 Resources로 복사, 에디터는 저장소 data/ 직접), Newtonsoft.Json (`com.unity.nuget.newtonsoft-json`) | 텍스트 편집, 클라우드에서도 수정 | 데이터 주도 |
 | 결제 | Unity IAP (구글 플레이 + 앱스토어) | 하나로 두 스토어 | 결제 |
 | 광고 | Unity LevelPlay 또는 Google AdMob (중개) | | 광고 |
 | 백엔드 | Unity Gaming Services (인증, 클라우드 저장, Cloud Code C#) 또는 PlayFab | 서버 재현에 같은 C# 코드 사용 가능 | 고용·이력·검증 |

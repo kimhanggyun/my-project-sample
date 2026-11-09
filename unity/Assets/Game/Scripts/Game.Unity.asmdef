@@ -1,0 +1,27 @@
+{
+  "name": "Game.Unity",
+  "rootNamespace": "Game.Unity",
+  "references": [
+    "Game.Foundation",
+    "Game.Data",
+    "Game.Services",
+    "Game.Battle.Model",
+    "Game.Campaign",
+    "Game.Economy",
+    "Game.Progression",
+    "Game.Flow",
+    "Unity.InputSystem",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

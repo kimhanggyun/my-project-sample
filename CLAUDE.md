@@ -12,7 +12,8 @@
 
 ## 테스트
 - `dotnet test GameCore.sln` (규칙 R은 `data/` 현재 값, 수치 N은 `tests/Game.Tests/Fixtures/balance.example.json`)
-- `src/`는 Unity 로컬 패키지이기도 하다. `src/`에 파일·폴더를 추가하면 `python3 tools/unity_meta.py`로 `.meta`를 만든다 (빠지면 `UnityPackageTests` 실패).
+- `src/`는 Unity 로컬 패키지이기도 하다. `src/`나 `unity/Assets/`에 파일·폴더를 추가하면 `python3 tools/unity_meta.py`로 `.meta`를 만든다 (빠지면 `UnityPackageTests` 실패).
+- Unity 화면 코드: `unity/Assets/Game/` (화면 뼈대, `docs/impl/unity/architecture.md` 0.6). 화면 문구는 `ui.*` 키.
 - Unity 프로젝트: `unity/` (Unity 6.3 LTS `6000.3.28f1`, URP). Unity 안 테스트는 Test Runner의 EditMode (`GameCoreSmokeTests`).
 
 ## 핵심 규칙 요약
