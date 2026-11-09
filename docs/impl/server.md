@@ -53,6 +53,7 @@
 | `GET /v1/games/{game}/alliances` | 연합 목록, 내 연합 id, 인원 상한 (R-49) | `AllianceListResponse` |
 | `POST /v1/games/{game}/alliances` | 연합 만들기 (이름). 이름 규칙·이미 연합원이면 422 | `AllianceResponse` |
 | `POST /v1/games/{game}/alliances/{id}/join` · `/alliances/leave` | 가입 (인원 상한) · 탈퇴 (연합장 넘김, 마지막이면 없앰) | `AllianceResponse` |
+| `POST /v1/games/{game}/alliances/manage` | 연합장의 관리: open / close / accept / reject / kick (R-50). 연합장이 아니거나 할 수 없으면 422 | `AllianceResponse` |
 | `POST /v1/games/{game}/battles` | 전투 제출 (고용이 있으면 `Hires` + 쓴 `Compositions`, 서버가 등록 목록의 같은 판으로 재현하고 등록자에게 우편 보상, 등록 이력에 결과를 쌓는다. 고용 제한을 넘으면 422 `hireLimit`). 옛 세이브 위면 409(`staleSave`), 기록 시각이 범위 밖이면 422(`badTime`, R-42), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
 
 실행: `dotnet run --project server/Game.Server`. 설정:

@@ -156,7 +156,29 @@ namespace Game.Unity.Screens
                 if (mine != null)
                 {
                     var card = Ui.Card(list, "Mine", 20, 6);
-                    Ui.Label(card, T("ui.alliance.mine", mine.Name, mine.Members.Count, res.MemberMax) + (mine.LeaderAccountId == Ctx.AccountId ? "  " + T("ui.alliance.leader") : ""), Ui.FontSmall);
+                    bool leader = mine.LeaderAccountId == Ctx.AccountId;
+                    Ui.Label(card, T("ui.alliance.mine", mine.Name, mine.Members.Count, res.MemberMax) + (leader ? "  " + T("ui.alliance.leader") : ""), Ui.FontSmall);
+                    Ui.Label(card, T(mine.Open ? "ui.alliance.openOn" : "ui.alliance.openOff"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+                    if (leader)
+                    {
+                        Ui.Button(card, T(mine.Open ? "ui.alliance.close" : "ui.alliance.open"), () => Ctx.ManageAlliance(mine.Open ? AllianceActions.Close : AllianceActions.Open, null, r => Reopen(r)), 72, fontSize: 26);
+                        foreach (var who in mine.Requests)
+                        {
+                            string id = who;
+                            var row = Ui.Row(card, "Req" + id, 72, 8);
+                            Ui.Size(Ui.Label(row, T("ui.alliance.request", Short(id)), 24), flexibleWidth: 2);
+                            Ui.Button(row, T("ui.alliance.accept"), () => Ctx.ManageAlliance(AllianceActions.Accept, id, r => Reopen(r)), 72, fontSize: 24);
+                            Ui.Button(row, T("ui.alliance.reject"), () => Ctx.ManageAlliance(AllianceActions.Reject, id, r => Reopen(r)), 72, fontSize: 24);
+                        }
+                    }
+                    foreach (var who in mine.Members)
+                    {
+                        string id = who;
+                        var row = Ui.Row(card, "Mem" + id, 64, 8);
+                        Ui.Size(Ui.Label(row, Short(id) + (id == mine.LeaderAccountId ? "  " + T("ui.alliance.leader") : "") + (id == Ctx.AccountId ? "  " + T("ui.alliance.me") : ""), 24, TextAnchor.MiddleLeft, Palette.TextDim), flexibleWidth: 3);
+                        if (leader && id != Ctx.AccountId)
+                            Ui.Size(Ui.Button(row, T("ui.alliance.kick"), () => Ctx.ManageAlliance(AllianceActions.Kick, id, r => Reopen(r)), 64, new Color(0.45f, 0.22f, 0.20f), 22), width: 200);
+                    }
                     Ui.Button(card, T("ui.alliance.leave"), () => Ctx.LeaveAlliance(r => Reopen(r)), 72, new Color(0.45f, 0.22f, 0.20f), 26);
                 }
                 else
@@ -173,15 +195,19 @@ namespace Game.Unity.Screens
                     if (a.Id == res.MineId) continue;
                     shown++;
                     var card = Ui.Card(list, a.Id, 20, 6);
-                    Ui.Label(card, T("ui.alliance.line", a.Name, a.Members.Count, res.MemberMax), Ui.FontSmall);
+                    Ui.Label(card, T("ui.alliance.line", a.Name, a.Members.Count, res.MemberMax) + "  " + T(a.Open ? "ui.alliance.openOn" : "ui.alliance.openOff"), Ui.FontSmall);
                     string id = a.Id;
-                    var join = Ui.Button(card, T("ui.alliance.join"), () => Ctx.JoinAlliance(id, r => Reopen(r)), 72, fontSize: 26);
-                    Ui.SetEnabled(join, mine == null && a.Members.Count < res.MemberMax);
+                    bool requested = a.Requests != null && a.Requests.Contains(Ctx.AccountId);
+                    var join = Ui.Button(card, T(requested ? "ui.alliance.requested" : a.Open ? "ui.alliance.join" : "ui.alliance.apply"), () => Ctx.JoinAlliance(id, r => Reopen(r)), 72, fontSize: 26);
+                    Ui.SetEnabled(join, mine == null && !requested && a.Members.Count < res.MemberMax);
                 }
                 if (shown == 0) Ui.Label(list, T("ui.alliance.none"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             });
             Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("territory"));
         }
+
+        /// <summary>계정 id 앞부분 (닉네임은 계정 단계에서).</summary>
+        private static string Short(string accountId) => accountId == null ? "?" : accountId.Length > 12 ? accountId.Substring(0, 12) + "…" : accountId;
 
         private void Reopen(AllianceResponse r)
         {

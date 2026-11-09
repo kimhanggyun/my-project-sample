@@ -449,6 +449,9 @@ namespace Game.Flow
 
         public void LeaveAlliance(Action<AllianceResponse> done) => done?.Invoke(AllianceBook.Leave(_alliances, AccountId));
 
+        public void ManageAlliance(AllianceManageRequest req, Action<AllianceResponse> done) =>
+            done?.Invoke(TerritoryData == null ? null : AllianceBook.Manage(TerritoryData, _alliances, AccountId, req));
+
         public void CollectTerritory(Action<MailListResponse> done) =>
             done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m)) });
 

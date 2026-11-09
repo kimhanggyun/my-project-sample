@@ -49,6 +49,40 @@ namespace Game.Tests.Campaign
             Assert.Equal(30, list.MemberMax);
         }
 
+        [Fact(DisplayName = "R-50 가입 방식: 닫으면 신청 → 연합장이 수락·거절, 연합장만 관리, 내보내기, 다른 곳에 들어가면 신청은 사라진다")]
+        public void Manage()
+        {
+            var d = Defs();
+            var book = new Dictionary<string, Alliance>();
+            AllianceBook.Create(d, book, "A", "청룡단", "x1", 0);
+            AllianceBook.Create(d, book, "C", "백호단", "x2", 0);
+            AllianceManageRequest Do(string action, string who = null) => new AllianceManageRequest { Action = action, AccountId = who };
+            Assert.True(AllianceBook.Manage(d, book, "A", Do(AllianceActions.Close)).Ok);
+            var req = AllianceBook.Join(d, book, "B", "x1");
+            Assert.Equal((true, AllianceReasons.Requested), (req.Ok, req.Reason));
+            Assert.Null(AllianceBook.Of(book, "B"));
+            AllianceBook.Join(d, book, "E", "x1");
+            Assert.Equal(new[] { "B", "E" }, book["x1"].Requests);
+
+            AllianceBook.Join(d, book, "M", "x2"); // 백호단 가입 (열림)
+            Assert.Equal(AllianceReasons.NotLeader, AllianceBook.Manage(d, book, "M", Do(AllianceActions.Kick, "C")).Reason);
+            Assert.Equal(AllianceReasons.NotMember, AllianceBook.Manage(d, book, "B", Do(AllianceActions.Open)).Reason);
+            Assert.True(AllianceBook.Manage(d, book, "A", Do(AllianceActions.Accept, "B")).Ok);
+            Assert.Equal("x1", AllianceBook.Of(book, "B").Id);
+            Assert.Equal(new[] { "E" }, book["x1"].Requests);
+            Assert.True(AllianceBook.Manage(d, book, "A", Do(AllianceActions.Reject, "E")).Ok);
+            Assert.Empty(book["x1"].Requests);
+            Assert.Equal(AllianceReasons.BadRequest, AllianceBook.Manage(d, book, "A", Do(AllianceActions.Accept, "nobody")).Reason);
+
+            AllianceBook.Join(d, book, "F", "x1"); // 신청
+            AllianceBook.Join(d, book, "F", "x2"); // 백호단에 바로 들어감 → 청룡단 신청은 사라짐
+            Assert.Empty(book["x1"].Requests);
+
+            Assert.Equal(AllianceReasons.BadRequest, AllianceBook.Manage(d, book, "A", Do(AllianceActions.Kick, "A")).Reason); // 자기 자신
+            Assert.True(AllianceBook.Manage(d, book, "A", Do(AllianceActions.Kick, "B")).Ok);
+            Assert.Null(AllianceBook.Of(book, "B"));
+        }
+
         [Fact(DisplayName = "R-49 영토 목록에 주인의 연합 이름이 붙는다 (가짜 서버)")]
         public void TerritoryShowsAlliance()
         {

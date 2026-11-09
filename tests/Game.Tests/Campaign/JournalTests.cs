@@ -36,6 +36,7 @@ namespace Game.Tests.Campaign
             public void CreateAlliance(string n, Action<AllianceResponse> done) { if (Down) done(null); else _inner.CreateAlliance(n, done); }
             public void JoinAlliance(string id, Action<AllianceResponse> done) { if (Down) done(null); else _inner.JoinAlliance(id, done); }
             public void LeaveAlliance(Action<AllianceResponse> done) { if (Down) done(null); else _inner.LeaveAlliance(done); }
+            public void ManageAlliance(AllianceManageRequest r, Action<AllianceResponse> done) { if (Down) done(null); else _inner.ManageAlliance(r, done); }
         }
 
         private sealed class World
