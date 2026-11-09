@@ -305,6 +305,19 @@ namespace Game.Unity.Boot
             StartupFlow.WriteRecord(_saveStore, StartupRecord);
         }
 
+        /// <summary>
+        /// 장수 모집 (R-51): 세이브 사본으로 결과를 먼저 구한 뒤 같은 시드의 행동으로 적용한다 (결정적이라 같은 결과, 온라인이면 서버도 같은 규칙).
+        /// </summary>
+        public GachaResult DrawGacha(string bannerId, int count)
+        {
+            ulong seed = NewSeed();
+            var preview = new GachaService(Defs).Draw(SaveJson.Read(SaveJson.Write(State)), bannerId, count, seed);
+            if (!preview.Ok) return preview;
+            Do(PlayerActionRunner.DrawGacha(bannerId, count, seed));
+            _formation = null;
+            return preview;
+        }
+
         /// <summary>서버 계정 (고용 목록에서 내 등록을 가린다).</summary>
         public string AccountId => Online?.AccountId;
 

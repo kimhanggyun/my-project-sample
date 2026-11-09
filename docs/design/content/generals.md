@@ -1,6 +1,6 @@
 # 장수: 획득(뽑기) · 등급 · 스킬
 
-> 상태: 기획 중 (구현 전)
+> 상태: 기획 중 · **모집 구현** (2026-11-09, R-51): 1회·10회, 등급 확률, 10회 희귀 이상 보장, 전설 100회 천장, 중복은 조각, 확률 공개 화면 (`data/Rules/gacha.json`, 수치는 예시). 한계 돌파·무료 모집·상점은 아직. 임시 장수 D~H 추가
 > 관련: [general-growth.md](general-growth.md)(장수 키우기), [skills.md](skills.md), [battle.md](battle.md) 2.6(능력치), [captivity.md](captivity.md)(등용), [hiring.md](hiring.md)(고용), [economy.md](economy.md)(상점) · 테마: [../theme.md](../theme.md)
 
 ---

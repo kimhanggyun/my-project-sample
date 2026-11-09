@@ -497,6 +497,8 @@ namespace Game.Online
         public const string UnitDisband = "unit.disband";
         /// <summary>우편 받기: MailId, Resource(SkillId 칸 대신 PayWith), Count = 양. 서버는 우편이 있는지 먼저 확인한다.</summary>
         public const string MailClaim = "mail.claim";
+        /// <summary>장수 모집: BannerId, Count(1·10), Seed (R-51).</summary>
+        public const string GachaDraw = "gacha.draw";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>
@@ -528,6 +530,9 @@ namespace Game.Online
         public string PayWith { get; set; }
         /// <summary>우편 받기: 우편 id.</summary>
         public string MailId { get; set; }
+        /// <summary>모집: 모집 id, 시드 (서버 단계에서는 서버가 정한다).</summary>
+        public string BannerId { get; set; }
+        public ulong Seed { get; set; }
         /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
         public long DoneAtUnixSeconds { get; set; }
     }

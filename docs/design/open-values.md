@@ -169,6 +169,7 @@
 | 뽑기 확률·10회 보장·천장·중복 처리 | generals.md |
 | 고용 추천 가격 공식 (지금 예시: 장수 200 + 레벨당 50 돈, 부대 1명당 1 + 단계당 1 + 훈련도 × 2, 군량이면 × 5), 상한 배수(지금 ×2), 등록자 보상 비율(지금 고용 비용 × 0.7), 종류별 등록 수(지금 3), 하루 고용 수(지금 10)·같은 등록 대기시간(지금 30분)·이력 최근 전투 수(지금 10) — `balance.json` hire | hiring.md |
 | 영토 수입 (단계별 시간당 군량·돈, 최대 쌓이는 시간 24) — `data/Territory/regions.json` levels.*.income, incomeCapHours | territory.md |
+| 장수 모집: 등급 확률(일반 50 / 고급 30 / 희귀 15 / 영웅 4.5 / 전설 0.5%), 가격(1회 100, 10회 900 보석), 10회 보장(희귀 이상), 천장(전설 100회), 시작 보석 300, 중복 → 조각 (한계 돌파는 다음) — `data/Rules/gacha.json`, startingKit | generals.md 5장 |
 | 연합 인원 상한(지금 30)·이름 길이(2~12) — `data/Territory/regions.json` alliance | territory.md 미결 4 |
 | 녹화 저장 개수, 영상 화질 | replay.md |
 
