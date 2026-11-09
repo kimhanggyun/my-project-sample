@@ -22,6 +22,25 @@ namespace Game.Flow
             _flow = new StoryFlow(defs, source, time);
         }
 
+        /// <summary>
+        /// 서버 쪽 한 번에: 기록 시각 검사(R-42) → 그 시각으로 검증·반영(R-40). 맞으면 json = 새 세이브, at = 기록 시각 (새 세이브 시각).
+        /// Revision 검사는 부르는 쪽 (저장소).
+        /// </summary>
+        public static BattleVerdict VerifySave(DefinitionSet defs, IDataSource source, CloudSave save, BattleSubmission s, long nowUnixSeconds, out string json, out long at)
+        {
+            json = null;
+            at = RecordTime.Resolve(s?.PlayedAtUnixSeconds ?? 0, nowUnixSeconds);
+            if (s == null || !RecordTime.Allowed(save.SavedAtUnixSeconds, at, nowUnixSeconds))
+                return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadTime };
+            var state = SaveJson.Read(save.Json);
+            if (state == null) return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
+            var clock = new ManualTimeProvider(System.DateTimeOffset.FromUnixTimeSeconds(at));
+            var v = new BattleVerifier(defs, source, clock).VerifyAndApply(state, s, out _);
+            if (v.Valid) json = SaveJson.Write(state);
+            at = System.Math.Min(at, nowUnixSeconds);
+            return v;
+        }
+
         public static SortieRequest RequestOf(BattleSubmission s) => new SortieRequest
         {
             StepId = s.StepId,

@@ -109,10 +109,9 @@ namespace Game.Server
             var save = LoadOrCreate(accountId);
             if (s == null || s.BaseRevision != save.Revision)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
-            var state = FromJson(save.Json);
-            var verdict = new BattleVerifier(_defs, _source, _time).VerifyAndApply(state, s, out _);
-            if (!verdict.Valid) return verdict;
-            var (ok, current) = _store.PutSave(Code, accountId, save.Revision, ToJson(state), Now);
+            var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at);
+            if (!verdict.Valid) { verdict.Save = save; return verdict; }
+            var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             verdict.Save = current;
             return verdict;
@@ -123,9 +122,9 @@ namespace Game.Server
             var save = LoadOrCreate(accountId);
             if (s == null || s.BaseRevision != save.Revision)
                 return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
-            var (applied, failed, json) = ActionVerifier.Apply(_actions, save, s);
-            if (!applied) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = failed, Save = save };
-            var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, Now);
+            var v = ActionVerifier.Apply(_actions, save, s, Now, out var json, out var at);
+            if (!v.Valid) { v.Save = save; return v; }
+            var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             return ok ? new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current }
                       : new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
         }

@@ -109,13 +109,44 @@ namespace Game.Flow
     /// <summary>서버 쪽 행동 검증 (참고 서버·가짜 서버 공통): 서버 세이브 사본에 차례로 적용하고, 모두 되면 새 세이브 JSON.</summary>
     public static class ActionVerifier
     {
-        /// <returns>(성공, 실패한 순번 또는 -1, 성공이면 새 세이브 JSON).</returns>
-        public static (bool ok, int failedIndex, string json) Apply(PlayerActionRunner runner, CloudSave save, ActionSubmission submission)
+        /// <summary>시각 검사(R-42: 세이브 시각 이후, 차례대로, 지금까지) → 적용(R-41). savedAt = 마지막 행동 시각 (새 세이브 시각).</summary>
+        public static ActionVerdict Apply(PlayerActionRunner runner, CloudSave save, ActionSubmission submission, long nowUnixSeconds, out string json, out long savedAt)
         {
+            json = null;
+            savedAt = save?.SavedAtUnixSeconds ?? 0;
             var state = SaveJson.Read(save?.Json);
-            if (state == null || submission?.Actions == null) return (false, 0, null);
-            int failed = runner.ApplyAll(state, submission.Actions);
-            return failed >= 0 ? (false, failed, null) : (true, -1, SaveJson.Write(state));
+            if (state == null || submission?.Actions == null || submission.Actions.Count == 0 || submission.Actions.Count > PlayerActionRunner.MaxPerSubmission)
+                return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = 0 };
+            long floor = savedAt;
+            for (int i = 0; i < submission.Actions.Count; i++)
+            {
+                var a = submission.Actions[i];
+                long at = RecordTime.Resolve(a?.DoneAtUnixSeconds ?? 0, nowUnixSeconds);
+                if (!RecordTime.Allowed(floor, at, nowUnixSeconds)) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadTime, FailedIndex = i };
+                if (!runner.Apply(state, a)) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = i };
+                floor = System.Math.Max(floor, at);
+            }
+            json = SaveJson.Write(state);
+            savedAt = System.Math.Min(floor, nowUnixSeconds);
+            return new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok };
         }
+    }
+
+    /// <summary>
+    /// 기록 시각 규칙 (verification R-42): 기록(행동·전투)은 기기가 한 시각을 달고 온다. 서버는 그 시각으로 다시 계산한다.
+    /// 허용: 서버 세이브 시각(앞 기록) 이후 · 지금 이전 · 너무 오래되지 않음. 시계 차이는 조금 봐준다.
+    /// </summary>
+    public static class RecordTime
+    {
+        /// <summary>오프라인 기록을 받아 주는 기간 (초). 이보다 오래된 기록은 거절 (구출 기한 등 시간 규칙을 미루지 못하게).</summary>
+        public const long MaxOfflineSeconds = 72 * 3600;
+        /// <summary>기기·서버 시계 차이 허용 (초).</summary>
+        public const long SkewSeconds = 120;
+
+        /// <summary>0이면 지금.</summary>
+        public static long Resolve(long at, long now) => at <= 0 ? now : at;
+
+        public static bool Allowed(long floor, long at, long now) =>
+            at >= floor - SkewSeconds && at <= now + SkewSeconds && at >= now - MaxOfflineSeconds;
     }
 }

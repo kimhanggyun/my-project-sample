@@ -152,9 +152,9 @@ namespace Game.Tests.Campaign
         {
             var state = StartingKitService.CreateNewGame(Kit.D);
             var a = PlayerActionRunner.SaveFormation("siege", new Game.Campaign.Roster.FormationEditor(Kit.D, state).Draft);
-            var link = new OnlineLink { Revision = 3, Pending = { a, PlayerActionRunner.Heal("u10", 5, ResourceIds.Gold) } };
+            var link = new OnlineLink { Revision = 3, Journal = { new JournalEntry { Action = a }, new JournalEntry { Action = PlayerActionRunner.Heal("u10", 5, ResourceIds.Gold) } } };
             var back = OnlineJson.Read<OnlineLink>(OnlineJson.Write(link));
-            Assert.Equal(2, back.Pending.Count);
+            Assert.Equal(2, back.Journal.Count);
             Assert.Equal(OnlineJson.Write(link), OnlineJson.Write(back));
         }
     }

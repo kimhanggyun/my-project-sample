@@ -113,6 +113,20 @@ namespace Game.Server.Tests
             Assert.Equal(2, (await Read<SavePutResponse>(put)).Current.Revision);
         }
 
+        [Fact(DisplayName = "R-42 전투 기록 시각이 서버 세이브 시각보다 이르면 422 badTime, 세이브 그대로")]
+        public async Task BattleTimeWindow()
+        {
+            var c = await SignedIn();
+            var save = await Read<CloudSave>(await c.GetAsync(Save));
+            var (sub, _) = PlayOnDevice(save, 4);
+            sub.PlayedAtUnixSeconds = save.SavedAtUnixSeconds - 3600;
+            var r = await c.PostAsync(Battles, Body(sub));
+            Assert.Equal((HttpStatusCode)422, r.StatusCode);
+            var v = await Read<BattleVerdict>(r);
+            Assert.Equal(VerdictReasons.BadTime, v.Reason);
+            Assert.Equal(save.Revision, v.Save.Revision);
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {
