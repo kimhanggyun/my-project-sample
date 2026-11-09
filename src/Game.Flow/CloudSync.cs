@@ -275,6 +275,7 @@ namespace Game.Flow
         private readonly HireRules _hire;
         /// <summary>고용 시장: 가짜 등록(data/Dev/fakeHireMarket.json, 계정 "npc") + 내가 등록한 것. 메모리만.</summary>
         private readonly List<HireListing> _market = new List<HireListing>();
+        private readonly List<HireLogEntry> _hireLog = new List<HireLogEntry>();
         private CloudSave _save;
 
         public const string FakeMarketFile = "Dev/fakeHireMarket.json";
@@ -327,8 +328,14 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
-            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out _, FindListing, AccountId);
+            _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
+            var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog);
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
+            if (v.Valid && hired != null)
+            {
+                foreach (var u in hired.Uses) _hireLog.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
+                foreach (var o in hired.Outcomes) { var l = FindListing(o.ListingId); if (l != null) HireBook.Record(l, o, hired.StepId, at, _defs.Balance.HireRecentMax); }
+            }
             v.Save = Copy(_save);
             done?.Invoke(v);
         }
@@ -380,7 +387,8 @@ namespace Game.Flow
 
         public void GetListings(string kind, Action<HireListResponse> done)
         {
-            var r = new HireListResponse();
+            var (used, cooldowns) = HireBook.Status(_defs.Balance, _hireLog, Now);
+            var r = new HireListResponse { DailyUsed = used, DailyMax = _defs.Balance.HireDailyMax, CooldownUntil = cooldowns };
             foreach (var l in _market) if (kind == null || l.Kind == kind) r.Listings.Add(OnlineJson.Read<HireListing>(OnlineJson.Write(l)));
             done?.Invoke(r);
         }

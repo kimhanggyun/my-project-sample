@@ -178,6 +178,25 @@ namespace Game.Server.Tests
             var again = await a.PostAsync(actions, Body(new ActionSubmission { BaseRevision = after.Save.Revision, Actions = { PlayerActionRunner.ClaimMail(reward) } }));
             Assert.Equal((HttpStatusCode)422, again.StatusCode);
 
+            // 이력·제한 (R-44): 이력이 쌓이고, B는 대기시간 동안 같은 등록을 다시 고용할 수 없다
+            var listed = await Read<HireListResponse>(await b.GetAsync(listings));
+            var withStats = Assert.Single(listed.Listings, l => l.Id == listing.Id);
+            Assert.Equal(1, withStats.Stats.Hires);
+            Assert.Equal(500, withStats.Recent.Single().TroopsStart);
+            Assert.Equal(1, listed.DailyUsed);
+            Assert.True(listed.CooldownUntil.ContainsKey(listing.Id));
+            var bSave = await Read<CloudSave>(await b.GetAsync(Save));
+            var bState = StrategyGameModule.FromJson(bSave.Json);
+            var hired2 = new HireRules(defs).Resolve(new[] { new HireUse { ListingId = seen.Id, Version = seen.Version, Count = 500 } }, id => id == seen.Id ? seen : null, null, bState, out _);
+            var comps2 = bState.Compositions.Select(c => new Game.Campaign.Roster.CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new System.Collections.Generic.Dictionary<string, string>(c.Slots) }).ToList();
+            comps2[0].Slots["rightWing"] = HireRules.UnitIdOf(seen.Id);
+            var plan2 = flow.Prepare(bState, new SortieRequest { StepId = "step01", Seed = 7, Delegate = true, Hired = hired2, Compositions = comps2 });
+            var sim2 = new BattleSimulation(plan2.Setup);
+            while (!sim2.IsOver) sim2.Step();
+            var limited = await b.PostAsync(Battles, Body(CloudSync.SubmissionOf(plan2, sim2.CommandLog, sim2.Result, bSave.Revision)));
+            Assert.Equal((HttpStatusCode)422, limited.StatusCode);
+            Assert.Equal(VerdictReasons.HireLimit, (await Read<BattleVerdict>(limited)).Reason);
+
             // 해제: 남의 등록은 못 지운다
             Assert.Equal(HttpStatusCode.NotFound, (await b.DeleteAsync(OnlineRoutes.HireListing(ServerSetup.DefaultGame, listing.Id))).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await a.DeleteAsync(OnlineRoutes.HireListing(ServerSetup.DefaultGame, listing.Id))).StatusCode);

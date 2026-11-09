@@ -75,7 +75,7 @@ app.MapPost("/v1/games/{game}/actions", async (string game, HttpRequest req, IPl
 
 // 고용 (R-43)
 app.MapGet("/v1/games/{game}/hire/listings", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
-    InGame(req, p, r, game, Now(), (id, g) => Json(g.Listings(req.Query.TryGetValue("kind", out var k) ? k.ToString() : null))));
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.Listings(req.Query.TryGetValue("kind", out var k) ? k.ToString() : null, id))));
 app.MapPost("/v1/games/{game}/hire/listings", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
 {
     var body = await Body<HireListingRequest>(req);

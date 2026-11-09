@@ -36,6 +36,11 @@ namespace Game.Server
         /// <summary>kind가 null이면 전부. 등록 시각 순.</summary>
         List<HireListing> Listings(string gameCode, string kind);
         bool RemoveListing(string gameCode, string ownerAccountId, string listingId);
+        /// <summary>등록의 이력에 결과를 더한다 (판은 그대로, R-44).</summary>
+        void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax);
+        /// <summary>고용한 계정의 고용 기록 (24시간 지난 것은 지워도 된다).</summary>
+        List<Game.Flow.HireLogEntry> HireLog(string gameCode, string accountId, long nowUnixSeconds);
+        void AddHireLog(string gameCode, string accountId, IEnumerable<Game.Flow.HireLogEntry> entries);
 
         // ---- 우편 (게임별) ----
         void AddMail(string gameCode, string accountId, Mail mail);
@@ -61,6 +66,8 @@ namespace Game.Server
             public Dictionary<string, List<HireListing>> Listings { get; set; } = new Dictionary<string, List<HireListing>>();
             /// <summary>게임 코드 → (계정 → 우편).</summary>
             public Dictionary<string, Dictionary<string, List<Mail>>> Mail { get; set; } = new Dictionary<string, Dictionary<string, List<Mail>>>();
+            /// <summary>게임 코드 → (계정 → 고용 기록).</summary>
+            public Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>> HireLogs { get; set; } = new Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -172,6 +179,44 @@ namespace Game.Server
                 int n = ListingsOf(gameCode).RemoveAll(l => l.Id == listingId && l.OwnerAccountId == ownerAccountId);
                 if (n > 0) Persist();
                 return n > 0;
+            }
+        }
+
+        public void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax)
+        {
+            lock (_lock)
+            {
+                var l = ListingsOf(gameCode).Find(x => x.Id == listingId);
+                if (l == null) return; // 그사이 해제됨
+                Game.Flow.HireBook.Record(l, outcome, stepId, atUnixSeconds, recentMax);
+                Persist();
+            }
+        }
+
+        private List<Game.Flow.HireLogEntry> LogOf(string gameCode, string accountId)
+        {
+            if (Data.HireLogs == null) Data.HireLogs = new Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>>();
+            if (!Data.HireLogs.TryGetValue(gameCode, out var g)) Data.HireLogs[gameCode] = g = new Dictionary<string, List<Game.Flow.HireLogEntry>>();
+            if (!g.TryGetValue(accountId, out var log)) g[accountId] = log = new List<Game.Flow.HireLogEntry>();
+            return log;
+        }
+
+        public List<Game.Flow.HireLogEntry> HireLog(string gameCode, string accountId, long nowUnixSeconds)
+        {
+            lock (_lock)
+            {
+                var log = LogOf(gameCode, accountId);
+                log.RemoveAll(e => nowUnixSeconds - e.AtUnixSeconds >= Game.Flow.HireBook.DaySeconds);
+                return log.ConvertAll(e => new Game.Flow.HireLogEntry { ListingId = e.ListingId, AtUnixSeconds = e.AtUnixSeconds });
+            }
+        }
+
+        public void AddHireLog(string gameCode, string accountId, IEnumerable<Game.Flow.HireLogEntry> entries)
+        {
+            lock (_lock)
+            {
+                LogOf(gameCode, accountId).AddRange(entries);
+                Persist();
             }
         }
 

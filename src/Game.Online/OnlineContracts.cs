@@ -143,6 +143,45 @@ namespace Game.Online
         public long Troops { get; set; }
         public long TrainingRaw { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
+        /// <summary>이력 (hiring.md 4장): 서버가 재현해 확정한 전투로만 쌓인다. 다시 등록해도 이어진다.</summary>
+        public HireStats Stats { get; set; } = new HireStats();
+        /// <summary>최근 전투 (새것이 앞, 개수는 balance hire.recentMax).</summary>
+        public List<HireRecent> Recent { get; set; } = new List<HireRecent>();
+    }
+
+    /// <summary>고용 이력 집계.</summary>
+    public sealed class HireStats
+    {
+        public long Hires { get; set; }
+        public long Wins { get; set; }
+        public long Losses { get; set; }
+        public long Retreats { get; set; }
+        public long Captured { get; set; }
+        public long Destroyed { get; set; }
+        /// <summary>고용된 전투에서 잃은 병력 합계 (장수는 그 군단 전체, 부대는 그 부대).</summary>
+        public long TroopsLost { get; set; }
+        /// <summary>고용된 병력 합계 (장수는 그 군단 시작 병력, 부대는 고용 인원).</summary>
+        public long TroopsHired { get; set; }
+    }
+
+    public static class HireResults
+    {
+        public const string Win = "win";
+        public const string Loss = "loss";
+        public const string Retreat = "retreat";
+        public const string Captured = "captured";
+        public const string Destroyed = "destroyed";
+    }
+
+    /// <summary>최근 전투 하나.</summary>
+    public sealed class HireRecent
+    {
+        public long AtUnixSeconds { get; set; }
+        public string StepId { get; set; }
+        /// <summary><see cref="HireResults"/>.</summary>
+        public string Result { get; set; }
+        public long TroopsStart { get; set; }
+        public long TroopsLost { get; set; }
     }
 
     /// <summary>등록 요청: 내 서버 세이브의 장수 또는 부대를 이 가격으로.</summary>
@@ -178,6 +217,11 @@ namespace Game.Online
     public sealed class HireListResponse
     {
         public List<HireListing> Listings { get; set; } = new List<HireListing>();
+        /// <summary>요청한 계정의 지난 24시간 고용 수 / 하루 상한 (R-44).</summary>
+        public int DailyUsed { get; set; }
+        public int DailyMax { get; set; }
+        /// <summary>등록 id → 다시 고용할 수 있는 시각 (대기 중인 것만).</summary>
+        public Dictionary<string, long> CooldownUntil { get; set; } = new Dictionary<string, long>();
     }
 
     /// <summary>전투에 고용 하나: 등록 id·판, 부대면 인원.</summary>
@@ -221,6 +265,8 @@ namespace Game.Online
         public const string BadAction = "badAction";
         /// <summary>기록 시각이 허용 범위 밖 (서버 세이브 시각보다 이르거나, 미래이거나, 너무 오래됨, R-42).</summary>
         public const string BadTime = "badTime";
+        /// <summary>고용 제한 (하루 고용 수, 같은 등록 대기시간, R-44).</summary>
+        public const string HireLimit = "hireLimit";
     }
 
     public sealed class BattleVerdict

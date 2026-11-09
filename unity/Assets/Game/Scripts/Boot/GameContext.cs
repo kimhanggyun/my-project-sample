@@ -236,8 +236,8 @@ namespace Game.Unity.Boot
         /// <summary>고용 시장을 쓸 수 있는지 (온라인 fake / http).</summary>
         public bool HiringAvailable => OnlineEnabled;
 
-        /// <summary>등록 목록 (닿지 않으면 null).</summary>
-        public void LoadListings(string kind, Action<List<HireListing>> done) => Online.GetListings(kind, r => done?.Invoke(r?.Listings));
+        /// <summary>등록 목록 + 내 하루 고용 수·대기시간 (닿지 않으면 null).</summary>
+        public void LoadListings(string kind, Action<HireListResponse> done) => Online.GetListings(kind, done);
 
         public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => Online.RegisterHire(request, done);
 

@@ -29,7 +29,8 @@ namespace Game.Server
         /// <summary>내 서버 세이브의 장수·부대를 등록 (같은 대상이면 갱신).</summary>
         HireListingResponse RegisterHire(string accountId, HireListingRequest request);
         /// <summary>등록 목록 (kind = general / unit / null = 전부).</summary>
-        HireListResponse Listings(string kind);
+        /// <param name="accountId">요청한 계정 (하루 고용 수·대기시간을 채운다).</param>
+        HireListResponse Listings(string kind, string accountId);
         bool Unregister(string accountId, string listingId);
         MailListResponse MailOf(string accountId);
     }
@@ -119,11 +120,19 @@ namespace Game.Server
             var save = LoadOrCreate(accountId);
             if (s == null || s.BaseRevision != save.Revision)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
-            var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId);
+            var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
+                _store.HireLog(Code, accountId, Now));
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             // 고용 보상: 등록자 우편으로 (등록자 세이브는 직접 고치지 않는다 — 받을 때 행동 mail.claim)
+            if (hired != null)
+            {
+                var log = new List<HireLogEntry>();
+                foreach (var u in hired.Uses) log.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
+                _store.AddHireLog(Code, accountId, log);
+                foreach (var o in hired.Outcomes) _store.RecordHire(Code, o.ListingId, o, hired.StepId, at, _defs.Balance.HireRecentMax);
+            }
             if (hired != null)
                 foreach (var c in hired.Charges)
                 {
@@ -169,7 +178,11 @@ namespace Game.Server
             return r;
         }
 
-        public HireListResponse Listings(string kind) => new HireListResponse { Listings = _store.Listings(Code, kind) };
+        public HireListResponse Listings(string kind, string accountId)
+        {
+            var (used, cooldowns) = HireBook.Status(_defs.Balance, _store.HireLog(Code, accountId, Now), Now);
+            return new HireListResponse { Listings = _store.Listings(Code, kind), DailyUsed = used, DailyMax = _defs.Balance.HireDailyMax, CooldownUntil = cooldowns };
+        }
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
 
