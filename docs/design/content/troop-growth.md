@@ -1,6 +1,6 @@
 # 부대 키우기 (TO-BE)
 
-> 상태: **TO-BE** — 하단 탭에 "준비 중"으로 표시. 컨텐츠는 나중에 구성한다.
+> 상태: **1차 구현** (2026-11-09, R-52): 부대 탭 = 훈련(돈 → 훈련도, 전투 공격·방어 보정)·승급(1단계 → 2단계 특화 4종: 방패병·장창병·노병·중기병). 데이터 `data/Rules/troopGrowth.json`·`troopTypes.json`, 수치는 예시. 3단계 정예·재훈련·진형 해금 컨텐츠는 아직
 > 전체 흐름: [../flow.md](../flow.md) · 관련 규칙: [battle.md](battle.md) 2.2.1(진형), 2.3(병종과 성장) · 구조: [../structure.md](../structure.md)(../structure.md) Progression 모듈
 
 ## 0. 대상

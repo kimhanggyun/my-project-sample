@@ -35,6 +35,11 @@
       "attacker": "piercing",
       "defender": "heavy",
       "pp": 15
+    },
+    {
+      "attacker": "ranged",
+      "defender": "shield",
+      "pp": -25
     }
   ]
 }

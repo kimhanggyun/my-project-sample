@@ -242,6 +242,7 @@ namespace Game.Battle.Model.Simulation
                         StartTroops = u.Troops,
                         Troops = u.Troops,
                         Cohesion = u.Cohesion,
+                        Training = u.Training,
                     });
                 corps.AiStance = cs.AiStance;
                 if (cs.Controller == Controllers.Ai) corps.AiDifficulty = cs.AiDifficulty;

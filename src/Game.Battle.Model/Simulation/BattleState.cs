@@ -83,6 +83,8 @@ namespace Game.Battle.Model.Simulation
         public long ConfusedTicks { get; internal set; }
         /// <summary>부대 결속 (캠페인에서 받음): 혼란 저항·회복.</summary>
         public Fix Cohesion { get; internal set; }
+        /// <summary>부대 훈련도 (0~1, 전투 중 바뀌지 않는다).</summary>
+        public Fix Training { get; internal set; }
         /// <summary>이번 틱에 이 소부대가 공격한 적 소부대 (없으면 null). 화면 연출용이며 규칙 계산·상태 지문에 쓰지 않는다.</summary>
         public SubUnitState AttackTarget { get; internal set; }
         public bool Confused => ConfusedTicks > 0;

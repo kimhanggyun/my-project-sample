@@ -57,6 +57,9 @@ namespace Game.Data.Defs
         public Fix RetreatEdgeMargin { get; private set; }
         public int AiThinkEveryTicks { get; private set; }
         public Fix GeneralMightToAttack { get; private set; }
+        /// <summary>훈련도 1일 때 공격·방어 보정 %p (없으면 0, R-52).</summary>
+        public Fix TrainingAttackPp { get; private set; }
+        public Fix TrainingDefensePp { get; private set; }
         public Fix GeneralLeadershipToDefense { get; private set; }
         public int VisionUpdateEveryTicks { get; private set; }
         public Fix VisionCellsAtStat50 { get; private set; }
@@ -158,6 +161,8 @@ namespace Game.Data.Defs
                 RetreatEdgeMargin = JsonUtil.RequireFix(o, "retreatEdgeMargin", c),
                 AiThinkEveryTicks = (int)JsonUtil.RequireLong(o, "aiThinkEveryTicks", c),
                 GeneralMightToAttack = JsonUtil.RequireFix(general, "mightToAttack", c + ".general"),
+                TrainingAttackPp = o["training"] is JObject tr ? JsonUtil.FixOr(tr, "attackPp", Fix.Zero, c + ".training") : Fix.Zero,
+                TrainingDefensePp = o["training"] is JObject tr2 ? JsonUtil.FixOr(tr2, "defensePp", Fix.Zero, c + ".training") : Fix.Zero,
                 GeneralLeadershipToDefense = JsonUtil.RequireFix(general, "leadershipToDefense", c + ".general"),
                 SpawnSpacingCells = JsonUtil.RequireFix(o, "spawnSpacingCells", c),
                 VisionUpdateEveryTicks = (int)JsonUtil.RequireLong(vision, "updateEveryTicks", c + ".vision"),

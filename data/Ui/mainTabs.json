@@ -3,7 +3,7 @@
   "tabs": [
     { "id": "story", "nameKey": "ui.tab.story", "status": "active" },
     { "id": "general", "nameKey": "ui.tab.general", "status": "active" },
-    { "id": "troop", "nameKey": "ui.tab.troop", "status": "tobe" },
+    { "id": "troop", "nameKey": "ui.tab.troop", "status": "active" },
     { "id": "formation", "nameKey": "ui.tab.formation", "status": "active" },
     { "id": "territory", "nameKey": "ui.tab.territory", "status": "active" },
     { "id": "hiring", "nameKey": "ui.tab.hiring", "status": "active" },

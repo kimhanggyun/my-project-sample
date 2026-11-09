@@ -47,6 +47,9 @@ namespace Game.Flow
                 (a.PayWith == Economy.ResourceIds.Supply || a.PayWith == Economy.ResourceIds.Gold) && troops.Heal(s, a.UnitId, a.Count, a.PayWith) > 0));
             Register(new Handler(ActionKinds.UnitCreate, (s, a) => troops.Create(s, a.TroopType) != null));
             Register(new Handler(ActionKinds.UnitDisband, (s, a) => troops.Disband(s, a.UnitId)));
+            var growth = new TroopGrowthService(defs);
+            Register(new Handler(ActionKinds.UnitTrain, (s, a) => growth.Train(s, a.UnitId)));
+            Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType)));
             var gacha = new GachaService(defs);
             Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
             // 우편 받기: 서버는 우편이 있는지·양이 맞는지 먼저 본다 (ActionVerifier의 serverCheck)
@@ -106,6 +109,9 @@ namespace Game.Flow
 
         public static PlayerAction SaveFormation(string situation, IEnumerable<CorpsComposition> draft) =>
             new PlayerAction { Kind = ActionKinds.FormationSave, Situation = situation, Corps = ToActionCorps(draft) };
+
+        public static PlayerAction TrainUnit(string unitId) => new PlayerAction { Kind = ActionKinds.UnitTrain, UnitId = unitId };
+        public static PlayerAction PromoteUnit(string unitId, string to) => new PlayerAction { Kind = ActionKinds.UnitPromote, UnitId = unitId, TroopType = to };
 
         public static PlayerAction DrawGacha(string bannerId, int count, ulong seed) =>
             new PlayerAction { Kind = ActionKinds.GachaDraw, BannerId = bannerId, Count = count, Seed = seed };

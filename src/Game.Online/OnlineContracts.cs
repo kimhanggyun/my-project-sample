@@ -499,6 +499,10 @@ namespace Game.Online
         public const string MailClaim = "mail.claim";
         /// <summary>장수 모집: BannerId, Count(1·10), Seed (R-51).</summary>
         public const string GachaDraw = "gacha.draw";
+        /// <summary>부대 훈련: UnitId (R-52).</summary>
+        public const string UnitTrain = "unit.train";
+        /// <summary>병종 승급: UnitId, TroopType = 승급할 병종 (R-52).</summary>
+        public const string UnitPromote = "unit.promote";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>

@@ -50,6 +50,7 @@ namespace Game.Battle.Model.Combat
         public static List<IDamageModifierSource> BuiltIns() => new List<IDamageModifierSource>
         {
             new StatSource(),
+            new TrainingSource(),
             new TroopCounterSource(),
             new FormationCounterSource(),
             new DirectionSource(),
@@ -71,6 +72,17 @@ namespace Game.Battle.Model.Combat
             Fix atk = a.Attacker.Troop.Stats.Get(StatIds.Attack) + (a.AttackerCorps.Setup.General.Might - Fifty) * c.GeneralMightToAttack;
             Fix def = a.Defender.Troop.Stats.Get(StatIds.Defense) + (a.DefenderCorps.Setup.General.Leadership - Fifty) * c.GeneralLeadershipToDefense;
             into.Add(new DamageModifier("stats", (atk - def) * c.StatPpPerPoint));
+        }
+    }
+
+    /// <summary>부대 훈련도 (R-52): 공격 쪽 훈련도 × 공격 %p − 방어 쪽 훈련도 × 방어 %p. 훈련도 0이면 보정을 넣지 않는다.</summary>
+    internal sealed class TrainingSource : IDamageModifierSource
+    {
+        public void Collect(AttackContext a, List<DamageModifier> into)
+        {
+            var c = a.Battle.Combat;
+            Fix pp = a.Attacker.Training * c.TrainingAttackPp - a.Defender.Training * c.TrainingDefensePp;
+            if (pp != Fix.Zero) into.Add(new DamageModifier("training", pp));
         }
     }
 
