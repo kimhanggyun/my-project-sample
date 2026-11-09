@@ -15,6 +15,32 @@ namespace Game.Online
         public string Token { get; set; }
     }
 
+    /// <summary>
+    /// 서버 주소 (docs/impl/server.md 3장). 계정·시각은 공통, 세이브·전투는 게임 코드별 (여러 게임을 서버 한 곳에서, 4.5).
+    /// </summary>
+    public static class OnlineRoutes
+    {
+        public const string GuestSignIn = "/v1/auth/guest";
+        public const string Time = "/v1/time";
+        public const string Games = "/v1/games";
+        public const string MyGames = "/v1/me/games";
+        public static string ResolveApp(string appId) => "/v1/games/resolve?app=" + Uri.EscapeDataString(appId ?? "");
+        public static string Save(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/save";
+        public static string Battles(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/battles";
+    }
+
+    /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
+    public sealed class GameListResponse
+    {
+        public List<string> Games { get; set; } = new List<string>();
+    }
+
+    /// <summary>앱 id(package명·번들 id) → 게임 코드.</summary>
+    public sealed class ResolveAppResponse
+    {
+        public string Game { get; set; }
+    }
+
     /// <summary>서버 시각 (unix 초). 부상 회복·구출 기한 등 시간 규칙은 서버 시각을 쓴다.</summary>
     public sealed class ServerTimeResponse
     {

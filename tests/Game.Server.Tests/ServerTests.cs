@@ -42,11 +42,13 @@ namespace Game.Server.Tests
         public ServerTests(Factory f) { _factory = f; }
 
         private static string DataRoot => ServerPaths.DataRoot(null);
+        private static readonly string Save = OnlineRoutes.Save(ServerSetup.DefaultGame);
+        private static readonly string Battles = OnlineRoutes.Battles(ServerSetup.DefaultGame);
 
         private async Task<HttpClient> SignedIn()
         {
             var c = _factory.CreateClient();
-            var r = await c.PostAsync("/v1/auth/guest", null);
+            var r = await c.PostAsync(OnlineRoutes.GuestSignIn, null);
             Assert.Equal(HttpStatusCode.OK, r.StatusCode);
             var who = OnlineJson.Read<SignInResponse>(await r.Content.ReadAsStringAsync());
             Assert.NotNull(who.Token);
@@ -62,8 +64,8 @@ namespace Game.Server.Tests
         public async Task AuthAndTime()
         {
             var c = _factory.CreateClient();
-            Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/v1/save")).StatusCode);
-            var t = await Read<ServerTimeResponse>(await c.GetAsync("/v1/time"));
+            Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync(Save)).StatusCode);
+            var t = await Read<ServerTimeResponse>(await c.GetAsync(OnlineRoutes.Time));
             Assert.Equal(Clock.ToUnixTimeSeconds(), t.UnixSeconds);
         }
 
@@ -71,19 +73,19 @@ namespace Game.Server.Tests
         public async Task CloudSave()
         {
             var c = await SignedIn();
-            var first = await Read<CloudSave>(await c.GetAsync("/v1/save"));
+            var first = await Read<CloudSave>(await c.GetAsync(Save));
             Assert.Equal(1, first.Revision);
-            Assert.NotNull(GameService.FromJson(first.Json));
+            Assert.NotNull(StrategyGameModule.FromJson(first.Json));
 
-            var ok = await c.PutAsync("/v1/save", Body(new SavePutRequest { BaseRevision = 1, Json = first.Json }));
+            var ok = await c.PutAsync(Save, Body(new SavePutRequest { BaseRevision = 1, Json = first.Json }));
             Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
             Assert.Equal(2, (await Read<SavePutResponse>(ok)).Current.Revision);
 
-            var stale = await c.PutAsync("/v1/save", Body(new SavePutRequest { BaseRevision = 1, Json = first.Json }));
+            var stale = await c.PutAsync(Save, Body(new SavePutRequest { BaseRevision = 1, Json = first.Json }));
             Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
             Assert.Equal(2, (await Read<SavePutResponse>(stale)).Current.Revision);
 
-            var junk = await c.PutAsync("/v1/save", Body(new SavePutRequest { BaseRevision = 2, Json = "{not a save" }));
+            var junk = await c.PutAsync(Save, Body(new SavePutRequest { BaseRevision = 2, Json = "{not a save" }));
             Assert.Equal(HttpStatusCode.Conflict, junk.StatusCode);
         }
 
@@ -93,7 +95,7 @@ namespace Game.Server.Tests
             var source = new FileDataSource(DataRoot);
             var defs = DefinitionSet.Load(source, "ancientwar");
             var flow = new StoryFlow(defs, source, new ManualTimeProvider(Clock));
-            var state = GameService.FromJson(save.Json);
+            var state = StrategyGameModule.FromJson(save.Json);
             var req = new SortieRequest { StepId = "step01", Seed = seed, Delegate = true };
             var plan = flow.Prepare(state, req);
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));
@@ -115,27 +117,101 @@ namespace Game.Server.Tests
         public async Task BattleVerification()
         {
             var c = await SignedIn();
-            var save = await Read<CloudSave>(await c.GetAsync("/v1/save"));
+            var save = await Read<CloudSave>(await c.GetAsync(Save));
 
             var (bad, _) = PlayOnDevice(save, 7, tamper: true);
-            var rejected = await c.PostAsync("/v1/battles", Body(bad));
+            var rejected = await c.PostAsync(Battles, Body(bad));
             Assert.Equal(HttpStatusCode.UnprocessableEntity, rejected.StatusCode);
             Assert.Equal(VerdictReasons.Mismatch, (await Read<BattleVerdict>(rejected)).Reason);
-            Assert.Equal(save.Revision, (await Read<CloudSave>(await c.GetAsync("/v1/save"))).Revision); // 그대로
+            Assert.Equal(save.Revision, (await Read<CloudSave>(await c.GetAsync(Save))).Revision); // 그대로
 
             var (sub, result) = PlayOnDevice(save, 7);
-            var accepted = await c.PostAsync("/v1/battles", Body(sub));
+            var accepted = await c.PostAsync(Battles, Body(sub));
             Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
             var verdict = await Read<BattleVerdict>(accepted);
             Assert.True(verdict.Valid);
             Assert.Equal(result.StateHash.ToString("x16"), verdict.Hash);
             Assert.Equal(save.Revision + 1, verdict.Save.Revision);
-            var after = GameService.FromJson(verdict.Save.Json);
+            var after = StrategyGameModule.FromJson(verdict.Save.Json);
             Assert.Equal(result.Winner == StoryFlow.PlayerTeam, after.ClearedSteps.Contains("step01"));
 
-            var again = await c.PostAsync("/v1/battles", Body(sub)); // 같은 제출을 옛 세이브 위에서 다시
+            var again = await c.PostAsync(Battles, Body(sub)); // 같은 제출을 옛 세이브 위에서 다시
             Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
             Assert.Equal(VerdictReasons.StaleSave, (await Read<BattleVerdict>(again)).Reason);
+        }
+
+        [Fact(DisplayName = "게임 목록·앱 id 찾기, 없는 게임은 404, 게임에 들어오면 가입 기록")]
+        public async Task GamesAndMembership()
+        {
+            var c = await SignedIn();
+            var games = await Read<GameListResponse>(await c.GetAsync(OnlineRoutes.Games));
+            Assert.Contains(ServerSetup.DefaultGame, games.Games);
+            var resolved = await Read<ResolveAppResponse>(await c.GetAsync(OnlineRoutes.ResolveApp("com.myproject.ancientwar")));
+            Assert.Equal(ServerSetup.DefaultGame, resolved.Game);
+            Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync(OnlineRoutes.ResolveApp("com.unknown"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync(OnlineRoutes.Save("nogame"))).StatusCode);
+
+            Assert.Empty((await Read<GameListResponse>(await c.GetAsync(OnlineRoutes.MyGames))).Games);
+            await c.GetAsync(Save);
+            Assert.Equal(new[] { ServerSetup.DefaultGame }, (await Read<GameListResponse>(await c.GetAsync(OnlineRoutes.MyGames))).Games);
+        }
+    }
+
+    /// <summary>여러 게임을 서버 한 곳에서: 같은 계정이라도 게임마다 세이브가 따로 (docs/impl/server.md 4.5).</summary>
+    public class MultiGameTests : IClassFixture<MultiGameTests.TwoGames>
+    {
+        public sealed class TwoGames : WebApplicationFactory<Program>
+        {
+            protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
+            {
+                builder.UseSetting("Game:Games:0:Code", "ancientwar");
+                builder.UseSetting("Game:Games:0:Theme", "ancientwar");
+                builder.UseSetting("Game:Games:0:PackageIds:0", "com.myproject.ancientwar");
+                builder.UseSetting("Game:Games:1:Code", "secondgame");
+                builder.UseSetting("Game:Games:1:Theme", "ancientwar");
+                builder.UseSetting("Game:Games:1:PackageIds:0", "com.myproject.second");
+                builder.ConfigureServices(s =>
+                {
+                    s.RemoveAll<ITimeProvider>();
+                    s.AddSingleton<ITimeProvider>(new ManualTimeProvider(ServerTests.Clock));
+                });
+            }
+        }
+
+        private readonly TwoGames _f;
+        public MultiGameTests(TwoGames f) { _f = f; }
+
+        [Fact(DisplayName = "같은 계정, 게임마다 따로 세이브·Revision, 가입 기록은 두 게임 모두")]
+        public async Task SeparateSaves()
+        {
+            var c = _f.CreateClient();
+            var who = OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.GuestSignIn, null)).Content.ReadAsStringAsync());
+            c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", who.Token);
+
+            var a = OnlineJson.Read<CloudSave>(await (await c.GetAsync(OnlineRoutes.Save("ancientwar"))).Content.ReadAsStringAsync());
+            var put = await c.PutAsync(OnlineRoutes.Save("ancientwar"), new StringContent(OnlineJson.Write(new SavePutRequest { BaseRevision = a.Revision, Json = a.Json }), Encoding.UTF8, "application/json"));
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+            var b = OnlineJson.Read<CloudSave>(await (await c.GetAsync(OnlineRoutes.Save("secondgame"))).Content.ReadAsStringAsync());
+            Assert.Equal(1, b.Revision); // 첫 게임 저장과 무관
+            var a2 = OnlineJson.Read<CloudSave>(await (await c.GetAsync(OnlineRoutes.Save("ancientwar"))).Content.ReadAsStringAsync());
+            Assert.Equal(2, a2.Revision);
+
+            var mine = OnlineJson.Read<GameListResponse>(await (await c.GetAsync(OnlineRoutes.MyGames)).Content.ReadAsStringAsync());
+            Assert.Equal(new[] { "ancientwar", "secondgame" }, mine.Games);
+            var resolved = OnlineJson.Read<ResolveAppResponse>(await (await c.GetAsync(OnlineRoutes.ResolveApp("com.myproject.second"))).Content.ReadAsStringAsync());
+            Assert.Equal("secondgame", resolved.Game);
+        }
+
+        [Fact(DisplayName = "등록표: 같은 게임 코드·같은 앱 id를 두 번 등록하면 거절")]
+        public void RegistryGuards()
+        {
+            var store = new InMemoryStore();
+            var src = new FileDataSource(ServerPaths.DataRoot(null));
+            var time = new ManualTimeProvider(ServerTests.Clock);
+            var r = new GameRegistry().Register(new StrategyGameModule("g1", new[] { "app.one" }, src, "ancientwar", time, store));
+            Assert.Throws<ArgumentException>(() => r.Register(new StrategyGameModule("g1", new string[0], src, "ancientwar", time, store)));
+            Assert.Throws<ArgumentException>(() => r.Register(new StrategyGameModule("g2", new[] { "app.one" }, src, "ancientwar", time, store)));
         }
     }
 }
