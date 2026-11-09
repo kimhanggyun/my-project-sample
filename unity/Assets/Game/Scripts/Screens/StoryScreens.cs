@@ -150,29 +150,92 @@ namespace Game.Unity.Screens
         private string SkillName(string id) => Ctx.Defs.Skills.TryGetValue(id, out var s) ? T(s.NameKey) : id;
     }
 
-    /// <summary>(임시) 전투 전 대사. 연출 시스템 전까지 문장 하나를 보여주고 전투로 넘어간다.</summary>
+    /// <summary>
+    /// 전투 전 대사 (story.md 1.3): data/Dialogue/&lt;스텝&gt;.json의 before를 한 줄씩 [다음], [건너뛰기]로 바로 전투.
+    /// 대사 파일이 없으면 예전 한 줄 대사(키)를 쓴다. 끝나면 대결(직접 지휘일 때) 또는 전투.
+    /// </summary>
     public sealed class DialogueScreen : GameScreen
     {
         private readonly SortiePlan _plan;
         private readonly string _lineKey;
         private readonly bool _playContests;
+        private readonly int _index;
 
         /// <param name="playContests">전투 직전 대결(일기토·논쟁)을 직접 고를지 (직접 지휘). 아니면 AI가 고른다.</param>
-        public DialogueScreen(SortiePlan plan, string lineKey, bool playContests = false) { _plan = plan; _lineKey = lineKey; _playContests = playContests; }
+        public DialogueScreen(SortiePlan plan, string lineKey, bool playContests = false, int index = 0) { _plan = plan; _lineKey = lineKey; _playContests = playContests; _index = index; }
 
         public override void Build()
         {
-            Ui.Column(Root, 24, 48).childAlignment = TextAnchor.LowerCenter;
-            Ui.Size(Ui.Label(Root, T(_plan.Step.NameKey), Ui.FontTitle, TextAnchor.MiddleCenter), 200);
-            Ui.Size(Ui.Label(Root, "", Ui.FontBody), flexibleHeight: 1);
-            var box = Ui.Card(Root, "Box", 40, 16);
-            string speaker = _plan.Setup.Corps.Count > 0 && _plan.Setup.Corps[0].General != null ? Ctx.GeneralName(_plan.Setup.Corps[0].General.Id) : "";
-            Ui.Label(box, Ui.Colored(speaker, Palette.Ally), Ui.FontBody);
-            bool has = Ctx.Defs.Strings.ContainsKey(_lineKey);
-            Ui.Size(Ui.Label(box, has ? T(_lineKey) : "…", Ui.FontBody, TextAnchor.UpperLeft), 200);
+            var lines = DialogueScript.Load(Ctx.Data, _plan.Step.Id).Before;
+            string speaker, text;
+            int count = lines.Count;
+            if (count > 0)
+            {
+                var l = lines[System.Math.Min(_index, count - 1)];
+                speaker = l.Speaker != null ? Ctx.GeneralName(l.Speaker) : "";
+                text = T(l.Key);
+            }
+            else
+            {
+                speaker = _plan.Setup.Corps.Count > 0 && _plan.Setup.Corps[0].General != null ? Ctx.GeneralName(_plan.Setup.Corps[0].General.Id) : "";
+                text = Ctx.Defs.Strings.ContainsKey(_lineKey) ? T(_lineKey) : "…";
+            }
+            bool last = count == 0 || _index >= count - 1;
+            DialogueView.Show(Ctx, Root, T(_plan.Step.NameKey), speaker, text,
+                last ? null : (System.Action)(() => App.Show(new DialogueScreen(_plan, _lineKey, _playContests, _index + 1))),
+                Begin, last ? (_playContests && _plan.Setup.Contests.Count > 0 ? T("ui.contest.challenge") : T("ui.dialogue.next")) : null);
+        }
+
+        private void Begin()
+        {
             bool contest = _playContests && _plan.Setup.Contests.Count > 0;
-            Ui.Button(Root, contest ? T("ui.contest.challenge") : T("ui.dialogue.next"),
-                () => App.Show(contest ? (GameScreen)new ContestScreen(_plan, 0) : new BattleScreen(_plan)), 140);
+            App.Show(contest ? (GameScreen)new ContestScreen(_plan, 0) : new BattleScreen(_plan));
+        }
+    }
+
+    /// <summary>전투 뒤 대사 (이긴 스텝의 after). 끝나면(또는 건너뛰면) 스토리 탭.</summary>
+    public sealed class AfterDialogueScreen : GameScreen
+    {
+        private readonly string _stepId;
+        private readonly int _index;
+        public AfterDialogueScreen(string stepId, int index = 0) { _stepId = stepId; _index = index; }
+
+        public static bool Has(GameContext ctx, string stepId) => DialogueScript.Load(ctx.Data, stepId).After.Count > 0;
+
+        public override void Build()
+        {
+            var lines = DialogueScript.Load(Ctx.Data, _stepId).After;
+            if (lines.Count == 0) { App.ShowMain("story"); return; }
+            var l = lines[System.Math.Min(_index, lines.Count - 1)];
+            bool last = _index >= lines.Count - 1;
+            var step = Ctx.Flow.LoadStep(_stepId);
+            DialogueView.Show(Ctx, Root, T(step.NameKey), l.Speaker != null ? Ctx.GeneralName(l.Speaker) : "", T(l.Key),
+                last ? null : (System.Action)(() => App.Show(new AfterDialogueScreen(_stepId, _index + 1))),
+                () => App.ShowMain("story"), last ? T("ui.result.toStory") : null);
+        }
+    }
+
+    /// <summary>대사 한 장 그리기: 스텝 이름, 말하는 사람, 문구, [다음] 또는 마지막 버튼, [건너뛰기].</summary>
+    internal static class DialogueView
+    {
+        /// <param name="next">다음 줄 (마지막이면 null).</param>
+        /// <param name="finish">끝 / 건너뛰기.</param>
+        /// <param name="finishLabel">마지막 줄의 버튼 문구 (마지막이 아니면 null).</param>
+        public static void Show(GameContext ctx, RectTransform root, string title, string speaker, string text, System.Action next, System.Action finish, string finishLabel)
+        {
+            Ui.Column(root, 24, 48).childAlignment = TextAnchor.LowerCenter;
+            Ui.Size(Ui.Label(root, title, Ui.FontTitle, TextAnchor.MiddleCenter), 200);
+            Ui.Size(Ui.Label(root, "", Ui.FontBody), flexibleHeight: 1);
+            var box = Ui.Card(root, "Box", 40, 16);
+            Ui.Label(box, Ui.Colored(speaker, Palette.Ally), Ui.FontBody);
+            Ui.Size(Ui.Label(box, text, Ui.FontBody, TextAnchor.UpperLeft), 200);
+            var row = Ui.Row(root, "Buttons", 140);
+            if (next != null)
+            {
+                Ui.Button(row, ctx.T("ui.dialogue.skip"), finish, 140, Palette.Card);
+                Ui.Button(row, ctx.T("ui.dialogue.more"), next, 140);
+            }
+            else Ui.Button(row, finishLabel, finish, 140);
         }
     }
 }

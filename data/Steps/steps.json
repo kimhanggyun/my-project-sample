@@ -2,7 +2,11 @@
   "_comment": "스텝 순서 (차례 해금). 구출 전투는 수용소 id로 연결.",
   "order": [
     "step01",
-    "step02"
+    "step02",
+    "step03",
+    "step04",
+    "step05",
+    "step06"
   ],
   "rescue": {
     "camp_north": "rescue_camp_north"

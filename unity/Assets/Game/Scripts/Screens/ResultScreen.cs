@@ -74,7 +74,10 @@ namespace Game.Unity.Screens
             Section(body, "ui.result.secrets", secrets);
 
             bool territory = _plan.Step.IsTerritory; // 영토 전투면 영토 탭으로
-            Ui.Button(Root, T(territory ? "ui.result.toTerritory" : "ui.result.toStory"), () => App.ShowMain(territory ? "territory" : "story"), 140);
+            // 이긴 스토리 스텝에 뒤 대사가 있으면 그것부터 (story.md 1.3)
+            bool after = !territory && _report.Won && AfterDialogueScreen.Has(Ctx, _plan.Step.Id);
+            Ui.Button(Root, T(territory ? "ui.result.toTerritory" : after ? "ui.result.toAfter" : "ui.result.toStory"),
+                () => { if (after) App.Show(new AfterDialogueScreen(_plan.Step.Id)); else App.ShowMain(territory ? "territory" : "story"); }, 140);
         }
 
         private List<string> Names(List<string> generalIds)
