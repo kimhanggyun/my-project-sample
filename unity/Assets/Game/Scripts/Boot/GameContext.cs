@@ -217,6 +217,45 @@ namespace Game.Unity.Boot
             });
         }
 
+        // ---- 고용·우편 (R-43, hiring.md) ----
+        private HireDraft _hires;
+        private string _hireStep;
+
+        /// <summary>그 스텝 출진에 고른 고용 (다른 스텝으로 가면 새로).</summary>
+        public HireDraft HiresFor(string stepId)
+        {
+            if (_hires == null || _hireStep != stepId) { _hires = new HireDraft(Defs); _hireStep = stepId; }
+            return _hires;
+        }
+
+        public void ClearHires() { _hires = null; _hireStep = null; }
+
+        /// <summary>서버 계정 (고용 목록에서 내 등록을 가린다).</summary>
+        public string AccountId => Online?.AccountId;
+
+        /// <summary>고용 시장을 쓸 수 있는지 (온라인 fake / http).</summary>
+        public bool HiringAvailable => OnlineEnabled;
+
+        /// <summary>등록 목록 (닿지 않으면 null).</summary>
+        public void LoadListings(string kind, Action<List<HireListing>> done) => Online.GetListings(kind, r => done?.Invoke(r?.Listings));
+
+        public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => Online.RegisterHire(request, done);
+
+        public void Unregister(string listingId, Action<bool?> done) => Online.Unregister(listingId, done);
+
+        public void LoadMail(Action<List<Mail>> done) => Online.GetMail(r => done?.Invoke(r?.Mail));
+
+        /// <summary>우편 받기 = 행동 mail.claim (서버가 우편이 있는지 확인하고 같은 규칙으로 더한다).</summary>
+        public bool ClaimMail(Mail mail)
+        {
+            if (mail?.Id == null || ClaimedMail.Contains(mail.Id) || !Do(PlayerActionRunner.ClaimMail(mail))) return false;
+            ClaimedMail.Add(mail.Id);
+            return true;
+        }
+
+        /// <summary>이번 실행에서 받은 우편 (서버가 지우기 전에 다시 보여 두 번 받지 않게).</summary>
+        public HashSet<string> ClaimedMail { get; } = new HashSet<string>();
+
         private void KeepAccount()
         {
             if (Online is HttpOnlineService http) { Link.AccountId = http.AccountId; Link.Token = http.Token; }

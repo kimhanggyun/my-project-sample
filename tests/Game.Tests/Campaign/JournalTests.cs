@@ -25,6 +25,10 @@ namespace Game.Tests.Campaign
             public void PutSave(SavePutRequest r, Action<SavePutResponse> done) { if (Down) done(null); else _inner.PutSave(r, done); }
             public void SubmitBattle(BattleSubmission s, Action<BattleVerdict> done) { if (Down) done(null); else _inner.SubmitBattle(s, done); }
             public void SubmitActions(ActionSubmission s, Action<ActionVerdict> done) { if (Down) done(null); else _inner.SubmitActions(s, done); }
+            public void GetListings(string kind, Action<HireListResponse> done) { if (Down) done(null); else _inner.GetListings(kind, done); }
+            public void RegisterHire(HireListingRequest r, Action<HireListingResponse> done) { if (Down) done(null); else _inner.RegisterHire(r, done); }
+            public void Unregister(string id, Action<bool?> done) { if (Down) done(null); else _inner.Unregister(id, done); }
+            public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
         }
 
         private sealed class World

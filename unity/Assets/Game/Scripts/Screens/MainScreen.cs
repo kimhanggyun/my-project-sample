@@ -26,6 +26,7 @@ namespace Game.Unity.Screens
             { "story", () => new StoryTabView() },
             { "general", () => new GeneralsTabView() },
             { "formation", () => new FormationTabView() },
+            { "hiring", () => new HiringTabView() },
         };
 
         private readonly string _initial;

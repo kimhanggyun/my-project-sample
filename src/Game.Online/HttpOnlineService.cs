@@ -117,6 +117,22 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.Actions(_game), OnlineJson.Write(submission), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 409 || status == 422 ? Parse<ActionVerdict>(body) : null));
 
+        public void GetListings(string kind, Action<HireListResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.HireListings(_game) + (kind == null ? "" : "?kind=" + Uri.EscapeDataString(kind)), null, Token, (status, body) =>
+                done?.Invoke(status == 200 ? Parse<HireListResponse>(body) : null));
+
+        /// <summary>200 = 등록, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.HireListings(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<HireListingResponse>(body) : null));
+
+        public void Unregister(string listingId, Action<bool?> done) =>
+            _transport.Send("DELETE", OnlineRoutes.HireListing(_game, listingId), null, Token, (status, body) =>
+                done?.Invoke(status == 204 ? true : status == 404 ? false : (bool?)null));
+
+        public void GetMail(Action<MailListResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.Mail(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
+
         private static T Parse<T>(string body) where T : class
         {
             if (string.IsNullOrEmpty(body)) return null;
