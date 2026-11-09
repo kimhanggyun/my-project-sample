@@ -35,12 +35,13 @@
 | 2 | 장수 키우기 | **일부 먼저 열림** | 지금: 스킬북·특성서 사용, 일기토·논쟁 전적 보상. 나중(TO-BE): 세부 성장 컨텐츠 (지략·무력·통솔 …) |
 | 3 | 부대 키우기 | **TO-BE** | 특정 컨텐츠로 진형 해금, 병종 승급 등 |
 | 4 | 부대 편성 | **이번 범위** | 보유 장수로 군단 구성, 상황별(야전·공성·공격·수비) 편성 저장 |
-| 5 | 고용 | **서버 도입 후** | 다른 유저가 등록한 장수·부대를 이력 보고 고용, 내 등록 관리 ([hiring.md](hiring.md)) |
-| 6 | 대전 | **확장 예정** | 유저 대전 1:1 · N:N ([pvp.md](pvp.md)). 탭이 5개를 넘으면 "더보기"로 묶음 |
+| 5 | 영토 | **별도 컨텐츠 (기획 중)** | 실제 지역(GPS) 기반 땅따먹기, 지역 단계별 연합 ([territory.md](territory.md)) |
+| 6 | 고용 | **서버 도입 후** | 다른 유저가 등록한 장수·부대를 이력 보고 고용, 내 등록 관리 ([hiring.md](hiring.md)) |
+| 7 | 대전 | **확장 예정** | 유저 대전 1:1 · N:N ([pvp.md](pvp.md)) |
 | - | 설정 (상단) | **이번 범위** | 사운드, 배속 기본값, 전투 패널 자동 접기, **전체 난이도** 등 |
 
 - TO-BE 탭은 하단에 자리를 두고, 누르면 **"준비 중" 화면**을 보여준다 (확정). 숨김으로 바꾸려면 데이터 값만 바꾼다.
-- 나중에 상점, 도감 등이 추가될 수 있다. 탭이 5개를 넘으면 "더보기" 탭으로 묶는다.
+- 나중에 상점, 도감 등이 추가될 수 있다. 하단 탭 바는 **가로 스크롤**이다 (확정, "더보기"로 묶지 않는다). 한 화면에 5개까지 보이고 그보다 많으면 밀어서 본다.
 
 ## 3. 확장 구조 (탭 교체)
 
@@ -49,13 +50,18 @@
 - 키울 게 생겼을 때 탭에 **알림 표시(빨간 점)**를 띄우는 기능을 공통으로 둔다.
 - 장수 키우기의 세부 항목도 데이터(`growthTracks.json`)로 정의할 예정 (TO-BE).
 
+- 실제 파일: `data/Ui/mainTabs.json` (`id`, `nameKey`, `status`). 탭 id → 화면 모듈 등록은 화면 코드(`MainScreen`)에 있고, 등록이 없거나 `tobe`면 "준비 중" 화면.
+
 ```json
-[
-  { "id": "story",     "name": "스토리",     "status": "active" },
-  { "id": "general",   "name": "장수 키우기", "status": "active", "sections": ["skillBook", "traitBook", "contestRewards"] },
-  { "id": "troop",     "name": "부대 키우기", "status": "tobe" },
-  { "id": "formation", "name": "부대 편성",  "status": "active" }
-]
+{
+  "tabs": [
+    { "id": "story",     "nameKey": "ui.tab.story",     "status": "active" },
+    { "id": "general",   "nameKey": "ui.tab.general",   "status": "active" },
+    { "id": "troop",     "nameKey": "ui.tab.troop",     "status": "tobe" },
+    { "id": "formation", "nameKey": "ui.tab.formation", "status": "active" },
+    { "id": "territory", "nameKey": "ui.tab.territory", "status": "tobe" }
+  ]
+}
 ```
 
 

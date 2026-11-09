@@ -20,7 +20,10 @@ namespace Game.Unity.Screens
     public sealed class BattleScreen : GameScreen
     {
         private const int MaxTicksPerFrame = 40;
-        private const int LogLines = 3;
+        private const float TopHeight = 64f;
+        private const float HeadHeight = 56f;
+        private const float RowHeight = 72f;
+        private const float CardHeight = 92f;
         private const float NoticeSeconds = 2.5f;
         private static readonly int[] Speeds = { 1, 2, 4 };
         private static readonly string[] MoveModesInOrder = { MoveModes.Normal, MoveModes.Forced, MoveModes.AttackMove };
@@ -48,7 +51,9 @@ namespace Game.Unity.Screens
         private const float BubbleSeconds = 3f;
 
         private Text _clock;
-        private Text _logText;
+        private Button _collapseButton;
+        private RectTransform _panelBody;
+        private bool _collapsed;
         private Text _selectedInfo;
         private Text _notice;
         private Button _pauseButton;
@@ -60,7 +65,6 @@ namespace Game.Unity.Screens
         private readonly List<(CorpsState corps, Button button, Text text)> _cards = new List<(CorpsState, Button, Text)>();
         private readonly List<Button> _orderButtons = new List<Button>();
         private string _skillRowKey;
-        private readonly LinkedList<string> _log = new LinkedList<string>();
 
         public BattleScreen(SortiePlan plan) { _plan = plan; }
 
@@ -74,15 +78,15 @@ namespace Game.Unity.Screens
             _speech = new SpeechPlanner(ctx.Defs, ctx.Flags, ctx.Combat.TickSeconds,
                 id => { var c = ctx.FindCorps(id); return c != null && c.Setup.Controller == Controllers.Ai; });
 
-            Ui.Column(Root, 8, 16);
+            Ui.Column(Root, 6, 8);
 
-            // ① 상단: 시간 + 일시정지·배속·끝까지
-            var top = Ui.Row(Root, "Top", 96, 8);
-            _clock = Ui.Label(top, "", Ui.FontSmall, TextAnchor.MiddleLeft);
+            // ① 상단: 시간 + 일시정지·배속·끝까지 (얇게)
+            var top = Ui.Row(Root, "Top", TopHeight, 8);
+            _clock = Ui.Label(top, "", 28, TextAnchor.MiddleLeft);
             Ui.Size(_clock, flexibleWidth: 2);
-            _pauseButton = Ui.Button(top, "", TogglePause, 96, fontSize: Ui.FontSmall);
-            _speedButton = Ui.Button(top, "", NextSpeed, 96, fontSize: Ui.FontSmall);
-            Ui.Button(top, T("ui.battle.skip"), SkipToEnd, 96, fontSize: Ui.FontSmall);
+            _pauseButton = Ui.Button(top, "", TogglePause, TopHeight, fontSize: 28);
+            _speedButton = Ui.Button(top, "", NextSpeed, TopHeight, fontSize: 28);
+            Ui.Button(top, T("ui.battle.skip"), SkipToEnd, TopHeight, fontSize: 28);
 
             // ② 전장 (3D 카메라가 이 영역에 그린다. 위에 깔린 투명 판이 누름·끌기·확대를 받는다)
             App.SetBackdrop(false);
@@ -111,33 +115,33 @@ namespace Game.Unity.Screens
             _notice.rectTransform.sizeDelta = new Vector2(0f, 48f);
             _notice.rectTransform.anchoredPosition = new Vector2(0f, -8f);
 
-            // ③④ 선택 군단 정보 + 명령
-            var panel = Ui.Card(Root, "Selected", 16, 8);
-            _selectedInfo = Ui.Label(panel, "", 28);
-            var orders = Ui.Row(panel, "Orders", 96, 8);
-            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.advance"), () => Report(_ctl.Advance()), 96, fontSize: Ui.FontSmall));
-            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.hold"), () => Report(_ctl.Hold()), 96, fontSize: Ui.FontSmall));
-            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.retreat"), () => Report(_ctl.Retreat()), 96, fontSize: Ui.FontSmall));
-            _delegateButton = Ui.Button(orders, "", ToggleDelegate, 96, fontSize: Ui.FontSmall);
+            // ③④ 선택 군단 정보 + 명령 (접기·펴기, battle.md 4장: 전장이 가려지지 않게)
+            var panel = Ui.Card(Root, "Selected", 10, 6);
+            var head = Ui.Row(panel, "Head", HeadHeight, 8);
+            _selectedInfo = Ui.Label(head, "", 24);
+            Ui.Size(_selectedInfo, flexibleWidth: 5);
+            _collapseButton = Ui.Button(head, "", ToggleCollapse, HeadHeight, fontSize: 24);
+            Ui.Size(_collapseButton, width: 150);
+            _panelBody = Ui.Rect(panel, "Body");
+            Ui.Column(_panelBody, 6);
+            var orders = Ui.Row(_panelBody, "Orders", RowHeight, 6);
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.advance"), () => Report(_ctl.Advance()), RowHeight, fontSize: 26));
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.hold"), () => Report(_ctl.Hold()), RowHeight, fontSize: 26));
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.retreat"), () => Report(_ctl.Retreat()), RowHeight, fontSize: 26));
+            _delegateButton = Ui.Button(orders, "", ToggleDelegate, RowHeight, fontSize: 26);
             _orderButtons.Add(_delegateButton);
-            var row2 = Ui.Row(panel, "Modes", 96, 8);
-            _moveModeButton = Ui.Button(row2, "", NextMoveMode, 96, fontSize: Ui.FontSmall);
-            _formationButton = Ui.Button(row2, "", () => Report(_ctl.NextFormation()), 96, fontSize: Ui.FontSmall);
+            _moveModeButton = Ui.Button(orders, "", NextMoveMode, RowHeight, fontSize: 24);
+            _formationButton = Ui.Button(orders, "", () => Report(_ctl.NextFormation()), RowHeight, fontSize: 24);
             _orderButtons.Add(_formationButton);
-            _skillRow = Ui.Row(panel, "Skills", 96, 8);
-
-            // 전황 (말풍선·대사)
-            var logCard = Ui.Card(Root, "Log", 12, 4);
-            Ui.Size(logCard, 120);
-            _logText = Ui.Label(logCard, "", 26, TextAnchor.UpperLeft);
+            _skillRow = Ui.Row(_panelBody, "Skills", RowHeight, 6);
 
             // ⑤ 하단: 전군 진군 + 군단 카드
-            var bottom = Ui.Row(Root, "Cards", 120, 8);
-            Ui.Size(Ui.Button(bottom, T("ui.cmd.advanceAll"), () => Report(_ctl.AdvanceAll() > 0), 120, Palette.ButtonActive, Ui.FontSmall), width: 200);
+            var bottom = Ui.Row(Root, "Cards", CardHeight, 6);
+            Ui.Size(Ui.Button(bottom, T("ui.cmd.advanceAll"), () => Report(_ctl.AdvanceAll() > 0), CardHeight, Palette.ButtonActive, 26), width: 180);
             foreach (var c in _ctl.OwnCorps())
             {
                 var corps = c;
-                var b = Ui.Button(bottom, "", () => { if (_ctl.Select(corps.Id)) _field.LookAt(corps); _dirty = true; }, 120, fontSize: 24);
+                var b = Ui.Button(bottom, "", () => { if (_ctl.Select(corps.Id)) _field.LookAt(corps); _dirty = true; }, CardHeight, fontSize: 22);
                 _cards.Add((corps, b, b.GetComponentInChildren<Text>()));
             }
 
@@ -282,10 +286,14 @@ namespace Game.Unity.Screens
             if (corps != null) _bubbles[corps] = (text, BubbleSeconds);
         }
 
-        private void Add(string line)
+        /// <summary>전황 한 줄: 전장 위 알림으로 잠깐 보여준다 (대사·말풍선은 깃발 위).</summary>
+        private void Add(string line) => Notice(line);
+
+        private void ToggleCollapse()
         {
-            _log.AddLast(line);
-            while (_log.Count > LogLines) _log.RemoveFirst();
+            _collapsed = !_collapsed;
+            _panelBody.gameObject.SetActive(!_collapsed);
+            _dirty = true;
         }
 
         private string GeneralOf(CorpsState c) => c.Setup.General != null ? Ctx.GeneralName(c.Setup.General.Id) : c.Id;
@@ -316,7 +324,7 @@ namespace Game.Unity.Screens
             {
                 string formation = ctx.Defs.Formations.TryGetValue(sel.Formation.Id, out var f) ? T(f.NameKey) : sel.Formation.Id;
                 string status = T("ui.corps." + StatusKey(sel.Status));
-                _selectedInfo.text = T("ui.cmd.selectedLine", CorpsName(sel.Id), formation, sel.Troops.ToString("N0"), sel.StartTroops.ToString("N0"),
+                _selectedInfo.text = T(_collapsed ? "ui.cmd.selectedShort" : "ui.cmd.selectedLine", CorpsName(sel.Id), formation, sel.Troops.ToString("N0"), sel.StartTroops.ToString("N0"),
                     sel.Morale.FloorToLong(), sel.SkillPoints.Points.FloorToLong(), status, OrderName(sel));
             }
             foreach (var b in _orderButtons) Ui.SetEnabled(b, can);
@@ -333,9 +341,7 @@ namespace Game.Unity.Screens
                 button.targetGraphic.color = corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled;
             }
 
-            var sb = new StringBuilder();
-            foreach (var l in _log) sb.AppendLine(l);
-            _logText.text = sb.ToString();
+            SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
         }
 
         /// <summary>매 프레임: 카메라 화면 영역, 병사 그리기, 깃발 위 이름.</summary>
@@ -388,7 +394,7 @@ namespace Game.Unity.Screens
             {
                 string id = s.SkillId;
                 string label = T(s.NameKey) + " " + s.Cost.FloorToLong() + "·" + s.UsesLeft;
-                var b = Ui.Button(_skillRow, label, () => PressSkill(id), 96, fontSize: 26);
+                var b = Ui.Button(_skillRow, label, () => PressSkill(id), RowHeight, fontSize: 24);
                 Ui.SetEnabled(b, s.Affordable);
                 if (_ctl.TargetingSkill == id) b.targetGraphic.color = Palette.ButtonActive;
             }

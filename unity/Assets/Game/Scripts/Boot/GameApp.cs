@@ -83,7 +83,7 @@ namespace Game.Unity.Boot
         public void SetBackdrop(bool on) { if (_backdrop != null) _backdrop.enabled = on; }
 
         public void ShowTitle() => Show(new TitleScreen());
-        public void ShowMain(MainTab tab = MainTab.Story) => Show(new MainScreen(tab));
+        public void ShowMain(string tabId = null) => Show(new MainScreen(tabId));
 
         private void BuildCanvas()
         {

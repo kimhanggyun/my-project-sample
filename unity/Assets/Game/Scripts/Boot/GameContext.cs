@@ -28,6 +28,8 @@ namespace Game.Unity.Boot
         public StoryFlow Flow { get; private set; }
         public CampaignSaveService Saves { get; private set; }
         public CampaignState State { get; private set; }
+        /// <summary>메인 화면 하단 탭 (Ui/mainTabs.json).</summary>
+        public IReadOnlyList<MainTabEntry> MainTabs { get; private set; }
 
         public IAuthService Auth { get; private set; }
         public IStoreService Store { get; private set; }
@@ -44,6 +46,7 @@ namespace Game.Unity.Boot
             c.Flow = new StoryFlow(c.Defs, data, time);
             c.Saves = new CampaignSaveService(saveStore);
             c.State = c.Saves.Load() ?? StartingKitService.CreateNewGame(c.Defs);
+            c.MainTabs = MainTabEntry.Load(data);
 
             var choices = ReadServiceChoices(config, serviceConfigFile);
             var cfg = new ServiceConfig(choices);
@@ -89,5 +92,27 @@ namespace Game.Unity.Boot
 
         /// <summary>출진 시드: 시간 서비스에서 (규칙 계산 밖, 리플레이는 시드가 결과에 남는다).</summary>
         public ulong NewSeed() => (ulong)Time.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+
+    /// <summary>메인 화면 탭 하나 (main-screen.md 3장, `Ui/mainTabs.json`).</summary>
+    public sealed class MainTabEntry
+    {
+        public const string Active = "active";
+        public const string Tobe = "tobe";
+        public const string Hidden = "hidden";
+        public const string File = "Ui/mainTabs.json";
+
+        public string Id { get; private set; }
+        public string NameKey { get; private set; }
+        public string Status { get; private set; }
+
+        public static List<MainTabEntry> Load(IDataSource data)
+        {
+            var list = new List<MainTabEntry>();
+            foreach (JObject t in (JArray)JObject.Parse(data.ReadText(File))["tabs"])
+                list.Add(new MainTabEntry { Id = t.Value<string>("id"), NameKey = t.Value<string>("nameKey"), Status = t.Value<string>("status") ?? Active });
+            return list;
+        }
     }
 }

@@ -87,7 +87,7 @@ namespace Game.Unity.Screens
 
             if (!plan.Ok) Ui.Label(Root, Ui.Colored(T("ui.step.cannotSortie"), Palette.Bad), Ui.FontSmall, TextAnchor.MiddleCenter);
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(row, T("ui.common.back"), () => App.ShowMain(MainTab.Story));
+            Ui.Button(row, T("ui.common.back"), () => App.ShowMain("story"));
             var direct = Ui.Button(row, T("ui.step.directSortie"), () => Sortie(step, false));
             var delegated = Ui.Button(row, T("ui.step.delegateSortie"), () => Sortie(step, true));
             Ui.SetEnabled(direct, plan.Ok);
