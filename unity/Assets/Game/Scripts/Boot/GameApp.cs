@@ -37,7 +37,8 @@ namespace Game.Unity.Boot
                     new FileSaveStore(Application.persistentDataPath),
                     new SystemTimeProvider(),
                     GameDataPaths.ServiceConfigFile,
-                    url => new Game.Unity.Online.UnityWebTransport(this, url));
+                    url => new Game.Unity.Online.UnityWebTransport(this, url),
+                    () => new Game.Unity.Online.UnityLocationService(this));
             }
             catch (Exception e)
             {

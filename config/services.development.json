@@ -4,6 +4,7 @@
   "store": "fake",
   "rewardedAd": "fake",
   "bannerAd": "off",
+  "_location": "location = off / fake (fakeLocation 좌표) / device (기기 GPS, 폰에서 권한을 묻는다)",
   "location": "fake",
   "fakeLocation": "37.5665,126.9780",
   "online": "off",

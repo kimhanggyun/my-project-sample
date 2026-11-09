@@ -57,6 +57,7 @@
   - 결과를 반영하면 바로 저장한다. 전투 중에 앱을 끄면 출진(군량 차감)은 저장되지 않은 상태로 남는다 (전투 이어하기는 이후 단계).
 - 전투 직전 대결 (`ContestScreen`, battle.md 2.7): [직접 지휘]로 출진했고 대결이 일어나면(스텝이 허용 + 두 대장의 능력치 차이 조건 + 확률) 대사 뒤에 대결 화면. 라운드마다 행동을 고르고(필살은 기운이 가득 찼을 때만), 5초(화면 값) 안에 안 고르면 시드 난수로 골라 기록한다. [자동]은 남은 라운드를 전투와 같은 AI에 맡긴다. 계산은 `Game.Flow.ContestPlay`가 고른 기록을 넣고 전투를 다시 만들어 읽는다 — 앞 라운드는 앞 선택에만 달려 바뀌지 않고, 같은 기록이 전투에 들어가 리플레이와 같다 (R-29, `ContestPlayTests`). 위임 출진이면 AI가 고른다.
 - 온라인 (`Scripts/Online/UnityWebTransport`, `GameContext.StartSync/SubmitBattle`): 서비스 설정 `online` = off / fake / http. 타이틀에서 동기화, 전투 뒤 서버 확인 ([../server.md](../server.md) 5장).
+- 위치 (`Scripts/Online/UnityLocationService`, 설정 `location = device`): 한 번만 켜고 끄는 기기 GPS. Android 권한 요청, iOS 안내 문구(ProjectSettings `locationUsageDescription`). Input.location(구 입력)을 쓰므로 Active Input Handling = Both.
 - 영토 (`Screens/TerritoryScreens`, 위치 서비스가 켜져 있을 때): [내 위치 확인] → 지금 지역과 공격할 수 있는 지역 ([../../design/content/territory.md](../../design/content/territory.md) 8.1).
 - 고용 (`Screens/HiringScreens`, 온라인일 때만): 고용 탭 = 등록 목록(장수/부대), 내 등록 해제, [내 것 등록] → 가격 정하기(추천 가격에서 10%씩, 최대 = 추천 × 상한), [우편함] → 받기(행동 `mail.claim`). 스토리 출진 화면의 "고용" 카드에서 [장수 고용]/[부대 고용] → 등록과 넣을 군단을 고르면 `HireDraft`가 편성 사본을 만든다 (장수 = 그 군단의 지휘관 교체, 부대 = 첫 빈 칸, 인원은 등록 인원·장수 한도 남은 자리 중 작은 쪽). 가짜 서버(fake)는 `data/Dev/fakeHireMarket.json`의 예시 등록을 보여준다.
 - 부대 편성 탭 (`FormationScreens.cs`): 군단 목록 → 군단 편집(장수·진형·역할 바꾸기, 칸 6개) → 부대 고르기. 편집은 `FormationEditor` 사본(`GameContext.Formation`)에, [저장]은 검사 통과 시에만. 보유 부대 목록에서 징병·모병(+500)·치료(군량/돈) (`TroopService`).
