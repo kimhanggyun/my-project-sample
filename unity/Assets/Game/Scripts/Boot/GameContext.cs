@@ -260,6 +260,12 @@ namespace Game.Unity.Boot
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47). 받기는 우편함에서.</summary>
         public void CollectTerritory(Action<MailListResponse> done) => Online.CollectTerritory(done);
 
+        // ---- 연합 (R-49) ----
+        public void LoadAlliances(Action<AllianceListResponse> done) => Online.GetAlliances(done);
+        public void CreateAlliance(string name, Action<AllianceResponse> done) => Online.CreateAlliance(name, done);
+        public void JoinAlliance(string id, Action<AllianceResponse> done) => Online.JoinAlliance(id, done);
+        public void LeaveAlliance(Action<AllianceResponse> done) => Online.LeaveAlliance(done);
+
         /// <summary>내 지역에 지금 기본 편성을 수비 편성으로 등록 (서버 세이브 기준, R-48).</summary>
         public void RegisterDefense(string regionId, Action<DefenseResponse> done) => Online.RegisterDefense(new DefenseRequest { RegionId = regionId }, done);
 

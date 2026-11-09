@@ -45,6 +45,10 @@ namespace Game.Server
         // ---- 영토 (게임별, R-46) ----
         /// <summary>영토 주인 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장). 우편을 보내도 된다.</summary>
         T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use);
+        /// <summary>연합 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장, R-49).</summary>
+        T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use);
+        /// <summary>새 id (연합·우편 등).</summary>
+        string NewKey(string prefix);
 
         // ---- 우편 (게임별) ----
         void AddMail(string gameCode, string accountId, Mail mail);
@@ -74,6 +78,8 @@ namespace Game.Server
             public Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>> HireLogs { get; set; } = new Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>>();
             /// <summary>게임 코드 → (지역 → 주인).</summary>
             public Dictionary<string, Dictionary<string, TerritoryOwner>> Territory { get; set; } = new Dictionary<string, Dictionary<string, TerritoryOwner>>();
+            /// <summary>게임 코드 → (연합 id → 연합).</summary>
+            public Dictionary<string, Dictionary<string, Alliance>> Alliances { get; set; } = new Dictionary<string, Dictionary<string, Alliance>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -232,6 +238,20 @@ namespace Game.Server
             if (!Data.Territory.TryGetValue(gameCode, out var g)) Data.Territory[gameCode] = g = new Dictionary<string, TerritoryOwner>();
             return g;
         }
+
+        public T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use)
+        {
+            lock (_lock)
+            {
+                if (Data.Alliances == null) Data.Alliances = new Dictionary<string, Dictionary<string, Alliance>>();
+                if (!Data.Alliances.TryGetValue(gameCode, out var g)) Data.Alliances[gameCode] = g = new Dictionary<string, Alliance>();
+                var r = use(g);
+                Persist();
+                return r;
+            }
+        }
+
+        public string NewKey(string prefix) => prefix + NewId(6);
 
         public T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use)
         {

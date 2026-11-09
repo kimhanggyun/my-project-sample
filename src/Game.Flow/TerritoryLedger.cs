@@ -51,12 +51,16 @@ namespace Game.Flow
         }
 
         /// <summary>목록 보기: 주인 사본, 요청한 계정의 지역에만 지금 받을 수 있는 수입.</summary>
-        public static TerritoryResponse View(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string accountId, long now)
+        /// <param name="allianceOf">계정 → 연합 (없으면 null). 주인의 연합 이름을 붙인다 (R-49).</param>
+        public static TerritoryResponse View(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string accountId, long now, Func<string, Alliance> allianceOf = null)
         {
             var r = new TerritoryResponse();
             foreach (var o in owners.Values)
             {
                 var copy = new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds, CollectedUnixSeconds = o.CollectedUnixSeconds, Defense = o.Defense };
+                var al = allianceOf?.Invoke(o.OwnerAccountId);
+                copy.OwnerAllianceId = al?.Id;
+                copy.OwnerAllianceName = al?.Name;
                 if (o.OwnerAccountId == accountId && defs != null && defs.Regions.TryGetValue(o.RegionId, out var region))
                     copy.Pending = defs.Accrued(region, o.CollectedUnixSeconds, now);
                 r.Owners.Add(copy);

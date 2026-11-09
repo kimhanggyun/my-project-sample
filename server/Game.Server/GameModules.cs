@@ -40,6 +40,12 @@ namespace Game.Server
         MailListResponse CollectTerritory(string accountId);
         /// <summary>내 지역에 수비 편성 등록 (R-48).</summary>
         DefenseResponse RegisterDefense(string accountId, DefenseRequest request);
+
+        // ---- 연합 (R-49) ----
+        AllianceListResponse Alliances(string accountId);
+        AllianceResponse CreateAlliance(string accountId, AllianceRequest request);
+        AllianceResponse JoinAlliance(string accountId, string allianceId);
+        AllianceResponse LeaveAlliance(string accountId);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -196,7 +202,23 @@ namespace Game.Server
         }
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
-        public TerritoryResponse Territory(string accountId) => _store.WithTerritory(Code, owners => TerritoryLedger.View(_territory, owners, accountId, Now));
+        public TerritoryResponse Territory(string accountId)
+        {
+            var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
+            return _store.WithTerritory(Code, owners => TerritoryLedger.View(_territory, owners, accountId, Now, who => AllianceBook.Of(alliances, who)));
+        }
+
+        public AllianceListResponse Alliances(string accountId) => _territory == null ? new AllianceListResponse() : _store.WithAlliances(Code, a => AllianceBook.List(_territory, a, accountId));
+
+        public AllianceResponse CreateAlliance(string accountId, AllianceRequest req) =>
+            _territory == null ? new AllianceResponse { Ok = false, Reason = AllianceReasons.NotFound }
+                : _store.WithAlliances(Code, a => AllianceBook.Create(_territory, a, accountId, req?.Name, _store.NewKey("a-"), Now));
+
+        public AllianceResponse JoinAlliance(string accountId, string allianceId) =>
+            _territory == null ? new AllianceResponse { Ok = false, Reason = AllianceReasons.NotFound }
+                : _store.WithAlliances(Code, a => AllianceBook.Join(_territory, a, accountId, allianceId));
+
+        public AllianceResponse LeaveAlliance(string accountId) => _store.WithAlliances(Code, a => AllianceBook.Leave(a, accountId));
 
         public DefenseResponse RegisterDefense(string accountId, DefenseRequest req)
         {

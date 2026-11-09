@@ -102,10 +102,24 @@ app.MapPost("/v1/games/{game}/territory/defense", async (string game, HttpReques
         return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
     });
 });
+// 연합 (R-49)
+app.MapGet("/v1/games/{game}/alliances", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.Alliances(id))));
+app.MapPost("/v1/games/{game}/alliances", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<AllianceRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.CreateAlliance(id, body)));
+});
+app.MapPost("/v1/games/{game}/alliances/leave", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.LeaveAlliance(id))));
+app.MapPost("/v1/games/{game}/alliances/{alliance}/join", (string game, string alliance, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.JoinAlliance(id, alliance))));
 app.MapPost("/v1/games/{game}/territory/collect", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.CollectTerritory(id))));
 
 app.Run();
+
+static IResult AllianceResult(AllianceResponse res) => res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
 
 static IResult Json(object o, int status = StatusCodes.Status200OK) =>
     Results.Content(OnlineJson.Write(o), "application/json", null, status);

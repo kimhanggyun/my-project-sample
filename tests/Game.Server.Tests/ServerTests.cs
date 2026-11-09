@@ -250,6 +250,26 @@ namespace Game.Server.Tests
             Assert.Equal((HttpStatusCode)422, stale.StatusCode);
         }
 
+        [Fact(DisplayName = "R-49 연합: A가 만들고 B가 가입, 목록에 둘, 이름이 겹치면 422, 탈퇴하면 연합장이 넘어간다")]
+        public async Task Alliances()
+        {
+            var a = await SignedIn();
+            var b = await SignedIn();
+            var route = OnlineRoutes.Alliances(ServerSetup.DefaultGame);
+            var made = await Read<AllianceResponse>(await a.PostAsync(route, Body(new AllianceRequest { Name = "시험연합" + System.Guid.NewGuid().ToString("N").Substring(0, 4) })));
+            Assert.True(made.Ok);
+            Assert.Equal((HttpStatusCode)422, (await b.PostAsync(route, Body(new AllianceRequest { Name = made.Alliance.Name }))).StatusCode);
+            var joined = await Read<AllianceResponse>(await b.PostAsync(OnlineRoutes.AllianceJoin(ServerSetup.DefaultGame, made.Alliance.Id), null));
+            Assert.Equal(2, joined.Alliance.Members.Count);
+            var list = await Read<AllianceListResponse>(await b.GetAsync(route));
+            Assert.Equal(made.Alliance.Id, list.MineId);
+            Assert.Equal(HttpStatusCode.OK, (await a.PostAsync(OnlineRoutes.AllianceLeave(ServerSetup.DefaultGame), null)).StatusCode);
+            var after = await Read<AllianceListResponse>(await b.GetAsync(route));
+            var mine = Assert.Single(after.Alliances, x => x.Id == made.Alliance.Id);
+            Assert.Single(mine.Members);
+            Assert.Equal(mine.Members[0], mine.LeaderAccountId);
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {

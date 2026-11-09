@@ -138,6 +138,29 @@ namespace Game.Unity.UI
             return b;
         }
 
+        /// <summary>한 줄 글자 입력 (안내 문구, 최대 글자 수). 폰에서는 누르면 키보드가 뜬다.</summary>
+        public static InputField TextInput(Transform parent, string placeholder, int maxLength, float height = ButtonHeight, int fontSize = FontBody)
+        {
+            var rt = Rect(parent, "Input");
+            var img = Background(rt, Palette.Card);
+            var input = rt.gameObject.AddComponent<InputField>();
+            input.targetGraphic = img;
+            var text = Label(rt, "", fontSize, TextAnchor.MiddleLeft);
+            text.supportRichText = false;
+            Fill(text.rectTransform);
+            text.rectTransform.offsetMin = new Vector2(24, 0);
+            text.rectTransform.offsetMax = new Vector2(-24, 0);
+            var hint = Label(rt, placeholder, fontSize, TextAnchor.MiddleLeft, Palette.TextDim);
+            Fill(hint.rectTransform);
+            hint.rectTransform.offsetMin = new Vector2(24, 0);
+            hint.rectTransform.offsetMax = new Vector2(-24, 0);
+            input.textComponent = text;
+            input.placeholder = hint;
+            input.characterLimit = maxLength;
+            Size(rt, height);
+            return input;
+        }
+
         public static void SetEnabled(Button b, bool enabled)
         {
             b.interactable = enabled;

@@ -69,6 +69,10 @@ namespace Game.Territory
         public IReadOnlyList<RegionDef> Ordered { get; private set; }
         /// <summary>받지 않고 쌓이는 최대 시간 (그 뒤로는 더 쌓이지 않는다).</summary>
         public long IncomeCapHours { get; private set; }
+        /// <summary>연합 인원 상한, 이름 길이 (territory.md 6장, R-49).</summary>
+        public int AllianceMemberMax { get; private set; } = 30;
+        public int AllianceNameMin { get; private set; } = 2;
+        public int AllianceNameMax { get; private set; } = 12;
 
         private static Dictionary<string, long> ReadIncome(JObject o, string ctx)
         {
@@ -156,7 +160,11 @@ namespace Game.Territory
             }
             long cap = root.Value<long?>("incomeCapHours") ?? 24;
             if (cap < 1) throw new DataException($"{File}: incomeCapHours는 1 이상.");
-            return new TerritoryDefs { Levels = levels, Regions = regions, Ordered = ordered, IncomeCapHours = cap };
+            var al = root["alliance"] as JObject ?? new JObject();
+            var result = new TerritoryDefs { Levels = levels, Regions = regions, Ordered = ordered, IncomeCapHours = cap,
+                AllianceMemberMax = al.Value<int?>("memberMax") ?? 30, AllianceNameMin = al.Value<int?>("nameMin") ?? 2, AllianceNameMax = al.Value<int?>("nameMax") ?? 12 };
+            if (result.AllianceMemberMax < 1 || result.AllianceNameMin < 1 || result.AllianceNameMax < result.AllianceNameMin) throw new DataException($"{File}.alliance: 인원 상한·이름 길이가 잘못되었습니다.");
+            return result;
         }
 
         /// <summary>그 지역을 차지하려면 필요한 군단 수: 지역별 값, 없으면 단계 기본값.</summary>

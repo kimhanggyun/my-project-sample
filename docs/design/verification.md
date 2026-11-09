@@ -181,6 +181,7 @@
 | R-46 | **영토 전투·차지**: 지역의 수비군(단계 기본값 + 지역 덮어쓰기, 지역 지형)으로 스텝 "territory.<지역>"을 만든다. 출진 조건: 혼자 차지할 수 있는 단계(필요 군단 1, 시즌 행사 단계 아님) · 공격자 위치에서 공격할 수 있는 지역(R-45). 결과 반영은 스토리와 같되 스텝 클리어·첫 보상·탐색 기억·구출은 없다. 서버가 재현해 맞고 아군이 이기면 그 지역 주인 = 공격자 (이전 주인은 바뀐다) | [territory.md](content/territory.md) 5장 |
 | R-47 | **영토 수입**: 차지한 지역마다 단계의 시간당 자원(income)이 쌓인다. 쌓인 양 = 시간당 양 × 쌓인 초 ÷ 3600 (내림), 쌓인 초 = 지금 − 마지막으로 받은(처음엔 차지한) 시각, 최대 incomeCapHours. 받기는 서버가 우편으로 보내고(받은 시각 = 지금) 우편은 행동 mail.claim으로 받는다. 남에게 빼앗기면 그때까지 쌓인 것을 이전 주인에게 우편으로 정산하고, 새 주인은 차지한 시각부터. 이미 내 지역을 다시 이기면 그대로 | [territory.md](content/territory.md) 6장 |
 | R-48 | **수비 편성**: 지역 주인만 등록하고, 등록하면 판(Version)이 1 오른다. 스냅샷 = 주인 서버 세이브의 기본 편성(검사 통과), 장수는 출전 가능 상태로·부대는 부상병 없이. 수비 편성이 있으면 그 지역 전투의 적 = 그 편성(군단 D1…, AI 수비 태세, 군량 10분 분량), 없으면 AI 수비군. 서버는 제출의 판이 지금 판과 다르면 거절. 결과의 부상은 내 군단의 장수에게만, 수비 장수는 포로로 오지 않는다(스냅샷). 주인이 바뀌면 수비 편성은 사라진다 | [territory.md](content/territory.md) 5장 |
+| R-49 | **연합**: 한 계정은 한 연합에만. 만들기: 이름은 앞뒤 공백을 뺀 길이가 범위(nameMin~nameMax) 안, 다른 연합과 같으면 안 됨(대소문자 무시), 만든 사람이 연합장. 가입: 인원 상한(memberMax)까지 (지금은 신청 없이 바로). 탈퇴: 연합장이 나가면 남은 사람 중 먼저 들어온 사람이 연합장, 모두 나가면 연합이 없어진다. 영토 목록에는 주인의 연합이 붙는다 | [territory.md](content/territory.md) 6장 |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
@@ -216,7 +217,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
+- 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, 연합(R-49)은 `Campaign/AllianceTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
 ## 9. 기준 전투
@@ -259,3 +260,4 @@
 | v1.13 | 2026-11-09 | R-46 영토 전투·차지 추가 |
 | v1.14 | 2026-11-09 | R-47 영토 수입 추가 |
 | v1.15 | 2026-11-09 | R-48 수비 편성 추가 |
+| v1.16 | 2026-11-09 | R-49 연합 만들기·가입·탈퇴 추가 |
