@@ -32,9 +32,18 @@ namespace Game.Unity.Boot
         public IReadOnlyList<MainTabEntry> MainTabs { get; private set; }
 
         private Game.Campaign.Roster.FormationEditor _formation;
+        /// <summary>편성 탭에서 고친 상황 (null = 기본 편성).</summary>
+        public string FormationSituation { get; private set; }
         /// <summary>편성 편집 중인 사본 (화면을 오가도 유지). 저장·되돌리기 전까지 출진에는 저장된 편성이 쓰인다.</summary>
-        public Game.Campaign.Roster.FormationEditor Formation => _formation ?? (_formation = new Game.Campaign.Roster.FormationEditor(Defs, State));
+        public Game.Campaign.Roster.FormationEditor Formation => _formation ?? (_formation = new Game.Campaign.Roster.FormationEditor(Defs, State, FormationSituation));
         public void DiscardFormationDraft() => _formation = null;
+
+        /// <summary>편성 탭의 상황 바꾸기 (고치던 사본은 버린다).</summary>
+        public void SelectFormationSituation(string situation)
+        {
+            FormationSituation = situation;
+            _formation = null;
+        }
 
         public IAuthService Auth { get; private set; }
         public IStoreService Store { get; private set; }
