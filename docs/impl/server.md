@@ -18,6 +18,7 @@
 |---|---|
 | `src/Game.Online/OnlineContracts.cs` | 메시지: `SignInResponse`, `ServerTimeResponse`, `CloudSave`(Revision·세이브 JSON), `SavePutRequest/Response`, `BattleSubmission`, `BattleVerdict`. 경계 `IOnlineService`와 서버 없음 구현 `OfflineOnlineService`. JSON 설정 `OnlineJson` (Fix는 원본 정수) |
 | `src/Game.Flow/PlayerActions.cs` | 전투 밖 행동(`PlayerAction`: 편성 저장, 스킬북 구매·습득, 징병·모병·치료, 부대 창설·해산)을 규칙대로 적용하는 `PlayerActionRunner`(종류별 처리기 등록) + 서버 쪽 `ActionVerifier` (R-41) |
+| `src/Game.Flow/HireBook.cs` | 고용 이력(전투 결과 → 고용마다 승·패·퇴각·포로·궤멸, 잃은 병력)·제한(하루 고용 수, 같은 등록 대기시간) 계산 (R-44) |
 | `src/Game.Flow/Hiring.cs` | 고용 규칙 `HireRules`: 등록 스냅샷·추천 가격, 고용 해석(`HiredForces`: 고용 장수·부대·비용·등록자별 비용), 등록자 보상 (R-43) |
 | `src/Game.Flow/BattleVerifier.cs` | 서버 세이브 + 제출(출진 요청·시드·대결 선택·명령 기록)로 출진 준비 → 전투 재현 → 지문·틱 비교 → 맞으면 출진 확정 + 결과 반영 |
 | `server/Game.Server` | **참고 서버** (ASP.NET Core, net8.0). 개발·테스트용. 공통 계정(`IPlatformStore`: 계정·토큰·게임 가입 기록) + 게임별 데이터(`IGameStore`: (게임 코드, 계정)별 세이브), 게임 등록표(`GameRegistry` + `IGameModule`). 저장소는 메모리 또는 폴더 |
@@ -39,11 +40,11 @@
 | `GET /v1/games/{game}/save` | 그 게임 세이브 받기. 처음이면 가입 기록 + 새 게임 (Revision 1). 없는 게임이면 404 | `CloudSave` |
 | `PUT /v1/games/{game}/save` | **처음 가져오기 전용**: 서버 세이브가 새 게임(Revision 1)이고 `BaseRevision` 위일 때만. 아니면(또는 읽을 수 없는 세이브) 409 + 서버 사본 | `SavePutResponse` |
 | `POST /v1/games/{game}/actions` | 행동 묶음 제출 (R-41). 서버 세이브에 차례로 적용, 옛 세이브 위면 409(`staleSave`), 하나라도 안 되면 422(`badAction` + 순번, 아무것도 반영 안 함), 맞으면 새 세이브 | `ActionVerdict` |
-| `GET /v1/games/{game}/hire/listings?kind=general\|unit` | 고용 등록 목록 (R-43) | `HireListResponse` |
+| `GET /v1/games/{game}/hire/listings?kind=general\|unit` | 고용 등록 목록 + 이력 (R-43, R-44), 요청한 계정의 지난 24시간 고용 수·상한·대기 중인 등록 | `HireListResponse` |
 | `POST /v1/games/{game}/hire/listings` | 내 서버 세이브의 장수·부대 등록 (같은 대상이면 갱신, Version +1). 가격이 추천 × 상한을 넘거나 · 내 것이 아니거나 · 출전 불가거나 · 등록 수 상한이면 422 | `HireListingResponse` |
 | `DELETE /v1/games/{game}/hire/listings/{id}` | 내 등록 해제 (남의 것·없는 것은 404) | 204 |
 | `GET /v1/games/{game}/mail` | 내 우편 (고용 보상). 받기는 행동 `mail.claim` | `MailListResponse` |
-| `POST /v1/games/{game}/battles` | 전투 제출 (고용이 있으면 `Hires` + 쓴 `Compositions`, 서버가 등록 목록의 같은 판으로 재현하고 등록자에게 우편 보상). 옛 세이브 위면 409(`staleSave`), 기록 시각이 범위 밖이면 422(`badTime`, R-42), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
+| `POST /v1/games/{game}/battles` | 전투 제출 (고용이 있으면 `Hires` + 쓴 `Compositions`, 서버가 등록 목록의 같은 판으로 재현하고 등록자에게 우편 보상, 등록 이력에 결과를 쌓는다. 고용 제한을 넘으면 422 `hireLimit`). 옛 세이브 위면 409(`staleSave`), 기록 시각이 범위 밖이면 422(`badTime`, R-42), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
 
 실행: `dotnet run --project server/Game.Server`. 설정:
 - `Game:StoreRoot` = 저장 폴더 (없으면 메모리).
@@ -106,5 +107,5 @@
 2. ~~전투 밖 행동을 서버가 같은 규칙으로 적용 (R-41), 세이브 통째 올리기는 처음 가져오기만~~ (완료).
 3. ~~오프라인 기록(행동·전투) 나중에 올리기, 기록 시각 (R-42)~~ (완료).
 4. 백엔드 선택 후 저장소·인증을 그쪽으로 (`IAccountStore` 대신 백엔드 저장소, 게스트 로그인 대신 백엔드 인증).
-5. ~~고용 서버 기반: 등록·목록·고용 출진·재현·등록자 우편 보상 (R-43)~~ (완료). 기기 쪽 고용 화면·우편 받기도 완료 (임시 화면). 다음: 고용 이력(hiring.md 4장), 하루 고용 횟수·같은 대상 대기시간 제한, 고용 인원 직접 정하기, 목록 검색·정렬.
+5. ~~고용 서버 기반: 등록·목록·고용 출진·재현·등록자 우편 보상 (R-43)~~ (완료). 기기 쪽 고용 화면·우편 받기도 완료 (임시 화면). 고용 이력·하루 고용 수·대기시간 제한(R-44), 고용 인원 고르기(25~100%)도 완료. 다음: 목록 검색·정렬, 이력의 격파 병력·재생.
 6. 숨은 보상 확정·영토(territory.md)·대전(pvp.md)을 같은 검증 위에 올린다.

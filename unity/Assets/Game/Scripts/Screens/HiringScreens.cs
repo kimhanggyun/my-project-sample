@@ -44,13 +44,14 @@ namespace Game.Unity.Screens
             Ui.Size(list.parent.parent, flexibleHeight: 1);
             var loading = Ui.Label(list, ctx.T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             string shown = _kind;
-            ctx.LoadListings(shown, listings =>
+            ctx.LoadListings(shown, res =>
             {
                 if (list == null) return; // 다른 화면으로 갔다
                 Object.Destroy(loading.gameObject);
-                if (listings == null) { Ui.Label(list, ctx.T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
-                if (listings.Count == 0) Ui.Label(list, ctx.T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-                foreach (var l in listings) ListingCard(app, list, l);
+                if (res == null) { Ui.Label(list, ctx.T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                Ui.Label(list, ctx.T("ui.hire.daily", res.DailyUsed, res.DailyMax), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+                if (res.Listings.Count == 0) Ui.Label(list, ctx.T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+                foreach (var l in res.Listings) ListingCard(app, list, l);
             });
         }
 
@@ -61,6 +62,8 @@ namespace Game.Unity.Screens
             bool mine = l.OwnerAccountId != null && l.OwnerAccountId == ctx.AccountId;
             Ui.Label(card, HireText.Line(ctx, l) + (mine ? "   " + Ui.Colored(ctx.T("ui.hire.mine"), Palette.Good) : ""), Ui.FontSmall);
             Ui.Label(card, HireText.Price(ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Label(card, HireText.Stats(ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            if (l.Recent != null && l.Recent.Count > 0) Ui.Label(card, HireText.Recent(ctx, l), 24, TextAnchor.MiddleLeft, Palette.TextDim);
             if (!mine) return;
             string id = l.Id;
             Ui.Button(card, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, _ => app.ShowMain("hiring")), 72, new Color(0.45f, 0.22f, 0.20f), 26);
@@ -74,6 +77,25 @@ namespace Game.Unity.Screens
             l.Kind == HireKinds.General
                 ? ctx.T("ui.hire.generalLine", ctx.GeneralName(l.GeneralId), l.Level)
                 : ctx.T("ui.hire.unitLine", FormationTabView.TroopName(ctx, l.TroopType), l.Troops.ToString("N0"), Game.Foundation.Math.Fix.FromRaw(l.TrainingRaw).ToDisplayDouble().ToString("0.##"));
+
+        /// <summary>이력 한 줄: 고용 수, 승률, 퇴각·포로·궤멸, 평균 생존율 (hiring.md 4장).</summary>
+        public static string Stats(GameContext ctx, HireListing l)
+        {
+            var s = l.Stats ?? new HireStats();
+            if (s.Hires == 0) return ctx.T("ui.hire.noHistory");
+            long winRate = s.Wins * 100 / s.Hires;
+            long survive = s.TroopsHired <= 0 ? 0 : (s.TroopsHired - s.TroopsLost) * 100 / s.TroopsHired;
+            return ctx.T("ui.hire.stats", s.Hires, winRate, s.Retreats, s.Captured, s.Destroyed, survive);
+        }
+
+        /// <summary>최근 전투 (최대 3개): 결과 / 잃은 병력.</summary>
+        public static string Recent(GameContext ctx, HireListing l)
+        {
+            var parts = new List<string>();
+            for (int i = 0; i < l.Recent.Count && i < 3; i++)
+                parts.Add(ctx.T("ui.hire.result." + l.Recent[i].Result) + " -" + l.Recent[i].TroopsLost.ToString("N0"));
+            return ctx.T("ui.hire.recent", string.Join(" · ", parts));
+        }
 
         public static string Price(GameContext ctx, HireListing l) =>
             ctx.T(l.Kind == HireKinds.General ? "ui.hire.price" : "ui.hire.pricePerSoldier", l.Price.ToString("N0"), ctx.T("resource." + l.PayWith));
@@ -205,8 +227,11 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class HirePickScreen : GameScreen
     {
+        private static readonly int[] Fractions = { 25, 50, 75, 100 };
         private readonly string _stepId;
         private readonly string _kind;
+        /// <summary>부대 고용 인원 = 기본 인원(최대)의 몇 % (화면을 다시 열어도 유지).</summary>
+        private static int _percent = 100;
 
         public HirePickScreen(string stepId, string kind) { _stepId = stepId; _kind = kind; }
 
@@ -217,16 +242,29 @@ namespace Game.Unity.Screens
             var comps = Ctx.State.CompositionsFor(step.BattleType);
             Ui.Column(Root, 12, 32);
             Ui.Size(Ui.Label(Root, T("ui.hire.pickTitle"), Ui.FontTitle), 110);
+            if (_kind == HireKinds.Unit)
+            {
+                var pct = Ui.Row(Root, "Percent", 80, 8);
+                foreach (var f in Fractions)
+                {
+                    int p = f;
+                    Ui.Button(pct, T("ui.hire.percent", p), () => { _percent = p; App.Show(new HirePickScreen(_stepId, _kind)); }, 80, p == _percent ? Palette.ButtonActive : Palette.Button, 28);
+                }
+            }
             var list = Ui.ScrollList(Root, "Listings", 10, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-            Ctx.LoadListings(_kind, listings =>
+            Ctx.LoadListings(_kind, res =>
             {
                 if (list == null) return;
                 Object.Destroy(loading.gameObject);
-                if (listings == null) { Ui.Label(list, T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                if (res == null) { Ui.Label(list, T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                int picked = draft.Picks.Count;
+                bool full = res.DailyUsed + picked >= res.DailyMax;
+                Ui.Label(list, T("ui.hire.daily", res.DailyUsed + picked, res.DailyMax), 26, TextAnchor.MiddleLeft, full ? Palette.Bad : Palette.TextDim);
+                long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
                 int shown = 0;
-                foreach (var l in listings)
+                foreach (var l in res.Listings)
                 {
                     if (l.OwnerAccountId == Ctx.AccountId || draft.Has(l.Id)) continue;
                     if (l.Kind == HireKinds.General && Ctx.State.FindGeneral(l.GeneralId) != null) continue; // 이미 가진 장수
@@ -235,10 +273,15 @@ namespace Game.Unity.Screens
                     var card = Ui.Card(list, l.Id, 20, 6);
                     Ui.Label(card, HireText.Line(Ctx, l), Ui.FontSmall);
                     Ui.Label(card, HireText.Price(Ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+                    Ui.Label(card, HireText.Stats(Ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+                    long until = 0;
+                    bool waiting = res.CooldownUntil != null && res.CooldownUntil.TryGetValue(l.Id, out until) && until > now;
+                    if (waiting) Ui.Label(card, T("ui.hire.cooldown", System.Math.Max(1, (until - now + 59) / 60)), 26, TextAnchor.MiddleLeft, Palette.Bad);
                     for (int i = 0; i < comps.Count; i++)
                     {
                         int corps = i;
-                        long count = l.Kind == HireKinds.Unit ? draft.DefaultCount(Ctx.State, step.BattleType, l, corps) : 0;
+                        long max = l.Kind == HireKinds.Unit ? draft.DefaultCount(Ctx.State, step.BattleType, l, corps) : 0;
+                        long count = max <= 0 ? 0 : System.Math.Max(1, max * _percent / 100);
                         string label = T("ui.hire.toCorps", corps + 1, Ctx.GeneralName(comps[corps].GeneralId))
                                      + (l.Kind == HireKinds.Unit ? "  " + (count > 0 ? T("ui.hire.countShort", count.ToString("N0")) : T("ui.hire.noRoom")) : "");
                         var b = Ui.Button(card, label, () =>
@@ -246,7 +289,7 @@ namespace Game.Unity.Screens
                             draft.Picks.Add(new HirePick { Listing = listing, CorpsIndex = corps, Count = count });
                             App.Show(new StepScreen(_stepId));
                         }, 72, fontSize: 26);
-                        Ui.SetEnabled(b, l.Kind == HireKinds.General || count > 0);
+                        Ui.SetEnabled(b, !waiting && !full && (l.Kind == HireKinds.General || count > 0));
                     }
                 }
                 if (shown == 0) Ui.Label(list, T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);

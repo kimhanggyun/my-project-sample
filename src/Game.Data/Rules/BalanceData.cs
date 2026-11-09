@@ -37,6 +37,9 @@ namespace Game.Data.Rules
         public long HireSupplyPerGold { get; private set; }
         public Fix HireOwnerRewardRatio { get; private set; }
         public int HireMaxListingsPerKind { get; private set; }
+        public int HireDailyMax { get; private set; }
+        public long HireCooldownMinutes { get; private set; }
+        public int HireRecentMax { get; private set; }
 
         public Fix LightInjuryStatMultiplier { get; private set; }
 
@@ -83,6 +86,9 @@ namespace Game.Data.Rules
                 HireSupplyPerGold = JsonUtil.RequireLong(hire, "supplyPerGold", c + ".hire"),
                 HireOwnerRewardRatio = JsonUtil.RequireFix(hire, "ownerRewardRatio", c + ".hire"),
                 HireMaxListingsPerKind = (int)JsonUtil.RequireLong(hire, "maxListingsPerKind", c + ".hire"),
+                HireDailyMax = (int)JsonUtil.RequireLong(hire, "dailyMax", c + ".hire"),
+                HireCooldownMinutes = JsonUtil.RequireLong(hire, "cooldownMinutes", c + ".hire"),
+                HireRecentMax = (int)JsonUtil.RequireLong(hire, "recentMax", c + ".hire"),
                 LightInjuryStatMultiplier = JsonUtil.RequireFix(injury, "lightStatMultiplier", c + ".generalInjury"),
                 SoldierBudget = JsonUtil.RequireLong(display, "soldierBudget", c + ".display"),
             };

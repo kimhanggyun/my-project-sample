@@ -30,7 +30,7 @@ namespace Game.Flow
         /// <param name="accountId">제출한 계정 (내 등록은 고용할 수 없다).</param>
         /// <param name="hired">맞으면 고용 내역 (서버가 등록자 보상을 만든다). 고용이 없으면 null.</param>
         public static BattleVerdict VerifySave(DefinitionSet defs, IDataSource source, CloudSave save, BattleSubmission s, long nowUnixSeconds, out string json, out long at,
-            out HiredForces hired, System.Func<string, HireListing> findListing = null, string accountId = null)
+            out HiredForces hired, System.Func<string, HireListing> findListing = null, string accountId = null, IReadOnlyList<HireLogEntry> hireLog = null)
         {
             json = null;
             hired = null;
@@ -44,6 +44,7 @@ namespace Game.Flow
                 if (findListing == null || s.Compositions == null) return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
                 hired = new HireRules(defs).Resolve(s.Hires, findListing, accountId, state, out var error);
                 if (hired == null) return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
+                if (HireBook.CheckLimits(defs.Balance, hireLog, s.Hires, at) != null) { hired = null; return new BattleVerdict { Valid = false, Reason = VerdictReasons.HireLimit }; }
             }
             var clock = new ManualTimeProvider(System.DateTimeOffset.FromUnixTimeSeconds(at));
             var v = new BattleVerifier(defs, source, clock).VerifyAndApply(state, s, hired, out _);
@@ -91,6 +92,12 @@ namespace Game.Flow
                 return verdict;
             }
             report = _flow.ApplyResult(state, plan, result);
+            if (hired != null)
+            {
+                hired.StepId = s.StepId;
+                hired.Outcomes.Clear();
+                hired.Outcomes.AddRange(HireBook.Outcomes(plan, result, hired));
+            }
             verdict.Valid = true;
             verdict.Reason = VerdictReasons.Ok;
             return verdict;

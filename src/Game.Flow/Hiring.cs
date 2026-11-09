@@ -23,6 +23,11 @@ namespace Game.Flow
         /// <summary>제출 메시지에 그대로 실을 고용 목록.</summary>
         public List<HireUse> Uses { get; } = new List<HireUse>();
 
+        /// <summary>서버 재현이 맞은 뒤: 고용마다 전투 결과 (이력용, R-44).</summary>
+        public List<HireOutcome> Outcomes { get; } = new List<HireOutcome>();
+        /// <summary>그 전투의 스텝 id (이력용).</summary>
+        public string StepId { get; internal set; }
+
         public bool IsEmpty => Generals.Count == 0 && Units.Count == 0;
     }
 
