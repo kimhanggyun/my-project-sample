@@ -10,6 +10,7 @@
     "Game.Economy",
     "Game.Progression",
     "Game.Flow",
+    "Game.Online",
     "Unity.InputSystem",
     "UnityEngine.UI"
   ],

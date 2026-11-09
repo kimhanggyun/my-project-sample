@@ -3,5 +3,8 @@
   "auth": "off",
   "store": "off",
   "rewardedAd": "off",
-  "bannerAd": "off"
+  "bannerAd": "off",
+  "online": "off",
+  "onlineUrl": "",
+  "onlineGame": "ancientwar"
 }

@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Game.Campaign;
-using Game.Campaign.Save;
 using Game.Data.Defs;
 using Game.Data.Json;
 using Game.Flow;
-using Game.Foundation.Save;
 using Game.Foundation.Time;
 using Game.Online;
 
@@ -112,22 +110,7 @@ namespace Game.Server
             return verdict;
         }
 
-        public static string ToJson(CampaignState state)
-        {
-            var mem = new InMemorySaveStore();
-            new CampaignSaveService(mem).Save(state);
-            return mem.Read(CampaignSaveService.DefaultKey);
-        }
-
-        public static CampaignState FromJson(string json)
-        {
-            try
-            {
-                var mem = new InMemorySaveStore();
-                mem.Write(CampaignSaveService.DefaultKey, json);
-                return new CampaignSaveService(mem).Load();
-            }
-            catch (Exception) { return null; }
-        }
+        public static string ToJson(CampaignState state) => SaveJson.Write(state);
+        public static CampaignState FromJson(string json) => SaveJson.Read(json);
     }
 }

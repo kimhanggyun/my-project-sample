@@ -3,5 +3,8 @@
   "auth": "fake",
   "store": "fake",
   "rewardedAd": "fake",
-  "bannerAd": "off"
+  "bannerAd": "off",
+  "online": "off",
+  "onlineUrl": "http://localhost:5000",
+  "onlineGame": "ancientwar"
 }
