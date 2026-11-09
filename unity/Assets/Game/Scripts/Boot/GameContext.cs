@@ -74,7 +74,7 @@ namespace Game.Unity.Boot
 
         /// <summary>데이터·세이브·서비스를 준비한다. 실패하면 예외 (부팅 화면이 오류로 보여준다).</summary>
         public static GameContext Create(IDataSource data, IDataSource config, ISaveStore saveStore, ITimeProvider time, string serviceConfigFile,
-            Func<string, IOnlineTransport> transportFactory = null)
+            Func<string, IOnlineTransport> transportFactory = null, Func<ILocationService> deviceLocation = null)
         {
             var clock = new ServerClock(time);
             var c = new GameContext { Data = data, Time = clock, Clock = clock, _saveStore = saveStore };
@@ -89,6 +89,7 @@ namespace Game.Unity.Boot
             var cfg = new ServiceConfig(choices);
             var reg = ServiceRegistry.WithBuiltIns();
             // 실제 SDK 구현은 여기서 reg.Register(...)로 더한다 (설정에서 이름으로 고른다).
+            if (deviceLocation != null) reg.Register(ServiceIds.Location, Game.Unity.Online.UnityLocationService.ImplName, deviceLocation);
             c.Auth = reg.Create<IAuthService>(ServiceIds.Auth, cfg);
             c.Store = reg.Create<IStoreService>(ServiceIds.Store, cfg);
             c.RewardedAd = reg.Create<IRewardedAdService>(ServiceIds.RewardedAd, cfg);

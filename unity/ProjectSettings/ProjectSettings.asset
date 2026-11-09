@@ -576,7 +576,7 @@ PlayerSettings:
   logObjCUncaughtExceptions: 1
   enableCrashReportAPI: 0
   cameraUsageDescription: 
-  locationUsageDescription: 
+  locationUsageDescription: "\uC601\uD1A0 \uD0ED\uC5D0\uC11C [\uB0B4 \uC704\uCE58 \uD655\uC778]\uC744 \uB204\uB97C \uB54C\uB9CC \uC9C0\uAE08 \uC788\uB294 \uC9C0\uC5ED\uC744 \uD655\uC778\uD558\uB294 \uB370 \uC501\uB2C8\uB2E4."
   microphoneUsageDescription: 
   bluetoothUsageDescription: 
   macOSTargetOSVersion: 12.0
@@ -930,7 +930,7 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 1
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
   cloudProjectId: 
   framebufferDepthMemorylessMode: 0
