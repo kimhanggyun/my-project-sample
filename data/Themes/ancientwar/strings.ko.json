@@ -259,5 +259,6 @@
   "ui.contest.lostFall": "쓰러졌다…",
   "ui.contest.iRetreated": "물러났다.",
   "ui.contest.theyRetreated": "적장이 물러났다.",
-  "ui.contest.draw": "무승부"
+  "ui.contest.draw": "무승부",
+  "general.enemy_general_04": "적장 정"
 }

@@ -14,9 +14,8 @@ namespace Game.Tests.Campaign
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
             for (ulong seed = 1; seed < 500; seed++)
             {
-                // 일기토는 두 대장의 무력 차이 3 이내에서만 (battle.md 2.7): 장수 A(무력 45)를 적 대장(55)에 맞춘다
+                // 일기토는 두 대장의 무력 차이 3 이내에서만 (battle.md 2.7): step01 적 대장(무력 46)과 장수 A(45)
                 var state = StartingKitService.CreateNewGame(Kit.D);
-                state.FindGeneral("general_a").StatGrowth["might"] = Game.Foundation.Math.Fix.FromInt(10);
                 var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = seed });
                 if (plan.Setup.Contests.Any(c => c.ContestId == "duel")) return plan;
             }

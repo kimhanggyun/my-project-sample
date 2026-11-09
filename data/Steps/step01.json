@@ -19,7 +19,7 @@
   "enemy": [
     {
       "id": "enemy_corps_01",
-      "general": "enemy_general_01",
+      "general": "enemy_general_04",
       "role": "commander",
       "formation": "square",
       "ai": "aggressive",

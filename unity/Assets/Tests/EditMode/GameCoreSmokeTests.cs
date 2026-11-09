@@ -19,8 +19,8 @@ namespace Game.Unity.Tests
     public class GameCoreSmokeTests
     {
         // .NET(dotnet test)에서 같은 입력으로 계산한 값. 규칙·데이터를 바꾸면 함께 다시 계산한다.
-        private const string ExpectedStep01Seed1Hash = "bcad3b4206ce1b73";
-        private const long ExpectedStep01Seed1Ticks = 551;
+        private const string ExpectedStep01Seed1Hash = "4c0f3d23f9926df6";
+        private const long ExpectedStep01Seed1Ticks = 514;
 
         private static string DataRoot => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "data"));
 
