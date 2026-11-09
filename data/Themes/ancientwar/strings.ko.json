@@ -284,5 +284,12 @@
   "ui.formation.createNote": "기본 병종을 고르세요. 병력 0으로 생기며, 징병·모병으로 채웁니다.",
   "ui.formation.disband": "해산",
   "ui.formation.disbandTitle": "부대 해산",
-  "ui.formation.disbandConfirm": "{0} {1} 부대를 해산할까요?\n병력과 부상병 {2}명이 사라집니다."
+  "ui.formation.disbandConfirm": "{0} {1} 부대를 해산할까요?\n병력과 부상병 {2}명이 사라집니다.",
+  "ui.online.connecting": "서버에 연결하는 중…",
+  "ui.online.fromServer": "서버 세이브를 받았습니다.",
+  "ui.online.uploaded": "이 기기의 진행을 서버에 올렸습니다.",
+  "ui.online.offline": "서버에 연결하지 못했습니다. 이 기기 세이브로 계속합니다.",
+  "ui.online.accepted": "서버에서 전투 결과를 확인했습니다.",
+  "ui.online.rejected": "서버 확인에 실패해 서버 세이브로 되돌렸습니다.",
+  "ui.online.verifying": "서버에서 전투 결과를 확인하는 중…"
 }

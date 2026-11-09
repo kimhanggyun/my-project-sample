@@ -55,6 +55,7 @@
     - 아직 없는 것: 병사 모델·애니메이션(아트), 소부대 진형 모양 그대로의 배치(지금은 소부대 위치 중심 격자), 스킬 효과 범위(반경) 미리보기, 전사 연출.
   - 결과를 반영하면 바로 저장한다. 전투 중에 앱을 끄면 출진(군량 차감)은 저장되지 않은 상태로 남는다 (전투 이어하기는 이후 단계).
 - 전투 직전 대결 (`ContestScreen`, battle.md 2.7): [직접 지휘]로 출진했고 대결이 일어나면(스텝이 허용 + 두 대장의 능력치 차이 조건 + 확률) 대사 뒤에 대결 화면. 라운드마다 행동을 고르고(필살은 기운이 가득 찼을 때만), 5초(화면 값) 안에 안 고르면 시드 난수로 골라 기록한다. [자동]은 남은 라운드를 전투와 같은 AI에 맡긴다. 계산은 `Game.Flow.ContestPlay`가 고른 기록을 넣고 전투를 다시 만들어 읽는다 — 앞 라운드는 앞 선택에만 달려 바뀌지 않고, 같은 기록이 전투에 들어가 리플레이와 같다 (R-29, `ContestPlayTests`). 위임 출진이면 AI가 고른다.
+- 온라인 (`Scripts/Online/UnityWebTransport`, `GameContext.StartSync/SubmitBattle`): 서비스 설정 `online` = off / fake / http. 타이틀에서 동기화, 전투 뒤 서버 확인 ([../server.md](../server.md) 5장).
 - 부대 편성 탭 (`FormationScreens.cs`): 군단 목록 → 군단 편집(장수·진형·역할 바꾸기, 칸 6개) → 부대 고르기. 편집은 `FormationEditor` 사본(`GameContext.Formation`)에, [저장]은 검사 통과 시에만. 보유 부대 목록에서 징병·모병(+500)·치료(군량/돈) (`TroopService`).
 - 문구: 화면 문구는 테마 문자열의 `ui.*` 키. `UnityPackageTests`가 화면 코드의 `ui.*` 키가 문자열 파일에 있는지 확인한다.
 - 에디터 메뉴 `Game ▸ Setup Boot Scene`: Boot 씬(카메라 + GameApp)을 만들어 빌드 목록 맨 앞에 두고 세로 화면으로 설정한다. `Game ▸ Copy Data For Build`, `Game ▸ Open Save Folder`.

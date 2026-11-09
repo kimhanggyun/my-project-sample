@@ -281,7 +281,10 @@ namespace Game.Unity.Screens
             var result = _sim.Result;
             var report = Ctx.Flow.ApplyResult(Ctx.State, _plan, result);
             Ctx.Save();
-            App.Show(new ResultScreen(_plan, result, report));
+            if (!Ctx.OnlineEnabled) { App.Show(new ResultScreen(_plan, result, report)); return; }
+            // 온라인: 서버가 다시 돌려 확인한 세이브를 받아 쓴다 (R-40)
+            Notice(T("ui.online.verifying"));
+            Ctx.SubmitBattle(_plan, _sim.CommandLog, result, r => App.Show(new ResultScreen(_plan, result, report, r?.Outcome)));
         }
 
         // ---- 표시 ----

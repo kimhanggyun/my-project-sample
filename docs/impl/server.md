@@ -61,8 +61,34 @@
 - 이 구조는 백엔드 선택에도 영향: UGS는 게임(프로젝트)마다 계정이 따로라 공통 계정이 어렵고, PlayFab은 같은 namespace 안에서 공유 가능, 자체 서버는 자유. **추천: 자체 서버(이 참고 서버를 키움) + 관리형 DB(PostgreSQL)**.
 - 한 사람이 여러 계정을 쓰는 것을 허용할지는 정책으로 따로 정한다.
 
-## 5. 다음 단계
+## 5. 기기 쪽 연결 (2026-11-09)
 
-1. 기기 쪽 HTTP 구현 (UnityWebRequest) + 서비스 설정 `online` (off / fake / http) + 로그인 → 세이브 받기 → 전투 제출 흐름.
+| 코드 | 내용 |
+|---|---|
+| `Game.Online.IOnlineTransport` | HTTP 경계. Unity = `UnityWebTransport`(UnityWebRequest, 시간 초과 10초), 테스트 = HttpClient |
+| `Game.Online.HttpOnlineService` | 게임 코드별 주소로 서버를 부른다. 게스트 토큰은 `OnlineLink`로 기기에 보관해 다음 실행에 다시 쓴다 |
+| `Game.Flow.CloudSync` | 시작: 로그인 → 서버 시각(`ServerClock`) → 서버 세이브. **처음 연결**(보관한 Revision 0)이고 기기 쪽 클리어 스텝이 더 많으면 기기 세이브를 올리고, 아니면 서버 세이브를 받아 쓴다. 전투 뒤: 제출(`SubmissionOf`: 출진 준비 + 명령 기록 + 기기 결과) → 맞으면 서버 세이브를 받아 쓰고, 거절되면 서버 세이브로 되돌린다. 서버에 닿지 않으면 기기 결과 그대로 |
+| `Game.Flow.LocalOnlineService` | **가짜 서버** (online = fake): 기기 안에서 같은 규칙(Revision·전투 검증). 세이브는 기기 저장소의 `fake-server`에 남는다 |
+| `Game.Flow.ServerClock` | 기기 시각 + 서버 시각과의 차이. 시간 규칙(부상 회복·구출 기한)을 서버와 같게 |
+
+**설정** (`config/services.development.json`): `online` = `off`(기본, 지금처럼 기기 세이브만) / `fake` / `http`, `onlineUrl`(http일 때 서버 주소), `onlineGame`(게임 코드, 기본 `ancientwar`).
+
+**화면**: 타이틀에서 연결 상태를 보여 주고 동기화가 끝나면 [시작]. 전투 뒤 "서버에서 확인하는 중…" → 결과 화면 위에 확인 결과(확인됨 / 되돌림 / 오프라인).
+
+### 직접 해 보기
+1. **가짜 서버로** (서버 없이): `online`을 `fake`로 → Play. 타이틀에 "서버 세이브를 받았습니다", 전투 뒤 "서버에서 전투 결과를 확인했습니다".
+2. **참고 서버로** (같은 PC):
+   1. 터미널에서 `dotnet run --project server/Game.Server --urls http://localhost:5000` (세이브를 남기려면 `--Game:StoreRoot=server-data`).
+   2. `online` = `http`, `onlineUrl` = `http://localhost:5000`.
+   3. Unity ▸ Project Settings ▸ Player ▸ Other Settings ▸ **Allow downloads over HTTP** = *Allowed in development builds* (http:// 주소를 쓰려면 필요. 실제 서비스는 https).
+3. **폰에서 참고 서버로**: `onlineUrl`을 PC의 같은 와이파이 주소(예: `http://192.168.0.10:5000`)로, 서버는 `--urls http://0.0.0.0:5000`로 실행하고 PC 방화벽에서 5000 포트를 허용.
+
+### 알아둘 점
+- 지금 `PUT /save`는 형식만 맞으면 받는다 (처음 연결 때 기기 진행을 올리기 위해). 실제 서비스에서는 진행(스텝 클리어·보상)이 서버 검증으로만 바뀌도록 막아야 한다 — 백엔드 단계 과제.
+- 서버에 닿지 않을 때 한 전투는 기기에만 반영된다 (다음 시작 때 서버 세이브가 주인이므로 사라질 수 있다). 오프라인 전투를 나중에 올리는 방식은 미정.
+
+## 6. 다음 단계
+
+1. ~~기기 쪽 HTTP 구현 + 서비스 설정 `online` + 로그인 → 세이브 받기 → 전투 제출 흐름~~ (5장, 완료).
 2. 백엔드 선택 후 저장소·인증을 그쪽으로 (`IAccountStore` 대신 백엔드 저장소, 게스트 로그인 대신 백엔드 인증).
 3. 고용(hiring.md)·숨은 보상 확정·영토(territory.md)·대전(pvp.md)을 같은 검증 위에 올린다.

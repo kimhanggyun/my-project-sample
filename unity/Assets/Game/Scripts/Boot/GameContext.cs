@@ -8,6 +8,7 @@ using Game.Economy;
 using Game.Flow;
 using Game.Foundation.Save;
 using Game.Foundation.Time;
+using Game.Online;
 using Game.Services;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -52,12 +53,27 @@ namespace Game.Unity.Boot
         /// <summary>서비스 id → 고른 구현 이름 (설정 화면 표시용).</summary>
         public IReadOnlyDictionary<string, string> ServiceChoices { get; private set; }
 
+        // ---- 온라인 (docs/impl/server.md 5장) ----
+        /// <summary>서버 시각 (서버에 연결되면 맞춘다). 시간 규칙은 이 시각으로 계산한다.</summary>
+        public ServerClock Clock { get; private set; }
+        public IOnlineService Online { get; private set; }
+        public CloudSync Sync { get; private set; }
+        /// <summary>설정 이름: off / fake / http.</summary>
+        public string OnlineMode { get; private set; } = OnlineConfig.Off;
+        public OnlineLink Link { get; private set; } = new OnlineLink();
+        /// <summary>마지막 동기화 결과 (SyncOutcomes, 없으면 null).</summary>
+        public string OnlineStatus { get; private set; }
+        public bool OnlineEnabled => OnlineMode != OnlineConfig.Off;
+        private ISaveStore _saveStore;
+
         /// <summary>데이터·세이브·서비스를 준비한다. 실패하면 예외 (부팅 화면이 오류로 보여준다).</summary>
-        public static GameContext Create(IDataSource data, IDataSource config, ISaveStore saveStore, ITimeProvider time, string serviceConfigFile)
+        public static GameContext Create(IDataSource data, IDataSource config, ISaveStore saveStore, ITimeProvider time, string serviceConfigFile,
+            Func<string, IOnlineTransport> transportFactory = null)
         {
-            var c = new GameContext { Data = data, Time = time };
+            var clock = new ServerClock(time);
+            var c = new GameContext { Data = data, Time = clock, Clock = clock, _saveStore = saveStore };
             c.Defs = DefinitionSet.Load(data, ThemeId);
-            c.Flow = new StoryFlow(c.Defs, data, time);
+            c.Flow = new StoryFlow(c.Defs, data, clock);
             c.Saves = new CampaignSaveService(saveStore);
             c.State = c.Saves.Load() ?? StartingKitService.CreateNewGame(c.Defs);
             c.MainTabs = MainTabEntry.Load(data);
@@ -72,7 +88,21 @@ namespace Game.Unity.Boot
             c.BannerAd = reg.Create<IBannerAdService>(ServiceIds.BannerAd, cfg);
             var shown = new Dictionary<string, string>();
             foreach (var id in new[] { ServiceIds.Auth, ServiceIds.Store, ServiceIds.RewardedAd, ServiceIds.BannerAd }) shown[id] = cfg.ChoiceFor(id);
+            shown[OnlineConfig.Key] = cfg.ChoiceFor(OnlineConfig.Key);
             c.ServiceChoices = shown;
+
+            // 온라인: off(서버 없음) / fake(기기 안 가짜 서버) / http(참고 서버·실제 서버)
+            c.OnlineMode = cfg.ChoiceFor(OnlineConfig.Key);
+            c.Link = c.ReadLink();
+            if (c.OnlineMode == OnlineConfig.Fake) c.Online = new LocalOnlineService(c.Defs, data, clock, saveStore);
+            else if (c.OnlineMode == OnlineConfig.Http && transportFactory != null && choices.TryGetValue(OnlineConfig.UrlKey, out var url) && !string.IsNullOrEmpty(url))
+            {
+                var http = new HttpOnlineService(transportFactory(url), choices.TryGetValue(OnlineConfig.GameKey, out var game) ? game : ThemeId);
+                if (c.Link.Token != null) http.Restore(c.Link.AccountId, c.Link.Token);
+                c.Online = http;
+            }
+            else { c.Online = new OfflineOnlineService(); c.OnlineMode = OnlineConfig.Off; }
+            c.Sync = new CloudSync(c.Online, clock);
             return c;
         }
 
@@ -84,6 +114,51 @@ namespace Game.Unity.Boot
                 if (!p.Name.StartsWith("_") && p.Value.Type == JTokenType.String) choices[p.Name] = p.Value.Value<string>();
             return choices;
         }
+
+        /// <summary>시작할 때: 로그인 → 서버 시각 → 서버 세이브를 받아 쓴다 (꺼져 있거나 닿지 않으면 기기 세이브 그대로). done은 끝나면 한 번.</summary>
+        public void StartSync(Action done)
+        {
+            if (!OnlineEnabled) { done?.Invoke(); return; }
+            Sync.Start(State, Link.Revision, r =>
+            {
+                OnlineStatus = r.Outcome;
+                if (r.Outcome != SyncOutcomes.Offline) Adopt(r);
+                done?.Invoke();
+            });
+        }
+
+        /// <summary>
+        /// 전투 뒤: 기기에서 반영한 결과를 서버에 제출하고, 서버가 확정한 세이브를 받아 쓴다 (R-40).
+        /// 거절되면 서버 세이브로 되돌린다. 꺼져 있거나 닿지 않으면 기기 결과 그대로.
+        /// </summary>
+        public void SubmitBattle(SortiePlan plan, IReadOnlyList<Game.Battle.Model.Commands.BattleCommand> commands, Game.Battle.Model.Simulation.BattleResult result, Action<SyncResult> done)
+        {
+            if (!OnlineEnabled) { done?.Invoke(null); return; }
+            Sync.SubmitBattle(CloudSync.SubmissionOf(plan, commands, result, Link.Revision), State, r =>
+            {
+                OnlineStatus = r.Outcome;
+                if (r.Outcome != SyncOutcomes.Offline) Adopt(r);
+                done?.Invoke(r);
+            });
+        }
+
+        private void Adopt(SyncResult r)
+        {
+            State = r.State;
+            Link.Revision = r.Revision;
+            if (Online is HttpOnlineService http) { Link.AccountId = http.AccountId; Link.Token = http.Token; }
+            _formation = null;
+            Save();
+            WriteLink();
+        }
+
+        private OnlineLink ReadLink()
+        {
+            try { return _saveStore.Exists(OnlineLink.SaveKey) ? OnlineJson.Read<OnlineLink>(_saveStore.Read(OnlineLink.SaveKey)) ?? new OnlineLink() : new OnlineLink(); }
+            catch (Exception) { return new OnlineLink(); }
+        }
+
+        private void WriteLink() => _saveStore.Write(OnlineLink.SaveKey, OnlineJson.Write(Link));
 
         /// <summary>테마 문자열. 없는 키는 키를 그대로 (빠진 문구가 화면에서 보이도록).</summary>
         public string T(string key) => key != null && Defs.Strings.TryGetValue(key, out var s) ? s : key ?? "";
@@ -103,6 +178,9 @@ namespace Game.Unity.Boot
             State = StartingKitService.CreateNewGame(Defs);
             _formation = null;
             Saves.Save(State);
+            // 서버와의 연결도 새로 (다음 시작에 서버 세이브를 받는다)
+            Link = new OnlineLink();
+            WriteLink();
         }
 
         /// <summary>출진 시드: 시간 서비스에서 (규칙 계산 밖, 리플레이는 시드가 결과에 남는다).</summary>

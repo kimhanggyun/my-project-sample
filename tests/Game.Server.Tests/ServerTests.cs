@@ -215,3 +215,76 @@ namespace Game.Server.Tests
         }
     }
 }
+
+namespace Game.Server.Tests
+{
+    /// <summary>기기용 HTTP 클라이언트(HttpOnlineService + CloudSync)를 실제 참고 서버에 붙여 끝까지 (테스트용 전송 = HttpClient).</summary>
+    public class ClientEndToEndTests : IClassFixture<ServerTests.Factory>
+    {
+        private sealed class HttpClientTransport : IOnlineTransport
+        {
+            private readonly HttpClient _c;
+            public HttpClientTransport(HttpClient c) { _c = c; }
+            public void Send(string method, string path, string jsonBody, string bearerToken, Action<int, string> done)
+            {
+                var req = new HttpRequestMessage(new HttpMethod(method), path);
+                if (jsonBody != null) req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                if (bearerToken != null) req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                var res = _c.SendAsync(req).GetAwaiter().GetResult();
+                done((int)res.StatusCode, res.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            }
+        }
+
+        private readonly ServerTests.Factory _f;
+        public ClientEndToEndTests(ServerTests.Factory f) { _f = f; }
+
+        [Fact(DisplayName = "기기 흐름: 로그인 → 서버 세이브 → 전투 → 제출 → 반영된 세이브, 토큰을 보관했다가 다시 쓰면 같은 계정")]
+        public void DeviceFlow()
+        {
+            var transport = new HttpClientTransport(_f.CreateClient());
+            var online = new HttpOnlineService(transport, ServerSetup.DefaultGame);
+            var clock = new ServerClock(new ManualTimeProvider(ServerTests.Clock));
+            var sync = new CloudSync(online, clock);
+
+            SyncResult start = null;
+            sync.Start(null, 0, r => start = r);
+            Assert.Equal(SyncOutcomes.FromServer, start.Outcome);
+            Assert.Equal(0, clock.OffsetSeconds);
+
+            var source = new FileDataSource(ServerPaths.DataRoot(null));
+            var defs = DefinitionSet.Load(source, "ancientwar");
+            var flow = new StoryFlow(defs, source, clock);
+            var state = start.State;
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 21, Delegate = true });
+            var sim = new BattleSimulation(plan.Setup);
+            while (!sim.IsOver) sim.Step();
+            flow.Confirm(state, plan);
+            flow.ApplyResult(state, plan, sim.Result);
+            SyncResult after = null;
+            sync.SubmitBattle(CloudSync.SubmissionOf(plan, sim.CommandLog, sim.Result, start.Revision), state, r => after = r);
+            Assert.Equal(SyncOutcomes.Accepted, after.Outcome);
+            Assert.Equal(start.Revision + 1, after.Revision);
+            Assert.Equal(state.ClearedSteps, after.State.ClearedSteps); // 기기 계산 = 서버 계산
+
+            var again = new HttpOnlineService(transport, ServerSetup.DefaultGame);
+            again.Restore(online.AccountId, online.Token);
+            CloudSave save = null;
+            again.LoadSave(s => save = s);
+            Assert.Equal(after.Revision, save.Revision);
+        }
+
+        [Fact(DisplayName = "서버가 꺼져 있으면(네트워크 실패) 기기 세이브로 계속")]
+        public void ServerDown()
+        {
+            var down = new HttpOnlineService(new DownTransport(), ServerSetup.DefaultGame);
+            SyncResult r = null;
+            new CloudSync(down, null).Start(null, 3, x => r = x);
+            Assert.Equal((SyncOutcomes.Offline, 3L), (r.Outcome, r.Revision));
+        }
+
+        private sealed class DownTransport : IOnlineTransport
+        {
+            public void Send(string method, string path, string jsonBody, string bearerToken, Action<int, string> done) => done(0, null);
+        }
+    }
+}

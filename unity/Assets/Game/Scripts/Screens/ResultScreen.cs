@@ -12,12 +12,15 @@ namespace Game.Unity.Screens
         private readonly SortiePlan _plan;
         private readonly BattleResult _result;
         private readonly BattleReport _report;
+        private readonly string _onlineOutcome;
 
-        public ResultScreen(SortiePlan plan, BattleResult result, BattleReport report)
+        /// <param name="onlineOutcome">서버 확인 결과 (SyncOutcomes, 오프라인 모드면 null).</param>
+        public ResultScreen(SortiePlan plan, BattleResult result, BattleReport report, string onlineOutcome = null)
         {
             _plan = plan;
             _result = result;
             _report = report;
+            _onlineOutcome = onlineOutcome;
         }
 
         public override void Build()
@@ -29,6 +32,10 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(Root, head, Ui.FontTitle, TextAnchor.MiddleCenter), 130);
             string reason = T("ui.result.endReason." + _result.EndReason);
             Ui.Size(Ui.Label(Root, T("ui.result.time", _result.ElapsedSeconds.FloorToLong(), reason), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 56);
+
+            if (_onlineOutcome != null)
+                Ui.Size(Ui.Label(Root, T("ui.online." + _onlineOutcome), Ui.FontSmall, TextAnchor.MiddleCenter,
+                    _onlineOutcome == Game.Flow.SyncOutcomes.Rejected ? Palette.Bad : Palette.TextDim), 48);
 
             var body = Ui.ScrollList(Root, "Report", 12, 8);
             Ui.Size(body.parent.parent, flexibleHeight: 1);
