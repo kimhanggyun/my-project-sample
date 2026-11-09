@@ -46,8 +46,27 @@ namespace Game.Unity.Boot
                 Show(new ErrorScreen("데이터를 불러오지 못했습니다.\n" + e.Message));
                 return;
             }
-            Context.Auth.SignInAutomatically(ok => Debug.Log("게스트 로그인: " + (ok ? Context.Auth.AccountId : "실패")));
-            Show(new TitleScreen());
+            NextStartup(null);
+        }
+
+        /// <summary>
+        /// 앱 시작 순서의 다음 화면 (startup.md, data Ui/startup.json): 스플래시 → (버전 확인) → 로그인 → 약관 → 타이틀.
+        /// 지금 단계를 마친 화면이 부른다. 로그인 단계를 건너뛰면(전에 쓴 수단) 자동으로 로그인한다.
+        /// </summary>
+        public void NextStartup(string finished)
+        {
+            var ctx = Context;
+            string step = ctx.Startup.Next(finished, ctx.StartupRecord, false); // 버전 확인 서버는 아직 없다
+            if (step != Game.Flow.StartupSteps.SignIn && ctx.StartupRecord.SignInMethod != null && !ctx.Auth.IsSignedIn)
+                ctx.SignIn(ctx.StartupRecord.SignInMethod, ok => Debug.Log("자동 로그인: " + (ok ? ctx.Auth.AccountId : "실패")));
+            switch (step)
+            {
+                case Game.Flow.StartupSteps.Splash: Show(new SplashScreen()); break;
+                case Game.Flow.StartupSteps.VersionCheck: NextStartup(step); break;
+                case Game.Flow.StartupSteps.SignIn: Show(new SignInScreen()); break;
+                case Game.Flow.StartupSteps.Terms: Show(new TermsScreen()); break;
+                default: Show(new TitleScreen()); break;
+            }
         }
 
         private void Update()

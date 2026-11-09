@@ -1,6 +1,6 @@
 # 앱 시작 (스플래시·로그인·약관)
 
-> 상태: 기획 확정 (구현 전) · 범위: Step 1
+> 상태: 기획 확정 · **구현** (2026-11-09): 스플래시 → (버전 확인: 서버 전까지 건너뜀) → 로그인(게스트, 구글·Apple은 준비 중) → 약관 동의(판이 오르면 다시) → 타이틀. 순서·버튼은 `data/Ui/startup.json`, 규칙 `Game.Flow.StartupFlow`, 화면 `Screens/StartupScreens`. 약관 본문·광고 동의(ATT)는 아직 (roadmap 4.2, 3.2)
 > 전체 흐름: [../flow.md](../flow.md) · 구조: [../structure.md](../structure.md)(../structure.md) Auth 모듈, Core 모듈
 
 ## 1. 흐름

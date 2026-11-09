@@ -47,6 +47,9 @@ namespace Game.Unity.Boot
         }
 
         public IAuthService Auth { get; private set; }
+        /// <summary>앱 시작 순서 (Ui/startup.json)와 기기에 남긴 시작 기록 (약관 판·로그인 수단).</summary>
+        public StartupFlow Startup { get; private set; }
+        public StartupRecord StartupRecord { get; private set; } = new StartupRecord();
         public IStoreService Store { get; private set; }
         public IRewardedAdService RewardedAd { get; private set; }
         public IBannerAdService BannerAd { get; private set; }
@@ -83,6 +86,8 @@ namespace Game.Unity.Boot
             c.Saves = new CampaignSaveService(saveStore);
             c.State = c.Saves.Load() ?? StartingKitService.CreateNewGame(c.Defs);
             c.MainTabs = MainTabEntry.Load(data);
+            c.Startup = StartupFlow.Load(data);
+            c.StartupRecord = StartupFlow.ReadRecord(saveStore);
             c.Actions = new PlayerActionRunner(c.Defs);
 
             var choices = ReadServiceChoices(config, serviceConfigFile);
@@ -238,6 +243,29 @@ namespace Game.Unity.Boot
         }
 
         public void ClearHires() { _hires = null; _hireStep = null; }
+
+        /// <summary>
+        /// 로그인 (startup.md 2장): 지금은 게스트만 (기기 계정). 구글·Apple은 구현이 생기면 같은 자리에서 수단 id로 고른다.
+        /// 되면 수단을 기록해 다음 실행에 자동 로그인.
+        /// </summary>
+        public void SignIn(string method, Action<bool> done)
+        {
+            var option = Startup.SignInOptions.Find(o => o.Id == method);
+            if (option == null || !option.IsActive) { done?.Invoke(false); return; }
+            Auth.SignInAutomatically(ok =>
+            {
+                if (ok) { StartupRecord.SignInMethod = method; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
+                done?.Invoke(ok);
+            });
+        }
+
+        /// <summary>지금 판 약관에 동의 (기기에 기록).</summary>
+        public void AcceptTerms()
+        {
+            StartupRecord.TermsVersion = Startup.TermsVersion;
+            StartupRecord.TermsAcceptedAtUnixSeconds = Clock.UtcNow.ToUnixTimeSeconds();
+            StartupFlow.WriteRecord(_saveStore, StartupRecord);
+        }
 
         /// <summary>서버 계정 (고용 목록에서 내 등록을 가린다).</summary>
         public string AccountId => Online?.AccountId;
