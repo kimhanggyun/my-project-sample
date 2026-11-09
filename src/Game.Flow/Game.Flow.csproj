@@ -7,5 +7,6 @@
     <ProjectReference Include="../Game.Campaign/Game.Campaign.csproj" />
     <ProjectReference Include="../Game.Economy/Game.Economy.csproj" />
     <ProjectReference Include="../Game.Progression/Game.Progression.csproj" />
+    <ProjectReference Include="../Game.Online/Game.Online.csproj" />
   </ItemGroup>
 </Project>
