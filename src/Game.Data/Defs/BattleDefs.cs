@@ -77,6 +77,10 @@ namespace Game.Data.Defs
         public Fix ValorMoraleLossCutPerPoint { get; private set; }
         public Fix MinValorMoraleLossMultiplier { get; private set; }
         public Fix MaxValorMoraleLossMultiplier { get; private set; }
+        /// <summary>태그 → 손실 사기 하락 배율 (R-58, combat.json tagEffects). 없으면 1.</summary>
+        public IReadOnlyDictionary<string, Fix> TagMoraleLossMultiplier { get; private set; } = new Dictionary<string, Fix>();
+        /// <summary>태그 → 포위 포로 압력 배율 (R-58). 없으면 1.</summary>
+        public IReadOnlyDictionary<string, Fix> TagCapturePressureMultiplier { get; private set; } = new Dictionary<string, Fix>();
         public Fix TrainingDefensePp { get; private set; }
         public Fix GeneralLeadershipToDefense { get; private set; }
         public int VisionUpdateEveryTicks { get; private set; }
@@ -130,6 +134,20 @@ namespace Game.Data.Defs
         public long TicksPerMinute => (Fix.FromInt(60) / TickSeconds).FloorToLong();
 
         private static Fix Opt(JObject o, string block, string key, string c) => Opt(o, block, key, c, Fix.Zero);
+
+        private static Dictionary<string, Fix> TagEffect(JObject o, string key, string c)
+        {
+            var map = new Dictionary<string, Fix>();
+            if (!(o["tagEffects"] is JObject te)) return map;
+            foreach (var p in te.Properties())
+            {
+                if (!(p.Value is JObject e) || e[key] == null) continue;
+                var v = JsonUtil.RequireFix(e, key, c + ".tagEffects." + p.Name);
+                if (v < Fix.Zero) throw new DataException($"{c}.tagEffects.{p.Name}.{key}는 0 이상.");
+                map[p.Name] = v;
+            }
+            return map;
+        }
         private static Fix Opt(JObject o, string block, string key, string c, Fix fallback) =>
             o[block] is JObject b ? JsonUtil.FixOr(b, key, fallback, c + "." + block) : fallback;
 
@@ -218,6 +236,8 @@ namespace Game.Data.Defs
                 ValorMoraleLossCutPerPoint = Opt(o, "valor", "moraleLossCutPerPoint", c),
                 MinValorMoraleLossMultiplier = Opt(o, "valor", "minMoraleLossMultiplier", c, Fix.OneValue),
                 MaxValorMoraleLossMultiplier = Opt(o, "valor", "maxMoraleLossMultiplier", c, Fix.OneValue),
+                TagMoraleLossMultiplier = TagEffect(o, "moraleLossMultiplier", c),
+                TagCapturePressureMultiplier = TagEffect(o, "capturePressureMultiplier", c),
                 GeneralLeadershipToDefense = JsonUtil.RequireFix(general, "leadershipToDefense", c + ".general"),
                 SpawnSpacingCells = JsonUtil.RequireFix(o, "spawnSpacingCells", c),
                 VisionUpdateEveryTicks = (int)JsonUtil.RequireLong(vision, "updateEveryTicks", c + ".vision"),

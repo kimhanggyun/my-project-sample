@@ -163,7 +163,8 @@
         "infantry",
         "melee",
         "shield",
-        "elite"
+        "elite",
+        "bodyguard"
       ],
       "supplyPerDay": 2,
       "attackRange": 1,
