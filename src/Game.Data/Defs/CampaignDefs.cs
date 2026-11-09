@@ -27,6 +27,8 @@ namespace Game.Data.Defs
         public int DefaultMaxCorps { get; private set; }
         /// <summary>상황별 편성을 둘 수 있는 상황 id (전장 유형, battle.md 3장). 이름은 문자열 "situation.&lt;id&gt;".</summary>
         public IReadOnlyList<string> FormationSituations { get; private set; }
+        /// <summary>보유할 수 있는 부대 수 상한 (formation.md 2장).</summary>
+        public int UnitCountMax { get; private set; }
         /// <summary>스킬북 가격 (돈): 스킬 단계 → 가격 (generals.md 4장). 단계가 없으면 상점에서 팔지 않는다.</summary>
         public IReadOnlyDictionary<string, long> SkillBookPriceByTier { get; private set; }
 
@@ -48,6 +50,7 @@ namespace Game.Data.Defs
             {
                 SkillBookPriceByTier = books,
                 FormationSituations = JsonUtil.StringList(o, "formationSituations"),
+                UnitCountMax = (int)((o["units"] as JObject)?.Value<long?>("maxCount") ?? 20),
                 RescueDeadlineSeconds = checked(JsonUtil.RequireLong(cap, "rescueDeadlineDays", c) * 86400),
                 RecruitRetrySeconds = checked(JsonUtil.RequireLong(cap, "recruitRetryHours", c) * 3600),
                 RecruitBaseChance = JsonUtil.RequireFix(cap, "recruitBaseChance", c),

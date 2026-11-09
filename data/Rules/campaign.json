@@ -41,5 +41,9 @@
     "field",
     "siege",
     "naval"
-  ]
+  ],
+  "units": {
+    "_comment": "보유 부대 상한 (formation.md 2장, open-values). 수치는 예시.",
+    "maxCount": 20
+  }
 }

@@ -278,5 +278,11 @@
   "ui.cmd.coordinatePrompt": "{0}: 주군, 계속 기다릴까요?",
   "ui.order.rest": "휴식",
   "ui.order.coordinate": "협공 대기",
-  "ui.order.queued": "(+예약 {0})"
+  "ui.order.queued": "(+예약 {0})",
+  "ui.formation.createUnit": "새 부대 창설 (보유 {0}/{1})",
+  "ui.formation.createTitle": "새 부대 창설",
+  "ui.formation.createNote": "기본 병종을 고르세요. 병력 0으로 생기며, 징병·모병으로 채웁니다.",
+  "ui.formation.disband": "해산",
+  "ui.formation.disbandTitle": "부대 해산",
+  "ui.formation.disbandConfirm": "{0} {1} 부대를 해산할까요?\n병력과 부상병 {2}명이 사라집니다."
 }

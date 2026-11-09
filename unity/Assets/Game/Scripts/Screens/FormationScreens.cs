@@ -70,6 +70,8 @@ namespace Game.Unity.Screens
             // 병력 관리
             var troopsSvc = new TroopService(ctx.Defs);
             Ui.Label(list, ctx.T("ui.formation.unitsHeader", ctx.Resource(ResourceIds.Supply).ToString("N0"), ctx.Resource(ResourceIds.Gold).ToString("N0")), Ui.FontBody);
+            var create = Ui.Button(list, ctx.T("ui.formation.createUnit", ctx.State.Units.Count, ctx.Defs.Campaign.UnitCountMax), () => app.Show(new CreateUnitScreen()), 84, fontSize: 28);
+            Ui.SetEnabled(create, troopsSvc.CanCreate(ctx.State));
             foreach (var u in ctx.State.Units)
             {
                 string unitId = u.UnitId;
@@ -90,6 +92,9 @@ namespace Game.Unity.Screens
                 Ui.SetEnabled(h1, w > 0 && ctx.Resource(ResourceIds.Supply) >= HealCostCalculator.HealCostInSupply(ctx.Defs.Balance, w));
                 var h2 = Ui.Button(r, ctx.T("ui.formation.healGold", HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w).ToString("N0")), () => Do(app, troopsSvc.Heal(ctx.State, unitId, w, ResourceIds.Gold)), 72, fontSize: 22);
                 Ui.SetEnabled(h2, w > 0 && ctx.Resource(ResourceIds.Gold) >= HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w));
+                // 해산: 저장된 편성(기본·상황별)과 고치는 중인 편성 어디에도 없을 때만 (R-39)
+                var d = Ui.Button(r, ctx.T("ui.formation.disband"), () => app.Show(new DisbandUnitScreen(unitId)), 72, new Color(0.45f, 0.22f, 0.20f), 22);
+                Ui.SetEnabled(d, at < 0 && troopsSvc.CanDisband(ctx.State, unitId));
             }
         }
 
@@ -193,6 +198,53 @@ namespace Game.Unity.Screens
         {
             Ctx.Formation.Assign(_index, _slot, unitId);
             App.Show(new CorpsEditScreen(_index));
+        }
+    }
+
+    /// <summary>새 부대 창설: 기본 병종 고르기 (formation.md 4.1). 병력 0으로 생기고 징병·모병으로 채운다.</summary>
+    public sealed class CreateUnitScreen : GameScreen
+    {
+        public override void Build()
+        {
+            var troops = new TroopService(Ctx.Defs);
+            Ui.Column(Root, 12, 32);
+            Ui.Size(Ui.Label(Root, T("ui.formation.createTitle"), Ui.FontTitle), 110);
+            Ui.Label(Root, T("ui.formation.createNote"), 28, TextAnchor.MiddleLeft, Palette.TextDim);
+            var list = Ui.ScrollList(Root, "Types", 10, 8);
+            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            foreach (var id in troops.CreatableTroopTypes())
+            {
+                string t = id;
+                Ui.Button(list, FormationTabView.TroopName(Ctx, t), () =>
+                {
+                    if (troops.Create(Ctx.State, t) != null) Ctx.Save();
+                    App.ShowMain("formation");
+                }, 110, Palette.Card, 34);
+            }
+            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("formation"));
+        }
+    }
+
+    /// <summary>부대 해산 확인. 병력·부상병이 사라진다.</summary>
+    public sealed class DisbandUnitScreen : GameScreen
+    {
+        private readonly string _unitId;
+        public DisbandUnitScreen(string unitId) { _unitId = unitId; }
+
+        public override void Build()
+        {
+            var u = Ctx.State.FindUnit(_unitId);
+            if (u == null) { App.ShowMain("formation"); return; }
+            Ui.Column(Root, 24, 48).childAlignment = TextAnchor.MiddleCenter;
+            Ui.Size(Ui.Label(Root, T("ui.formation.disbandTitle"), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
+            Ui.Label(Root, T("ui.formation.disbandConfirm", u.UnitId, FormationTabView.TroopName(Ctx, u.TroopType), (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
+            var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
+            Ui.Button(row, T("ui.common.cancel"), () => App.ShowMain("formation"));
+            Ui.Button(row, T("ui.formation.disband"), () =>
+            {
+                if (new TroopService(Ctx.Defs).Disband(Ctx.State, _unitId)) Ctx.Save();
+                App.ShowMain("formation");
+            }, color: new Color(0.45f, 0.22f, 0.20f));
         }
     }
 }
