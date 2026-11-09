@@ -82,7 +82,7 @@ namespace Game.Battle.Model.Commands
         public string Kind => CommandKinds.Advance;
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) => true;
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
-            corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Advance, Mode = MoveModes.AttackMove });
+            corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Advance, Mode = MoveModes.AttackMove, ByRole = true });
     }
 
     internal sealed class MoveToHandler : ICommandHandler

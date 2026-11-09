@@ -350,6 +350,7 @@ namespace Game.Battle.Model.Simulation
                 if (!s.Defs.Temperaments.ContainsKey(c.General.Temperament ?? "")) Fail($"군단 '{c.Id}': 없는 성향 '{c.General.Temperament}'.");
                 if (c.Formation == null || !s.Defs.Formations.ContainsKey(c.Formation)) Fail($"군단 '{c.Id}': 없는 진형 '{c.Formation}'.");
                 if (c.Controller != Controllers.Player && c.Controller != Controllers.Ai) Fail($"군단 '{c.Id}': 조종 '{c.Controller}'는 player 또는 ai.");
+                if (!AdvanceRoles.IsValid(c.AdvanceRole)) Fail($"군단 '{c.Id}': 없는 진군 역할 '{c.AdvanceRole}' (vanguard·flank·rear).");
                 if (c.Controller == Controllers.Ai && !ext.Ai.Contains(c.AiStance)) Fail($"군단 '{c.Id}': 없는 AI 성향 '{c.AiStance}'.");
                 if (c.Supply < 0) Fail($"군단 '{c.Id}': 군량이 음수.");
                 foreach (var sk in c.General.Skills ?? new List<string>())
