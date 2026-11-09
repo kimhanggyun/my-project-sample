@@ -42,6 +42,10 @@ namespace Game.Server
         List<Game.Flow.HireLogEntry> HireLog(string gameCode, string accountId, long nowUnixSeconds);
         void AddHireLog(string gameCode, string accountId, IEnumerable<Game.Flow.HireLogEntry> entries);
 
+        // ---- 영토 (게임별, R-46) ----
+        List<TerritoryOwner> TerritoryOwners(string gameCode);
+        void SetTerritoryOwner(string gameCode, string regionId, string accountId, long atUnixSeconds);
+
         // ---- 우편 (게임별) ----
         void AddMail(string gameCode, string accountId, Mail mail);
         List<Mail> MailOf(string gameCode, string accountId);
@@ -68,6 +72,8 @@ namespace Game.Server
             public Dictionary<string, Dictionary<string, List<Mail>>> Mail { get; set; } = new Dictionary<string, Dictionary<string, List<Mail>>>();
             /// <summary>게임 코드 → (계정 → 고용 기록).</summary>
             public Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>> HireLogs { get; set; } = new Dictionary<string, Dictionary<string, List<Game.Flow.HireLogEntry>>>();
+            /// <summary>게임 코드 → (지역 → 주인).</summary>
+            public Dictionary<string, Dictionary<string, TerritoryOwner>> Territory { get; set; } = new Dictionary<string, Dictionary<string, TerritoryOwner>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -216,6 +222,33 @@ namespace Game.Server
             lock (_lock)
             {
                 LogOf(gameCode, accountId).AddRange(entries);
+                Persist();
+            }
+        }
+
+        private Dictionary<string, TerritoryOwner> OwnersOf(string gameCode)
+        {
+            if (Data.Territory == null) Data.Territory = new Dictionary<string, Dictionary<string, TerritoryOwner>>();
+            if (!Data.Territory.TryGetValue(gameCode, out var g)) Data.Territory[gameCode] = g = new Dictionary<string, TerritoryOwner>();
+            return g;
+        }
+
+        public List<TerritoryOwner> TerritoryOwners(string gameCode)
+        {
+            lock (_lock)
+            {
+                var list = new List<TerritoryOwner>();
+                foreach (var o in OwnersOf(gameCode).Values) list.Add(new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds });
+                list.Sort((a, b) => string.CompareOrdinal(a.RegionId, b.RegionId));
+                return list;
+            }
+        }
+
+        public void SetTerritoryOwner(string gameCode, string regionId, string accountId, long atUnixSeconds)
+        {
+            lock (_lock)
+            {
+                OwnersOf(gameCode)[regionId] = new TerritoryOwner { RegionId = regionId, OwnerAccountId = accountId, SinceUnixSeconds = atUnixSeconds };
                 Persist();
             }
         }

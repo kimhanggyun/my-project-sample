@@ -34,6 +34,8 @@ namespace Game.Online
         public static string HireListing(string game, string id) => HireListings(game) + "/" + Uri.EscapeDataString(id);
         /// <summary>받은 우편 (고용 보상 …). 받기는 행동 mail.claim.</summary>
         public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
+        /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
+        public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -108,6 +110,21 @@ namespace Game.Online
         public List<HireUse> Hires { get; set; } = new List<HireUse>();
         /// <summary>이 전투에 쓴 편성 (고용이 있으면 필수: 고용 장수·부대가 들어간 자리). 없으면 서버 세이브의 편성.</summary>
         public List<ActionCorps> Compositions { get; set; }
+        /// <summary>영토 전투: 공격자 위치 "위도,경도" (서버가 공격할 수 있는 지역인지 본다, R-46).</summary>
+        public string Location { get; set; }
+    }
+
+    /// <summary>지역 하나의 주인 (다른 유저의 위치는 담지 않는다, territory.md 4장).</summary>
+    public sealed class TerritoryOwner
+    {
+        public string RegionId { get; set; }
+        public string OwnerAccountId { get; set; }
+        public long SinceUnixSeconds { get; set; }
+    }
+
+    public sealed class TerritoryResponse
+    {
+        public List<TerritoryOwner> Owners { get; set; } = new List<TerritoryOwner>();
     }
 
     public static class HireKinds
@@ -370,6 +387,9 @@ namespace Game.Online
         /// <summary>해제: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
         void Unregister(string listingId, Action<bool?> done);
         void GetMail(Action<MailListResponse> done);
+
+        /// <summary>영토 주인 목록 (닿지 않으면 null).</summary>
+        void GetTerritory(Action<TerritoryResponse> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -387,6 +407,7 @@ namespace Game.Online
         public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => done?.Invoke(null);
         public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
+        public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

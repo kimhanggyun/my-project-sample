@@ -35,6 +35,8 @@ namespace Game.Flow
         public List<string> DelegateGenerals { get; set; } = new List<string>();
         /// <summary>고용한 장수·부대 (R-43, <see cref="HireRules.Resolve"/>). 편성(Compositions)에서 장수 정의 id·"hire.등록id" 부대로 쓴다.</summary>
         public HiredForces Hired { get; set; }
+        /// <summary>영토 전투일 때 공격자의 위치 "위도,경도" (공격할 수 있는 지역인지, R-46).</summary>
+        public string Location { get; set; }
     }
 
     /// <summary>출진 준비 결과. 문제가 없으면 Setup으로 전투를 시작한다.</summary>
@@ -54,6 +56,8 @@ namespace Game.Flow
         public HiredForces Hired { get; internal set; }
         /// <summary>이 출진에 쓴 편성 (제출 메시지에 싣는다, 고용이 있을 때 서버가 같은 편성을 쓰도록).</summary>
         public List<CorpsComposition> Compositions { get; internal set; }
+        /// <summary>영토 전투의 위치 (제출 메시지에 싣는다).</summary>
+        public string Location { get; internal set; }
     }
 
     public sealed class UnitReport
@@ -100,6 +104,22 @@ namespace Game.Flow
         private readonly IDataSource _source;
         private readonly ITimeProvider _time;
         private readonly RuleFlags _campaignFlags;
+        private Game.Territory.TerritoryDefs _territory;
+        private bool _territoryLoaded;
+
+        /// <summary>영토 데이터 (없으면 null, 처음 쓸 때 읽는다).</summary>
+        public Game.Territory.TerritoryDefs Territory
+        {
+            get
+            {
+                if (!_territoryLoaded) { _territory = TerritoryBattles.TryLoad(_source); _territoryLoaded = true; }
+                return _territory;
+            }
+        }
+
+        /// <summary>스텝 id → 스텝: "territory.지역"이면 지역 수비군으로, 아니면 Steps/ 파일.</summary>
+        public StepDef LoadStep(string stepId) =>
+            TerritoryBattles.IsTerritoryStep(stepId) ? TerritoryBattles.StepFor(Territory, TerritoryBattles.RegionOf(stepId)) : StepDef.Load(_source, stepId);
 
         public StoryFlow(DefinitionSet defs, IDataSource source, ITimeProvider time)
         {
@@ -125,14 +145,20 @@ namespace Game.Flow
         /// <summary>출진 준비: 상태는 바꾸지 않는다. 문제(편성·군량·해금)는 Errors로 돌려준다.</summary>
         public SortiePlan Prepare(CampaignState state, SortieRequest request)
         {
-            var plan = new SortiePlan { PreparedAtUnixSeconds = _time.UtcNow.ToUnixTimeSeconds() };
-            var step = StepDef.Load(_source, request.StepId);
+            var plan = new SortiePlan { PreparedAtUnixSeconds = _time.UtcNow.ToUnixTimeSeconds(), Location = request.Location };
+            var step = LoadStep(request.StepId);
+            if (step == null) throw new System.ArgumentException("없는 스텝 '" + request.StepId + "'.");
             var map = MapDef.Load(_source, step.Map);
             plan.Step = step;
             // 고용이 있으면 내 세이브 사본에 고용 장수·부대를 더한 것으로 편성 검사·군단 구성 (원본 세이브는 그대로, 결과는 내 것에만 반영)
             var hired = request.Hired != null && !request.Hired.IsEmpty ? request.Hired : null;
             if (hired != null) { state = WithHires(state, hired, plan.Errors); plan.Hired = hired; }
-            if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");
+            if (step.IsTerritory)
+            {
+                var err = TerritoryBattles.CheckSortie(Territory, TerritoryBattles.RegionOf(step.Id), request.Location);
+                if (err != null) plan.Errors.Add(err);
+            }
+            else if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");
 
             var comps = request.Compositions ?? state.CompositionsFor(step.BattleType); // 전장 유형에 맞는 편성 (R-35)
             plan.Compositions = comps;
@@ -352,12 +378,13 @@ namespace Game.Flow
             RecordContests(state, result, report);
             BattleRecords.Record(state, plan.PlayerCorps, result);
 
-            if (result.Explored.TryGetValue(PlayerTeam, out var explored)) StepProgress.MergeExplored(state, step.Id, explored);
+            // 영토 전투는 탐색 기억·스텝 클리어·첫 보상이 없다 (차지는 서버가 기록, R-46)
+            if (!step.IsTerritory && result.Explored.TryGetValue(PlayerTeam, out var explored)) StepProgress.MergeExplored(state, step.Id, explored);
 
             if (report.Won) GrantBattleExp(state, plan, step, report);
             report.Secrets.AddRange(new SecretEngine().Evaluate(new SecretContext { Defs = _defs, State = state, Step = step, Plan = plan, Result = result, Won = report.Won }));
 
-            if (report.Won)
+            if (report.Won && !step.IsTerritory)
             {
                 if (step.RescueCamp != null) report.Rescued.AddRange(captivity.Rescue(state, step.RescueCamp));
                 report.FirstClear = StepProgress.MarkCleared(state, step.Id);

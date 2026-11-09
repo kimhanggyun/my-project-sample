@@ -57,6 +57,7 @@ namespace Game.Flow
         public static SortieRequest RequestOf(BattleSubmission s, HiredForces hired = null) => new SortieRequest
         {
             Compositions = s.Compositions == null ? null : PlayerActionRunner.FromActionCorps(s.Compositions),
+            Location = s.Location,
             Hired = hired,
             StepId = s.StepId,
             Seed = s.Seed,

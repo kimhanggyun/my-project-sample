@@ -23,7 +23,7 @@ namespace Game.Tests
             ["Game.Progression"] = new[] { "Game.Foundation", "Game.Data" },
             ["Game.Territory"] = new[] { "Game.Foundation", "Game.Data", "Newtonsoft.Json" },
             // 흐름(조립) 모듈: 규칙 모듈들을 경계 객체로 잇는다. 규칙 모듈은 Flow를 모른다.
-            ["Game.Flow"] = new[] { "Game.Foundation", "Game.Data", "Game.Battle.Model", "Game.Campaign", "Game.Economy", "Game.Progression", "Game.Online", "Newtonsoft.Json" },
+            ["Game.Flow"] = new[] { "Game.Foundation", "Game.Data", "Game.Battle.Model", "Game.Campaign", "Game.Economy", "Game.Progression", "Game.Online", "Game.Territory", "Newtonsoft.Json" },
         };
 
         private static IEnumerable<string> GameReferences(string assemblyName) =>

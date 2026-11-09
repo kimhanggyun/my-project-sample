@@ -8,7 +8,8 @@
     "Game.Campaign",
     "Game.Economy",
     "Game.Progression",
-    "Game.Online"
+    "Game.Online",
+    "Game.Territory"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

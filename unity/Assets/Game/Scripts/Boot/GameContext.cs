@@ -253,6 +253,9 @@ namespace Game.Unity.Boot
 
         public void LoadMail(Action<List<Mail>> done) => Online.GetMail(r => done?.Invoke(r?.Mail));
 
+        /// <summary>영토 주인 목록 (닿지 않으면 null, R-46).</summary>
+        public void LoadTerritory(Action<TerritoryResponse> done) => Online.GetTerritory(done);
+
         /// <summary>우편 받기 = 행동 mail.claim (서버가 우편이 있는지 확인하고 같은 규칙으로 더한다).</summary>
         public bool ClaimMail(Mail mail)
         {
