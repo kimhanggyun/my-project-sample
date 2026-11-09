@@ -112,6 +112,11 @@ app.MapPost("/v1/games/{game}/alliances", async (string game, HttpRequest req, I
 });
 app.MapPost("/v1/games/{game}/alliances/leave", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.LeaveAlliance(id))));
+app.MapPost("/v1/games/{game}/alliances/manage", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<AllianceManageRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.ManageAlliance(id, body)));
+});
 app.MapPost("/v1/games/{game}/alliances/{alliance}/join", (string game, string alliance, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.JoinAlliance(id, alliance))));
 app.MapPost("/v1/games/{game}/territory/collect", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>

@@ -268,6 +268,15 @@ namespace Game.Server.Tests
             var mine = Assert.Single(after.Alliances, x => x.Id == made.Alliance.Id);
             Assert.Single(mine.Members);
             Assert.Equal(mine.Members[0], mine.LeaderAccountId);
+
+            // R-50: 연합장(B)이 닫으면 A는 신청만, B가 수락하면 들어온다
+            var manage = OnlineRoutes.AllianceManage(ServerSetup.DefaultGame);
+            Assert.Equal(HttpStatusCode.OK, (await b.PostAsync(manage, Body(new AllianceManageRequest { Action = AllianceActions.Close }))).StatusCode);
+            Assert.Equal(AllianceReasons.Requested, (await Read<AllianceResponse>(await a.PostAsync(OnlineRoutes.AllianceJoin(ServerSetup.DefaultGame, made.Alliance.Id), null))).Reason);
+            Assert.Equal((HttpStatusCode)422, (await a.PostAsync(manage, Body(new AllianceManageRequest { Action = AllianceActions.Open }))).StatusCode); // A는 연합원 아님
+            var aId = Assert.Single((await Read<AllianceListResponse>(await b.GetAsync(route))).Alliances, x => x.Id == made.Alliance.Id).Requests.Single();
+            var accepted = await Read<AllianceResponse>(await b.PostAsync(manage, Body(new AllianceManageRequest { Action = AllianceActions.Accept, AccountId = aId })));
+            Assert.Equal(2, accepted.Alliance.Members.Count);
         }
 
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>

@@ -265,6 +265,8 @@ namespace Game.Unity.Boot
         public void CreateAlliance(string name, Action<AllianceResponse> done) => Online.CreateAlliance(name, done);
         public void JoinAlliance(string id, Action<AllianceResponse> done) => Online.JoinAlliance(id, done);
         public void LeaveAlliance(Action<AllianceResponse> done) => Online.LeaveAlliance(done);
+        public void ManageAlliance(string action, string accountId, Action<AllianceResponse> done) =>
+            Online.ManageAlliance(new AllianceManageRequest { Action = action, AccountId = accountId }, done);
 
         /// <summary>내 지역에 지금 기본 편성을 수비 편성으로 등록 (서버 세이브 기준, R-48).</summary>
         public void RegisterDefense(string regionId, Action<DefenseResponse> done) => Online.RegisterDefense(new DefenseRequest { RegionId = regionId }, done);

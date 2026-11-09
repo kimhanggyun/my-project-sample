@@ -157,6 +157,9 @@ namespace Game.Online
         public void LeaveAlliance(Action<AllianceResponse> done) =>
             _transport.Send("POST", OnlineRoutes.AllianceLeave(_game), null, Token, (status, body) => done?.Invoke(AllianceParse(status, body)));
 
+        public void ManageAlliance(AllianceManageRequest request, Action<AllianceResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.AllianceManage(_game), OnlineJson.Write(request), Token, (status, body) => done?.Invoke(AllianceParse(status, body)));
+
         private static AllianceResponse AllianceParse(int status, string body) => status == 200 || status == 422 ? Parse<AllianceResponse>(body) : null;
 
         private static T Parse<T>(string body) where T : class

@@ -46,6 +46,7 @@ namespace Game.Server
         AllianceResponse CreateAlliance(string accountId, AllianceRequest request);
         AllianceResponse JoinAlliance(string accountId, string allianceId);
         AllianceResponse LeaveAlliance(string accountId);
+        AllianceResponse ManageAlliance(string accountId, AllianceManageRequest request);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -219,6 +220,10 @@ namespace Game.Server
                 : _store.WithAlliances(Code, a => AllianceBook.Join(_territory, a, accountId, allianceId));
 
         public AllianceResponse LeaveAlliance(string accountId) => _store.WithAlliances(Code, a => AllianceBook.Leave(a, accountId));
+
+        public AllianceResponse ManageAlliance(string accountId, AllianceManageRequest req) =>
+            _territory == null ? new AllianceResponse { Ok = false, Reason = AllianceReasons.NotFound }
+                : _store.WithAlliances(Code, a => AllianceBook.Manage(_territory, a, accountId, req));
 
         public DefenseResponse RegisterDefense(string accountId, DefenseRequest req)
         {

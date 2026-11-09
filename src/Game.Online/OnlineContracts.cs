@@ -44,6 +44,7 @@ namespace Game.Online
         public static string Alliances(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/alliances";
         public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
         public static string AllianceLeave(string game) => Alliances(game) + "/leave";
+        public static string AllianceManage(string game) => Alliances(game) + "/manage";
     }
 
     /// <summary>게임 코드 목록 (서버에 등록된 게임 / 내가 가입한 게임).</summary>
@@ -150,6 +151,28 @@ namespace Game.Online
         /// <summary>연합원 계정 (들어온 순서, 첫째가 처음 만든 사람).</summary>
         public List<string> Members { get; set; } = new List<string>();
         public long CreatedAtUnixSeconds { get; set; }
+        /// <summary>true = 누구나 바로 가입, false = 가입 신청 → 연합장이 수락 (R-50).</summary>
+        public bool Open { get; set; } = true;
+        /// <summary>가입 신청한 계정 (Open이 false일 때).</summary>
+        public List<string> Requests { get; set; } = new List<string>();
+    }
+
+    public static class AllianceActions
+    {
+        public const string Open = "open";
+        public const string Close = "close";
+        public const string Accept = "accept";
+        public const string Reject = "reject";
+        public const string Kick = "kick";
+    }
+
+    /// <summary>연합장의 관리 (R-50): 가입 방식 바꾸기, 신청 수락·거절, 내보내기.</summary>
+    public sealed class AllianceManageRequest
+    {
+        /// <summary><see cref="AllianceActions"/>.</summary>
+        public string Action { get; set; }
+        /// <summary>수락·거절·내보내기할 계정.</summary>
+        public string AccountId { get; set; }
     }
 
     public sealed class AllianceListResponse
@@ -174,6 +197,10 @@ namespace Game.Online
         public const string Full = "full";
         public const string NotFound = "notFound";
         public const string NotMember = "notMember";
+        /// <summary>가입 신청을 남겼다 (연합장이 수락하면 들어간다).</summary>
+        public const string Requested = "requested";
+        public const string NotLeader = "notLeader";
+        public const string BadRequest = "badRequest";
     }
 
     public sealed class AllianceResponse
@@ -505,6 +532,7 @@ namespace Game.Online
         void CreateAlliance(string name, Action<AllianceResponse> done);
         void JoinAlliance(string allianceId, Action<AllianceResponse> done);
         void LeaveAlliance(Action<AllianceResponse> done);
+        void ManageAlliance(AllianceManageRequest request, Action<AllianceResponse> done);
     }
 
     /// <summary>서버 없음: 모든 요청이 곧바로 실패(null). 게임은 기기 세이브만 쓴다.</summary>
@@ -529,6 +557,7 @@ namespace Game.Online
         public void CreateAlliance(string name, Action<AllianceResponse> done) => done?.Invoke(null);
         public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);
         public void LeaveAlliance(Action<AllianceResponse> done) => done?.Invoke(null);
+        public void ManageAlliance(AllianceManageRequest request, Action<AllianceResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>
