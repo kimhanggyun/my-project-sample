@@ -3,7 +3,8 @@
   "rootNamespace": "Game.Online",
   "references": [
     "Game.Foundation",
-    "Game.Data"
+    "Game.Data",
+    "Game.Battle.Model"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

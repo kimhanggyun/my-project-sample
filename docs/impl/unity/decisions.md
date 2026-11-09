@@ -22,7 +22,7 @@
 | 데이터 | JSON (빌드 시 Resources로 복사, 에디터는 저장소 data/ 직접), Newtonsoft.Json (`com.unity.nuget.newtonsoft-json`) | 텍스트 편집, 클라우드에서도 수정 | 데이터 주도 |
 | 결제 | Unity IAP (구글 플레이 + 앱스토어) | 하나로 두 스토어 | 결제 |
 | 광고 | Unity LevelPlay 또는 Google AdMob (중개) | | 광고 |
-| 백엔드 | Unity Gaming Services (인증, 클라우드 저장, Cloud Code C#) 또는 PlayFab | 서버 재현에 같은 C# 코드 사용 가능 | 고용·이력·검증 |
+| 백엔드 | Unity Gaming Services (인증, 클라우드 저장, Cloud Code C#) 또는 PlayFab — **미정**. 백엔드와 무관한 부분(메시지·전투 검증·참고 서버)은 먼저 만듦 ([../server.md](../server.md)) | 서버 재현에 같은 C# 코드 사용 가능 | 고용·이력·검증 |
 | 결정적 계산 | **10진 고정소수점 `Fix`(소수 4자리) 채택 (확정, [../core.md](../core.md))**. 부동소수점 차이 방지 | 서버 재현·실시간 대전 락스텝 | 결정적 전투 |
 | 실시간 대전 (확장) | 명령 중계 서버(예: Unity Relay, Photon 등) + 락스텝 | 명령만 주고받아 트래픽 적음 | 유저 대전 |
 | 영상 저장 | 녹화 재생을 화면 캡처해 mp4로 인코딩하는 런타임 녹화 플러그인 + 기기 공유 창 연동 | 서버 없이 게임 밖 공유 | 영상 공유 |

@@ -59,5 +59,6 @@
 | 문서 | 내용 |
 |---|---|
 | [impl/core.md](impl/core.md) | **규칙 핵심 코드 (순수 C#)**: 폴더, 의존 방향, 고정소수점·JSON·난수 결정, 테스트 실행 |
+| [impl/server.md](impl/server.md) | **서버 기반**: 온라인 메시지·경계, 서버 전투 검증(R-40), 참고 서버 API |
 | [impl/unity/decisions.md](impl/unity/decisions.md) | Unity 버전·렌더링·3D 아트·SDK·백엔드 후보 (잠정, 설계 후 확정) |
 | [impl/unity/architecture.md](impl/unity/architecture.md) | Unity·C# 클래스·폴더 구조 |

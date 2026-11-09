@@ -3,5 +3,6 @@
   <ItemGroup>
     <ProjectReference Include="../Game.Foundation/Game.Foundation.csproj" />
     <ProjectReference Include="../Game.Data/Game.Data.csproj" />
+    <ProjectReference Include="../Game.Battle.Model/Game.Battle.Model.csproj" />
   </ItemGroup>
 </Project>
