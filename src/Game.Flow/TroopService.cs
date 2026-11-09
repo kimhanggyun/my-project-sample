@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using Game.Campaign;
 using Game.Campaign.Roster;
 using Game.Campaign.Troops;
 using Game.Data.Defs;
 using Game.Economy;
+using Game.Foundation.Math;
 
 namespace Game.Flow
 {
@@ -37,6 +39,59 @@ namespace Game.Flow
             long cost = payWith == ResourceIds.Gold ? HealCostCalculator.HealCostInGold(_defs.Balance, count) : HealCostCalculator.HealCostInSupply(_defs.Balance, count);
             if (!new Wallet(state.Wallet).TrySpend(payWith == ResourceIds.Gold ? ResourceIds.Gold : ResourceIds.Supply, cost)) return 0;
             return CasualtyService.Heal(u, count);
+        }
+
+        /// <summary>새로 만들 수 있는 병종: 기본 병종(1단계, formation.md 4.1).</summary>
+        public List<string> CreatableTroopTypes()
+        {
+            var list = new List<string>();
+            foreach (var t in _defs.TroopTypes.Values) if (t.Tier == 1) list.Add(t.Id);
+            list.Sort(System.StringComparer.Ordinal);
+            return list;
+        }
+
+        public bool CanCreate(CampaignState state) => state.Units.Count < _defs.Campaign.UnitCountMax;
+
+        /// <summary>
+        /// 새 부대 창설 (verification R-39): 기본 병종만, 부대 수 상한까지. 병력 0·훈련도 0·결속 0으로 만들고 징병·모병으로 채운다.
+        /// 만들 수 없으면 null.
+        /// </summary>
+        public UnitState Create(CampaignState state, string troopType)
+        {
+            if (!CanCreate(state) || !_defs.TroopTypes.TryGetValue(troopType ?? "", out var t) || t.Tier != 1) return null;
+            var u = new UnitState { UnitId = NextUnitId(state), TroopType = t.Id, Troops = 0, Training = Fix.Zero, Cohesion = Fix.Zero };
+            state.Units.Add(u);
+            return u;
+        }
+
+        /// <summary>해산할 수 있는가: 기본·상황별 어느 편성에도 들어 있지 않아야 한다.</summary>
+        public bool CanDisband(CampaignState state, string unitId) => state.FindUnit(unitId) != null && !InAnyComposition(state, unitId);
+
+        /// <summary>부대 해산 (R-39): 편성에 없는 부대만. 병력·부상병은 사라진다.</summary>
+        public bool Disband(CampaignState state, string unitId)
+        {
+            if (!CanDisband(state, unitId)) return false;
+            state.Units.Remove(state.FindUnit(unitId));
+            return true;
+        }
+
+        public static bool InAnyComposition(CampaignState state, string unitId)
+        {
+            foreach (var c in state.Compositions) if (c.Slots.ContainsValue(unitId)) return true;
+            foreach (var p in state.CompositionPresets.Values)
+                if (p != null) foreach (var c in p) if (c.Slots.ContainsValue(unitId)) return true;
+            return false;
+        }
+
+        /// <summary>"u" + 두 자리 이상 번호. 지금 있는 번호 중 가장 큰 것 + 1.</summary>
+        private static string NextUnitId(CampaignState state)
+        {
+            int max = 0;
+            foreach (var u in state.Units)
+                if (u.UnitId != null && u.UnitId.Length > 1 && u.UnitId[0] == 'u' && int.TryParse(u.UnitId.Substring(1), out var n) && n > max) max = n;
+            string id;
+            do { id = "u" + (++max).ToString("D2"); } while (state.FindUnit(id) != null);
+            return id;
         }
 
         public long ConscriptCost(long count) => HealCostCalculator.ConscriptCost(_defs.Balance, count);

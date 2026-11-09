@@ -172,6 +172,7 @@
 | R-29 | 같은 입력(시드·편성·명령 기록·데이터 버전)이면 같은 결과 | [structure.md](structure.md) |
 | R-30 | **상점 상품 데이터 검사**: 편의 기능이 아닌 상품은 "플레이로 얻는 경로"가 비어 있으면 안 된다 | [economy.md](content/economy.md) 0장 |
 | R-31 | **스킬북 습득**: 돈으로 산다(가격 = 스킬 단계별). 배우려면 책 1권 + 요구 능력치 + 습득 최소 조건(스킬마다, 없으면 통과; `any`면 하나만)을 모두 채워야 하고, 배우면 책이 1권 줄어든다. 못 배우면 책은 그대로 보관 | [generals.md](content/generals.md) 4장 |
+| R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
 | R-38 | **휴식**: 휴식 중 싸우지 않으면 사기·책략 점수 회복 × 배율. 교전·피격하면 보통 대기로 바뀐다 | [battle.md](content/battle.md) 4.3.4 |
@@ -197,6 +198,7 @@
 - 포로(포위·일기토·스위치)·바람·날씨·시간대·화계는 `tests/Game.Tests/Battle/EnvironmentCaptureTests.cs`.
 - 캠페인 흐름(출진 R-7, 결과 반영 R-8·R-9, 포로·등용·부상·성장·결속·스텝 해금)은 `tests/Game.Tests/Campaign/CampaignFlowTests.cs`.
 - 결속·스텝 연출·전투 이벤트·말풍선은 `tests/Game.Tests/Battle/EventSpeechTests.cs`, 장수 레벨·숨은 보상은 `tests/Game.Tests/Campaign/LevelSecretTests.cs`.
+- 부대 창설·해산(R-39)은 `tests/Game.Tests/Campaign/UnitRosterTests.cs`.
 - 명령 예약·협공 대기·휴식(R-36~R-38)은 `tests/Game.Tests/Battle/OrderQueueTests.cs`, 화면 입력(예약 모드)은 `BattleControlTests`.
 - 상황별 편성·세이브 v4(R-35)는 `tests/Game.Tests/Campaign/FormationPresetTests.cs`.
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
@@ -234,3 +236,4 @@
 | v1.3 | 2026-11-09 | R-34 역할 진군 추가 |
 | v1.4 | 2026-11-09 | R-35 상황별 편성 선택 추가 |
 | v1.5 | 2026-11-09 | R-36 명령 예약, R-37 협공 대기, R-38 휴식 추가 |
+| v1.6 | 2026-11-09 | R-39 부대 창설·해산 추가 |
