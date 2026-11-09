@@ -62,4 +62,5 @@
 | [impl/server.md](impl/server.md) | **서버 기반**: 온라인 메시지·경계, 서버 전투 검증(R-40), 참고 서버 API |
 | [impl/unity/decisions.md](impl/unity/decisions.md) | Unity 버전·렌더링·3D 아트·SDK·백엔드 후보 (잠정, 설계 후 확정) |
 | [impl/unity/art.md](impl/unity/art.md) | 임시 3D 아트 연결: 아트 목록, 무료 에셋 넣는 방법 |
+| [impl/unity/checklist.md](impl/unity/checklist.md) | 에디터·폰 일괄 확인 목록 (설정 조합별 순서와 기대 결과) |
 | [impl/unity/architecture.md](impl/unity/architecture.md) | Unity·C# 클래스·폴더 구조 |
