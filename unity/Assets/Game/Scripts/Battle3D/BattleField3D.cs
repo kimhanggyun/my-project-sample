@@ -1,0 +1,243 @@
+using System.Collections.Generic;
+using Game.Battle.Model.Control;
+using Game.Battle.Model.Display;
+using Game.Battle.Model.Geometry;
+using Game.Battle.Model.Simulation;
+using Game.Foundation.Math;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace Game.Unity.Battle3D
+{
+    /// <summary>
+    /// (첫 단계) 3D 전장: 지형 텍스처 바닥 + 안개, 군단 깃발(기수), 병사(단순 도형, GPU 인스턴싱), 선택 링, 이동 목적지 표식.
+    /// 전투 상태는 읽기만 한다. 좌표: 전장 (x, y) 칸 → 월드 (x, 0, 높이 − y). 아트·애니메이션은 이후 단계.
+    /// </summary>
+    public sealed class BattleField3D
+    {
+        private const float SoldierSpacing = 0.32f;
+        private static readonly Vector3 SoldierScale = new Vector3(0.18f, 0.36f, 0.18f);
+        private static readonly Color AllyColor = new Color(0.30f, 0.50f, 0.95f);
+        private static readonly Color EnemyColor = new Color(0.90f, 0.30f, 0.25f);
+        private static readonly Color SelectedColor = new Color(1f, 0.85f, 0.25f);
+        private static readonly Color ConfusedColor = new Color(0.6f, 0.6f, 0.6f);
+
+        private readonly BattleControl _ctl;
+        private readonly GameObject _root;
+        private readonly FieldTexture _texture;
+        private readonly long _troopsPerSoldier;
+        private readonly float _depth;
+        private readonly Mesh _cube;
+        private readonly List<Object> _owned = new List<Object>();
+        private readonly Dictionary<Color, (Material material, List<Matrix4x4> matrices)> _batches = new Dictionary<Color, (Material, List<Matrix4x4>)>();
+        private readonly Dictionary<CorpsState, Transform> _flags = new Dictionary<CorpsState, Transform>();
+        private readonly Transform _ring;
+        private readonly Transform _target;
+        private Matrix4x4[] _buffer = new Matrix4x4[64];
+
+        public BattleCameraRig Rig { get; }
+        public int Width { get; }
+        public int Height { get; }
+
+        public BattleField3D(BattleControl ctl)
+        {
+            _ctl = ctl;
+            var ctx = ctl.Context;
+            Width = ctx.Field.Width;
+            Height = ctx.Field.Height;
+            _depth = Height;
+            _root = new GameObject("BattleField3D");
+
+            long total = 0;
+            foreach (var c in ctx.Corps) total += c.StartTroops;
+            _troopsPerSoldier = SoldierRatio.TroopsPerSoldier(System.Math.Max(1, total), ctx.Balance.SoldierBudget);
+
+            // 카메라·빛
+            var camGo = new GameObject("BattleCamera");
+            camGo.transform.SetParent(_root.transform, false);
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.08f, 0.09f, 0.10f);
+            cam.depth = 1;
+            cam.cullingMask = ~(1 << 5); // UI 층 제외
+            cam.nearClipPlane = 0.3f;
+            cam.farClipPlane = 300f;
+            cam.fieldOfView = 40f;
+            Rig = new BattleCameraRig(cam, Width, _depth);
+
+            var lightGo = new GameObject("Sun");
+            lightGo.transform.SetParent(_root.transform, false);
+            lightGo.transform.rotation = Quaternion.Euler(55f, -30f, 0f);
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.1f;
+
+            // 바닥
+            _texture = new FieldTexture(ctx, ctl.Team);
+            _texture.Refresh();
+            var ground = new GameObject("Ground");
+            ground.transform.SetParent(_root.transform, false);
+            ground.AddComponent<MeshFilter>().sharedMesh = Own(GroundMesh(Width, _depth));
+            var groundMat = Own(NewMaterial(Color.white));
+            groundMat.mainTexture = _texture.Texture;
+            ground.AddComponent<MeshRenderer>().sharedMaterial = groundMat;
+
+            _cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            var cylinder = Resources.GetBuiltinResource<Mesh>("Cylinder.fbx");
+
+            // 깃발 (군단마다 기수 하나)
+            var allyFlag = Own(NewMaterial(AllyColor));
+            var enemyFlag = Own(NewMaterial(EnemyColor));
+            var poleMat = Own(NewMaterial(new Color(0.35f, 0.25f, 0.15f)));
+            foreach (var c in ctx.Corps)
+            {
+                var flag = new GameObject("Flag " + c.Id).transform;
+                flag.SetParent(_root.transform, false);
+                Part(flag, cylinder, poleMat, new Vector3(0f, 0.9f, 0f), new Vector3(0.06f, 0.9f, 0.06f));
+                Part(flag, _cube, c.Team == ctl.Team ? allyFlag : enemyFlag, new Vector3(0.35f, 1.55f, 0f), new Vector3(0.7f, 0.45f, 0.04f));
+                _flags[c] = flag;
+            }
+
+            _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
+            _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
+
+            foreach (var col in new[] { AllyColor, EnemyColor, SelectedColor, ConfusedColor })
+            {
+                var m = Own(NewMaterial(col));
+                m.enableInstancing = true;
+                _batches[col] = (m, new List<Matrix4x4>());
+            }
+        }
+
+        /// <summary>전장 좌표 → 월드.</summary>
+        public Vector3 ToWorld(Vec p) => new Vector3((float)p.X.ToDisplayDouble(), 0f, _depth - (float)p.Y.ToDisplayDouble());
+
+        /// <summary>
+        /// 화면 위치 → 전장 좌표. 입력 경계에서 한 번만 고정소수점으로 바꾸고, 명령 기록에는 그 값이 남는다 (리플레이 결정성).
+        /// </summary>
+        public bool ScreenToField(Vector2 screen, out Vec point)
+        {
+            point = default;
+            if (!Rig.Ground(screen, out var w)) return false;
+            point = new Vec(Fix.FromRaw((long)Mathf.Round(w.x * Fix.One)), Fix.FromRaw((long)Mathf.Round((_depth - w.z) * Fix.One)));
+            return true;
+        }
+
+        /// <summary>카메라가 그릴 화면 영역 (픽셀).</summary>
+        public void SetViewport(Rect pixels)
+        {
+            if (pixels.width > 1 && pixels.height > 1) Rig.Camera.pixelRect = pixels;
+        }
+
+        public void LookAt(CorpsState c) { if (c != null) Rig.LookAt(ToWorld(c.Anchor)); }
+
+        /// <summary>틱이 지난 뒤: 안개·지형 텍스처, 깃발·표식 위치.</summary>
+        public void Refresh()
+        {
+            _texture.Refresh();
+            var ctx = _ctl.Context;
+            float flagScale = Mathf.Clamp(Rig.Distance / 22f, 0.8f, 2.5f); // 멀리서도 깃발이 보이게
+            foreach (var kv in _flags)
+            {
+                var c = kv.Key;
+                bool shown = c.InBattle && ctx.IsVisibleTo(_ctl.Team, c);
+                kv.Value.gameObject.SetActive(shown);
+                if (!shown) continue;
+                kv.Value.position = ToWorld(c.Anchor);
+                kv.Value.localScale = Vector3.one * flagScale;
+            }
+            var sel = _ctl.Selected;
+            bool ring = sel != null && sel.InBattle;
+            _ring.gameObject.SetActive(ring);
+            if (ring) _ring.position = ToWorld(sel.Anchor) + new Vector3(0f, 0.01f, 0f);
+            bool target = ring && sel.Order.Kind == OrderKinds.MoveTo;
+            _target.gameObject.SetActive(target);
+            if (target) _target.position = ToWorld(sel.Order.Point) + new Vector3(0f, 0.03f, 0f);
+        }
+
+        /// <summary>병사 그리기. 매 프레임 부른다 (인스턴싱은 그 프레임에만 그려진다).</summary>
+        public void Draw()
+        {
+            var ctx = _ctl.Context;
+            foreach (var b in _batches.Values) b.matrices.Clear();
+            foreach (var c in ctx.Corps)
+            {
+                if (!c.InBattle || !ctx.IsVisibleTo(_ctl.Team, c)) continue;
+                Color teamColor = c == _ctl.Selected ? SelectedColor : c.Team == _ctl.Team ? AllyColor : EnemyColor;
+                foreach (var u in c.Units)
+                {
+                    if (!u.Alive) continue;
+                    var list = _batches[u.Confused ? ConfusedColor : teamColor].matrices;
+                    long n = SoldierRatio.VisibleSoldiers(u.Troops, _troopsPerSoldier);
+                    int side = Mathf.CeilToInt(Mathf.Sqrt(n));
+                    var center = ToWorld(u.Position);
+                    float half = (side - 1) * SoldierSpacing / 2f;
+                    for (int i = 0; i < n; i++)
+                    {
+                        var p = center + new Vector3(i % side * SoldierSpacing - half, SoldierScale.y / 2f, i / side * SoldierSpacing - half);
+                        list.Add(Matrix4x4.TRS(p, Quaternion.identity, SoldierScale));
+                    }
+                }
+            }
+            foreach (var b in _batches.Values)
+            {
+                int n = b.matrices.Count;
+                if (n == 0) continue;
+                if (_buffer.Length < n) _buffer = new Matrix4x4[Mathf.NextPowerOfTwo(n)];
+                b.matrices.CopyTo(_buffer);
+                var rp = new RenderParams(b.material) { camera = Rig.Camera, shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false };
+                Graphics.RenderMeshInstanced(rp, _cube, 0, _buffer, n);
+            }
+        }
+
+        public void Destroy()
+        {
+            Object.Destroy(_root);
+            _texture.Destroy();
+            foreach (var o in _owned) if (o != null) Object.Destroy(o);
+        }
+
+        private T Own<T>(T o) where T : Object { _owned.Add(o); return o; }
+
+        private static Transform Part(Transform parent, Mesh mesh, Material mat, Vector3 localPos, Vector3 scale)
+        {
+            var go = new GameObject(mesh.name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = scale;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = ShadowCastingMode.Off;
+            return go.transform;
+        }
+
+        private static Material _template;
+
+        /// <summary>
+        /// 기본 재질(Resources/Materials/GameLit, URP Lit)을 복사해 색만 바꾼다. 재질 에셋을 Resources에 두어 빌드에 셰이더(인스턴싱 변형 포함)가 들어간다.
+        /// 없으면 렌더 파이프라인 기본 재질 → 셰이더 이름 순으로 찾는다.
+        /// </summary>
+        private static Material NewMaterial(Color color)
+        {
+            if (_template == null) _template = Resources.Load<Material>("Materials/GameLit");
+            if (_template == null && GraphicsSettings.defaultRenderPipeline != null) _template = GraphicsSettings.defaultRenderPipeline.defaultMaterial;
+            var m = _template != null ? new Material(_template) : new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            m.color = color;
+            m.mainTexture = null;
+            return m;
+        }
+
+        /// <summary>전장 크기 바닥 사각형. UV (0,0) = 월드 (0,0,0) = 전장 왼쪽 아래.</summary>
+        private static Mesh GroundMesh(float w, float d)
+        {
+            var mesh = new Mesh { name = "Ground" };
+            mesh.vertices = new[] { new Vector3(0, 0, 0), new Vector3(0, 0, d), new Vector3(w, 0, d), new Vector3(w, 0, 0) };
+            mesh.uv = new[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0) };
+            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+    }
+}

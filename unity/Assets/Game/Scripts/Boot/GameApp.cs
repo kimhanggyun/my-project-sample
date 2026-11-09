@@ -22,6 +22,7 @@ namespace Game.Unity.Boot
         public GameContext Context { get; private set; }
 
         private RectTransform _screenRoot;
+        private Image _backdrop;
         private GameScreen _current;
 
         private void Awake()
@@ -65,6 +66,7 @@ namespace Game.Unity.Boot
             {
                 try { _current.Close(); } catch (Exception e) { Debug.LogException(e); }
             }
+            SetBackdrop(true);
             Ui.Clear(_screenRoot);
             var root = Ui.Panel(_screenRoot, screen.GetType().Name);
             _current = screen;
@@ -76,6 +78,9 @@ namespace Game.Unity.Boot
                 if (!(screen is ErrorScreen)) Show(new ErrorScreen("화면을 만들지 못했습니다.\n" + e.Message));
             }
         }
+
+        /// <summary>화면 전체 배경. 3D 전장처럼 카메라 화면을 보여줄 때 끈다 (화면을 닫을 때 다시 켠다).</summary>
+        public void SetBackdrop(bool on) { if (_backdrop != null) _backdrop.enabled = on; }
 
         public void ShowTitle() => Show(new TitleScreen());
         public void ShowMain(MainTab tab = MainTab.Story) => Show(new MainScreen(tab));
@@ -95,7 +100,8 @@ namespace Game.Unity.Boot
             canvasGo.AddComponent<GraphicRaycaster>();
 
             var bg = Ui.Panel(canvasGo.transform, "Background", Palette.Background);
-            bg.GetComponent<Image>().raycastTarget = false;
+            _backdrop = bg.GetComponent<Image>();
+            _backdrop.raycastTarget = false;
             var safe = Ui.Panel(canvasGo.transform, "SafeArea");
             safe.gameObject.AddComponent<SafeAreaFitter>();
             _screenRoot = safe;
