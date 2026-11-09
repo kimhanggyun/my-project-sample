@@ -89,6 +89,30 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.Conflict, junk.StatusCode);
         }
 
+        [Fact(DisplayName = "R-41 행동 제출: 서버가 같은 규칙으로 적용(200), 안 되는 행동은 422, 옛 세이브는 409. 진행이 생긴 뒤 세이브 통째 올리기는 409")]
+        public async Task Actions()
+        {
+            var c = await SignedIn();
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            var first = await Read<CloudSave>(await c.GetAsync(Save));
+            var create = new ActionSubmission { BaseRevision = first.Revision, Actions = { Game.Flow.PlayerActionRunner.CreateUnit("cavalry") } };
+            var ok = await c.PostAsync(actions, Body(create));
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+            var v = await Read<ActionVerdict>(ok);
+            Assert.Equal(2, v.Save.Revision);
+            var state = StrategyGameModule.FromJson(v.Save.Json);
+            Assert.Equal(StrategyGameModule.FromJson(first.Json).Units.Count + 1, state.Units.Count);
+
+            var bad = await c.PostAsync(actions, Body(new ActionSubmission { BaseRevision = 2, Actions = { Game.Flow.PlayerActionRunner.DisbandUnit("u99") } }));
+            Assert.Equal((HttpStatusCode)422, bad.StatusCode);
+            Assert.Equal(VerdictReasons.BadAction, (await Read<ActionVerdict>(bad)).Reason);
+            Assert.Equal(HttpStatusCode.Conflict, (await c.PostAsync(actions, Body(create))).StatusCode);
+
+            var put = await c.PutAsync(Save, Body(new SavePutRequest { BaseRevision = 2, Json = first.Json }));
+            Assert.Equal(HttpStatusCode.Conflict, put.StatusCode);
+            Assert.Equal(2, (await Read<SavePutResponse>(put)).Current.Revision);
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {

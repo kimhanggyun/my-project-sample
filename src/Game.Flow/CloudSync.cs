@@ -143,6 +143,20 @@ namespace Game.Flow
             return s;
         }
 
+        /// <summary>
+        /// 기기 행동 제출 (R-41): 서버가 자기 세이브에 다시 적용한 세이브를 받는다. 거절되면 서버 세이브로 되돌린다. 서버에 닿지 않으면 Offline (행동은 기기에 남겨 두고 나중에 다시).
+        /// </summary>
+        /// <param name="local">기기에서 행동을 적용한 상태 (서버에 닿지 않으면 그대로 쓴다).</param>
+        public void SubmitActions(ActionSubmission submission, CampaignState local, Action<SyncResult> done)
+        {
+            _online.SubmitActions(submission, verdict =>
+            {
+                var server = verdict?.Save == null ? null : SaveJson.Read(verdict.Save.Json);
+                if (verdict == null || server == null) { done(new SyncResult { Outcome = SyncOutcomes.Offline, State = local, Revision = submission.BaseRevision }); return; }
+                done(new SyncResult { Outcome = verdict.Valid ? SyncOutcomes.Accepted : SyncOutcomes.Rejected, State = server, Revision = verdict.Save.Revision });
+            });
+        }
+
         /// <param name="localAfter">기기에서 결과를 반영한 상태 (서버에 닿지 않으면 그대로 쓴다).</param>
         public void SubmitBattle(BattleSubmission submission, CampaignState localAfter, Action<SyncResult> done)
         {
@@ -182,6 +196,7 @@ namespace Game.Flow
         private readonly IDataSource _source;
         private readonly ITimeProvider _time;
         private readonly ISaveStore _persist;
+        private readonly PlayerActionRunner _actions;
         private CloudSave _save;
 
         public const string PersistKey = "fake-server";
@@ -193,6 +208,7 @@ namespace Game.Flow
             _source = source;
             _time = time;
             _persist = persist;
+            _actions = new PlayerActionRunner(defs);
             if (persist != null && persist.Exists(PersistKey))
                 try { _save = OnlineJson.Read<CloudSave>(persist.Read(PersistKey)); } catch (Exception) { _save = null; }
         }
@@ -214,10 +230,12 @@ namespace Game.Flow
             done?.Invoke(Copy(_save));
         }
 
+        /// <summary>처음 가져오기 전용 (R-41): 서버 세이브가 새 게임(Revision 1)일 때만.</summary>
         public void PutSave(SavePutRequest request, Action<SavePutResponse> done)
         {
-            long rev = _save?.Revision ?? 0;
-            if (request == null || request.BaseRevision != rev || SaveJson.Read(request.Json) == null) { done?.Invoke(new SavePutResponse { Ok = false, Current = _save == null ? null : Copy(_save) }); return; }
+            LoadSave(_ => { });
+            long rev = _save.Revision;
+            if (request == null || rev != 1 || request.BaseRevision != rev || SaveJson.Read(request.Json) == null) { done?.Invoke(new SavePutResponse { Ok = false, Current = _save == null ? null : Copy(_save) }); return; }
             Keep(new CloudSave { Revision = rev + 1, Json = request.Json, SavedAtUnixSeconds = Now });
             done?.Invoke(new SavePutResponse { Ok = true, Current = Copy(_save) });
         }
@@ -234,6 +252,16 @@ namespace Game.Flow
                 v.Save = Copy(_save);
             }
             done?.Invoke(v);
+        }
+
+        public void SubmitActions(ActionSubmission s, Action<ActionVerdict> done)
+        {
+            LoadSave(_ => { });
+            if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
+            var (ok, failed, json) = ActionVerifier.Apply(_actions, _save, s);
+            if (!ok) { done?.Invoke(new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, FailedIndex = failed, Save = Copy(_save) }); return; }
+            Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = Now });
+            done?.Invoke(new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = Copy(_save) });
         }
 
         private long Now => _time.UtcNow.ToUnixTimeSeconds();

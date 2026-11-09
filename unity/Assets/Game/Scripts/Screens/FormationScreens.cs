@@ -3,6 +3,7 @@ using Game.Campaign.Roster;
 using Game.Data.Defs;
 using Game.Economy;
 using Game.Flow;
+using Game.Online;
 using Game.Unity.Boot;
 using Game.Unity.UI;
 using UnityEngine;
@@ -60,12 +61,12 @@ namespace Game.Unity.Screens
             var row = Ui.Row(list, "Buttons", 96, 8);
             var add = Ui.Button(row, ctx.T("ui.formation.addCorps"), () => { if (ed.AddCorps() != null) app.ShowMain("formation"); }, 96, fontSize: 28);
             Ui.SetEnabled(add, ed.Draft.Count < ed.MaxCorps && ed.FreeGenerals().Count > 0);
-            var save = Ui.Button(row, ctx.T("ui.formation.save"), () => { if (ed.Apply()) { ctx.Save(); app.ShowMain("formation"); } }, 96, fontSize: 28);
+            var save = Ui.Button(row, ctx.T("ui.formation.save"), () => { if (ed.Errors().Count == 0 && ctx.Do(PlayerActionRunner.SaveFormation(ed.Situation, ed.Draft))) app.ShowMain("formation"); }, 96, fontSize: 28);
             Ui.SetEnabled(save, errors.Count == 0 && ed.Changed());
             var revert = Ui.Button(row, ctx.T("ui.formation.revert"), () => { ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 96, fontSize: 28);
             Ui.SetEnabled(revert, ed.Changed() && ed.HasPreset);
             if (ed.Situation != null && ed.HasPreset)
-                Ui.Button(list, ctx.T("ui.formation.removePreset"), () => { if (ed.RemovePreset()) { ctx.Save(); ctx.DiscardFormationDraft(); } app.ShowMain("formation"); }, 84, new Color(0.45f, 0.22f, 0.20f), 28);
+                Ui.Button(list, ctx.T("ui.formation.removePreset"), () => { if (ctx.Do(PlayerActionRunner.RemovePreset(ed.Situation))) ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 84, new Color(0.45f, 0.22f, 0.20f), 28);
 
             // 병력 관리
             var troopsSvc = new TroopService(ctx.Defs);
@@ -83,14 +84,14 @@ namespace Game.Unity.Screens
                 var r = Ui.Row(card, "Troops", 72, 6);
                 long room = troopsSvc.Room(u);
                 long n = System.Math.Min(Step, room);
-                var c1 = Ui.Button(r, ctx.T("ui.formation.conscript", n, troopsSvc.ConscriptCost(n).ToString("N0")), () => Do(app, troopsSvc.Conscript(ctx.State, unitId, Step)), 72, fontSize: 22);
+                var c1 = Ui.Button(r, ctx.T("ui.formation.conscript", n, troopsSvc.ConscriptCost(n).ToString("N0")), () => Do(app, PlayerActionRunner.Conscript(unitId, Step)), 72, fontSize: 22);
                 Ui.SetEnabled(c1, n > 0 && ctx.Resource(ResourceIds.Supply) >= troopsSvc.ConscriptCost(n));
-                var c2 = Ui.Button(r, ctx.T("ui.formation.recruit", n, troopsSvc.RecruitCost(n).ToString("N0")), () => Do(app, troopsSvc.Recruit(ctx.State, unitId, Step)), 72, fontSize: 22);
+                var c2 = Ui.Button(r, ctx.T("ui.formation.recruit", n, troopsSvc.RecruitCost(n).ToString("N0")), () => Do(app, PlayerActionRunner.Recruit(unitId, Step)), 72, fontSize: 22);
                 Ui.SetEnabled(c2, n > 0 && ctx.Resource(ResourceIds.Gold) >= troopsSvc.RecruitCost(n));
                 long w = u.Wounded;
-                var h1 = Ui.Button(r, ctx.T("ui.formation.healSupply", HealCostCalculator.HealCostInSupply(ctx.Defs.Balance, w).ToString("N0")), () => Do(app, troopsSvc.Heal(ctx.State, unitId, w, ResourceIds.Supply)), 72, fontSize: 22);
+                var h1 = Ui.Button(r, ctx.T("ui.formation.healSupply", HealCostCalculator.HealCostInSupply(ctx.Defs.Balance, w).ToString("N0")), () => Do(app, PlayerActionRunner.Heal(unitId, w, ResourceIds.Supply)), 72, fontSize: 22);
                 Ui.SetEnabled(h1, w > 0 && ctx.Resource(ResourceIds.Supply) >= HealCostCalculator.HealCostInSupply(ctx.Defs.Balance, w));
-                var h2 = Ui.Button(r, ctx.T("ui.formation.healGold", HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w).ToString("N0")), () => Do(app, troopsSvc.Heal(ctx.State, unitId, w, ResourceIds.Gold)), 72, fontSize: 22);
+                var h2 = Ui.Button(r, ctx.T("ui.formation.healGold", HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w).ToString("N0")), () => Do(app, PlayerActionRunner.Heal(unitId, w, ResourceIds.Gold)), 72, fontSize: 22);
                 Ui.SetEnabled(h2, w > 0 && ctx.Resource(ResourceIds.Gold) >= HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w));
                 // 해산: 저장된 편성(기본·상황별)과 고치는 중인 편성 어디에도 없을 때만 (R-39)
                 var d = Ui.Button(r, ctx.T("ui.formation.disband"), () => app.Show(new DisbandUnitScreen(unitId)), 72, new Color(0.45f, 0.22f, 0.20f), 22);
@@ -98,9 +99,10 @@ namespace Game.Unity.Screens
             }
         }
 
-        private static void Do(GameApp app, long changed)
+        /// <summary>행동으로 적용·저장 (온라인이면 서버도 같은 규칙으로 적용, R-41).</summary>
+        private static void Do(GameApp app, PlayerAction action)
         {
-            if (changed > 0) app.Context.Save();
+            app.Context.Do(action);
             app.ShowMain("formation");
         }
 
@@ -217,7 +219,7 @@ namespace Game.Unity.Screens
                 string t = id;
                 Ui.Button(list, FormationTabView.TroopName(Ctx, t), () =>
                 {
-                    if (troops.Create(Ctx.State, t) != null) Ctx.Save();
+                    Ctx.Do(PlayerActionRunner.CreateUnit(t));
                     App.ShowMain("formation");
                 }, 110, Palette.Card, 34);
             }
@@ -242,7 +244,7 @@ namespace Game.Unity.Screens
             Ui.Button(row, T("ui.common.cancel"), () => App.ShowMain("formation"));
             Ui.Button(row, T("ui.formation.disband"), () =>
             {
-                if (new TroopService(Ctx.Defs).Disband(Ctx.State, _unitId)) Ctx.Save();
+                Ctx.Do(PlayerActionRunner.DisbandUnit(_unitId));
                 App.ShowMain("formation");
             }, color: new Color(0.45f, 0.22f, 0.20f));
         }

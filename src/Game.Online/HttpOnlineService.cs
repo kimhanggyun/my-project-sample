@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Game.Online
 {
@@ -22,6 +23,8 @@ namespace Game.Online
         public string AccountId { get; set; }
         public string Token { get; set; }
         public long Revision { get; set; }
+        /// <summary>서버에 아직 반영되지 않은 행동 (서버에 닿지 않았을 때 남겨 두고 다음에 보낸다, R-41).</summary>
+        public List<PlayerAction> Pending { get; set; } = new List<PlayerAction>();
     }
 
     /// <summary>
@@ -87,6 +90,11 @@ namespace Game.Online
         public void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done) =>
             _transport.Send("POST", OnlineRoutes.Battles(_game), OnlineJson.Write(submission), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 409 || status == 422 ? Parse<BattleVerdict>(body) : null));
+
+        /// <summary>200 = 반영, 409 = 옛 세이브, 422 = 적용 불가. 그 밖은 null.</summary>
+        public void SubmitActions(ActionSubmission submission, Action<ActionVerdict> done) =>
+            _transport.Send("POST", OnlineRoutes.Actions(_game), OnlineJson.Write(submission), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 409 || status == 422 ? Parse<ActionVerdict>(body) : null));
 
         private static T Parse<T>(string body) where T : class
         {
