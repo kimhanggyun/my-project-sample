@@ -153,6 +153,81 @@
         "speed": 62,
         "vision": 60
       }
+    },
+    {
+      "id": "guard",
+      "nameKey": "troop.guard",
+      "tier": 3,
+      "parent": "shieldbearer",
+      "tags": [
+        "infantry",
+        "melee",
+        "shield",
+        "elite"
+      ],
+      "supplyPerDay": 2,
+      "attackRange": 1,
+      "stats": {
+        "attack": 52,
+        "defense": 85,
+        "speed": 36
+      }
+    },
+    {
+      "id": "pikeWall",
+      "nameKey": "troop.pikeWall",
+      "tier": 3,
+      "parent": "pikeman",
+      "tags": [
+        "polearm",
+        "melee",
+        "elite"
+      ],
+      "supplyPerDay": 2,
+      "attackRange": 3,
+      "stats": {
+        "attack": 55,
+        "defense": 72,
+        "speed": 24
+      }
+    },
+    {
+      "id": "heavyCrossbow",
+      "nameKey": "troop.heavyCrossbow",
+      "tier": 3,
+      "parent": "crossbowman",
+      "tags": [
+        "ranged",
+        "piercing",
+        "elite"
+      ],
+      "supplyPerDay": 2,
+      "attackRange": 12,
+      "stats": {
+        "attack": 70,
+        "defense": 36,
+        "speed": 30
+      }
+    },
+    {
+      "id": "ironCavalry",
+      "nameKey": "troop.ironCavalry",
+      "tier": 3,
+      "parent": "heavyCavalry",
+      "tags": [
+        "mounted",
+        "melee",
+        "heavy",
+        "elite"
+      ],
+      "supplyPerDay": 4,
+      "attackRange": 1,
+      "stats": {
+        "attack": 80,
+        "defense": 70,
+        "speed": 56,
+        "vision": 58
+      }
     }
   ]
 }

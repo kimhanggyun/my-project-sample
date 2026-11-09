@@ -150,8 +150,17 @@ namespace Game.Unity.Battle3D
         private InstanceBatch SoldierBatch(string troop, int color)
         {
             if (_soldierBatches.TryGetValue((troop, color), out var b)) return b;
+            // 그 병종 모델이 없으면 부모 병종(T3 → T2 → T1) 모델, 그래도 없으면 기본 병사
             string key = "soldier." + troop;
-            if (!_art.TryGet(key, out var model)) { key = "soldier.default"; _art.TryGet(key, out model); }
+            ArtModel model;
+            var types = _ctl.Context.Defs.TroopTypes;
+            string t = troop;
+            while (!_art.TryGet(key, out model) && t != null && types.TryGetValue(t, out var def) && def.Parent != null)
+            {
+                t = def.Parent;
+                key = "soldier." + t;
+            }
+            if (model == null) { key = "soldier.default"; _art.TryGet(key, out model); }
             if (model != null)
             {
                 b = new InstanceBatch(model.Mesh, _art.Tinted(model, SoldierColors[color], _art.TintOf(key)), model.Local);

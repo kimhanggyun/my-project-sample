@@ -53,7 +53,33 @@ namespace Game.Tests.Campaign
             Assert.True(svc.Promote(s, "u01", "shieldbearer"));
             Assert.Equal(("shieldbearer", 4000L, 5000L), (u.TroopType, u.Troops, u.Training.Raw));
             Assert.Equal(100_000 - 400, new Wallet(s.Wallet).Get(ResourceIds.Gold));
-            Assert.Empty(svc.PromotionsFor(u)); // 2단계 다음은 아직 없음
+            // 2단계 다음은 3단계 정예: 방패병 → 근위병 (훈련도 0.8, step05, 돈 1,200)
+            Assert.Equal(new[] { "guard" }, svc.PromotionsFor(u).Select(p => p.To));
+            Assert.Equal(TroopGrowthService.LowTraining, svc.CheckPromote(s, "u01", "guard"));
+            u.Training = Fix.FromRaw(8000);
+            Assert.Equal(TroopGrowthService.StepLocked, svc.CheckPromote(s, "u01", "guard"));
+            s.ClearedSteps.Add("step05");
+            Assert.True(svc.Promote(s, "u01", "guard"));
+            Assert.Equal(("guard", 3, 4000L), (u.TroopType, Kit.D.TroopTypes[u.TroopType].Tier, u.Troops));
+            Assert.Equal(100_000 - 400 - 1200, new Wallet(s.Wallet).Get(ResourceIds.Gold));
+            Assert.Empty(svc.PromotionsFor(u)); // 3단계가 끝
+        }
+
+        [Fact(DisplayName = "R-52 3단계 정예: 2단계 4종마다 하나씩, 승급 조건은 2단계보다 높다")]
+        public void EliteTier()
+        {
+            var g = Kit.D.TroopGrowth;
+            foreach (var t2 in Kit.D.TroopTypes.Values.Where(t => t.Tier == 2))
+            {
+                var up = g.Promotions.Where(p => p.From == t2.Id).ToList();
+                var p3 = Assert.Single(up);
+                var t3 = Kit.D.TroopTypes[p3.To];
+                Assert.Equal(3, t3.Tier);
+                Assert.True(t3.HasTag("elite"), t3.Id);
+                var p2 = g.Promotions.Single(p => p.To == t2.Id);
+                Assert.True(p3.Training > p2.Training && p3.Gold > p2.Gold, t3.Id);
+                Assert.True(Kit.D.Strings.ContainsKey(t3.NameKey) && Kit.D.Strings.ContainsKey("troop.desc." + t3.Id), t3.Id);
+            }
         }
 
         [Fact(DisplayName = "R-52 훈련도 전투 보정: 같은 조건에서 훈련도 1인 부대가 더 많이 남긴다, 훈련도 0이면 보정 없음 (기준 전투 그대로)")]
