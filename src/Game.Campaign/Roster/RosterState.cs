@@ -9,6 +9,8 @@ namespace Game.Campaign.Roster
         public string GeneralId { get; set; }
         public int Level { get; set; } = 1;
         public long Exp { get; set; }
+        /// <summary>한계 돌파 단계 (R-57, 0부터). 단계마다 레벨 상한이 오른다. 예전 세이브에는 없으므로 0.</summary>
+        public int LimitBreak { get; set; }
         /// <summary>정의 능력치에 더해진 성장분 (능력치 id → 값).</summary>
         public Dictionary<string, Fix> StatGrowth { get; set; } = new Dictionary<string, Fix>();
         public List<string> LearnedSkills { get; set; } = new List<string>();

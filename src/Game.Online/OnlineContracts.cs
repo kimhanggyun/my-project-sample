@@ -503,6 +503,8 @@ namespace Game.Online
         public const string UnitTrain = "unit.train";
         /// <summary>병종 승급: UnitId, TroopType = 승급할 병종 (R-52).</summary>
         public const string UnitPromote = "unit.promote";
+        /// <summary>장수 한계 돌파 (GeneralId, R-57): 조각으로 레벨 상한을 올린다.</summary>
+        public const string GeneralLimitBreak = "general.limitBreak";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>

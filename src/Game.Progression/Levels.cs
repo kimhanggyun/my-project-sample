@@ -21,18 +21,22 @@ namespace Game.Progression
     {
         public const string BattleLevelUpFlag = "battleLevelUp";
 
-        public static LevelUpResult AddExp(LevelRules rules, IReadOnlyDictionary<string, Fix> growthRates, int level, long exp, long gained)
+        public static LevelUpResult AddExp(LevelRules rules, IReadOnlyDictionary<string, Fix> growthRates, int level, long exp, long gained) =>
+            AddExp(rules, growthRates, level, exp, gained, rules.MaxLevel);
+
+        /// <param name="maxLevel">이 장수의 레벨 상한 (한계 돌파로 오른 값, R-57).</param>
+        public static LevelUpResult AddExp(LevelRules rules, IReadOnlyDictionary<string, Fix> growthRates, int level, long exp, long gained, int maxLevel)
         {
             var r = new LevelUpResult { Level = level, Exp = exp };
-            if (gained <= 0 || level >= rules.MaxLevel) return r;
+            if (gained <= 0 || level >= maxLevel) return r;
             r.Exp = checked(r.Exp + gained);
-            while (r.Level < rules.MaxLevel && r.Exp >= rules.ExpToNext(r.Level))
+            while (r.Level < maxLevel && r.Exp >= rules.ExpToNext(r.Level))
             {
                 r.Exp -= rules.ExpToNext(r.Level);
                 r.Level++;
                 r.LevelsGained++;
             }
-            if (r.Level >= rules.MaxLevel) r.Exp = 0;
+            if (r.Level >= maxLevel) r.Exp = 0;
             if (r.LevelsGained > 0)
                 foreach (var kv in growthRates) r.StatGains[kv.Key] = kv.Value * r.LevelsGained;
             return r;

@@ -491,7 +491,7 @@ namespace Game.Flow
             {
                 var g = state.FindGeneral(comp.GeneralId);
                 if (g == null || g.Status == GeneralStatus.Captured) continue;
-                var r = LevelEngine.AddExp(_defs.Levels, _defs.Generals[g.GeneralId].GrowthRates, g.Level, g.Exp, exp);
+                var r = LevelEngine.AddExp(_defs.Levels, _defs.Generals[g.GeneralId].GrowthRates, g.Level, g.Exp, exp, LimitBreakService.MaxLevelOf(_defs, g));
                 g.Level = r.Level;
                 g.Exp = r.Exp;
                 foreach (var kv in r.StatGains)
