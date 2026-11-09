@@ -42,6 +42,10 @@ namespace Game.Unity.Screens
         private bool _finished;
         private float _noticeLeft;
         private bool _dirty = true;
+        private float _fxDelta;
+        /// <summary>깃발 위 말풍선: 군단 → (대사, 남은 초).</summary>
+        private readonly Dictionary<CorpsState, (string text, float left)> _bubbles = new Dictionary<CorpsState, (string, float)>();
+        private const float BubbleSeconds = 3f;
 
         private Text _clock;
         private Text _logText;
@@ -166,9 +170,11 @@ namespace Game.Unity.Screens
             }
             if (steps > 0)
             {
+                _field.OnTicked();
                 _ctl.Refresh();
                 ReadNewEvents();
             }
+            _fxDelta = _paused ? 0f : deltaTime * Speeds[_speedIndex];
             if (steps > 0 || _dirty) Refresh();
             UpdateFieldView();
             if (_sim.IsOver) Finish();
@@ -260,12 +266,20 @@ namespace Game.Unity.Screens
             {
                 var e = events[_logRead];
                 string who = CorpsName(e.CorpsId);
-                if (e.Kind == EventKinds.Dialogue) { Add(who + ": " + T(e.Data)); continue; }
+                var corps = e.CorpsId == null ? null : _sim.Context.FindCorps(e.CorpsId);
+                if (e.Kind == EventKinds.SkillUsed && corps != null && _sim.Context.IsVisibleTo(_ctl.Team, corps))
+                    _field.Effects.SkillUsed(_field.ToWorld(corps.Anchor), corps.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
+                if (e.Kind == EventKinds.Dialogue) { Add(who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; }
                 var sp = _speech.Feed(e);
-                if (sp != null) Add(who + ": \"" + T(sp.LineKey) + "\"");
+                if (sp != null) { Add(who + ": \"" + T(sp.LineKey) + "\""); Bubble(corps, T(sp.LineKey)); }
                 string sysKey = "ui.event." + e.Kind;
                 if (Ctx.Defs.Strings.ContainsKey(sysKey)) Add(Ui.Colored(T(sysKey, who), Palette.TextDim));
             }
+        }
+
+        private void Bubble(CorpsState corps, string text)
+        {
+            if (corps != null) _bubbles[corps] = (text, BubbleSeconds);
         }
 
         private void Add(string line)
@@ -330,7 +344,7 @@ namespace Game.Unity.Screens
             if (_field == null) return;
             _fieldArea.GetWorldCorners(_corners); // 오버레이 캔버스라 화면 픽셀 좌표
             _field.SetViewport(new Rect(_corners[0].x, _corners[0].y, _corners[2].x - _corners[0].x, _corners[2].y - _corners[0].y));
-            _field.Draw();
+            _field.Draw(Mathf.Clamp01(_accumulator / _tickSeconds), _fxDelta);
             _miniMap.Refresh();
             var ctx = _sim.Context;
             var cam = _field.Rig.Camera;
@@ -344,6 +358,14 @@ namespace Game.Unity.Screens
                 if (!shown) continue;
                 if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local))
                     kv.Value.rectTransform.anchoredPosition = local;
+                string name = GeneralOf(c);
+                if (_bubbles.TryGetValue(c, out var bubble))
+                {
+                    float left = bubble.left - _fxDelta;
+                    if (left <= 0f) _bubbles.Remove(c);
+                    else { _bubbles[c] = (bubble.text, left); name = Ui.Colored("\"" + bubble.text + "\"", Palette.Text) + "\n" + name; }
+                }
+                kv.Value.text = name;
                 kv.Value.fontStyle = c == _ctl.Selected ? FontStyle.Bold : FontStyle.Normal;
             }
         }

@@ -28,6 +28,7 @@ namespace Game.Unity.Battle3D
         private static readonly Color LastSeenColor = new Color(0.55f, 0.35f, 0.35f);
         private static readonly Color PathColor = new Color(1f, 1f, 1f);
         private static readonly Color RangeColor = new Color(0.95f, 0.75f, 0.30f);
+        private static readonly Color HitColor = new Color(1f, 0.95f, 0.85f);
 
         private readonly BattleControl _ctl;
         private readonly GameObject _root;
@@ -43,6 +44,10 @@ namespace Game.Unity.Battle3D
         private readonly LineRenderer _path;
         private readonly LineRenderer _range;
         private readonly List<Vector3> _pathPoints = new List<Vector3>();
+        /// <summary>소부대 위치: 직전 틱 → 지금 틱 (틱 사이를 부드럽게 잇는다).</summary>
+        private readonly Dictionary<SubUnitState, (Vector3 prev, Vector3 cur)> _unitPos = new Dictionary<SubUnitState, (Vector3, Vector3)>();
+        private readonly Dictionary<Color, Material> _lineMats = new Dictionary<Color, Material>();
+        private int _flashFrame;
         private readonly Transform _ring;
         private readonly Transform _target;
         private Matrix4x4[] _buffer = new Matrix4x4[64];
@@ -51,6 +56,7 @@ namespace Game.Unity.Battle3D
         public int Width { get; }
         public int Height { get; }
         public Texture2D MapTexture => _texture.Texture;
+        public BattleEffects3D Effects { get; }
 
         public BattleField3D(BattleControl ctl)
         {
@@ -115,7 +121,14 @@ namespace Game.Unity.Battle3D
             _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
             _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
 
-            foreach (var col in new[] { AllyColor, EnemyColor, SelectedColor, ConfusedColor })
+            Effects = new BattleEffects3D(this, ctl.Team, _cube, col => Own(NewMaterial(col)), col =>
+            {
+                var l = Line("Fx", col, 0.2f, true);
+                return l;
+            });
+            OnTicked();
+
+            foreach (var col in new[] { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor })
             {
                 var m = Own(NewMaterial(col));
                 m.enableInstancing = true;
@@ -228,10 +241,30 @@ namespace Game.Unity.Battle3D
             return true;
         }
 
-        /// <summary>병사 그리기. 매 프레임 부른다 (인스턴싱은 그 프레임에만 그려진다).</summary>
-        public void Draw()
+        /// <summary>틱을 돌린 뒤 부른다: 소부대 위치를 한 칸 넘기고, 연출(화살)을 만든다.</summary>
+        public void OnTicked()
         {
             var ctx = _ctl.Context;
+            foreach (var c in ctx.Corps)
+                foreach (var u in c.Units)
+                {
+                    var now = ToWorld(u.Position);
+                    _unitPos[u] = _unitPos.TryGetValue(u, out var p) ? (p.cur, now) : (now, now);
+                }
+            Effects?.OnTicked(ctx);
+        }
+
+        /// <summary>
+        /// 그리기. 매 프레임 부른다 (인스턴싱은 그 프레임에만 그려진다).
+        /// </summary>
+        /// <param name="alpha">직전 틱과 지금 틱 사이 위치 (0~1).</param>
+        /// <param name="fxDelta">연출 시계를 얼마나 진행할지 (일시정지면 0).</param>
+        public void Draw(float alpha, float fxDelta)
+        {
+            var ctx = _ctl.Context;
+            Effects.Advance(fxDelta);
+            float clock = Effects.Clock;
+            if (fxDelta > 0f) _flashFrame++;
             foreach (var b in _batches.Values) b.matrices.Clear();
             foreach (var c in ctx.Corps)
             {
@@ -243,15 +276,31 @@ namespace Game.Unity.Battle3D
                 {
                     if (!u.Alive) continue;
                     var list = _batches[u.Confused ? ConfusedColor : teamColor].matrices;
+                    var hitList = _batches[HitColor].matrices;
                     long n = SoldierRatio.VisibleSoldiers(u.Troops, _troopsPerSoldier);
                     int side = Mathf.CeilToInt(Mathf.Sqrt(n));
-                    var center = ToWorld(u.Position);
+                    var (prev, cur) = _unitPos.TryGetValue(u, out var pc) ? pc : (ToWorld(u.Position), ToWorld(u.Position));
+                    var center = Vector3.Lerp(prev, cur, alpha);
+                    bool walking = (cur - prev).sqrMagnitude > 1e-5f;
+                    // 근접 공격: 대상 쪽으로 찌르기 (병사마다 박자를 어긋나게)
+                    Vector3 lunge = Vector3.zero;
+                    if (u.AttackTarget != null && u.Troop.HasTag("melee") && _unitPos.TryGetValue(u.AttackTarget, out var tp))
+                    {
+                        lunge = tp.cur - cur;
+                        lunge.y = 0f;
+                        lunge = lunge.sqrMagnitude > 1e-6f ? lunge.normalized * 0.12f : Vector3.zero;
+                    }
                     float half = (side - 1) * SoldierSpacing / 2f;
                     for (int i = 0; i < n; i++)
                     {
                         var p = center + rot * new Vector3(i % side * SoldierSpacing - half, 0f, half - i / side * SoldierSpacing);
-                        p.y = GroundHeight(p.x, p.z) + SoldierScale.y / 2f;
-                        list.Add(Matrix4x4.TRS(p, rot, SoldierScale));
+                        float phase = i * 1.7f + u.GetHashCode() % 7;
+                        p += lunge * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
+                        float bob = walking ? Mathf.Abs(Mathf.Sin(clock * 12f + phase)) * 0.06f : 0f;
+                        p.y = GroundHeight(p.x, p.z) + SoldierScale.y / 2f + bob;
+                        // 맞고 있는 군단: 몇 명씩 번갈아 밝게 깜빡인다
+                        bool flash = c.LostThisTick > 0 && (i + _flashFrame / 3) % 6 == 0;
+                        (flash ? hitList : list).Add(Matrix4x4.TRS(p, rot, SoldierScale));
                     }
                 }
             }
@@ -264,6 +313,7 @@ namespace Game.Unity.Battle3D
                 var rp = new RenderParams(b.material) { camera = Rig.Camera, shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false };
                 Graphics.RenderMeshInstanced(rp, _cube, 0, _buffer, n);
             }
+            Effects.Draw(ctx, Rig.Camera);
         }
 
         public void Destroy()
@@ -318,7 +368,8 @@ namespace Game.Unity.Battle3D
             var go = new GameObject(name);
             go.transform.SetParent(_root.transform, false);
             var line = go.AddComponent<LineRenderer>();
-            line.sharedMaterial = Own(NewMaterial(color));
+            if (!_lineMats.TryGetValue(color, out var mat)) _lineMats[color] = mat = Own(NewMaterial(color));
+            line.sharedMaterial = mat;
             line.widthMultiplier = width;
             line.loop = loop;
             line.positionCount = 0;
