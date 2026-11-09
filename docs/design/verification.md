@@ -184,6 +184,7 @@
 | R-49 | **연합**: 한 계정은 한 연합에만. 만들기: 이름은 앞뒤 공백을 뺀 길이가 범위(nameMin~nameMax) 안, 다른 연합과 같으면 안 됨(대소문자 무시), 만든 사람이 연합장. 가입: 인원 상한(memberMax)까지 (지금은 신청 없이 바로). 탈퇴: 연합장이 나가면 남은 사람 중 먼저 들어온 사람이 연합장, 모두 나가면 연합이 없어진다. 영토 목록에는 주인의 연합이 붙는다 | [territory.md](content/territory.md) 6장 |
 | R-50 | **연합 관리**: 가입 방식은 바로(기본) / 신청. 신청 방식이면 가입 = 신청을 남김, 연합장이 수락(인원 상한 안, 그새 다른 연합에 들어갔으면 안 됨)·거절. 연합장만 가입 방식을 바꾸고 수락·거절·내보내기(자기 자신은 못 함). 어느 연합에 들어가거나 만들면 다른 연합에 남긴 신청은 지운다 | [territory.md](content/territory.md) 6장 |
 | R-51 | **장수 모집**: 재화를 내고 1회·10회 (모자라면 아무것도 바뀌지 않음). 한 번마다: 천장 횟수에 닿았으면 천장 등급, 10회의 마지막에 아직 보장 등급 이상이 없으면 보장 등급 이상 중에서(확률 비율), 아니면 등급 확률(누적 비교)로 등급을 고르고, 그 등급의 목록 장수 중 고르게 하나. 천장 등급 이상이 나오면 천장 수를 0으로, 아니면 +1. 이미 있는 장수는 조각 +1, 없으면 레벨 1로 들어온다. 같은 세이브·같은 시드면 같은 결과. 공개 확률 = 등급 확률 ÷ 그 등급 장수 수 | [generals.md](content/generals.md) 5장 |
+| R-52 | **부대 키우기**: 훈련 = 돈(병력+부상병 1,000명당 goldPer1000, 올림)을 내고 훈련도 +step, 상한 max. 승급 = 데이터의 from → to(to의 부모가 from)만, 훈련도 ≥ 조건·조건 스텝 클리어·돈이 모두 될 때, 병력·부상병·훈련도·결속은 그대로. 전투 보정 = 공격 부대 훈련도 × attackPp − 방어 부대 훈련도 × defensePp (%p, 훈련도 0이면 보정 없음) | [troop-growth.md](content/troop-growth.md) |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
@@ -219,7 +220,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`.
+- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`.
 - 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, 연합(R-49, R-50)은 `Campaign/AllianceTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
@@ -266,3 +267,4 @@
 | v1.16 | 2026-11-09 | R-49 연합 만들기·가입·탈퇴 추가 |
 | v1.17 | 2026-11-09 | R-50 연합 관리(가입 신청·수락·내보내기) 추가 |
 | v1.18 | 2026-11-09 | R-51 장수 모집 추가 |
+| v1.19 | 2026-11-09 | R-52 부대 키우기(훈련·승급·훈련도 보정) 추가 |

@@ -37,6 +37,11 @@
     "mightToAttack": 0.2,
     "leadershipToDefense": 0.2
   },
+  "training": {
+    "_comment": "부대 훈련도(0~1)가 1일 때 공격·방어 보정 %p (troop-growth.md, R-52, 예시). 훈련도 0이면 보정 없음",
+    "attackPp": 10,
+    "defensePp": 10
+  },
   "spawnSpacingCells": 8,
   "vision": {
     "updateEveryTicks": 2,

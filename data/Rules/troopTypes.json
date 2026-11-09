@@ -82,6 +82,77 @@
         "vision": 85,
         "detection": 70
       }
+    },
+    {
+      "id": "shieldbearer",
+      "nameKey": "troop.shieldbearer",
+      "tier": 2,
+      "parent": "infantry",
+      "tags": [
+        "infantry",
+        "melee",
+        "shield"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 45,
+        "defense": 75,
+        "speed": 38
+      }
+    },
+    {
+      "id": "pikeman",
+      "nameKey": "troop.pikeman",
+      "tier": 2,
+      "parent": "spearman",
+      "tags": [
+        "polearm",
+        "melee"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 3,
+      "stats": {
+        "attack": 52,
+        "defense": 55,
+        "speed": 30
+      }
+    },
+    {
+      "id": "crossbowman",
+      "nameKey": "troop.crossbowman",
+      "tier": 2,
+      "parent": "archer",
+      "tags": [
+        "ranged",
+        "piercing"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 9,
+      "stats": {
+        "attack": 62,
+        "defense": 35,
+        "speed": 38
+      }
+    },
+    {
+      "id": "heavyCavalry",
+      "nameKey": "troop.heavyCavalry",
+      "tier": 2,
+      "parent": "cavalry",
+      "tags": [
+        "mounted",
+        "melee",
+        "heavy"
+      ],
+      "supplyPerDay": 3,
+      "attackRange": 1,
+      "stats": {
+        "attack": 70,
+        "defense": 62,
+        "speed": 62,
+        "vision": 60
+      }
     }
   ]
 }

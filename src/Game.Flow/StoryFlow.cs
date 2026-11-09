@@ -216,7 +216,7 @@ namespace Game.Flow
                 {
                     var u = state.FindUnit(slot.Value);
                     if (u == null) continue;
-                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId, Slot = slot.Key, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion });
+                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId, Slot = slot.Key, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion, Training = u.Training });
                     if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + u.Troops * tt.SupplyPerDay);
                 }
                 daily.Add(d);
@@ -322,7 +322,7 @@ namespace Game.Flow
                     UnitState u = null;
                     try { u = OnlineJson.Read<UnitState>(du.UnitJson); } catch (System.Exception) { }
                     if (u == null || !_defs.TroopTypes.TryGetValue(u.TroopType ?? "", out var tt) || !SlotIds.IsValid(du.Slot)) { errors.Add("수비 편성의 부대를 읽을 수 없습니다."); return; }
-                    cs.Units.Add(new UnitSetup { UnitId = id + "_" + du.Slot, Slot = du.Slot, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion });
+                    cs.Units.Add(new UnitSetup { UnitId = id + "_" + du.Slot, Slot = du.Slot, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion, Training = u.Training });
                     daily = checked(daily + u.Troops * tt.SupplyPerDay);
                 }
                 cs.Supply = (Fix.FromInt(10) * (daily * balance.SupplyDaysPerMinute)).CeilToLong();

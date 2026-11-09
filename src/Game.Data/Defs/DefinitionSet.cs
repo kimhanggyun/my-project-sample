@@ -48,6 +48,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<SecretDef> Secrets { get; private set; }
         /// <summary>장수 모집 (Rules/gacha.json, 없으면 모집 없음).</summary>
         public GachaRules Gacha { get; private set; } = GachaRules.None;
+        /// <summary>부대 키우기 (Rules/troopGrowth.json, 없으면 훈련·승급 없음).</summary>
+        public TroopGrowthRules TroopGrowth { get; private set; } = TroopGrowthRules.None;
 
         /// <summary>스텝·규칙 세트 덮어쓰기를 적용한 전투 수치 (balance와 같은 순서).</summary>
         public CombatRules ResolveCombat(JObject stepOverride = null, JObject ruleSetOverride = null) =>
@@ -102,6 +104,7 @@ namespace Game.Data.Defs
                 AddUnique(troops, id, def, "troopTypes.json");
             }
             set.TroopTypes = troops;
+            if (source.Exists(RulesDir + TroopGrowthRules.File)) set.TroopGrowth = TroopGrowthRules.From(Read(RulesDir + TroopGrowthRules.File), troops);
 
             var formationsDoc = Read(RulesDir + "formations.json");
             var formations = new Dictionary<string, FormationDef>();

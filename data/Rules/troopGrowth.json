@@ -1,0 +1,10 @@
+{
+  "_comment": "부대 키우기 (troop-growth.md, R-52). 수치는 예시 (open-values.md). training: 한 번 훈련에 오르는 훈련도·상한(0~1), 비용(돈) = 병력 1,000명당 goldPer1000 (올림). promotions: 2단계 병종으로 승급 (from → to). 조건 = 훈련도·클리어한 스텝, 비용 = 돈. 승급해도 병력·훈련도·결속은 그대로",
+  "training": { "step": 0.1, "max": 1.0, "goldPer1000": 20 },
+  "promotions": [
+    { "from": "infantry", "to": "shieldbearer", "training": 0.5, "step": "step02", "gold": 400 },
+    { "from": "spearman", "to": "pikeman", "training": 0.5, "step": "step02", "gold": 400 },
+    { "from": "archer", "to": "crossbowman", "training": 0.5, "step": "step03", "gold": 500 },
+    { "from": "cavalry", "to": "heavyCavalry", "training": 0.6, "step": "step04", "gold": 700 }
+  ]
+}

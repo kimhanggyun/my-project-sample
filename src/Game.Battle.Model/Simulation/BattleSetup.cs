@@ -158,6 +158,8 @@ namespace Game.Battle.Model.Simulation
         public long Troops { get; set; }
         /// <summary>부대 결속 (0~100).</summary>
         public Fix Cohesion { get; set; }
+        /// <summary>부대 훈련도 (0~1, R-52). 공격·방어 보정 (combat.json training).</summary>
+        public Fix Training { get; set; }
     }
 
     public sealed class CorpsSetup

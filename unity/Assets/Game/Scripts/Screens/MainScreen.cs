@@ -27,6 +27,7 @@ namespace Game.Unity.Screens
             { "general", () => new GeneralsTabView() },
             { "formation", () => new FormationTabView() },
             { "hiring", () => new HiringTabView() },
+            { "troop", () => new TroopGrowthTabView() },
             { "territory", () => new TerritoryTabView() },
         };
 
