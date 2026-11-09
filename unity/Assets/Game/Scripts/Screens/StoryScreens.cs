@@ -40,7 +40,7 @@ namespace Game.Unity.Screens
         }
     }
 
-    /// <summary>스텝 정보 + 위임 출진. 출진 준비(Prepare)와 확정(Confirm)은 규칙 객체가 한다.</summary>
+    /// <summary>스텝 정보 + 출진 (직접 지휘 / 위임). 출진 준비(Prepare)와 확정(Confirm)은 규칙 객체가 한다.</summary>
     public sealed class StepScreen : GameScreen
     {
         private readonly string _stepId;
@@ -80,19 +80,24 @@ namespace Game.Unity.Screens
             Ui.Label(rewards, parts.Count == 0 ? T("ui.common.none") : string.Join(", ", parts), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
 
             // 출진 준비 (상태는 바꾸지 않는다)
-            var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed(), Delegate = true });
+            var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed() });
             var sortie = Ui.Card(body, "Sortie");
             Ui.Label(sortie, T("ui.step.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
             foreach (var err in plan.Errors) Ui.Label(sortie, Ui.Colored(err, Palette.Bad), Ui.FontSmall);
 
+            if (!plan.Ok) Ui.Label(Root, Ui.Colored(T("ui.step.cannotSortie"), Palette.Bad), Ui.FontSmall, TextAnchor.MiddleCenter);
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             Ui.Button(row, T("ui.common.back"), () => App.ShowMain(MainTab.Story));
-            var go = Ui.Button(row, plan.Ok ? T("ui.step.delegateSortie") : T("ui.step.cannotSortie"), () => Sortie(plan, step));
-            Ui.SetEnabled(go, plan.Ok);
+            var direct = Ui.Button(row, T("ui.step.directSortie"), () => Sortie(step, false));
+            var delegated = Ui.Button(row, T("ui.step.delegateSortie"), () => Sortie(step, true));
+            Ui.SetEnabled(direct, plan.Ok);
+            Ui.SetEnabled(delegated, plan.Ok);
         }
 
-        private void Sortie(SortiePlan plan, StepDef step)
+        /// <summary>직접 지휘(위임 꺼짐) 또는 위임 출진. 확정할 때 준비를 다시 한다 (시드·위임 여부).</summary>
+        private void Sortie(StepDef step, bool delegate_)
         {
+            var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = _stepId, Seed = Ctx.NewSeed(), Delegate = delegate_ });
             if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new StepScreen(_stepId)); return; }
             App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start"));
         }
