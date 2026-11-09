@@ -129,28 +129,4 @@ namespace Game.Unity.Screens
             }
         }
     }
-
-    /// <summary>부대 편성 (일부): 지금은 현재 군단 편성과 보유 부대 목록. 편성 바꾸기는 다음 단계.</summary>
-    public sealed class FormationTabView : ITabView
-    {
-        public void Build(GameApp app, RectTransform root)
-        {
-            var ctx = app.Context;
-            var list = Ui.ScrollList(root, "List");
-            Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.tab.formationNote"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-            foreach (var c in ctx.State.Compositions)
-            {
-                string formation = c.Formation != null && ctx.Defs.Formations.TryGetValue(c.Formation, out FormationDef f) ? ctx.T(f.NameKey) : c.Formation;
-                var card = Ui.Card(list, c.GeneralId);
-                Ui.Label(card, ctx.T("ui.compositions.line", ctx.GeneralName(c.GeneralId), formation, c.Slots.Count));
-            }
-            foreach (var u in ctx.State.Units)
-            {
-                string troop = ctx.Defs.TroopTypes.TryGetValue(u.TroopType, out var tt) ? ctx.T(tt.NameKey) : u.TroopType;
-                var card = Ui.Card(list, u.UnitId);
-                Ui.Label(card, ctx.T("ui.units.line", u.UnitId, troop, u.Troops.ToString("N0"), u.Wounded.ToString("N0"), u.Cohesion.FloorToLong()), Ui.FontSmall);
-            }
-        }
-    }
 }

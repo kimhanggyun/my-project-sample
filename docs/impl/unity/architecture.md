@@ -53,6 +53,7 @@
       - 소부대의 이번 틱 공격 대상(`SubUnitState.AttackTarget`)은 화면용 정보다. 규칙 계산·상태 지문에 쓰지 않는다 (`DisplayInfoTests`, 기준 전투 지문 그대로).
     - 아직 없는 것: 병사 모델·애니메이션(아트), 소부대 진형 모양 그대로의 배치(지금은 소부대 위치 중심 격자), 스킬 효과 범위(반경) 미리보기, 전사 연출.
   - 결과를 반영하면 바로 저장한다. 전투 중에 앱을 끄면 출진(군량 차감)은 저장되지 않은 상태로 남는다 (전투 이어하기는 이후 단계).
+- 부대 편성 탭 (`FormationScreens.cs`): 군단 목록 → 군단 편집(장수·진형·역할 바꾸기, 칸 6개) → 부대 고르기. 편집은 `FormationEditor` 사본(`GameContext.Formation`)에, [저장]은 검사 통과 시에만. 보유 부대 목록에서 징병·모병(+500)·치료(군량/돈) (`TroopService`).
 - 문구: 화면 문구는 테마 문자열의 `ui.*` 키. `UnityPackageTests`가 화면 코드의 `ui.*` 키가 문자열 파일에 있는지 확인한다.
 - 에디터 메뉴 `Game ▸ Setup Boot Scene`: Boot 씬(카메라 + GameApp)을 만들어 빌드 목록 맨 앞에 두고 세로 화면으로 설정한다. `Game ▸ Copy Data For Build`, `Game ▸ Open Save Folder`.
 - `unity/Assets`의 `.meta`도 `python3 tools/unity_meta.py`로 만든다 (Unity가 만든 것은 그대로 둔다). `UnityPackageTests`가 빠진 `.meta`를 잡는다.
