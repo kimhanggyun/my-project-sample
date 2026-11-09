@@ -12,7 +12,8 @@ namespace Game.Unity.Battle3D
     /// <summary>
     /// 3D 전장 (단순 도형): 높이가 있는 지형 바닥 + 안개, 군단 깃발(기수), 병사(GPU 인스턴싱, 군단 방향으로 정렬), 선택 링,
     /// 이동 경로선·목적지, 스킬 사거리 원, 안 보이게 된 적의 마지막 목격 위치(흐린 깃발).
-    /// 전투 상태는 읽기만 한다. 좌표: 전장 (x, y) 칸 → 월드 (x, 지형 높이, 깊이 − y). 아트·애니메이션은 이후 단계.
+    /// 전투 상태는 읽기만 한다. 좌표: 전장 (x, y) 칸 → 월드 (x, 지형 높이, 깊이 − y).
+    /// 임시 아트: 아트 목록(ArtCatalog)에 병종·지형 모델이 있으면 그것을, 없으면 단순 도형을 쓴다 (docs/impl/unity/art.md).
     /// </summary>
     public sealed class BattleField3D
     {
@@ -37,7 +38,17 @@ namespace Game.Unity.Battle3D
         private readonly float _depth;
         private readonly Mesh _cube;
         private readonly List<Object> _owned = new List<Object>();
-        private readonly Dictionary<Color, (Material material, List<Matrix4x4> matrices)> _batches = new Dictionary<Color, (Material, List<Matrix4x4>)>();
+        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4;
+        private static readonly Color[] SoldierColors = { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor };
+        private readonly ArtCatalog _art;
+        /// <summary>(병종, 색) → 병사 묶음. 모델이 없는 병종은 색별 상자 묶음을 같이 쓴다.</summary>
+        private readonly Dictionary<(string troop, int color), InstanceBatch> _soldierBatches = new Dictionary<(string, int), InstanceBatch>();
+        private readonly InstanceBatch[] _cubeBatches = new InstanceBatch[SoldierColors.Length];
+        private readonly List<InstanceBatch> _allSoldierBatches = new List<InstanceBatch>();
+        /// <summary>지형 id → 소품 묶음(변형별) — 모델이 없으면 null.</summary>
+        private readonly Dictionary<string, (List<InstanceBatch> variants, float perCell, float jitter)?> _propKinds = new Dictionary<string, (List<InstanceBatch>, float, float)?>();
+        private readonly List<InstanceBatch> _allPropBatches = new List<InstanceBatch>();
+        private string[] _propTerrain;
         private readonly Dictionary<CorpsState, Transform> _flags = new Dictionary<CorpsState, Transform>();
         private readonly Dictionary<CorpsState, Transform> _lastSeen = new Dictionary<CorpsState, Transform>();
         private readonly float[] _vertexHeights;
@@ -53,7 +64,6 @@ namespace Game.Unity.Battle3D
         private int _flashFrame;
         private readonly Transform _ring;
         private readonly Transform _target;
-        private Matrix4x4[] _buffer = new Matrix4x4[64];
 
         public BattleCameraRig Rig { get; }
         public int Width { get; }
@@ -106,6 +116,8 @@ namespace Game.Unity.Battle3D
             ground.AddComponent<MeshRenderer>().sharedMaterial = groundMat;
 
             _cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            _art = new ArtCatalog(NewMaterial);
+            RefreshProps();
             var cylinder = Resources.GetBuiltinResource<Mesh>("Cylinder.fbx");
 
             // 깃발 (군단마다 기수 하나)
@@ -132,13 +144,87 @@ namespace Game.Unity.Battle3D
                 return l;
             });
             OnTicked();
+        }
 
-            foreach (var col in new[] { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor })
+        /// <summary>병종·색의 병사 묶음: 아트 목록의 soldier.&lt;병종&gt; → soldier.default → 상자.</summary>
+        private InstanceBatch SoldierBatch(string troop, int color)
+        {
+            if (_soldierBatches.TryGetValue((troop, color), out var b)) return b;
+            string key = "soldier." + troop;
+            if (!_art.TryGet(key, out var model)) { key = "soldier.default"; _art.TryGet(key, out model); }
+            if (model != null)
             {
-                var m = Own(NewMaterial(col));
-                m.enableInstancing = true;
-                _batches[col] = (m, new List<Matrix4x4>());
+                b = new InstanceBatch(model.Mesh, _art.Tinted(model, SoldierColors[color], _art.TintOf(key)), model.Local);
+                _allSoldierBatches.Add(b);
             }
+            else b = CubeBatch(color);
+            return _soldierBatches[(troop, color)] = b;
+        }
+
+        private InstanceBatch CubeBatch(int color)
+        {
+            if (_cubeBatches[color] != null) return _cubeBatches[color];
+            var m = Own(NewMaterial(SoldierColors[color]));
+            m.enableInstancing = true;
+            var b = new InstanceBatch(_cube, new[] { m }, Matrix4x4.TRS(new Vector3(0f, SoldierScale.y / 2f, 0f), Quaternion.identity, SoldierScale));
+            _allSoldierBatches.Add(b);
+            return _cubeBatches[color] = b;
+        }
+
+        /// <summary>지형 소품 (prop.&lt;지형 id&gt;): 칸마다 정해진 자리·방향·크기 (칸 번호로 정하므로 늘 같다). 지형이 바뀌면(불탐) 다시 놓는다.</summary>
+        private void RefreshProps()
+        {
+            var f = _ctl.Context.Field;
+            int w = f.Width, h = f.Height;
+            if (_propTerrain == null) _propTerrain = new string[w * h];
+            bool changed = false;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    var t = f.TerrainAt(new Cell(x, y));
+                    if (_propTerrain[y * w + x] != t) { _propTerrain[y * w + x] = t; changed = true; }
+                }
+            if (!changed) return;
+            foreach (var b in _allPropBatches) b.Matrices.Clear();
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int i = y * w + x;
+                    var kind = PropKind(_propTerrain[i]);
+                    if (kind == null) continue;
+                    var (variants, perCell, jitter) = kind.Value;
+                    int count = (int)perCell + (Rand(i, 99) < perCell - (int)perCell ? 1 : 0);
+                    for (int k = 0; k < count; k++)
+                    {
+                        float px = x + 0.15f + 0.7f * Rand(i, k * 4), pz = _depth - (y + 0.15f + 0.7f * Rand(i, k * 4 + 1));
+                        var batch = variants[(int)(Rand(i, k * 4 + 2) * variants.Count) % variants.Count];
+                        float scale = 1f + jitter * (Rand(i, k * 4 + 3) * 2f - 1f);
+                        batch.Add(new Vector3(px, GroundHeight(px, pz), pz), Quaternion.Euler(0f, Rand(i, k * 4 + 5) * 360f, 0f), scale);
+                    }
+                }
+        }
+
+        private (List<InstanceBatch>, float, float)? PropKind(string terrain)
+        {
+            if (terrain == null) return null;
+            if (_propKinds.TryGetValue(terrain, out var kind)) return kind;
+            kind = null;
+            if (_art.TryGet("prop." + terrain, out var models, out var perCell, out var jitter))
+            {
+                var list = new List<InstanceBatch>();
+                foreach (var m in models) list.Add(new InstanceBatch(m.Mesh, m.Materials, m.Local));
+                _allPropBatches.AddRange(list);
+                kind = (list, perCell, jitter);
+            }
+            return _propKinds[terrain] = kind;
+        }
+
+        /// <summary>칸 번호·순번 → 0~1 (보이기 전용 흩뿌림, 규칙 계산과 무관).</summary>
+        private static float Rand(int cell, int salt)
+        {
+            uint v = (uint)cell * 2654435761u ^ (uint)(salt + 1) * 40503u;
+            v ^= v >> 13; v *= 0x5bd1e995u; v ^= v >> 15;
+            return (v & 0xFFFFFF) / (float)0x1000000;
         }
 
         /// <summary>전장 좌표 → 월드.</summary>
@@ -186,6 +272,7 @@ namespace Game.Unity.Battle3D
         public void Refresh()
         {
             _texture.Refresh();
+            RefreshProps();
             var ctx = _ctl.Context;
             float flagScale = Mathf.Clamp(Rig.Distance / 22f, 0.8f, 2.5f); // 멀리서도 깃발이 보이게
             foreach (var kv in _flags)
@@ -284,18 +371,20 @@ namespace Game.Unity.Battle3D
             Effects.Advance(fxDelta);
             float clock = Effects.Clock;
             if (fxDelta > 0f) _flashFrame++;
-            foreach (var b in _batches.Values) b.matrices.Clear();
+            foreach (var b in _allSoldierBatches) b.Matrices.Clear();
             foreach (var c in ctx.Corps)
             {
                 if (!c.InBattle || !ctx.IsVisibleTo(_ctl.Team, c)) continue;
-                Color teamColor = c == _ctl.Selected ? SelectedColor : c.Team == _ctl.Team ? AllyColor : EnemyColor;
+                int teamColor = c == _ctl.Selected ? Selected : c.Team == _ctl.Team ? Ally : Enemy;
                 var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
                 var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
                 foreach (var u in c.Units)
                 {
                     if (!u.Alive) continue;
-                    var list = _batches[u.Confused ? ConfusedColor : teamColor].matrices;
-                    var hitList = _batches[HitColor].matrices;
+                    var batch = SoldierBatch(u.Troop.Id, u.Confused ? Confused : teamColor);
+                    // 맞을 때: 상자는 밝은 색으로, 모델은 (색을 밝힐 수 없어) 살짝 튀어 오른다
+                    bool isCube = batch.Mesh == _cube;
+                    var hitBatch = isCube ? CubeBatch(Hit) : batch;
                     long n = SoldierRatio.VisibleSoldiers(u.Troops, _troopsPerSoldier);
                     int side = Mathf.CeilToInt(Mathf.Sqrt(n));
                     var (prev, cur) = _unitPos.TryGetValue(u, out var pc) ? pc : (ToWorld(u.Position), ToWorld(u.Position));
@@ -316,22 +405,15 @@ namespace Game.Unity.Battle3D
                         float phase = i * 1.7f + u.GetHashCode() % 7;
                         p += lunge * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
                         float bob = walking ? Mathf.Abs(Mathf.Sin(clock * 12f + phase)) * 0.06f : 0f;
-                        p.y = GroundHeight(p.x, p.z) + SoldierScale.y / 2f + bob;
-                        // 맞고 있는 군단: 몇 명씩 번갈아 밝게 깜빡인다
+                        // 맞고 있는 군단: 몇 명씩 번갈아 깜빡인다
                         bool flash = c.LostThisTick > 0 && (i + _flashFrame / 3) % 6 == 0;
-                        (flash ? hitList : list).Add(Matrix4x4.TRS(p, rot, SoldierScale));
+                        p.y = GroundHeight(p.x, p.z) + bob + (flash && !isCube ? 0.08f : 0f);
+                        (flash ? hitBatch : batch).Add(p, rot);
                     }
                 }
             }
-            foreach (var b in _batches.Values)
-            {
-                int n = b.matrices.Count;
-                if (n == 0) continue;
-                if (_buffer.Length < n) _buffer = new Matrix4x4[Mathf.NextPowerOfTwo(n)];
-                b.matrices.CopyTo(_buffer);
-                var rp = new RenderParams(b.material) { camera = Rig.Camera, shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false };
-                Graphics.RenderMeshInstanced(rp, _cube, 0, _buffer, n);
-            }
+            foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
+            foreach (var b in _allPropBatches) b.Draw(Rig.Camera);
             Effects.Draw(ctx, Rig.Camera);
         }
 
@@ -339,6 +421,7 @@ namespace Game.Unity.Battle3D
         {
             Object.Destroy(_root);
             _texture.Destroy();
+            _art.Destroy();
             foreach (var o in _owned) if (o != null) Object.Destroy(o);
         }
 
