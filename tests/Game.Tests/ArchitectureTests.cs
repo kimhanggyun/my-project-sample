@@ -21,6 +21,7 @@ namespace Game.Tests
             // 온라인 경계: 서버와 주고받는 메시지에 전투 명령 기록이 들어간다.
             ["Game.Online"] = new[] { "Game.Foundation", "Game.Data", "Game.Battle.Model", "Newtonsoft.Json" },
             ["Game.Progression"] = new[] { "Game.Foundation", "Game.Data" },
+            ["Game.Territory"] = new[] { "Game.Foundation", "Game.Data", "Newtonsoft.Json" },
             // 흐름(조립) 모듈: 규칙 모듈들을 경계 객체로 잇는다. 규칙 모듈은 Flow를 모른다.
             ["Game.Flow"] = new[] { "Game.Foundation", "Game.Data", "Game.Battle.Model", "Game.Campaign", "Game.Economy", "Game.Progression", "Game.Online", "Newtonsoft.Json" },
         };

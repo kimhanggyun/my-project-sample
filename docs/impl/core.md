@@ -8,14 +8,15 @@
 ```
 GameCore.sln
 src/                       규칙 모듈 (netstandard2.1, C# 9 — Unity 호환)
-├─ Game.Foundation/        고정소수점(Fix), 시드 난수, 시간(ITimeProvider), 세이브 저장소 경계
+├─ Game.Foundation/        고정소수점(Fix), 시드 난수, 시간(ITimeProvider), 세이브 저장소 경계, 위경도(GeoPoint, 백만분의 1도 정수)
 ├─ Game.Data/              데이터 읽기, 덮어쓰기 병합(BalanceResolver), 규칙 스위치(RuleFlags), 정의, 데이터 검사
-├─ Game.Services/          외부 서비스 경계(로그인·결제·광고)와 끔·가짜 구현, 서비스 설정·등록표
+├─ Game.Services/          외부 서비스 경계(로그인·결제·광고·위치)와 끔·가짜 구현, 서비스 설정·등록표
 ├─ Game.Battle.Model/      전투 시뮬레이션(5장), 피해 계산, 사기 보정, 책략 점수, 지형 전투 보정, 화면 병사 비율
 ├─ Game.Campaign/          보유 장수·부대, 편성 검사, 병력 한도, 손실·부상병, 장수 부상, 포로·구출·등용, 스텝 진행·탐색 기억, 초기 지급, 세이브(버전·변환기)
 ├─ Game.Progression/       기록 카운터·성장 보상 규칙 엔진(일기토·논쟁 전적), 부대 결속
 ├─ Game.Economy/           지갑, 군량 계산, 치료 비용
-├─ Game.Online/            부대 고용 계산
+├─ Game.Online/            서버 메시지·온라인 경계, 부대 고용 계산
+├─ Game.Territory/         영토(territory.md): 지역 데이터, 좌표 → 지역, 공격할 수 있는 지역
 └─ Game.Flow/              흐름(조립): 스텝 + 편성 → BattleSetup, BattleResult → 진행 상태 (6장)
 tests/Game.Tests/          단위·규칙(R)·수치(N)·데이터 검사·의존 방향 테스트, 기준 전투(Golden/), Unity 패키지 검사
 unity/                     Unity 6.3 LTS 프로젝트. src/를 로컬 패키지로 가져온다 (unity/architecture.md 0.5). 화면 코드는 unity/Assets/Game/ (0.6)
@@ -34,7 +35,8 @@ config/                    외부 서비스 설정 (services.<환경>.json) — 
                 ├─ Game.Campaign ─────┤
 Game.Flow ──────┼─ Game.Economy ──────┼─▶ Game.Data ─▶ Game.Foundation
                 └─ Game.Progression ──┤
-                   Game.Online ───────┘
+                   Game.Online ───────┤
+                   Game.Territory ────┘   (Flow는 아직 쓰지 않음, 화면이 직접)
                    Game.Services ───────────────────▶ Game.Foundation
 ```
 

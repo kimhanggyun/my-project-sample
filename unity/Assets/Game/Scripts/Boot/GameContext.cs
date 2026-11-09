@@ -50,6 +50,10 @@ namespace Game.Unity.Boot
         public IStoreService Store { get; private set; }
         public IRewardedAdService RewardedAd { get; private set; }
         public IBannerAdService BannerAd { get; private set; }
+        /// <summary>위치 (영토 탭에서만, territory.md 3장).</summary>
+        public ILocationService Location { get; private set; }
+        /// <summary>영토 지역 데이터 (없거나 읽지 못하면 null → 영토 탭 잠김).</summary>
+        public Game.Territory.TerritoryDefs Territory { get; private set; }
         /// <summary>서비스 id → 고른 구현 이름 (설정 화면 표시용).</summary>
         public IReadOnlyDictionary<string, string> ServiceChoices { get; private set; }
 
@@ -89,8 +93,12 @@ namespace Game.Unity.Boot
             c.Store = reg.Create<IStoreService>(ServiceIds.Store, cfg);
             c.RewardedAd = reg.Create<IRewardedAdService>(ServiceIds.RewardedAd, cfg);
             c.BannerAd = reg.Create<IBannerAdService>(ServiceIds.BannerAd, cfg);
+            c.Location = reg.Create<ILocationService>(ServiceIds.Location, cfg);
+            if (c.Location is FakeLocationService fakeLoc && Game.Foundation.Geo.GeoPoint.TryParse(cfg.Value(ServiceIds.FakeLocationKey), out var fakePoint)) fakeLoc.Point = fakePoint;
+            try { c.Territory = data.Exists(Game.Territory.TerritoryDefs.File) ? Game.Territory.TerritoryDefs.Load(data) : null; }
+            catch (Exception e) { Debug.LogWarning("영토 데이터를 읽지 못해 영토 탭을 잠급니다: " + e.Message); c.Territory = null; }
             var shown = new Dictionary<string, string>();
-            foreach (var id in new[] { ServiceIds.Auth, ServiceIds.Store, ServiceIds.RewardedAd, ServiceIds.BannerAd }) shown[id] = cfg.ChoiceFor(id);
+            foreach (var id in new[] { ServiceIds.Auth, ServiceIds.Store, ServiceIds.RewardedAd, ServiceIds.BannerAd, ServiceIds.Location }) shown[id] = cfg.ChoiceFor(id);
             shown[OnlineConfig.Key] = cfg.ChoiceFor(OnlineConfig.Key);
             c.ServiceChoices = shown;
 

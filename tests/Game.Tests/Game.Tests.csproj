@@ -12,6 +12,7 @@
     <ProjectReference Include="../../src/Game.Campaign/Game.Campaign.csproj" />
     <ProjectReference Include="../../src/Game.Economy/Game.Economy.csproj" />
     <ProjectReference Include="../../src/Game.Online/Game.Online.csproj" />
+    <ProjectReference Include="../../src/Game.Territory/Game.Territory.csproj" />
     <ProjectReference Include="../../src/Game.Progression/Game.Progression.csproj" />
     <ProjectReference Include="../../src/Game.Flow/Game.Flow.csproj" />
   </ItemGroup>

@@ -1,0 +1,257 @@
+{
+  "_comment": "영토 지역 (territory.md 2·3장). 개발용 가상 지역 몇 곳 (사각형, 실제 행정구역 아님). 실제 경계는 공개 행정구역 경계 자료로 교체. levels = 단계별 기본값(requiredLegions = 차지에 필요한 군단 수, seasonOnly = 시즌 행사로만), regions = id·level·parent·boundary([위도, 경도] 꼭짓점)·neighbors(같은 단계, 서로)·requiredLegions(덮어쓰기)·battleMap(영토 전투 지형, 다음 단계). 이름 = 문자열 region.<id>",
+  "levels": {
+    "sido": {
+      "requiredLegions": 30,
+      "seasonOnly": true
+    },
+    "sigungu": {
+      "requiredLegions": 10
+    },
+    "eupmyeondong": {
+      "requiredLegions": 5
+    },
+    "ri": {
+      "requiredLegions": 1
+    }
+  },
+  "regions": [
+    {
+      "id": "dev_do",
+      "level": "sido",
+      "boundary": [
+        [
+          37.4,
+          126.8
+        ],
+        [
+          37.4,
+          127.2
+        ],
+        [
+          37.7,
+          127.2
+        ],
+        [
+          37.7,
+          126.8
+        ]
+      ],
+      "neighbors": []
+    },
+    {
+      "id": "dev_gu_west",
+      "level": "sigungu",
+      "parent": "dev_do",
+      "boundary": [
+        [
+          37.4,
+          126.8
+        ],
+        [
+          37.4,
+          127.0
+        ],
+        [
+          37.7,
+          127.0
+        ],
+        [
+          37.7,
+          126.8
+        ]
+      ],
+      "neighbors": [
+        "dev_gu_east"
+      ]
+    },
+    {
+      "id": "dev_gu_east",
+      "level": "sigungu",
+      "parent": "dev_do",
+      "boundary": [
+        [
+          37.4,
+          127.0
+        ],
+        [
+          37.4,
+          127.2
+        ],
+        [
+          37.7,
+          127.2
+        ],
+        [
+          37.7,
+          127.0
+        ]
+      ],
+      "neighbors": [
+        "dev_gu_west"
+      ]
+    },
+    {
+      "id": "dev_dong_a",
+      "level": "eupmyeondong",
+      "parent": "dev_gu_west",
+      "boundary": [
+        [
+          37.55,
+          126.95
+        ],
+        [
+          37.55,
+          127.0
+        ],
+        [
+          37.6,
+          127.0
+        ],
+        [
+          37.6,
+          126.95
+        ]
+      ],
+      "neighbors": [
+        "dev_dong_b",
+        "dev_dong_c"
+      ]
+    },
+    {
+      "id": "dev_dong_b",
+      "level": "eupmyeondong",
+      "parent": "dev_gu_west",
+      "boundary": [
+        [
+          37.5,
+          126.95
+        ],
+        [
+          37.5,
+          127.0
+        ],
+        [
+          37.55,
+          127.0
+        ],
+        [
+          37.55,
+          126.95
+        ]
+      ],
+      "neighbors": [
+        "dev_dong_a"
+      ]
+    },
+    {
+      "id": "dev_dong_c",
+      "level": "eupmyeondong",
+      "parent": "dev_gu_west",
+      "boundary": [
+        [
+          37.55,
+          126.9
+        ],
+        [
+          37.55,
+          126.95
+        ],
+        [
+          37.6,
+          126.95
+        ],
+        [
+          37.6,
+          126.9
+        ]
+      ],
+      "neighbors": [
+        "dev_dong_a"
+      ],
+      "requiredLegions": 3
+    },
+    {
+      "id": "dev_zone_a1",
+      "level": "ri",
+      "parent": "dev_dong_a",
+      "boundary": [
+        [
+          37.55,
+          126.97
+        ],
+        [
+          37.55,
+          127.0
+        ],
+        [
+          37.575,
+          127.0
+        ],
+        [
+          37.575,
+          126.97
+        ]
+      ],
+      "neighbors": [
+        "dev_zone_a2",
+        "dev_zone_a3"
+      ],
+      "battleMap": "test_plain"
+    },
+    {
+      "id": "dev_zone_a2",
+      "level": "ri",
+      "parent": "dev_dong_a",
+      "boundary": [
+        [
+          37.575,
+          126.97
+        ],
+        [
+          37.575,
+          127.0
+        ],
+        [
+          37.6,
+          127.0
+        ],
+        [
+          37.6,
+          126.97
+        ]
+      ],
+      "neighbors": [
+        "dev_zone_a1"
+      ],
+      "battleMap": "test_forest"
+    },
+    {
+      "id": "dev_zone_a3",
+      "level": "ri",
+      "parent": "dev_dong_a",
+      "boundary": [
+        [
+          37.55,
+          126.95
+        ],
+        [
+          37.55,
+          126.97
+        ],
+        [
+          37.575,
+          126.97
+        ],
+        [
+          37.575,
+          126.95
+        ]
+      ],
+      "neighbors": [
+        "dev_zone_a1"
+      ],
+      "battleMap": "test_mountain_pass"
+    }
+  ]
+}
