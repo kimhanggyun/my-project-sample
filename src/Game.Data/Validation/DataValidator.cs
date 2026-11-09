@@ -102,6 +102,9 @@ namespace Game.Data.Validation
                 if (sk.Effects.Count == 0) errors.Add($"스킬 '{sk.Id}': 효과가 없습니다.");
                 foreach (var r in sk.Requires)
                     if (!d.Stats.ContainsKey(r.Stat)) errors.Add($"스킬 '{sk.Id}': 없는 능력치 '{r.Stat}'.");
+                foreach (var r in sk.LearnConditions)
+                    if (string.IsNullOrEmpty(r.Counter) || r.AtLeast < 1) errors.Add($"스킬 '{sk.Id}': 습득 조건은 카운터 이름과 1 이상의 값이 필요합니다 (R-31).");
+                if (sk.Tier != null && !d.Campaign.SkillBookPriceByTier.ContainsKey(sk.Tier)) errors.Add($"스킬 '{sk.Id}': 단계 '{sk.Tier}'의 스킬북 가격이 없습니다 (campaign.json skillBook).");
             }
             foreach (var g in d.Generals.Values)
                 foreach (var sk in g.InnateSkills)

@@ -232,7 +232,14 @@ namespace Game.Battle.Model.Skills
                 var setup = c.FindStatus(StatusIds.AmbushSetup);
                 if (setup != null)
                 {
-                    if (c.MovedThisTick || SeenByEnemy(ctx, c)) { c.RemoveStatus(StatusIds.AmbushSetup); c.AmbushEffect = null; }
+                    if (c.MovedThisTick) { c.RemoveStatus(StatusIds.AmbushSetup); c.AmbushEffect = null; }
+                    else if (SeenByEnemy(ctx, c))
+                    {
+                        // 준비 중에 들킴: 가장 가까운 적 군단이 찾아낸 것으로 기록 (간파로 찾은 것은 시야 쪽에서 이미 기록)
+                        if (c.HasStatus(StatusIds.AmbushSetup)) { var finder = NearestEnemy(ctx, c); if (finder != null) Events.EventLog.Add(ctx, Events.EventKinds.HiddenFound, finder.Id, c.Id); }
+                        c.RemoveStatus(StatusIds.AmbushSetup);
+                        c.AmbushEffect = null;
+                    }
                     else if (setup.TicksLeft <= 1) { c.RemoveStatus(StatusIds.AmbushSetup); c.Hidden = true; }
                     continue;
                 }
@@ -246,6 +253,19 @@ namespace Game.Battle.Model.Skills
         {
             c.Hidden = false;
             c.AmbushEffect = null;
+        }
+
+        private static CorpsState NearestEnemy(BattleContext ctx, CorpsState c)
+        {
+            CorpsState best = null;
+            Fix bestD = Fix.Zero;
+            foreach (var e in ctx.Corps)
+            {
+                if (e.Team == c.Team || !e.InBattle) continue;
+                Fix d = Vec.DistanceSquared(e.Anchor, c.Anchor);
+                if (best == null || d < bestD) { best = e; bestD = d; }
+            }
+            return best;
         }
 
         private static bool SeenByEnemy(BattleContext ctx, CorpsState c)
@@ -281,6 +301,7 @@ namespace Game.Battle.Model.Skills
             var victims = EnemiesInReach(ctx, h);
             Expose(h);
             Events.EventLog.Add(ctx, Events.EventKinds.AmbushSprung, h.Id);
+            foreach (var e in victims) Events.EventLog.Add(ctx, Events.EventKinds.Ambushed, e.Id, h.Id);
             if (p == null) return;
             h.AddStatus(new StatusEffect { Id = StatusIds.Surprise, AttackPp = p.Fix("surprisePp"), TicksLeft = SkillRules.Ticks(ctx, p.Fix("surpriseSec")) });
             long confusedTicks = SkillRules.Ticks(ctx, p.Fix("confusionSec"));
@@ -353,7 +374,7 @@ namespace Game.Battle.Model.Skills
             Fix best = Fix.FromInt(50);
             foreach (var u in c.Caster.Units) if (u.Alive) best = Fix.Max(best, u.Troop.Stats.Get("detection"));
             Fix radius = p.Fix("radius") + (best - Fix.FromInt(50)) * p.FixOr("detectionRadiusPerPoint", Fix.Zero);
-            c.Battle.Reveals.Add(new RevealZone { Team = c.Caster.Team, Center = c.Point, Radius = radius, TicksLeft = SkillRules.Ticks(c.Battle, p.Fix("durationSec")) });
+            c.Battle.Reveals.Add(new RevealZone { Team = c.Caster.Team, SourceCorpsId = c.Caster.Id, Center = c.Point, Radius = radius, TicksLeft = SkillRules.Ticks(c.Battle, p.Fix("durationSec")) });
             VisionSystem.Update(c.Battle);
         }
     }

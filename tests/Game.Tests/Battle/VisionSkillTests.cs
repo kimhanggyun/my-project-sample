@@ -1,6 +1,7 @@
 using System.Linq;
 using Game.Battle.Model.Ai;
 using Game.Battle.Model.Commands;
+using Game.Battle.Model.Events;
 using Game.Battle.Model.Simulation;
 using Game.Battle.Model.Skills;
 using Game.Foundation.Math;
@@ -181,6 +182,8 @@ namespace Game.Tests.Battle
             Assert.True(a.HasStatus(StatusIds.Surprise));
             Assert.Contains(b.Units, u => u.Confused);
             Assert.True(b.Morale < moraleBefore);
+            // 기록 (R-32): 기습당한 군단에 ambushed 이벤트 (값 = 복병 군단)
+            Assert.Contains(sim.Context.Log, e => e.Kind == EventKinds.Ambushed && e.CorpsId == "B" && e.Data == "A");
         }
 
         [Fact(DisplayName = "복병 혼란 스위치를 끄면 혼란은 없다")]
@@ -206,6 +209,8 @@ namespace Game.Tests.Battle
             sim.Step();
             Assert.False(a.Hidden);
             Assert.True(sim.Context.IsVisibleTo("teamB", a));
+            // 기록 (R-32): 간파를 쓴 군단이 숨은 적을 찾아냄
+            Assert.Single(sim.Context.Log, e => e.Kind == EventKinds.HiddenFound && e.CorpsId == "B" && e.Data == "A");
         }
 
         [Fact(DisplayName = "복병 준비 중 움직이면 실패하고, 점수·횟수는 돌려주지 않는다 (R-12)")]

@@ -25,6 +25,8 @@ namespace Game.Data.Defs
         /// <summary>적 군량 포획률 (승리 시).</summary>
         public Fix SupplyCaptureRate { get; private set; }
         public int DefaultMaxCorps { get; private set; }
+        /// <summary>스킬북 가격 (돈): 스킬 단계 → 가격 (generals.md 4장). 단계가 없으면 상점에서 팔지 않는다.</summary>
+        public IReadOnlyDictionary<string, long> SkillBookPriceByTier { get; private set; }
 
         public static CampaignRules From(JObject o)
         {
@@ -37,8 +39,12 @@ namespace Game.Data.Defs
             foreach (var p in JsonUtil.RequireObject(cap, "temperamentRecruitBonus", c).Properties()) temp[p.Name] = JsonUtil.ToFix(p.Value, c + ".temperamentRecruitBonus");
             var reward = new Dictionary<string, long>();
             foreach (var p in JsonUtil.RequireObject(cap, "releaseReward", c).Properties()) reward[p.Name] = p.Value.Value<long>();
+            var books = new Dictionary<string, long>();
+            if (o["skillBook"]?["priceGoldByTier"] is JObject pb)
+                foreach (var p in pb.Properties()) books[p.Name] = p.Value.Value<long>();
             return new CampaignRules
             {
+                SkillBookPriceByTier = books,
                 RescueDeadlineSeconds = checked(JsonUtil.RequireLong(cap, "rescueDeadlineDays", c) * 86400),
                 RecruitRetrySeconds = checked(JsonUtil.RequireLong(cap, "recruitRetryHours", c) * 3600),
                 RecruitBaseChance = JsonUtil.RequireFix(cap, "recruitBaseChance", c),

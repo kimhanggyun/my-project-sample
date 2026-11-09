@@ -305,6 +305,7 @@ namespace Game.Flow
             }
 
             RecordContests(state, result, report);
+            BattleRecords.Record(state, plan.PlayerCorps, result);
 
             if (result.Explored.TryGetValue(PlayerTeam, out var explored)) StepProgress.MergeExplored(state, step.Id, explored);
 

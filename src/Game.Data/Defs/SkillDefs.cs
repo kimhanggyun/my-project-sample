@@ -12,6 +12,14 @@ namespace Game.Data.Defs
         public Fix Min { get; internal set; }
     }
 
+    /// <summary>스킬북으로 배울 때의 최소 조건 하나: 장수 기록 카운터 ≥ 값 (generals.md 4장).</summary>
+    public sealed class CounterRequirement
+    {
+        /// <summary>장수 기록 카운터 id (예: "battle.ambushed" = 복병 기습을 당한 횟수).</summary>
+        public string Counter { get; internal set; }
+        public long AtLeast { get; internal set; }
+    }
+
     /// <summary>
     /// 스킬 정의 (skills.json). 효과·조건은 종류(type) + 매개변수 묶음이다.
     /// 종류별 해석은 전투 모듈의 등록표가 한다 (새 효과는 구현 추가 + 등록, 데이터는 조합만).
@@ -36,6 +44,10 @@ namespace Game.Data.Defs
         public Fix TelegraphSec { get; internal set; }
         public IReadOnlyList<SkillPart> Conditions { get; internal set; }
         public IReadOnlyList<SkillPart> Effects { get; internal set; }
+        /// <summary>스킬북으로 배울 때의 최소 조건 (비어 있으면 조건 없음). 숨은 보상으로 바로 얻을 때는 보지 않는다.</summary>
+        public IReadOnlyList<CounterRequirement> LearnConditions { get; internal set; }
+        /// <summary>true면 조건 중 하나만 맞아도 된다.</summary>
+        public bool LearnAny { get; internal set; }
 
         public static SkillDef From(JObject o)
         {
@@ -46,6 +58,11 @@ namespace Game.Data.Defs
                 foreach (JObject r in ra)
                     req.Add(new StatRequirement { Stat = JsonUtil.RequireString(r, "stat", c + ".requires"), Min = JsonUtil.RequireFix(r, "min", c + ".requires") });
             var target = JsonUtil.RequireObject(o, "target", c);
+            var learn = new List<CounterRequirement>();
+            var learnObj = o["learn"] as JObject;
+            if (learnObj?["counters"] is JArray la)
+                foreach (JObject r in la)
+                    learn.Add(new CounterRequirement { Counter = JsonUtil.RequireString(r, "counter", c + ".learn"), AtLeast = JsonUtil.RequireLong(r, "atLeast", c + ".learn") });
             return new SkillDef
             {
                 Id = id,
@@ -62,6 +79,8 @@ namespace Game.Data.Defs
                 TelegraphSec = JsonUtil.FixOr(o, "telegraphSec", Fix.Zero, c),
                 Conditions = Parts(o, "conditions", c),
                 Effects = Parts(o, "effects", c),
+                LearnConditions = learn,
+                LearnAny = learnObj?.Value<bool?>("any") ?? false,
             };
         }
 

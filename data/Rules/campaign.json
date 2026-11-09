@@ -28,5 +28,13 @@
   "supply": {
     "captureRate": 1
   },
-  "defaultMaxCorps": 3
+  "defaultMaxCorps": 3,
+  "skillBook": {
+    "_comment": "스킬북 가격(돈), 스킬 단계별. 수치는 예시 (open-values.md).",
+    "priceGoldByTier": {
+      "basic": 300,
+      "intermediate": 800,
+      "advanced": 2000
+    }
+  }
 }
