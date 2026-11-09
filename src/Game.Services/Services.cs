@@ -90,3 +90,46 @@ namespace Game.Services
         public void Hide() { }
     }
 }
+
+namespace Game.Services
+{
+    /// <summary>위치 요청 결과. 실패하면 Ok = false, Reason = <see cref="LocationReasons"/>.</summary>
+    public sealed class LocationResult
+    {
+        public bool Ok { get; set; }
+        public Game.Foundation.Geo.GeoPoint Point { get; set; }
+        public string Reason { get; set; }
+    }
+
+    public static class LocationReasons
+    {
+        public const string Off = "off";
+        public const string Denied = "denied";
+        public const string Unavailable = "unavailable";
+    }
+
+    /// <summary>
+    /// 위치 서비스 (territory.md 3장): 영토 탭을 열 때와 공격을 신청할 때만 부른다 (계속 추적하지 않음).
+    /// 구현: 끔 / 가짜(개발용 고정 좌표) / 실제(기기 위치, 엔진 쪽). 꺼도 게임은 동작한다 (영토 탭만 잠김).
+    /// </summary>
+    public interface ILocationService
+    {
+        bool IsAvailable { get; }
+        void Request(System.Action<LocationResult> done);
+    }
+
+    public sealed class OffLocationService : ILocationService
+    {
+        public bool IsAvailable => false;
+        public void Request(System.Action<LocationResult> done) => done?.Invoke(new LocationResult { Ok = false, Reason = LocationReasons.Off });
+    }
+
+    /// <summary>개발용 고정 좌표 (기본: 개발 지역 데이터의 가운데). 설정 fakeLocation으로 바꾼다.</summary>
+    public sealed class FakeLocationService : ILocationService
+    {
+        public static readonly Game.Foundation.Geo.GeoPoint Default = new Game.Foundation.Geo.GeoPoint(37_566_500, 126_978_000);
+        public Game.Foundation.Geo.GeoPoint Point { get; set; } = Default;
+        public bool IsAvailable => true;
+        public void Request(System.Action<LocationResult> done) => done?.Invoke(new LocationResult { Ok = true, Point = Point });
+    }
+}

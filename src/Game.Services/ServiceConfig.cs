@@ -13,6 +13,9 @@ namespace Game.Services
         public ServiceConfig(Dictionary<string, string> choices) { _choices = choices; }
         public string ChoiceFor(string serviceId) =>
             _choices.TryGetValue(serviceId, out var v) ? v : ServiceImpl.Off;
+
+        /// <summary>구현 이름이 아닌 설정 값 (예: fakeLocation). 없으면 null.</summary>
+        public string Value(string key) => _choices.TryGetValue(key, out var v) ? v : null;
     }
 
     public static class ServiceImpl
@@ -58,6 +61,8 @@ namespace Game.Services
             r.Register<IRewardedAdService>(ServiceIds.RewardedAd, ServiceImpl.Fake, () => new FakeRewardedAdService());
             r.Register<IBannerAdService>(ServiceIds.BannerAd, ServiceImpl.Off, () => new OffBannerAdService());
             r.Register<IBannerAdService>(ServiceIds.BannerAd, ServiceImpl.Fake, () => new OffBannerAdService());
+            r.Register<ILocationService>(ServiceIds.Location, ServiceImpl.Off, () => new OffLocationService());
+            r.Register<ILocationService>(ServiceIds.Location, ServiceImpl.Fake, () => new FakeLocationService());
             return r;
         }
     }
@@ -68,5 +73,8 @@ namespace Game.Services
         public const string Store = "store";
         public const string RewardedAd = "rewardedAd";
         public const string BannerAd = "bannerAd";
+        /// <summary>위치 (영토, territory.md 3장). 설정 fakeLocation = "위도,경도" (가짜 구현의 좌표).</summary>
+        public const string Location = "location";
+        public const string FakeLocationKey = "fakeLocation";
     }
 }

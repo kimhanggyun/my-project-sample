@@ -11,6 +11,7 @@
     "Game.Progression",
     "Game.Flow",
     "Game.Online",
+    "Game.Territory",
     "Unity.InputSystem",
     "UnityEngine.UI"
   ],

@@ -4,6 +4,8 @@
   "store": "fake",
   "rewardedAd": "fake",
   "bannerAd": "off",
+  "location": "fake",
+  "fakeLocation": "37.5665,126.9780",
   "online": "off",
   "onlineUrl": "http://localhost:5000",
   "onlineGame": "ancientwar"
