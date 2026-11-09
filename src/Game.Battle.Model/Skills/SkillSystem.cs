@@ -199,10 +199,10 @@ namespace Game.Battle.Model.Skills
                 if (!corps.InBattle) { corps.PendingSkill = null; continue; }
                 var skill = ctx.Defs.Skills[cmd.SkillId];
                 var cast = SkillRules.MakeCast(ctx, corps, skill, cmd);
-                if (cast == null) { corps.PendingSkill = null; corps.AssignOrder(new CorpsOrder()); continue; } // 대상을 잃음 → 취소
+                if (cast == null) { corps.PendingSkill = null; Commands.OrderQueue.Finish(ctx, corps); continue; } // 대상을 잃음 → 취소, 다음 예약
                 if (!SkillRules.InRange(cast)) continue;
                 corps.PendingSkill = null;
-                if (cast.TargetCorps == null) corps.AssignOrder(new CorpsOrder());
+                if (cast.TargetCorps == null) Commands.OrderQueue.Finish(ctx, corps);
                 if (SkillRules.ConditionsMet(cast)) SkillRules.Cast(cast); // 조건이 깨졌으면 실패 (소모는 그대로)
             }
             for (int i = 0; i < ctx.Scheduled.Count; i++)
@@ -358,7 +358,7 @@ namespace Game.Battle.Model.Skills
                 }
                 foreach (var u in c.Units) if (u.ConfusedTicks > 0) u.ConfusedTicks--;
                 if (c.InBattle)
-                    c.SkillPoints.Regenerate(k.SkillPointRegenPerSecond * k.TickSeconds, c.Morale, ctx.Balance.MoraleBase, regen);
+                    c.SkillPoints.Regenerate(k.SkillPointRegenPerSecond * k.TickSeconds * (c.Resting ? k.RestSkillPointMultiplier : Fix.OneValue), c.Morale, ctx.Balance.MoraleBase, regen);
             }
         }
     }

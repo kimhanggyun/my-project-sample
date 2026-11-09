@@ -34,7 +34,7 @@ namespace Game.Battle.Model.Systems
                 Cell here = Cell.Of(corps.Anchor);
                 if (here.Equals(goal) && corps.Order.Kind == OrderKinds.MoveTo && !chasing)
                 {
-                    corps.AssignOrder(new CorpsOrder()); // 도착
+                    Commands.OrderQueue.Finish(ctx, corps); // 도착 → 다음 예약
                     continue;
                 }
                 var members = corps.AliveTroopTypes();
@@ -75,7 +75,7 @@ namespace Game.Battle.Model.Systems
                     var target = ctx.FindCorps(order.TargetCorpsId);
                     if (target == null || !target.InBattle)
                     {
-                        corps.AssignOrder(new CorpsOrder());
+                        Commands.OrderQueue.Finish(ctx, corps); // 대상이 사라짐 → 다음 예약
                         return null;
                     }
                     chasing = true;
@@ -368,8 +368,10 @@ namespace Game.Battle.Model.Systems
                 if (corps.LostThisTick > 0 && start > 0)
                     m -= c.MoraleLossPerPercentTroops * Fix.FromRatio(corps.LostThisTick * 100, start);
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;
+                // 휴식은 싸우게 되면 깨진다 (battle.md 4.3.4)
+                if (corps.Resting && (corps.Engaged || corps.BeingHit)) corps.Order.Mode = HoldModes.Normal;
                 if (!corps.Engaged && !corps.BeingHit && m < corps.StartMorale)
-                    m = Fix.Min(corps.StartMorale, m + c.MoraleRecoverPerSecond * c.TickSeconds);
+                    m = Fix.Min(corps.StartMorale, m + c.MoraleRecoverPerSecond * c.TickSeconds * (corps.Resting ? c.RestMoraleMultiplier : Fix.OneValue));
                 if (corps.Supply == 0 && ctx.IsEnabled(RuleFlagIds.SupplyConsumption))
                     m -= c.MoraleSupplyExhaustedPerSecond * c.TickSeconds;
                 m += ctx.Environment.Sum(x => x.MoralePerSecond) * c.TickSeconds; // 무더위·혹한

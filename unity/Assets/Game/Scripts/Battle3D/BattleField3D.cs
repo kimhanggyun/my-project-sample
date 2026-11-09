@@ -44,6 +44,9 @@ namespace Game.Unity.Battle3D
         private readonly LineRenderer _path;
         private readonly LineRenderer _range;
         private readonly List<Vector3> _pathPoints = new List<Vector3>();
+        private readonly List<Transform> _waypoints = new List<Transform>();
+        private Mesh _cylinder;
+        private Material _waypointMat;
         /// <summary>소부대 위치: 직전 틱 → 지금 틱 (틱 사이를 부드럽게 잇는다).</summary>
         private readonly Dictionary<SubUnitState, (Vector3 prev, Vector3 cur)> _unitPos = new Dictionary<SubUnitState, (Vector3, Vector3)>();
         private readonly Dictionary<Color, Material> _lineMats = new Dictionary<Color, Material>();
@@ -119,6 +122,8 @@ namespace Game.Unity.Battle3D
             _range = Line("Range", RangeColor, 0.12f, true);
 
             _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
+            _cylinder = cylinder;
+            _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
 
             Effects = new BattleEffects3D(this, ctl.Team, _cube, col => Own(NewMaterial(col)), col =>
@@ -214,6 +219,20 @@ namespace Game.Unity.Battle3D
                 _pathPoints.Add(ToWorld(sel.Anchor) + Vector3.up * 0.1f);
                 for (int i = sel.PathIndex; i < sel.Path.Count; i++) _pathPoints.Add(ToWorld(sel.Path[i].Center) + Vector3.up * 0.1f);
             }
+            // 예약된 지점 (경유): 지금 길 끝에서 차례로 잇고, 지점마다 표식
+            int wi = 0;
+            if (ring)
+                foreach (var q in sel.Queue)
+                {
+                    if (q.Kind != Game.Battle.Model.Commands.CommandKinds.MoveTo) continue;
+                    var p = ToWorld(new Vec(q.X, q.Y)) + Vector3.up * 0.1f;
+                    _pathPoints.Add(p);
+                    if (wi >= _waypoints.Count) _waypoints.Add(Part(_root.transform, _cylinder, _waypointMat, Vector3.zero, new Vector3(0.4f, 0.03f, 0.4f)));
+                    _waypoints[wi].gameObject.SetActive(true);
+                    _waypoints[wi].position = p;
+                    wi++;
+                }
+            for (; wi < _waypoints.Count; wi++) _waypoints[wi].gameObject.SetActive(false);
             _path.positionCount = _pathPoints.Count;
             for (int i = 0; i < _pathPoints.Count; i++) _path.SetPosition(i, _pathPoints[i]);
 

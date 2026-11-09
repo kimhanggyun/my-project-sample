@@ -63,6 +63,13 @@ namespace Game.Battle.Model.Control
         public string TargetingSkill { get; private set; }
         /// <summary>빈 땅을 눌렀을 때 쓰는 이동 방식 (<see cref="MoveModes"/>).</summary>
         public string MoveMode { get; private set; } = MoveModes.Normal;
+        /// <summary>예약 모드: 켜져 있으면 이동·공격·휴식·협공 명령을 지금 명령 뒤에 넣는다 (경유, battle.md 4.3.5).</summary>
+        public bool Queueing { get; private set; }
+        public void SetQueueing(bool on) => Queueing = on;
+
+        /// <summary>선택 군단의 예약 수.</summary>
+        public int QueueCount => Selected?.Queue.Count ?? 0;
+
         /// <summary>군단을 고르는 여유 반경 (칸). 화면이 터치 크기에 맞게 바꾼다.</summary>
         public Fix PickRadius { get; set; } = Fix.FromInt(2);
 
@@ -120,13 +127,41 @@ namespace Game.Battle.Model.Control
 
         public bool Advance() => Issue(Selected, CommandKinds.Advance);
         public bool Hold() => Issue(Selected, CommandKinds.Hold);
+
+        /// <summary>휴식 (사기·책략 회복이 빠름, 싸우면 깨짐). 예약 모드면 예약.</summary>
+        public bool Rest() => Issue(Selected, CommandKinds.Hold, c => { c.Mode = HoldModes.Rest; c.Queued = Queueing; });
+
+        /// <summary>협공 대기 (함께 협공 대기하는 군단이 모두 자리를 잡으면 함께 공격). 대상이 없으면 가장 가까운 적. 예약 모드면 예약.</summary>
+        public bool Coordinate(string targetCorpsId = null) =>
+            Issue(Selected, CommandKinds.Hold, c => { c.Mode = HoldModes.Coordinate; c.TargetCorpsId = targetCorpsId; c.Queued = Queueing; });
+
+        /// <summary>협공 대기를 계속 (물음에 [계속 대기], 기다린 시간을 다시 센다).</summary>
+        public bool KeepCoordinating(string corpsId)
+        {
+            var c = Context.FindCorps(corpsId);
+            if (c == null || !c.Coordinating) return false;
+            string target = c.Order.TargetCorpsId;
+            return Issue(c, CommandKinds.Hold, x => { x.Mode = HoldModes.Coordinate; x.TargetCorpsId = target; });
+        }
+
+        /// <summary>협공을 기다리지 않고 바로 공격 (물음에 [공격]).</summary>
+        public bool AttackNow(string corpsId)
+        {
+            var c = Context.FindCorps(corpsId);
+            if (c == null) return false;
+            string target = c.Order.TargetCorpsId;
+            var t = target == null ? null : Context.FindCorps(target);
+            return t != null && t.InBattle && Context.IsVisibleTo(Team, t)
+                ? Issue(c, CommandKinds.Attack, x => x.TargetCorpsId = target)
+                : Issue(c, CommandKinds.Advance);
+        }
         public bool Retreat() => Issue(Selected, CommandKinds.Retreat);
 
         public bool MoveTo(Vec point, string mode = null) =>
-            Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; });
+            Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; c.Queued = Queueing; });
 
         public bool Attack(string targetCorpsId) =>
-            Issue(Selected, CommandKinds.Attack, c => c.TargetCorpsId = targetCorpsId);
+            Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Queued = Queueing; });
 
         public bool ChangeFormation(string formationId) =>
             Issue(Selected, CommandKinds.ChangeFormation, c => c.FormationId = formationId);

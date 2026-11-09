@@ -31,6 +31,8 @@ namespace Game.Battle.Model.Events
         public const string HiddenFound = "hiddenFound";
         /// <summary>복병 기습을 당함. 군단 = 당한 군단, 값 = 복병 군단.</summary>
         public const string Ambushed = "ambushed";
+        /// <summary>협공 대기가 길어짐 (한 번 묻는다, battle.md 4.3.4). 응답이 없으면 곧 단독 공격.</summary>
+        public const string CoordinateWaiting = "coordinateWaiting";
     }
 
     internal static class EventLog

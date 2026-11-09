@@ -26,6 +26,18 @@ namespace Game.Battle.Model.Simulation
 
     public enum AttackSide { Front, Flank, Rear }
 
+    /// <summary>대기 방식 (battle.md 4.3.4). 대기 명령의 Mode.</summary>
+    public static class HoldModes
+    {
+        public const string Normal = "normal";
+        /// <summary>휴식: 사기·책략 점수 회복이 빠르다. 싸우게 되면 깨진다.</summary>
+        public const string Rest = "rest";
+        /// <summary>협공 대기: 함께 협공 대기하는 군단이 모두 자리를 잡으면 함께 공격.</summary>
+        public const string Coordinate = "coordinate";
+
+        public static bool IsValid(string mode) => mode == null || mode == Normal || mode == Rest || mode == Coordinate;
+    }
+
     public static class MoveModes
     {
         /// <summary>이동: 길에서 적과 부딪히면 멈춰 싸운 뒤 다시 이동.</summary>
@@ -191,6 +203,15 @@ namespace Game.Battle.Model.Simulation
 
         public bool InBattle => Status == CorpsStatus.Active || Status == CorpsStatus.Retreating;
 
+        /// <summary>예약된 명령 (지금 명령이 끝나면 차례로, battle.md 4.3.5). 플레이어가 새 명령(예약 아님)을 내리면 비운다.</summary>
+        public List<Commands.BattleCommand> Queue { get; } = new List<Commands.BattleCommand>();
+        /// <summary>지금 협공 대기를 시작한 틱, 이미 한 번 물었는지.</summary>
+        public long CoordinateSinceTick { get; internal set; }
+        public bool CoordinateAsked { get; internal set; }
+
+        public bool Resting => Order.Kind == OrderKinds.Hold && Order.Mode == HoldModes.Rest;
+        public bool Coordinating => Order.Kind == OrderKinds.Hold && Order.Mode == HoldModes.Coordinate;
+
         public long StartTroops
         {
             get { long s = 0; foreach (var u in Units) s += u.StartTroops; return s; }
@@ -269,6 +290,8 @@ namespace Game.Battle.Model.Simulation
         public HashSet<string> Brainwashed { get; } = new HashSet<string>();
         /// <summary>전투 이벤트 기록 (말풍선·연출·리플레이·숨은 보상).</summary>
         public List<Events.BattleEvent> Log { get; } = new List<Events.BattleEvent>();
+        /// <summary>명령 처리기 (예약 명령을 꺼내 쓸 때).</summary>
+        internal Commands.CommandRegistry Commands { get; set; }
         /// <summary>이미 일어난 스텝 연출 (Setup.Events 번호).</summary>
         public HashSet<int> FiredEvents { get; } = new HashSet<int>();
 
