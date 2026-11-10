@@ -344,14 +344,18 @@ namespace Game.Flow
             done?.Invoke(v);
         }
 
+        private readonly HashSet<string> _usedReceipts = new HashSet<string>(StringComparer.Ordinal);
+
         public void SubmitActions(ActionSubmission s, Action<ActionVerdict> done)
         {
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
             // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 (참고 서버와 같은 검사)
             var claimed = new HashSet<string>(StringComparer.Ordinal);
+            var receipts = new ReceiptCheck(true, _usedReceipts); // 기기 안 가짜 서버: 가짜 영수증만 (R-64)
             bool ServerCheck(PlayerAction x)
             {
+                if (!receipts.Check(x)) return false;
                 if (x?.Kind != ActionKinds.MailClaim) return true;
                 var m = _mail.Find(y => y.Id == x.MailId);
                 return m != null && m.Resource == x.PayWith && m.Amount == x.Count && claimed.Add(m.Id);

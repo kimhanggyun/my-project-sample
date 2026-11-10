@@ -55,6 +55,12 @@ namespace Game.Services
             var r = new ServiceRegistry();
             r.Register<IAuthService>(ServiceIds.Auth, ServiceImpl.Off, () => new LocalGuestAuthService());
             r.Register<IAuthService>(ServiceIds.Auth, ServiceImpl.Fake, () => new LocalGuestAuthService());
+            foreach (var method in new[] { ServiceIds.SignInGoogle, ServiceIds.SignInApple })
+            {
+                string m = method;
+                r.Register<IAuthService>(ServiceIds.AuthFor(m), ServiceImpl.Off, () => new OffAuthService());
+                r.Register<IAuthService>(ServiceIds.AuthFor(m), ServiceImpl.Fake, () => new FakeProviderAuthService(m));
+            }
             r.Register<IStoreService>(ServiceIds.Store, ServiceImpl.Off, () => new OffStoreService());
             r.Register<IStoreService>(ServiceIds.Store, ServiceImpl.Fake, () => new FakeStoreService());
             r.Register<IRewardedAdService>(ServiceIds.RewardedAd, ServiceImpl.Off, () => new OffRewardedAdService());
@@ -69,7 +75,12 @@ namespace Game.Services
 
     public static class ServiceIds
     {
+        /// <summary>게스트 로그인 (기기 계정).</summary>
         public const string Auth = "auth";
+        /// <summary>외부 로그인 방식 (startup.json signIn의 id). 방식마다 서비스 "auth.&lt;방식&gt;" = off / fake / 실제 SDK 구현 이름.</summary>
+        public const string SignInGoogle = "google";
+        public const string SignInApple = "apple";
+        public static string AuthFor(string method) => method == "guest" ? Auth : Auth + "." + method;
         public const string Store = "store";
         public const string RewardedAd = "rewardedAd";
         public const string BannerAd = "bannerAd";

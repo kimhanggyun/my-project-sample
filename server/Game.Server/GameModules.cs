@@ -94,6 +94,13 @@ namespace Game.Server
         private readonly HireRules _hire;
         private readonly Game.Territory.TerritoryDefs _territory;
 
+        /// <summary>
+        /// 결제 영수증 (R-64): 개발용 가짜 영수증("fake:")을 받을지 (설정 Game:AllowFakeReceipts, 기본 true = 참고·테스트 서버).
+        /// 실제 스토어 검증은 백엔드를 정한 뒤 더한다. 쓴 영수증은 지금은 메모리에만 (실제 서버는 저장소에).
+        /// </summary>
+        public bool AllowFakeReceipts { get; set; } = true;
+        private readonly HashSet<string> _usedReceipts = new HashSet<string>(StringComparer.Ordinal);
+
         public StrategyGameModule(string code, IReadOnlyList<string> packageIds, IDataSource source, string theme, ITimeProvider time, IGameStore store)
         {
             Code = code;
@@ -169,8 +176,10 @@ namespace Game.Server
             // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 하고, 한 묶음에서 두 번 받을 수 없다
             var box = _store.MailOf(Code, accountId);
             var claimed = new HashSet<string>(StringComparer.Ordinal);
+            var receipts = new ReceiptCheck(AllowFakeReceipts, _usedReceipts);
             bool ServerCheck(PlayerAction a)
             {
+                if (!receipts.Check(a)) return false;
                 if (a?.Kind != ActionKinds.MailClaim) return true;
                 var m = box.Find(x => x.Id == a.MailId);
                 return m != null && m.Resource == a.PayWith && m.Amount == a.Count && claimed.Add(m.Id);

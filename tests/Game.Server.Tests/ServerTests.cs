@@ -89,6 +89,25 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.Conflict, junk.StatusCode);
         }
 
+        [Fact(DisplayName = "R-64 결제: 가짜 영수증(fake:)은 참고 서버가 받고 자원을 반영, 같은 영수증 다시·영수증 없음·다른 형식은 422")]
+        public async Task Purchase()
+        {
+            var c = await SignedIn();
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            var first = await Read<CloudSave>(await c.GetAsync(Save));
+            long gold = StrategyGameModule.FromJson(first.Json).Wallet["gold"];
+            string receipt = "fake:gold_pack_small:" + System.Guid.NewGuid();
+            var ok = await c.PostAsync(actions, Body(new ActionSubmission { BaseRevision = first.Revision, Actions = { Game.Flow.PlayerActionRunner.Purchase("gold_pack_small", receipt) } }));
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+            var v = await Read<ActionVerdict>(ok);
+            Assert.Equal(gold + 1000, StrategyGameModule.FromJson(v.Save.Json).Wallet["gold"]);
+            foreach (var r in new[] { receipt, "", "store:real-receipt" })
+            {
+                var bad = await c.PostAsync(actions, Body(new ActionSubmission { BaseRevision = v.Save.Revision, Actions = { Game.Flow.PlayerActionRunner.Purchase("gold_pack_small", r) } }));
+                Assert.Equal((HttpStatusCode)422, bad.StatusCode);
+            }
+        }
+
         [Fact(DisplayName = "R-41 행동 제출: 서버가 같은 규칙으로 적용(200), 안 되는 행동은 422, 옛 세이브는 409. 진행이 생긴 뒤 세이브 통째 올리기는 409")]
         public async Task Actions()
         {

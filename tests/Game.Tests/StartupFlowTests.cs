@@ -30,15 +30,16 @@ namespace Game.Tests
             Assert.Equal(StartupSteps.Title, f.Next(StartupSteps.Splash, r, false));
             r.TermsVersion = f.TermsVersion - 1;
             Assert.Equal(StartupSteps.Terms, f.Next(StartupSteps.Splash, r, false));
-            r.SignInMethod = "google"; // 아직 준비 중인 수단 → 다시 로그인 화면
+            r.SignInMethod = "apple"; // 막아 둔 수단 (2026-11-10 결정) → 다시 로그인 화면
             Assert.Equal(StartupSteps.SignIn, f.Next(StartupSteps.Splash, r, false));
         }
 
-        [Fact(DisplayName = "로그인 버튼은 데이터에서: 게스트는 사용, 구글·Apple은 준비 중. 기록은 기기 저장소에")]
+        [Fact(DisplayName = "로그인 버튼은 데이터에서: 게스트·구글은 사용, Apple은 잠시 막음. 기록은 기기 저장소에")]
         public void OptionsAndRecord()
         {
             var f = Flow();
             Assert.True(f.SignInOptions.Find(o => o.Id == "guest").IsActive);
+            Assert.True(f.SignInOptions.Find(o => o.Id == "google").IsActive);
             Assert.False(f.SignInOptions.Find(o => o.Id == "apple").IsActive);
             Assert.Equal(1500, f.SplashMillis);
             var store = new InMemorySaveStore();

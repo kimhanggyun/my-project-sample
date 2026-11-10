@@ -510,6 +510,8 @@ namespace Game.Online
         /// <summary>처음 안내를 봤다 (GuideId, R-62). guide.reset은 본 기록을 모두 지운다 (설정의 "안내 다시 보기").</summary>
         public const string GuideSeen = "guide.seen";
         public const string GuideReset = "guide.reset";
+        /// <summary>결제 상품 받기 (ProductId, Receipt, R-64): 서버가 영수증을 검증한 뒤에만 반영한다.</summary>
+        public const string StorePurchase = "store.purchase";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>
@@ -550,6 +552,9 @@ namespace Game.Online
         public List<string> Choices { get; set; }
         /// <summary>처음 안내 id (R-62).</summary>
         public string GuideId { get; set; }
+        /// <summary>결제: 상품 id, 스토어 영수증 (R-64).</summary>
+        public string ProductId { get; set; }
+        public string Receipt { get; set; }
         /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
         public long DoneAtUnixSeconds { get; set; }
     }

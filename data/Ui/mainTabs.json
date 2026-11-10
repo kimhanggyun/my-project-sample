@@ -47,6 +47,11 @@
       "status": "active"
     },
     {
+      "id": "shop",
+      "nameKey": "ui.tab.shop",
+      "status": "active"
+    },
+    {
       "id": "gacha",
       "nameKey": "ui.tab.gacha",
       "status": "active"

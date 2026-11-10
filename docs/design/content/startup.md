@@ -1,6 +1,6 @@
 # 앱 시작 (스플래시·로그인·약관)
 
-> 상태: 기획 확정 · **구현** (2026-11-09): 스플래시 → (버전 확인: 서버 전까지 건너뜀) → 로그인(게스트, 구글·Apple은 준비 중) → 약관 동의(판이 오르면 다시) → 타이틀. 순서·버튼은 `data/Ui/startup.json`, 규칙 `Game.Flow.StartupFlow`, 화면 `Screens/StartupScreens`. 약관 본문·광고 동의(ATT)는 아직 (roadmap 4.2, 3.2)
+> 상태: 기획 확정 · **구현** (2026-11-09): 스플래시 → (버전 확인: 서버 전까지 건너뜀) → 로그인(게스트·구글 사용, Apple은 잠시 막음 — 2026-11-10 결정) → 약관 동의(판이 오르면 다시) → 타이틀. 순서·버튼은 `data/Ui/startup.json`, 규칙 `Game.Flow.StartupFlow`, 화면 `Screens/StartupScreens`. 약관 본문·광고 동의(ATT)는 아직 (roadmap 4.2, 3.2)
 > 전체 흐름: [../flow.md](../flow.md) · 구조: [../structure.md](../structure.md)(../structure.md) Auth 모듈, Core 모듈
 
 ## 1. 흐름
@@ -28,6 +28,14 @@
 - ②는 건너뛰고, ③은 **게스트(기기 저장)**로 바로 진행한다.
 - 서버(백엔드 서비스)를 붙이면 같은 자리에 실제 로그인이 들어간다. 다른 코드는 바꾸지 않는다.
 
+
+## 3.1 로그인·약관 지금 상태 (2026-11-10 사용자 결정)
+
+- **로그인 방식마다 서비스를 따로 고른다**: 서비스 `auth.google`, `auth.apple` = `off`(막음) / `fake`(개발용 가짜, 계정 `방식-fake-local`) / 실제 SDK 구현 이름. 게스트는 `auth`.
+  - 개발 빌드: 구글 `fake`, Apple `off`. 출시 빌드: 둘 다 `off` (실제 SDK는 백엔드를 정한 뒤 붙인다: 구글 = Play Games/구글 로그인, Apple = Sign in with Apple).
+  - 버튼: `startup.json`에서 구글 `active`, **Apple `tobe`(잠시 막음)**. 다시 열려면 `active` + `auth.apple` 구현.
+  - 주의: 아이폰 출시 때 구글 로그인을 넣으면 애플 정책상 Apple 로그인도 함께 열어야 한다 (2장).
+- **약관**: 약관 동의 화면(이용약관·개인정보 처리방침, 필수 동의 → 시작)은 그대로 두고 본문은 "나중에 약관 들어갈 자리" (문자열 `ui.terms.body.*`). 실제 문서가 생기면 문자열만 바꾸고 `termsVersion`을 올려 다시 동의를 받는다.
 
 ## 4. 교체·확장 포인트
 

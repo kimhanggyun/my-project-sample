@@ -197,6 +197,9 @@ namespace Game.Server
             if (!any)
                 registry.Register(new StrategyGameModule(DefaultGame, new[] { "com.myproject.ancientwar" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
+            bool allowFake = !string.Equals(config["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase);
+            foreach (var code in registry.Codes)
+                if (registry.Find(code) is StrategyGameModule m) m.AllowFakeReceipts = allowFake;
             return registry;
         }
     }
