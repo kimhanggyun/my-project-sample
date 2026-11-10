@@ -12,6 +12,11 @@
       "status": "active"
     },
     {
+      "id": "practice",
+      "nameKey": "ui.tab.practice",
+      "status": "active"
+    },
+    {
       "id": "troop",
       "nameKey": "ui.tab.troop",
       "status": "active"

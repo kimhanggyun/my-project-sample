@@ -52,6 +52,8 @@ namespace Game.Flow
             Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType)));
             var gacha = new GachaService(defs);
             Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
+            var practice = new PracticeService(defs);
+            Register(new Handler(ActionKinds.ContestPractice, (s, a) => practice.Apply(s, a) != null));
             var limitBreak = new LimitBreakService(defs);
             Register(new Handler(ActionKinds.GeneralLimitBreak, (s, a) => limitBreak.Apply(s, a.GeneralId)));
             // 우편 받기: 서버는 우편이 있는지·양이 맞는지 먼저 본다 (ActionVerifier의 serverCheck)

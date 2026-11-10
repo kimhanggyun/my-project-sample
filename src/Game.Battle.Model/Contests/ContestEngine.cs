@@ -88,6 +88,8 @@ namespace Game.Battle.Model.Contests
         public ContestFighter A { get; }
         public ContestFighter B { get; }
         public int Round => _rounds.Count;
+        /// <summary>지난 라운드들 (화면 기록용).</summary>
+        public IReadOnlyList<ContestRound> Rounds => _rounds;
         public ContestResult Result { get; private set; }
         public bool IsOver => Result != null;
 

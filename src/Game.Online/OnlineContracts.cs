@@ -505,6 +505,8 @@ namespace Game.Online
         public const string UnitPromote = "unit.promote";
         /// <summary>장수 한계 돌파 (GeneralId, R-57): 조각으로 레벨 상한을 올린다.</summary>
         public const string GeneralLimitBreak = "general.limitBreak";
+        /// <summary>연습 대결 (GeneralId·ContestId·OpponentId·Seed·Choices, R-59): 서버가 같은 시드·선택으로 다시 돌려 전적·보상을 반영한다.</summary>
+        public const string ContestPractice = "contest.practice";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>
@@ -539,6 +541,10 @@ namespace Game.Online
         /// <summary>모집: 모집 id, 시드 (서버 단계에서는 서버가 정한다).</summary>
         public string BannerId { get; set; }
         public ulong Seed { get; set; }
+        /// <summary>연습 대결: 대결 id (duel/debate), 상대 id, 내가 고른 행동 차례 (R-59).</summary>
+        public string ContestId { get; set; }
+        public string OpponentId { get; set; }
+        public List<string> Choices { get; set; }
         /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
         public long DoneAtUnixSeconds { get; set; }
     }
