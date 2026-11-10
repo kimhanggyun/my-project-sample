@@ -63,10 +63,34 @@ namespace Game.Unity.Battle3D
             return true;
         }
 
+        /// <summary>화면 영역·확대가 바뀐 뒤 다시 맞춘다.</summary>
+        public void Refresh() => Apply();
+
         private void Apply()
         {
             Focus = new Vector3(Mathf.Clamp(Focus.x, 0f, _width), 0f, Mathf.Clamp(Focus.z, 0f, _depth));
-            Camera.transform.position = Focus - Camera.transform.forward * Distance;
+            Place();
+            // 전장 끝이 화면 안쪽으로 들어오면(맵 밖 빈 공간이 보이면) 그만큼 안으로 민다.
+            // 화면이 전장보다 넓으면 가운데에 둔다. 화면 위·아래 가운데 지점이 바닥에 닿는 곳으로 잰다.
+            var r = Camera.pixelRect;
+            if (r.height < 2f || r.width < 2f) return;
+            if (!Ground(new Vector2(r.center.x, r.yMin + 1f), 0f, out var bottom) || !Ground(new Vector2(r.center.x, r.yMax - 1f), 0f, out var top)) return;
+            float dz = 0f;
+            if (top.z - bottom.z >= _depth) dz = _depth / 2f - (top.z + bottom.z) / 2f;
+            else if (bottom.z < 0f) dz = -bottom.z;
+            else if (top.z > _depth) dz = _depth - top.z;
+            float dx = 0f;
+            if (Ground(new Vector2(r.xMin + 1f, r.center.y), 0f, out var left) && Ground(new Vector2(r.xMax - 1f, r.center.y), 0f, out var right))
+            {
+                if (right.x - left.x >= _width) dx = _width / 2f - (left.x + right.x) / 2f;
+                else if (left.x < 0f) dx = -left.x;
+                else if (right.x > _width) dx = _width - right.x;
+            }
+            if (dx == 0f && dz == 0f) return;
+            Focus += new Vector3(dx, 0f, dz);
+            Place();
         }
+
+        private void Place() => Camera.transform.position = Focus - Camera.transform.forward * Distance;
     }
 }

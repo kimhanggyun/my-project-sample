@@ -26,7 +26,7 @@ namespace Game.Unity.Screens
             {
                 string id = u.UnitId;
                 var card = Ui.Card(list, id, 20, 6);
-                Ui.Label(card, ctx.T("ui.troops.line", id, FormationTabView.TroopName(ctx, u.TroopType), u.Troops.ToString("N0"), (u.Training.Raw / 100).ToString()), Ui.FontSmall);
+                Ui.Label(card, ctx.T("ui.troops.line", ctx.UnitLabel(id), FormationTabView.TroopName(ctx, u.TroopType), u.Troops.ToString("N0"), (u.Training.Raw / 100).ToString()), Ui.FontSmall);
                 var train = Ui.Button(card, ctx.T("ui.troops.train", ctx.Defs.TroopGrowth.TrainingStep.Raw / 100, svc.TrainCost(u).ToString("N0")),
                     () => Do(app, PlayerActionRunner.TrainUnit(id), svc.CheckTrain(ctx.State, id)), 72, fontSize: 24);
                 Ui.SetEnabled(train, svc.CheckTrain(ctx.State, id) == TroopGrowthService.Ok);

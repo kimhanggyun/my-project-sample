@@ -398,7 +398,7 @@ namespace Game.Unity.Screens
                 }
                 if (e.Kind == EventKinds.SkillUsed && corps != null && _ctl.Sees(corps))
                     _field.Effects.SkillUsed(_field.ToWorld(corps.Anchor), corps.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
-                if (e.Kind == EventKinds.Dialogue) { Add(who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; }
+                if (e.Kind == EventKinds.Dialogue) { Add(string.IsNullOrEmpty(who) ? T(e.Data) : who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; } // 말한 군단이 없으면(지문) 이름 없이
                 var sp = _speech.Feed(e);
                 if (sp != null) { Add(who + ": \"" + T(sp.LineKey) + "\""); Bubble(corps, T(sp.LineKey)); }
                 string sysKey = "ui.event." + e.Kind;

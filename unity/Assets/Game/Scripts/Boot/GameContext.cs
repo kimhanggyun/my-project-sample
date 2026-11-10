@@ -399,6 +399,14 @@ namespace Game.Unity.Boot
 
         public long Resource(string id) => new Wallet(State.Wallet).Get(id);
 
+        /// <summary>화면에 보이는 부대 이름 "제N부대" (보유 순서). 내부 id(u01…)는 보이지 않게. 고용 부대는 "고용 부대".</summary>
+        public string UnitLabel(string unitId)
+        {
+            if (Game.Flow.HireRules.IsHiredUnit(unitId)) return T("ui.unit.hired");
+            int i = State.Units.FindIndex(u => u.UnitId == unitId);
+            return i < 0 ? unitId ?? "?" : T("ui.unit.label", i + 1);
+        }
+
         public void Save() => Saves.Save(State);
 
         // ---- 전투 녹화 (replay.md, 기기에만) ----

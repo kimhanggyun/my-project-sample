@@ -43,12 +43,15 @@ namespace Game.Unity.Screens
 
             var units = Ui.Card(body, "Units");
             Ui.Label(units, T("ui.result.units"));
+            int quiet = 0;
             foreach (var u in _report.Units)
             {
+                if (u.Losses == 0) { quiet++; continue; } // 손실 없는 부대는 줄을 줄여 한 줄로
                 var unit = Ctx.State.FindUnit(u.UnitId);
                 string troop = unit != null && Ctx.Defs.TroopTypes.TryGetValue(unit.TroopType, out var tt) ? T(tt.NameKey) : "";
-                Ui.Label(units, T("ui.result.unitLine", u.UnitId, troop, u.Losses.ToString("N0"), u.Wounded.ToString("N0"), u.Dead.ToString("N0")), 28);
+                Ui.Label(units, T("ui.result.unitLine", Ctx.UnitLabel(u.UnitId), troop, u.Losses.ToString("N0"), u.Wounded.ToString("N0"), u.Dead.ToString("N0")), 28);
             }
+            if (quiet > 0) Ui.Label(units, T("ui.result.noLossUnits", quiet), 26, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(units, T("ui.result.supply", _report.SupplyReturned.ToString("N0"), _report.SupplyCaptured.ToString("N0")), 28);
 
             var injuries = new List<string>();
