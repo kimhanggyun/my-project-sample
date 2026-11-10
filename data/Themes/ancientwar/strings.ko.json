@@ -378,7 +378,7 @@
   "ui.formation.disband": "해산",
   "ui.formation.disbandTitle": "부대 해산",
   "ui.formation.disbandConfirm": "{0} {1} 부대를 해산할까요?\n병력과 부상병 {2}명이 사라집니다.",
-  "ui.hire.offline": "고용은 온라인에서만 할 수 있습니다 (서비스 설정 online = fake 또는 http).",
+  "ui.hire.offline": "고용은 서버에 연결되면 이용할 수 있습니다. 다른 유저가 등록한 장수·부대를 빌려 함께 싸웁니다.",
   "ui.hire.loading": "불러오는 중…",
   "ui.hire.failed": "서버에 연결하지 못했습니다.",
   "ui.hire.generals": "장수",
@@ -619,5 +619,11 @@
   "ui.replay.viewEnemy": "적군 시점",
   "ui.replay.viewAlly": "아군 시점",
   "ui.replay.fogOff": "안개 끄기",
-  "ui.replay.fogOn": "안개 켜기"
+  "ui.replay.fogOn": "안개 켜기",
+  "ui.unit.label": "제{0}부대",
+  "ui.unit.hired": "고용 부대",
+  "ui.generals.stats": "통솔 {0} · 무력 {1} · 지략 {2}",
+  "ui.step.allies": "아군 편성",
+  "ui.step.allyLine": "{0}  {1}  병력 {2}",
+  "ui.result.noLossUnits": "손실 없는 부대 {0}개"
 }

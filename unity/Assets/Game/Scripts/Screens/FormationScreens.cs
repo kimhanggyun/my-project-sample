@@ -79,7 +79,7 @@ namespace Game.Unity.Screens
                 int at = ed.CorpsOf(unitId);
                 string where = at < 0 ? ctx.T("ui.formation.reserveUnit") : ctx.GeneralName(ed.Draft[at].GeneralId);
                 var card = Ui.Card(list, unitId, 16, 6);
-                Ui.Label(card, ctx.T("ui.formation.unitLine", unitId, TroopName(ctx, u.TroopType), u.Troops.ToString("N0"), ctx.Defs.Balance.UnitMaxTroops.ToString("N0"),
+                Ui.Label(card, ctx.T("ui.formation.unitLine", ctx.UnitLabel(unitId), TroopName(ctx, u.TroopType), u.Troops.ToString("N0"), ctx.Defs.Balance.UnitMaxTroops.ToString("N0"),
                     u.Wounded.ToString("N0"), u.Cohesion.FloorToLong(), where), 26);
                 var r = Ui.Row(card, "Troops", 72, 6);
                 long room = troopsSvc.Room(u);
@@ -143,7 +143,7 @@ namespace Game.Unity.Screens
                 string unit = c.Slots.TryGetValue(slot, out var id) ? id : null;
                 var u = unit == null ? null : Ctx.State.FindUnit(unit);
                 string label = T("slot." + slot) + "  " + (u == null ? Ui.Colored(T("ui.formation.empty"), Palette.TextDim)
-                    : u.UnitId + " " + FormationTabView.TroopName(Ctx, u.TroopType) + " " + u.Troops.ToString("N0"));
+                    : Ctx.UnitLabel(u.UnitId) + " " + FormationTabView.TroopName(Ctx, u.TroopType) + " " + u.Troops.ToString("N0"));
                 var b = Ui.Button(body, label, () => App.Show(new UnitPickerScreen(_index, s)), 96, Palette.Card, 30);
                 b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
             }
@@ -239,7 +239,7 @@ namespace Game.Unity.Screens
             if (u == null) { App.ShowMain("formation"); return; }
             Ui.Column(Root, 24, 48).childAlignment = TextAnchor.MiddleCenter;
             Ui.Size(Ui.Label(Root, T("ui.formation.disbandTitle"), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
-            Ui.Label(Root, T("ui.formation.disbandConfirm", u.UnitId, FormationTabView.TroopName(Ctx, u.TroopType), (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
+            Ui.Label(Root, T("ui.formation.disbandConfirm", Ctx.UnitLabel(u.UnitId), FormationTabView.TroopName(Ctx, u.TroopType), (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             Ui.Button(row, T("ui.common.cancel"), () => App.ShowMain("formation"));
             Ui.Button(row, T("ui.formation.disband"), () =>

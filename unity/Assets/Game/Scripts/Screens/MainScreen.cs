@@ -17,8 +17,8 @@ namespace Game.Unity.Screens
     {
         private const float TopBarHeight = 110f;
         private const float TabBarHeight = 104f;
-        private const float MinTabWidth = 190f;
-        private const int VisibleTabs = 5;
+        private const float MinTabWidth = 160f;
+        private const int VisibleTabs = 6; // 탭 6개가 한 줄에 다 보이게 (더 많으면 가로 스크롤)
 
         /// <summary>탭 id → 내용. 새 탭은 구현을 만들고 여기에 한 줄 + mainTabs.json에 한 줄.</summary>
         private static readonly Dictionary<string, System.Func<ITabView>> Views = new Dictionary<string, System.Func<ITabView>>
@@ -69,7 +69,7 @@ namespace Game.Unity.Screens
             foreach (var t in tabs)
             {
                 var tab = t;
-                var b = Ui.Button(bar, T(t.NameKey), () => Select(tab), TabBarHeight - 16, fontSize: 30);
+                var b = Ui.Button(bar, T(t.NameKey), () => Select(tab), TabBarHeight - 16, fontSize: 28);
                 Ui.Size(b, width: width);
                 if (t.Status != MainTabEntry.Active) b.GetComponentInChildren<Text>().color = Palette.TextDim;
                 _tabButtons[t.Id] = b;
@@ -117,6 +117,8 @@ namespace Game.Unity.Screens
     /// <summary>장수 키우기 (일부): 지금은 보유 장수 목록. 스킬북·특성서·대결 전적 보상은 다음 단계.</summary>
     public sealed class GeneralsTabView : ITabView
     {
+        private static long Stat(GameContext ctx, GeneralState g, string id) => CorpsValidator.EffectiveStat(ctx.Defs, g, id).FloorToLong();
+
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
@@ -128,7 +130,9 @@ namespace Game.Unity.Screens
             {
                 var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;
                 string id = g.GeneralId;
-                var b = Ui.Button(list, ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)), () => app.Show(new GeneralScreen(id)), 110, Palette.Card);
+                string stats = ctx.T("ui.generals.stats", Stat(ctx, g, "leadership"), Stat(ctx, g, "might"), Stat(ctx, g, "intellect"));
+                var b = Ui.Button(list, ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)) + "\n" + Ui.Colored(stats, Palette.TextDim),
+                    () => app.Show(new GeneralScreen(id)), 124, Palette.Card, 32);
                 b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
             }
         }

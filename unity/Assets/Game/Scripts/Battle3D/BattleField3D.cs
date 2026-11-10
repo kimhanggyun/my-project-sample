@@ -63,6 +63,10 @@ namespace Game.Unity.Battle3D
         private readonly Dictionary<Color, Material> _lineMats = new Dictionary<Color, Material>();
         private int _flashFrame;
         private readonly Transform _ring;
+        /// <summary>선택 표시: 꽉 찬 원판 대신 테두리만 (병사가 가려지지 않게).</summary>
+        private readonly LineRenderer _ringLine;
+        private const int RingSegments = 40;
+        private const float RingRadius = 1.8f;
         private readonly Transform _target;
 
         public BattleCameraRig Rig { get; }
@@ -134,6 +138,9 @@ namespace Game.Unity.Battle3D
             _range = Line("Range", RangeColor, 0.12f, true);
 
             _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
+            _ring.gameObject.SetActive(false); // 원판은 쓰지 않는다 (테두리 _ringLine)
+            _ringLine = Line("SelectRing", SelectedColor, 0.12f, true);
+            _ringLine.positionCount = RingSegments;
             _cylinder = cylinder;
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
@@ -272,7 +279,9 @@ namespace Game.Unity.Battle3D
         /// <summary>카메라가 그릴 화면 영역 (픽셀).</summary>
         public void SetViewport(Rect pixels)
         {
-            if (pixels.width > 1 && pixels.height > 1) Rig.Camera.pixelRect = pixels;
+            if (pixels.width <= 1 || pixels.height <= 1 || Rig.Camera.pixelRect == pixels) return;
+            Rig.Camera.pixelRect = pixels;
+            Rig.Refresh(); // 화면 영역이 바뀌면 전장 밖이 보이지 않게 다시 맞춘다
         }
 
         public void LookAt(CorpsState c) { if (c != null) Rig.LookAt(ToWorld(c.Anchor)); }
@@ -302,8 +311,16 @@ namespace Game.Unity.Battle3D
 
             var sel = _ctl.Selected;
             bool ring = sel != null && sel.InBattle;
-            _ring.gameObject.SetActive(ring);
-            if (ring) _ring.position = ToWorld(sel.Anchor) + new Vector3(0f, 0.02f, 0f);
+            _ringLine.gameObject.SetActive(ring);
+            if (ring)
+            {
+                var center = ToWorld(sel.Anchor) + new Vector3(0f, 0.08f, 0f);
+                for (int i = 0; i < RingSegments; i++)
+                {
+                    float a = i * Mathf.PI * 2f / RingSegments;
+                    _ringLine.SetPosition(i, center + new Vector3(Mathf.Cos(a) * RingRadius, 0f, Mathf.Sin(a) * RingRadius));
+                }
+            }
             bool target = ring && sel.Order.Kind == OrderKinds.MoveTo;
             _target.gameObject.SetActive(target);
             if (target) _target.position = ToWorld(sel.Order.Point) + new Vector3(0f, 0.04f, 0f);

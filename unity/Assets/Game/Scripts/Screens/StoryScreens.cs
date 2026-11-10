@@ -38,7 +38,7 @@ namespace Game.Unity.Screens
                              : unlocked ? ctx.T("ui.story.open")
                              : Ui.Colored(ctx.T("ui.story.locked"), Palette.TextDim);
                 string label = (s.rescue ? "[" + ctx.T("ui.story.rescue") + "] " : "") + ctx.T(step.NameKey) + "   " + state;
-                var b = Ui.Button(list, label, () => app.Show(new StepScreen(s.id)), 140);
+                var b = Ui.Button(list, label, () => app.Show(new StepScreen(s.id)), 112);
                 Ui.SetEnabled(b, unlocked);
             }
         }
@@ -89,6 +89,18 @@ namespace Game.Unity.Screens
 
             // 출진 준비 (상태는 바꾸지 않는다)
             var plan = Ctx.Flow.Prepare(Ctx.State, request);
+            // 아군 편성 요약 (출진할 군단: 장수 · 진형 · 병력)
+            if (plan.Compositions != null && plan.Compositions.Count > 0)
+            {
+                var allies = Ui.Card(body, "Allies");
+                Ui.Label(allies, T("ui.step.allies"));
+                foreach (var comp in plan.Compositions)
+                {
+                    long troops = 0;
+                    foreach (var slot in comp.Slots) { var u = Ctx.State.FindUnit(slot.Value); if (u != null) troops += u.Troops; }
+                    Ui.Label(allies, T("ui.step.allyLine", Ui.Colored(Ctx.GeneralName(comp.GeneralId), Palette.Ally), FormationName(comp.Formation), troops.ToString("N0")), Ui.FontSmall);
+                }
+            }
             var sortie = Ui.Card(body, "Sortie");
             if (hireError != null) Ui.Label(sortie, Ui.Colored(hireError, Palette.Bad), Ui.FontSmall);
             if (plan.Hired != null)
