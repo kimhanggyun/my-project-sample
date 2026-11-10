@@ -1,0 +1,10 @@
+{
+  "_comment": "연습 대결 (general-growth.md 2.4, R-59): 장수 키우기에서 AI 상대와 일기토·논쟁. 결과는 전투 대결과 같은 전적·성장 보상(growthTracks)에 들어간다. dailyLimit 0 = 제한 없음 (서버 연동 후 서버·어드민 값으로). 경험치·상대는 예시",
+  "dailyLimit": 0,
+  "exp": { "win": 30, "draw": 15, "loss": 10, "retreat": 5 },
+  "opponents": [
+    { "id": "p_rookie", "nameKey": "practice.p_rookie", "stat": 40, "temperament": "calm" },
+    { "id": "p_veteran", "nameKey": "practice.p_veteran", "stat": 60, "temperament": "brave" },
+    { "id": "p_master", "nameKey": "practice.p_master", "stat": 80, "temperament": "cunning" }
+  ]
+}

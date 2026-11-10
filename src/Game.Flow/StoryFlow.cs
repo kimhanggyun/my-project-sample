@@ -465,19 +465,8 @@ namespace Game.Flow
                 {
                     var g = state.FindGeneral(fighter.Id);
                     if (g == null) continue;
-                    string outcome = c.End == ContestEnds.Retreat ? (c.Retreater == side ? "retreat" : "win")
-                        : c.Winner == null ? "draw" : (c.Winner == side ? "win" : "loss");
-                    GrowthEngine.RecordContest(g.Records, c.ContestId, outcome);
-                    foreach (var r in GrowthEngine.Evaluate(_defs.GrowthTracks, _campaignFlags, g.Records, g.GrantedRewards))
-                    {
-                        if (r.Stat != null)
-                        {
-                            g.StatGrowth.TryGetValue(r.Stat, out var v);
-                            g.StatGrowth[r.Stat] = v + r.Add;
-                        }
-                        if (r.Trait != null && !g.LearnedTraits.Contains(r.Trait)) g.LearnedTraits.Add(r.Trait);
+                    foreach (var r in ContestRecords.Record(_defs, _campaignFlags, g, c.ContestId, ContestRecords.OutcomeOf(c, side)))
                         report.GrowthRewards.Add((g.GeneralId, r));
-                    }
                 }
             }
         }

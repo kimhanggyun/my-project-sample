@@ -32,6 +32,9 @@ namespace Game.Campaign
         public Dictionary<string, int> GachaPity { get; set; } = new Dictionary<string, int>();
         /// <summary>장수 조각: 이미 가진 장수가 또 나오면 1개 (한계 돌파에 쓴다, 다음 단계).</summary>
         public Dictionary<string, long> GeneralShards { get; set; } = new Dictionary<string, long>();
+        /// <summary>연습 대결 횟수를 센 날 (서버 시각 unix 일)과 그날 횟수 (R-59). 예전 세이브는 0.</summary>
+        public long PracticeDay { get; set; }
+        public int PracticeCount { get; set; }
 
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);
