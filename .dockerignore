@@ -1,0 +1,12 @@
+# 서버 컨테이너에 필요 없는 것 (server/Game.Server/Dockerfile)
+.git
+build/
+**/bin/
+**/obj/
+unity/
+tests/
+docs/
+tools/
+config/
+captures/
+**/*.meta
