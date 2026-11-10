@@ -32,6 +32,7 @@ namespace Game.Unity.Screens
             // 따로 열던 화면도 탭으로 (나중에 필요 없는 탭은 mainTabs.json에서 hidden으로)
             { "practice", () => new PracticeTabView() },
             { "care", () => new TroopCareTabView() },
+            { "formationDrag", () => new FormationDragTabView() },
             { "gacha", () => new ScreenTabView(() => new GachaScreen()) },
             { "codex", () => new ScreenTabView(() => new CodexScreen()) },
             { "replay", () => new ScreenTabView(() => new ReplayListScreen()) },
