@@ -32,6 +32,11 @@
       "status": "active"
     },
     {
+      "id": "formationDrag",
+      "nameKey": "ui.tab.formationDrag",
+      "status": "active"
+    },
+    {
       "id": "territory",
       "nameKey": "ui.tab.territory",
       "status": "active"

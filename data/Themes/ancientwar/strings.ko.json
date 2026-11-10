@@ -735,5 +735,11 @@
   "guide.practice.1": "(안내) 일기토·논쟁 연습입니다. AI 상대와 겨루면 이기든 지든 경험치를 얻습니다.",
   "ui.guide.next": "다음",
   "ui.guide.close": "닫기",
-  "ui.guide.continue": "계속"
+  "ui.guide.continue": "계속",
+  "ui.tab.formationDrag": "편성(드래그)",
+  "ui.formationDrag.help": "대기 부대를 칸으로 끌어 넣으세요. 칸끼리 끌면 옮기거나 맞바꾸고, 대기 줄로 끌면 뺍니다.",
+  "ui.formationDrag.corpsLine": "제{0}군단  {1} · {2}   병력 {3} / {4}",
+  "ui.formationDrag.edit": "장수·진형",
+  "ui.formationDrag.reserve": "대기 부대",
+  "ui.formationDrag.noReserve": "모든 부대가 편성되어 있습니다."
 }
