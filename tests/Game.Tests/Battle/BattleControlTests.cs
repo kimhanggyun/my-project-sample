@@ -49,22 +49,55 @@ namespace Game.Tests.Battle
             Assert.Same(ctl.OwnCorps()[0], ctl.Selected);
         }
 
-        [Fact(DisplayName = "R-60 전군 진군: 군단마다 자기 줄(가로 위치)을 지키며 앞으로 곧게 공격 이동 (가운데로 모이지 않는다)")]
+        [Fact(DisplayName = "R-60·R-63 전군 진군: 역할대로 곧게 — 선봉은 자기 줄 그대로, 측면은 바깥으로 벌린 뒤 곧게, 후위는 지원 이동 (가운데로 모이지 않는다)")]
         public void AdvanceAll()
         {
             var (sim, ctl) = Make();
             int n = ctl.AdvanceAll();
             Assert.Equal(ctl.OwnCorps().Count(ctl.CanCommand), n);
             var moves = sim.CommandLog.Where(c => c.Kind == CommandKinds.MoveTo).ToList();
-            Assert.Equal(n, moves.Count);
-            Assert.All(moves, m => Assert.Equal(MoveModes.AttackMove, m.Mode));
-            foreach (var m in moves)
+            var center = sim.Context.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Select(c => c.Anchor.X).Aggregate(Fix.Zero, (x, y) => x + y)
+                         / Fix.FromInt(ctl.OwnCorps().Count);
+
+            var van = Own(ctl, "general_a");   // 시작 편성: 선봉
+            var flank = Own(ctl, "general_b"); // 측면
+            var rear = Own(ctl, "general_c");  // 후위
+            var vm = moves.Single(m => m.CorpsId == van.Id);
+            Assert.Equal((MoveModes.AttackMove, van.Anchor.X), (vm.Mode, vm.X));
+            Assert.True(vm.Y < van.Anchor.Y); // 앞(북쪽)으로
+
+            var fm = moves.Where(m => m.CorpsId == flank.Id).ToList();
+            Assert.Equal(2, fm.Count); // 벌리기 + 그 줄로 곧게 (예약)
+            bool right = flank.Anchor.X > center;
+            Assert.True(right ? fm[0].X > flank.Anchor.X : fm[0].X < flank.Anchor.X); // 바깥쪽으로
+            Assert.True(fm[0].Y < flank.Anchor.Y);
+            Assert.True(fm[1].Queued);
+            Assert.Equal(fm[0].X, fm[1].X); // 벌린 줄에서 곧게
+            Assert.True(fm[1].Y < fm[0].Y);
+
+            var rm = moves.Single(m => m.CorpsId == rear.Id);
+            Assert.Equal((MoveModes.Support, rear.Anchor.X), (rm.Mode, rm.X));
+        }
+
+        [Fact(DisplayName = "R-63 후위 지원 이동: 적이 rearStandoffCells 안에 들어오면 그 자리에 멈춘다 (쫓지 않는다)")]
+        public void RearStandsOff()
+        {
+            var (sim, ctl) = Make();
+            var rear = Own(ctl, "general_c");
+            ctl.Select(rear.Id);
+            Assert.True(ctl.Advance());
+            var keep = sim.Context.Combat.RearStandoffCells;
+            int t = 0;
+            for (; t < 2000; t++)
             {
-                var c = sim.Context.FindCorps(m.CorpsId);
-                Assert.Equal(c.Anchor.X, m.X); // 앞(북쪽)으로만: 가로 위치 그대로
-                Assert.True(m.Y < c.Anchor.Y);
+                sim.Step();
+                var near = sim.Context.NearestEnemy(rear);
+                if (near != null && Vec.DistanceSquared(near.Anchor, rear.Anchor) <= keep * keep) break;
             }
-            Assert.Equal(n, moves.Select(m => m.X).Distinct().Count()); // 줄이 겹치지 않는다
+            Assert.True(t < 2000, "적이 가까이 오지 않음");
+            var at = rear.Anchor;
+            for (int i = 0; i < 10; i++) sim.Step();
+            Assert.True(Vec.DistanceSquared(at, rear.Anchor) <= Fix.FromInt(1), "후위가 멈추지 않고 나아감"); // 1칸 안 (밀림 정도)
         }
 
         [Fact(DisplayName = "R-60 후퇴: 뒤로 곧게 fallBackCells칸 강행 이동, 계속 명령할 수 있어 다시 진군하면 앞으로 (퇴각과 다르다)")]

@@ -101,6 +101,13 @@ namespace Game.Battle.Model.Systems
                             return near.Anchor;
                         }
                     }
+                    if (order.Mode == MoveModes.Support)
+                    {
+                        // 후위 (R-63): 적이 거리 안이면 제자리에서 싸운다 (쫓지 않는다)
+                        var near = ctx.NearestEnemy(corps);
+                        var keep = ctx.Combat.RearStandoffCells;
+                        if (near != null && Vec.DistanceSquared(near.Anchor, corps.Anchor) <= keep * keep) return corps.Anchor;
+                    }
                     return order.Point;
                 default:
                     return null;
