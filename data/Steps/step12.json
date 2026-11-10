@@ -1,0 +1,195 @@
+{
+  "id": "step12",
+  "nameKey": "step.step12.name",
+  "battleType": "field",
+  "map": "river_ford",
+  "maxCorps": 3,
+  "maxMinutes": 18,
+  "camp": "camp_north",
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "weather": "clear",
+  "timeOfDay": "day",
+  "contests": {
+    "duel": true,
+    "debate": true
+  },
+  "enemy": [
+    {
+      "id": "enemy_corps_c1",
+      "general": "enemy_general_04",
+      "formation": "crescent",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "infantry",
+          "troops": 4800
+        },
+        {
+          "slot": "center",
+          "troopType": "spearman",
+          "troops": 4800
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 4800
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "archer",
+          "troops": 4800
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "archer",
+          "troops": 4800
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "cavalry",
+          "troops": 4800
+        }
+      ],
+      "role": "commander"
+    },
+    {
+      "id": "enemy_corps_c2",
+      "general": "enemy_general_01",
+      "formation": "arrowhead",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "cavalry",
+          "troops": 4680
+        },
+        {
+          "slot": "center",
+          "troopType": "cavalry",
+          "troops": 4680
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "troops": 4680
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "cavalry",
+          "troops": 4680
+        }
+      ]
+    },
+    {
+      "id": "enemy_corps_c3",
+      "general": "enemy_general_03",
+      "formation": "line",
+      "ai": "defensive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "archer",
+          "troops": 4200
+        },
+        {
+          "slot": "center",
+          "troopType": "archer",
+          "troops": 4200
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 4200
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "archer",
+          "troops": 4200
+        }
+      ]
+    },
+    {
+      "id": "enemy_reserve_c1",
+      "general": "enemy_general_02",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "spearman",
+          "troops": 4320
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 4320
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 4320
+        }
+      ],
+      "reserve": true
+    }
+  ],
+  "rewards": {
+    "unlockFormations": [],
+    "unlockSkills": [
+      "fireAttack",
+      "taunt"
+    ],
+    "gold": 1600,
+    "exp": 3200
+  },
+  "events": [
+    {
+      "id": "start",
+      "trigger": {
+        "type": "start"
+      },
+      "actions": [
+        {
+          "type": "dialogue",
+          "key": "dialogue.step12.battle"
+        }
+      ]
+    },
+    {
+      "id": "reserve",
+      "trigger": {
+        "type": "teamTroopsBelow",
+        "team": "enemy",
+        "ratio": 0.5
+      },
+      "actions": [
+        {
+          "type": "reinforce",
+          "corps": "enemy_reserve_c1"
+        },
+        {
+          "type": "dialogue",
+          "key": "dialogue.step12.reinforce",
+          "corps": "enemy_reserve_c1"
+        }
+      ]
+    }
+  ],
+  "balanceTarget": {
+    "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
+    "winRateMin": 0.2,
+    "winRateMax": 0.55
+  }
+}

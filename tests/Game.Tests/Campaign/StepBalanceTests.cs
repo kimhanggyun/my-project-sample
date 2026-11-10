@@ -31,6 +31,12 @@ namespace Game.Tests.Campaign
         [InlineData("step04")]
         [InlineData("step05")]
         [InlineData("step06")]
+        [InlineData("step07")]
+        [InlineData("step08")]
+        [InlineData("step09")]
+        [InlineData("step10")]
+        [InlineData("step11")]
+        [InlineData("step12")]
         public void WinRateInTarget(string stepId)
         {
             var step = StepDef.Load(Kit.Source, stepId);

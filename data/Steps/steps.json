@@ -6,7 +6,13 @@
     "step03",
     "step04",
     "step05",
-    "step06"
+    "step06",
+    "step07",
+    "step08",
+    "step09",
+    "step10",
+    "step11",
+    "step12"
   ],
   "rescue": {
     "camp_north": "rescue_camp_north"

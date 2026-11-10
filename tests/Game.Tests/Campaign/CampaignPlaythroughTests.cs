@@ -43,7 +43,7 @@ namespace Game.Tests.Campaign
             }
             foreach (var id in Kit.D.StepIndex.Order)
                 if (flow.IsUnlocked(s, id) || s.ClearedSteps.Contains(id)) Assert.Contains(id, s.ClearedSteps);
-            Assert.Contains("step06", s.ClearedSteps);
+            Assert.Contains("step12", s.ClearedSteps);
         }
     }
 }
