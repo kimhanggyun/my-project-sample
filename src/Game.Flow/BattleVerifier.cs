@@ -86,6 +86,8 @@ namespace Game.Flow
         public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, TerritoryDefense defense, out BattleReport report)
         {
             report = null;
+            // 출진 시각(시계) 기준 시간 경과: 기기도 출진 직전에 같은 처리를 한다 (부상 회복·부상병 자연 회복, R-61)
+            _flow.Tick(state);
             SortiePlan plan;
             try { plan = _flow.Prepare(state, RequestOf(s, hired, defense)); }
             catch (System.Exception) { return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie }; }

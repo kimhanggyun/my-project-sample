@@ -94,6 +94,36 @@ namespace Game.Flow
             return id;
         }
 
+        /// <summary>
+        /// 편성 한도까지 보충할 인원 (R-61): 기본 편성의 군단마다 장수 한도 − (병력 + 부상병)만큼,
+        /// 칸 id 순서대로 각 부대의 남은 자리까지 나눈다. 부상병도 한도에 넣으므로 자연 회복 뒤에도 한도를 넘지 않는다.
+        /// 실제 보충은 부대마다 징병 행동(<see cref="Conscript"/>)으로 한다 (서버도 같은 행동으로 재현).
+        /// </summary>
+        public List<KeyValuePair<string, long>> RefillPlan(CampaignState state)
+        {
+            var plan = new List<KeyValuePair<string, long>>();
+            foreach (var c in state.Compositions)
+            {
+                var g = state.FindGeneral(c.GeneralId);
+                if (g == null || !_defs.Generals.ContainsKey(g.GeneralId)) continue;
+                long room = TroopCapCalculator.Cap(_defs.Balance, CorpsValidator.EffectiveStat(_defs, g, "leadership"));
+                var slots = new List<string>(c.Slots.Keys);
+                slots.Sort(System.StringComparer.Ordinal);
+                foreach (var key in slots) { var u = state.FindUnit(c.Slots[key]); if (u != null) room -= u.Troops + u.Wounded; }
+                foreach (var key in slots)
+                {
+                    if (room <= 0) break;
+                    var u = state.FindUnit(c.Slots[key]);
+                    if (u == null) continue;
+                    long n = System.Math.Min(room, Room(u));
+                    if (n <= 0) continue;
+                    plan.Add(new KeyValuePair<string, long>(u.UnitId, n));
+                    room -= n;
+                }
+            }
+            return plan;
+        }
+
         public long ConscriptCost(long count) => HealCostCalculator.ConscriptCost(_defs.Balance, count);
         public long RecruitCost(long count) => HealCostCalculator.RecruitCost(_defs.Balance, count);
 

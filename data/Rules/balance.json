@@ -24,7 +24,8 @@
     "woundedRatio": 0.4,
     "healCostRatio": 0.5,
     "conscriptSupplyPerSoldier": 10,
-    "recruitGoldPerSoldier": 2
+    "recruitGoldPerSoldier": 2,
+    "woundedRecoverMinutes": 30
   },
   "hire": {
     "_comment": "고용 (hiring.md). 수치는 예시 (open-values.md). 추천 가격(돈) = 장수: 기본 + 레벨당, 부대: 1명당 기본 + 단계당(1단계 위) + 훈련도 × 계수. 군량으로 받으면 × supplyPerGold. 등록자 보상 = 고용 비용 × 비율. dailyMax = 하루(24시간) 고용 수, cooldownMinutes = 같은 등록을 다시 고용하기까지, recentMax = 이력에 남기는 최근 전투 수",

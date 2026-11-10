@@ -156,6 +156,7 @@ namespace Game.Unity.Screens
         /// <summary>직접 지휘(위임 꺼짐) 또는 위임 출진. 확정할 때 준비를 다시 한다 (시드·위임 여부). 고용 비용도 확정 때 낸다.</summary>
         private void Sortie(StepDef step, bool delegate_)
         {
+            Ctx.Flow.Tick(Ctx.State); // 출진 시각 기준 시간 경과 (서버도 같은 시각으로 맞춘다, R-61)
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(step, delegate_, out var hireError));
             if (hireError != null || !Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new StepScreen(_stepId)); return; }
             Ctx.ClearHires();

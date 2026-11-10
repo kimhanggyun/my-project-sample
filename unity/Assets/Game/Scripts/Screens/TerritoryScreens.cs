@@ -284,6 +284,7 @@ namespace Game.Unity.Screens
 
         private void Sortie(StepDef step, bool delegate_)
         {
+            Ctx.Flow.Tick(Ctx.State); // 출진 시각 기준 시간 경과 (서버도 같은 시각으로 맞춘다, R-61)
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(delegate_));
             if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new TerritorySortieScreen(_regionId, _location, _defense)); return; }
             App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start", !delegate_));

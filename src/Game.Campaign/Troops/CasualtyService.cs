@@ -18,6 +18,24 @@ namespace Game.Campaign.Troops
             return (wounded, dead);
         }
 
+        /// <summary>
+        /// 부상병이 새로 생기면 회복 시각을 지금 + 회복 시간으로 다시 잡는다 (R-61: 부대의 부상병 전부가 그 시각에 함께 돌아온다).
+        /// 회복 시간 0이면 자연 회복 없음.
+        /// </summary>
+        public static void ScheduleRecovery(BalanceData b, UnitState unit, long nowUnixSeconds)
+        {
+            if (unit.Wounded <= 0 || b.WoundedRecoverMinutes <= 0) return;
+            unit.WoundedRecoverAtUnixSeconds = checked(nowUnixSeconds + b.WoundedRecoverMinutes * 60);
+        }
+
+        /// <summary>회복 시각이 지난 부대의 부상병을 전부 병력으로 (R-61). 돌아온 인원.</summary>
+        public static long RecoverDue(UnitState unit, long nowUnixSeconds)
+        {
+            if (unit.Wounded <= 0 || unit.WoundedRecoverAtUnixSeconds <= 0 || nowUnixSeconds < unit.WoundedRecoverAtUnixSeconds) return 0;
+            unit.WoundedRecoverAtUnixSeconds = 0;
+            return Heal(unit, unit.Wounded);
+        }
+
         /// <summary>부상병 치료 → 병력으로 복귀 (비용은 Economy의 HealCostCalculator로 따로 낸다).</summary>
         public static long Heal(UnitState unit, long count)
         {
@@ -25,6 +43,7 @@ namespace Game.Campaign.Troops
             if (count <= 0) return 0;
             unit.Wounded -= count;
             unit.Troops = checked(unit.Troops + count);
+            if (unit.Wounded == 0) unit.WoundedRecoverAtUnixSeconds = 0;
             return count;
         }
     }

@@ -150,10 +150,12 @@ namespace Game.Flow
         public CaptivityService Captivity => new CaptivityService(_defs, _campaignFlags, _time);
         public InjuryService Injuries => new InjuryService(_defs, _campaignFlags, _time);
 
-        /// <summary>시간 경과 처리: 부상 회복, 구출 기한 지난 장수 석방. 화면을 열 때마다 부른다.</summary>
+        /// <summary>시간 경과 처리: 장수 부상 회복, 부상병 자연 회복(R-61), 구출 기한 지난 장수 석방. 화면을 열 때마다 부른다.</summary>
         public void Tick(CampaignState state)
         {
             Injuries.Recover(state);
+            long now = _time.UtcNow.ToUnixTimeSeconds();
+            foreach (var u in state.Units) CasualtyService.RecoverDue(u, now);
             Captivity.ReleaseExpired(state);
         }
 
@@ -395,6 +397,7 @@ namespace Game.Flow
                         var unit = state.FindUnit(ur.UnitId);
                         if (unit == null) continue;
                         var (wounded, dead) = CasualtyService.Apply(b, plan.Setup.Flags, unit, ur.Losses);
+                        if (wounded > 0) CasualtyService.ScheduleRecovery(b, unit, _time.UtcNow.ToUnixTimeSeconds());
                         var before = unit.Cohesion;
                         unit.Cohesion = Cohesion.After(_defs.Campaign, _campaignFlags, unit.Cohesion, report.Won);
                         report.Units.Add(new UnitReport { UnitId = unit.UnitId, Losses = ur.Losses, Wounded = wounded, Dead = dead, CohesionBefore = before, CohesionAfter = unit.Cohesion });

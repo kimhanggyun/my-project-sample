@@ -27,6 +27,8 @@ namespace Game.Data.Rules
         public Fix HealCostRatio { get; private set; }
         public long ConscriptSupplyPerSoldier { get; private set; }
         public long RecruitGoldPerSoldier { get; private set; }
+        /// <summary>부상병 자연 회복까지 걸리는 시간(분, R-61). 마지막으로 부상병이 생긴 때부터. 0이면 자연 회복 없음.</summary>
+        public long WoundedRecoverMinutes { get; private set; }
 
         public Fix HirePriceCapMultiplier { get; private set; }
         public long HireGeneralBasePrice { get; private set; }
@@ -77,6 +79,7 @@ namespace Game.Data.Rules
                 HealCostRatio = JsonUtil.RequireFix(casualty, "healCostRatio", c + ".casualty"),
                 ConscriptSupplyPerSoldier = JsonUtil.RequireLong(casualty, "conscriptSupplyPerSoldier", c + ".casualty"),
                 RecruitGoldPerSoldier = JsonUtil.RequireLong(casualty, "recruitGoldPerSoldier", c + ".casualty"),
+                WoundedRecoverMinutes = JsonUtil.RequireLong(casualty, "woundedRecoverMinutes", c + ".casualty"),
                 HirePriceCapMultiplier = JsonUtil.RequireFix(hire, "priceCapMultiplier", c + ".hire"),
                 HireGeneralBasePrice = JsonUtil.RequireLong(hire, "generalBasePrice", c + ".hire"),
                 HireGeneralPricePerLevel = JsonUtil.RequireLong(hire, "generalPricePerLevel", c + ".hire"),
