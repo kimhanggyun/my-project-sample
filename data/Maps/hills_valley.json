@@ -1,0 +1,69 @@
+{
+  "_comment": "2장: 가운데 길, 양옆 언덕 (언덕 위 궁병·복병)",
+  "id": "hills_valley",
+  "battleType": "field",
+  "legend": {
+    ".": "plain",
+    "R": "road",
+    "h": "hill",
+    "g": "grass"
+  },
+  "rows": [
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "hhhhhh....RRRR....hhhhhh",
+    "hhhhhh....RRRR....hhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhhgg..RRRR..gghhhhhh",
+    "hhhhhh....RRRR....hhhhhh",
+    "hhhhhh....RRRR....hhhhhh",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR..........",
+    "..........RRRR.........."
+  ],
+  "spawns": {
+    "teamA": {
+      "x": 12,
+      "y": 34,
+      "facing": "N"
+    },
+    "teamB": {
+      "x": 12,
+      "y": 6,
+      "facing": "S"
+    }
+  },
+  "retreatEdges": {
+    "teamA": "south",
+    "teamB": "north"
+  }
+}

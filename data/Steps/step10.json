@@ -1,0 +1,149 @@
+{
+  "id": "step10",
+  "nameKey": "step.step10.name",
+  "battleType": "field",
+  "map": "test_ambush",
+  "maxCorps": 3,
+  "maxMinutes": 15,
+  "camp": "camp_north",
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "weather": "clear",
+  "timeOfDay": "night",
+  "contests": {
+    "duel": true,
+    "debate": true
+  },
+  "enemy": [
+    {
+      "id": "enemy_corps_a1",
+      "general": "enemy_general_04",
+      "formation": "arrowhead",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "cavalry",
+          "troops": 4300
+        },
+        {
+          "slot": "center",
+          "troopType": "cavalry",
+          "troops": 4300
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "troops": 4300
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "spearman",
+          "troops": 4300
+        }
+      ],
+      "role": "commander"
+    },
+    {
+      "id": "enemy_corps_a2",
+      "general": "enemy_general_01",
+      "formation": "loose",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "archer",
+          "troops": 4000
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 4000
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "archer",
+          "troops": 4000
+        }
+      ]
+    },
+    {
+      "id": "enemy_reserve_a1",
+      "general": "enemy_general_02",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "spearman",
+          "troops": 3500
+        },
+        {
+          "slot": "center",
+          "troopType": "spearman",
+          "troops": 3500
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "infantry",
+          "troops": 3500
+        }
+      ],
+      "reserve": true
+    }
+  ],
+  "rewards": {
+    "unlockFormations": [],
+    "unlockSkills": [
+      "arrowRain"
+    ],
+    "gold": 1200,
+    "exp": 2300
+  },
+  "events": [
+    {
+      "id": "start",
+      "trigger": {
+        "type": "start"
+      },
+      "actions": [
+        {
+          "type": "dialogue",
+          "key": "dialogue.step10.battle"
+        }
+      ]
+    },
+    {
+      "id": "reserve",
+      "trigger": {
+        "type": "teamTroopsBelow",
+        "team": "enemy",
+        "ratio": 0.6
+      },
+      "actions": [
+        {
+          "type": "reinforce",
+          "corps": "enemy_reserve_a1"
+        },
+        {
+          "type": "dialogue",
+          "key": "dialogue.step10.reinforce",
+          "corps": "enemy_reserve_a1"
+        }
+      ]
+    }
+  ],
+  "balanceTarget": {
+    "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
+    "winRateMin": 0.3,
+    "winRateMax": 0.7
+  }
+}
