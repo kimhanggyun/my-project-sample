@@ -153,6 +153,25 @@ namespace Game.Tests.Battle
             Assert.False(a.Delegated);
         }
 
+        [Fact(DisplayName = "녹화 재생 보기: 안개 끄고 보기면 모든 군단이 보이고, 적군 시점이면 적군 시야로 본다 (전투 결과는 같다)")]
+        public void ReplayViewOptions()
+        {
+            var setup = Step01Manual();
+            var sim = new BattleSimulation(setup);
+            sim.Step();
+            var ally = new BattleControl(sim, StoryFlow.PlayerTeam);
+            var enemyCorps = sim.Context.Corps.First(c => c.Team == StoryFlow.EnemyTeam);
+            Assert.False(ally.Sees(enemyCorps)); // 시작 때는 적이 안개 속
+            var reveal = new BattleControl(sim, StoryFlow.PlayerTeam) { RevealAll = true };
+            Assert.All(sim.Context.Corps, c => Assert.True(reveal.Sees(c)));
+            var enemyView = new BattleControl(sim, StoryFlow.EnemyTeam);
+            Assert.True(enemyView.Sees(enemyCorps));
+            // 보기만 바꾼다: 같은 전투를 끝까지 돌리면 결과가 같다
+            var a = sim.RunToEnd();
+            var b = BattleSimulation.Run(Step01Manual());
+            Assert.Equal(b.StateHash, a.StateHash);
+        }
+
         [Fact(DisplayName = "직접 지휘한 전투도 명령 기록으로 다시 돌리면 같은 결과 (R-29)")]
         public void CommandedBattleReplays()
         {

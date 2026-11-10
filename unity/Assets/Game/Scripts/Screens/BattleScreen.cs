@@ -88,9 +88,32 @@ namespace Game.Unity.Screens
         public BattleScreen(ResumedBattle resumed, bool autoFinish = false) { _plan = resumed.Plan; _resumedSim = resumed.Simulation; _autoFinish = autoFinish; }
         public BattleScreen(ReplayPlayback playback) { _playback = playback; }
 
+        // 녹화 재생 보기 바꾸기 (replay.md 3장): 같은 전투를 이어서, 시점(아군·적군)·안개만 바꿔 다시 그린다
+        private readonly BattleSimulation _replaySim;
+        private readonly string _viewTeam;
+        private readonly bool _revealAll;
+        private BattleScreen(ReplayPlayback playback, BattleSimulation sim, int nextCommand, string viewTeam, bool revealAll, int speedIndex)
+        {
+            _playback = playback;
+            _replaySim = sim;
+            _nextCommand = nextCommand;
+            _viewTeam = viewTeam;
+            _revealAll = revealAll;
+            _speedIndex = speedIndex;
+        }
+
+        private CorpsState FirstOfViewTeam()
+        {
+            foreach (var c in _sim.Context.Corps) if (c.Team == _ctl.Team && c.InBattle) return c;
+            return null;
+        }
+
+        private void ReplayView(string team, bool reveal) =>
+            App.Show(new BattleScreen(_playback, _sim, _nextCommand, team, reveal, _speedIndex));
+
         public override void Build()
         {
-            _sim = _resumedSim ?? new BattleSimulation(Setup);
+            _sim = _resumedSim ?? _replaySim ?? new BattleSimulation(Setup);
             if (!IsReplay && _resumedSim == null)
             {
                 // 가져간 군량을 쓴 세이브를 먼저 남기고, 이어하기 기록을 남긴다 (전투 중 꺼져도 이어서)
@@ -99,7 +122,7 @@ namespace Game.Unity.Screens
             }
             if (_resumedSim != null && !_autoFinish) _paused = true; // 이어 할 때는 멈춘 채로 시작
             var ctx = _sim.Context;
-            _ctl = new BattleControl(_sim, StoryFlow.PlayerTeam);
+            _ctl = new BattleControl(_sim, _viewTeam ?? StoryFlow.PlayerTeam) { RevealAll = _revealAll };
             _ctl.Refresh();
             _tickSeconds = (float)ctx.Combat.TickSeconds.ToDisplayDouble();
             _speech = new SpeechPlanner(ctx.Defs, ctx.Flags, ctx.Combat.TickSeconds,
@@ -113,6 +136,13 @@ namespace Game.Unity.Screens
             Ui.Size(_clock, flexibleWidth: 2);
             _pauseButton = Ui.Button(top, "", TogglePause, TopHeight, fontSize: 28);
             _speedButton = Ui.Button(top, "", NextSpeed, TopHeight, fontSize: 28);
+            if (IsReplay)
+            {
+                // 시점 전환·안개 끄기 (녹화 재생만, 전투 결과에는 영향 없음)
+                bool enemyView = _ctl.Team != StoryFlow.PlayerTeam;
+                Ui.Button(top, T(enemyView ? "ui.replay.viewAlly" : "ui.replay.viewEnemy"), () => ReplayView(enemyView ? StoryFlow.PlayerTeam : StoryFlow.EnemyTeam, _revealAll), TopHeight, fontSize: 26);
+                Ui.Button(top, T(_revealAll ? "ui.replay.fogOn" : "ui.replay.fogOff"), () => ReplayView(_ctl.Team, !_revealAll), TopHeight, fontSize: 26);
+            }
             Ui.Button(top, T(IsReplay ? "ui.replay.stop" : "ui.battle.skip"), IsReplay ? (System.Action)(() => App.Show(new ReplayListScreen())) : SkipToEnd, TopHeight, fontSize: 28);
 
             // ② 전장 (3D 카메라가 이 영역에 그린다. 위에 깔린 투명 판이 누름·끌기·확대를 받는다)
@@ -199,8 +229,8 @@ namespace Game.Unity.Screens
                 Ui.Size(Ui.Label(Root, T("ui.replay.playing"), 26, TextAnchor.MiddleCenter, Palette.TextDim), 48);
             }
 
-            if (_resumedSim != null) _logRead = _sim.Context.Log.Count; // 이어 할 때 지난 알림은 다시 띄우지 않는다
-            _field.LookAt(_ctl.Selected);
+            if (_resumedSim != null || _replaySim != null) _logRead = _sim.Context.Log.Count; // 이어 볼 때 지난 알림은 다시 띄우지 않는다
+            _field.LookAt(_ctl.Selected ?? FirstOfViewTeam()); // 적군 시점이면 고른 군단이 없어 그 팀 첫 군단으로
             ReadNewEvents();
             Refresh();
         }
@@ -366,7 +396,7 @@ namespace Game.Unity.Screens
                     _promptText.text = T("ui.cmd.coordinatePrompt", GeneralOf(corps));
                     _prompt.gameObject.SetActive(true);
                 }
-                if (e.Kind == EventKinds.SkillUsed && corps != null && _sim.Context.IsVisibleTo(_ctl.Team, corps))
+                if (e.Kind == EventKinds.SkillUsed && corps != null && _ctl.Sees(corps))
                     _field.Effects.SkillUsed(_field.ToWorld(corps.Anchor), corps.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
                 if (e.Kind == EventKinds.Dialogue) { Add(who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; }
                 var sp = _speech.Feed(e);
@@ -466,7 +496,7 @@ namespace Game.Unity.Screens
             foreach (var kv in _flagLabels)
             {
                 var c = kv.Key;
-                bool shown = c.InBattle && ctx.IsVisibleTo(_ctl.Team, c);
+                bool shown = c.InBattle && _ctl.Sees(c);
                 Vector3 sp = shown ? cam.WorldToScreenPoint(_field.ToWorld(c.Anchor) + Vector3.up * 2.2f) : Vector3.zero;
                 shown = shown && sp.z > 0 && cam.pixelRect.Contains(sp);
                 kv.Value.gameObject.SetActive(shown);

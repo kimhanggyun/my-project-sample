@@ -615,5 +615,9 @@
   "timeOfDay.day": "낮",
   "timeOfDay.dusk": "저녁",
   "timeOfDay.night": "밤",
-  "battleType.naval": "수전"
+  "battleType.naval": "수전",
+  "ui.replay.viewEnemy": "적군 시점",
+  "ui.replay.viewAlly": "아군 시점",
+  "ui.replay.fogOff": "안개 끄기",
+  "ui.replay.fogOn": "안개 켜기"
 }

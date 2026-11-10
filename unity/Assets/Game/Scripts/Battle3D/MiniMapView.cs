@@ -50,7 +50,7 @@ namespace Game.Unity.Battle3D
             foreach (var kv in _dots)
             {
                 var c = kv.Key;
-                bool shown = c.InBattle && ctx.IsVisibleTo(_ctl.Team, c);
+                bool shown = c.InBattle && _ctl.Sees(c);
                 kv.Value.gameObject.SetActive(shown);
                 if (shown) kv.Value.rectTransform.anchoredPosition = Local(_field.ToWorld(c.Anchor));
             }
