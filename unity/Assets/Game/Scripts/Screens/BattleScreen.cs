@@ -234,6 +234,12 @@ namespace Game.Unity.Screens
             _field.LookAt(_ctl.Selected ?? FirstOfViewTeam()); // 적군 시점이면 고른 군단이 없어 그 팀 첫 군단으로
             ReadNewEvents();
             Refresh();
+            // 처음 안내 (R-62): 직접 지휘할 때만, 읽는 동안 멈춘다
+            if (!IsReplay && !_autoFinish && !_paused && GuideOverlay.Show(App, Root, "screen.battle", () => { _paused = false; _dirty = true; }, "ui.guide.continue"))
+            {
+                _paused = true;
+                _dirty = true;
+            }
         }
 
         public override void Close()

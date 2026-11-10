@@ -115,6 +115,7 @@ namespace Game.Unity.Screens
             var delegated = Ui.Button(row, T("ui.step.delegateSortie"), () => Sortie(step, true));
             Ui.SetEnabled(direct, plan.Ok && hireError == null);
             Ui.SetEnabled(delegated, plan.Ok && hireError == null);
+            GuideOverlay.Show(App, Root, "screen.step"); // 처음 안내 (R-62)
         }
 
         /// <summary>출진 요청: 고른 고용이 있으면 그 편성(사본)과 고용을 싣는다.</summary>

@@ -507,6 +507,9 @@ namespace Game.Online
         public const string GeneralLimitBreak = "general.limitBreak";
         /// <summary>연습 대결 (GeneralId·ContestId·OpponentId·Seed·Choices, R-59): 서버가 같은 시드·선택으로 다시 돌려 전적·보상을 반영한다.</summary>
         public const string ContestPractice = "contest.practice";
+        /// <summary>처음 안내를 봤다 (GuideId, R-62). guide.reset은 본 기록을 모두 지운다 (설정의 "안내 다시 보기").</summary>
+        public const string GuideSeen = "guide.seen";
+        public const string GuideReset = "guide.reset";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>
@@ -545,6 +548,8 @@ namespace Game.Online
         public string ContestId { get; set; }
         public string OpponentId { get; set; }
         public List<string> Choices { get; set; }
+        /// <summary>처음 안내 id (R-62).</summary>
+        public string GuideId { get; set; }
         /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
         public long DoneAtUnixSeconds { get; set; }
     }

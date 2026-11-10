@@ -100,6 +100,7 @@ namespace Game.Unity.Screens
             var root = Ui.Panel(_content, tab.Id);
             ITabView view = tab.Status == MainTabEntry.Active && Views.TryGetValue(tab.Id, out var make) ? make() : new ComingSoonTabView(tab);
             view.Build(App, root);
+            if (tab.Status == MainTabEntry.Active) GuideOverlay.Show(App, Root, "tab." + tab.Id); // 처음 안내 (R-62)
         }
     }
 

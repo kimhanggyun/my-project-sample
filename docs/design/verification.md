@@ -194,6 +194,7 @@
 | R-59 | **연습 대결**: 장수·대결·상대·시드·내 선택 차례로 다시 돌려 같은 결과. 결과(승/패/물러남/무)를 전투 대결과 같은 전적에 더하고 같은 성장 보상 (일기토 99승에서 1승 → 무력 +1), 결과별 경험치(승 30 …). 선택이 모자라거나·남거나·그 라운드에 고를 수 없거나(기운 0에서 필살), 없는 상대·장수면 반영하지 않음. 하루 상한 dailyLimit (0 = 없음), 날이 바뀌면 다시 0 | [content/general-growth.md](content/general-growth.md) 2.4 |
 | R-60 | **진군·후퇴 (명령 = 행위)**: 진군·전군 진군 = 군단마다 지금 가로 위치 그대로 우리 진영의 앞 방향으로 곧게 (전장 끝까지, 공격 이동). 후퇴 = 뒤로 곧게 fallBackCells(8)칸 강행 이동, 군단은 전장에 남고 계속 명령 가능 (다시 진군하면 앞으로). 퇴각(이탈)은 따로: 전장을 떠남 | [content/battle.md](content/battle.md) 4.3.2 |
 | R-61 | **부상병 자연 회복·보충**: 부대에 부상병이 새로 생기면 회복 시각 = 지금 + woundedRecoverMinutes(30분, 0이면 자연 회복 없음). 시각이 지나면 그 부대의 부상병 전부가 병력으로 (새 부상이 생기면 시각을 다시 잡는다). 치료로 부상병이 0이 되면 시각도 지운다. 시간 경과 처리는 화면을 열 때와 출진 직전(기기), 전투 검증 직전(서버, 출진 시각 기준)에 한다. 편성 한도까지 보충 = 기본 편성의 군단마다 장수 한도 − (병력 + 부상병)을 칸 id 순서로 부대 자리까지 나눠 징병 (부대마다 징병 행동) | [content/battle.md](content/battle.md) 2.4.4 |
+| R-62 | **처음 안내**: 안내 = id·자리(place)·문장 키들 (`Rules/guides.json`, id 겹침·빈 문장은 읽을 때 거절). 화면이 자리 id로 물으면 아직 안 본 첫 안내. 다 읽고 닫으면 행동 `guide.seen`(GuideId): 없는 안내이거나 이미 봤으면 거절. `guide.reset`은 본 기록을 모두 지운다 (지울 것이 없으면 거절). 본 기록은 세이브(SeenGuides)에 남는다 | [content/story.md](content/story.md) 7장 |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
 | R-37 | **협공 대기**: 같은 팀에서 협공 대기 중이거나 예약에 협공 대기가 있는 군단이 모두 협공 대기에 들어서면 함께 공격 (정한 적 또는 진군). 혼자 `coordinateWaitSec` 기다리면 한 번 묻고, `coordinateResponseSec`가 더 지나면 단독 공격. 다시 협공 대기를 내리면 시간을 다시 센다 | [battle.md](content/battle.md) 4.3.4 |
@@ -229,7 +230,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`, 전투 이어하기(R-55)는 `BattleResumeTests.cs`, 규율·용맹(R-56)은 `tests/Game.Tests/Battle/DisciplineValorTests.cs`, 한계 돌파(R-57)는 `GachaTests.cs`, 병종 태그 효과(R-58)는 `tests/Game.Tests/Battle/TagEffectTests.cs`, 연습 대결(R-59)은 `PracticeTests.cs`, 진군·후퇴(R-60)는 `BattleControlTests.cs`, 부상병 자연 회복·보충(R-61)은 `WoundedRecoveryTests.cs`·`CampaignPlaythroughTests.cs`(새 게임 위임 출진 + 회복·보충으로 모든 스텝 클리어).
+- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`, 전투 이어하기(R-55)는 `BattleResumeTests.cs`, 규율·용맹(R-56)은 `tests/Game.Tests/Battle/DisciplineValorTests.cs`, 한계 돌파(R-57)는 `GachaTests.cs`, 병종 태그 효과(R-58)는 `tests/Game.Tests/Battle/TagEffectTests.cs`, 연습 대결(R-59)은 `PracticeTests.cs`, 진군·후퇴(R-60)는 `BattleControlTests.cs`, 부상병 자연 회복·보충(R-61)은 `WoundedRecoveryTests.cs`·`CampaignPlaythroughTests.cs`(새 게임 위임 출진 + 회복·보충으로 모든 스텝 클리어), 처음 안내(R-62)는 `GuideTests.cs`.
 - 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, 연합(R-49, R-50)은 `Campaign/AllianceTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
@@ -286,3 +287,4 @@
 | v1.26 | 2026-11-10 | R-59 연습 대결 추가 |
 | v1.27 | 2026-11-10 | R-60 진군·후퇴를 행위 그대로 (직진·뒤로 곧게), 퇴각(이탈) 분리 |
 | v1.28 | 2026-11-10 | R-61 부상병 자연 회복·편성 한도까지 보충 추가 |
+| v1.29 | 2026-11-10 | R-62 처음 안내 추가 |
