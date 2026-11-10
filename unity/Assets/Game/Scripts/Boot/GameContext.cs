@@ -47,6 +47,8 @@ namespace Game.Unity.Boot
         }
 
         public IAuthService Auth { get; private set; }
+        private ServiceRegistry _services;
+        private ServiceConfig _serviceConfig;
         /// <summary>앱 시작 순서 (Ui/startup.json)와 기기에 남긴 시작 기록 (약관 판·로그인 수단).</summary>
         public StartupFlow Startup { get; private set; }
         public StartupRecord StartupRecord { get; private set; } = new StartupRecord();
@@ -108,6 +110,8 @@ namespace Game.Unity.Boot
             // 실제 SDK 구현은 여기서 reg.Register(...)로 더한다 (설정에서 이름으로 고른다).
             if (deviceLocation != null) reg.Register(ServiceIds.Location, Game.Unity.Online.UnityLocationService.ImplName, deviceLocation);
             c.Auth = reg.Create<IAuthService>(ServiceIds.Auth, cfg);
+            c._services = reg;
+            c._serviceConfig = cfg;
             c.Store = reg.Create<IStoreService>(ServiceIds.Store, cfg);
             c.RewardedAd = reg.Create<IRewardedAdService>(ServiceIds.RewardedAd, cfg);
             c.BannerAd = reg.Create<IBannerAdService>(ServiceIds.BannerAd, cfg);
@@ -116,7 +120,7 @@ namespace Game.Unity.Boot
             try { c.Territory = data.Exists(Game.Territory.TerritoryDefs.File) ? Game.Territory.TerritoryDefs.Load(data) : null; }
             catch (Exception e) { Debug.LogWarning("영토 데이터를 읽지 못해 영토 탭을 잠급니다: " + e.Message); c.Territory = null; }
             var shown = new Dictionary<string, string>();
-            foreach (var id in new[] { ServiceIds.Auth, ServiceIds.Store, ServiceIds.RewardedAd, ServiceIds.BannerAd, ServiceIds.Location }) shown[id] = cfg.ChoiceFor(id);
+            foreach (var id in new[] { ServiceIds.Auth, ServiceIds.AuthFor(ServiceIds.SignInGoogle), ServiceIds.AuthFor(ServiceIds.SignInApple), ServiceIds.Store, ServiceIds.RewardedAd, ServiceIds.BannerAd, ServiceIds.Location }) shown[id] = cfg.ChoiceFor(id);
             shown[OnlineConfig.Key] = cfg.ChoiceFor(OnlineConfig.Key);
             c.ServiceChoices = shown;
 
@@ -209,11 +213,11 @@ namespace Game.Unity.Boot
         /// </summary>
         public bool Do(PlayerAction action)
         {
+            if (action.DoneAtUnixSeconds <= 0) action.DoneAtUnixSeconds = Clock.UtcNow.ToUnixTimeSeconds(); // 기간 계산(광고 제거 등)도 이 시각으로
             if (!Actions.Apply(State, action)) return false;
             Save();
             if (OnlineEnabled)
             {
-                action.DoneAtUnixSeconds = Clock.UtcNow.ToUnixTimeSeconds();
                 Link.Journal.Add(new JournalEntry { Action = action });
                 WriteLink();
                 Flush(null);
@@ -331,9 +335,13 @@ namespace Game.Unity.Boot
         {
             var option = Startup.SignInOptions.Find(o => o.Id == method);
             if (option == null || !option.IsActive) { done?.Invoke(false); return; }
-            Auth.SignInAutomatically(ok =>
+            // 방식마다 서비스 auth.<방식> (게스트는 auth). 설정에서 off면 로그인 실패 (막아 둔 방식)
+            IAuthService provider;
+            try { provider = method == "guest" ? Auth : _services.Create<IAuthService>(ServiceIds.AuthFor(method), _serviceConfig); }
+            catch (Exception e) { Debug.LogWarning("로그인 방식 '" + method + "': " + e.Message); done?.Invoke(false); return; }
+            provider.SignInAutomatically(ok =>
             {
-                if (ok) { StartupRecord.SignInMethod = method; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
+                if (ok) { Auth = provider; StartupRecord.SignInMethod = method; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
                 done?.Invoke(ok);
             });
         }

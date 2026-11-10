@@ -1,17 +1,19 @@
 {
-  "_comment": "상점 상품. 편의 기능이 아니면 playPaths(플레이로 얻는 경로)가 있어야 한다 (verification R-30).",
+  "_comment": "상점 상품. 편의 기능이 아니면 playPaths(플레이로 얻는 경로)가 있어야 한다 (verification R-30). priceKRW가 있는 것만 상점에 나온다. priceKRW·grants는 **임시 테스트 값** (2026-11-10 사용자 결정: 테스트 먼저, 가격은 나중에, open-values.md). grants = 받는 자원, adFreeDays = 배너 광고 제거 기간 (0 = 영구). 결제 영수증은 서버가 검증한다 (R-64)",
   "products": [
     {
       "id": "remove_banner_permanent",
       "kind": "adRemoval",
       "convenience": true,
-      "priceKRW": 5000
+      "priceKRW": 5000,
+      "adFreeDays": 0
     },
     {
       "id": "remove_banner_30d",
       "kind": "adRemoval",
       "convenience": true,
-      "priceKRW": 1000
+      "priceKRW": 1000,
+      "adFreeDays": 30
     },
     {
       "id": "supply_pack_small",
@@ -20,7 +22,11 @@
         "battleCapture",
         "depot",
         "adReward"
-      ]
+      ],
+      "priceKRW": 1200,
+      "grants": {
+        "supply": 300000
+      }
     },
     {
       "id": "gold_pack_small",
@@ -29,7 +35,11 @@
         "reward",
         "releaseReward",
         "hireIncome"
-      ]
+      ],
+      "priceKRW": 1200,
+      "grants": {
+        "gold": 1000
+      }
     },
     {
       "id": "gem_pack_small",
@@ -38,7 +48,11 @@
         "reward",
         "secretReward",
         "event"
-      ]
+      ],
+      "priceKRW": 1200,
+      "grants": {
+        "gem": 100
+      }
     },
     {
       "id": "skill_book",

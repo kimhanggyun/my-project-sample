@@ -33,6 +33,7 @@ namespace Game.Unity.Screens
             { "practice", () => new PracticeTabView() },
             { "care", () => new TroopCareTabView() },
             { "formationDrag", () => new FormationDragTabView() },
+            { "shop", () => new ShopTabView() },
             { "gacha", () => new ScreenTabView(() => new GachaScreen()) },
             { "codex", () => new ScreenTabView(() => new CodexScreen()) },
             { "replay", () => new ScreenTabView(() => new ReplayListScreen()) },

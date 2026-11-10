@@ -54,6 +54,8 @@ namespace Game.Flow
             Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
             var practice = new PracticeService(defs);
             Register(new Handler(ActionKinds.ContestPractice, (s, a) => practice.Apply(s, a) != null));
+            var shop = new PurchaseService(defs);
+            Register(new Handler(ActionKinds.StorePurchase, (s, a) => shop.Apply(s, a)));
             var guides = new GuideService(defs);
             Register(new Handler(ActionKinds.GuideSeen, (s, a) => guides.MarkSeen(s, a.GuideId)));
             Register(new Handler(ActionKinds.GuideReset, (s, a) => guides.Reset(s)));
@@ -134,6 +136,7 @@ namespace Game.Flow
         public static PlayerAction Recruit(string unitId, long count) => new PlayerAction { Kind = ActionKinds.UnitRecruit, UnitId = unitId, Count = count };
         public static PlayerAction Heal(string unitId, long count, string payWith) => new PlayerAction { Kind = ActionKinds.UnitHeal, UnitId = unitId, Count = count, PayWith = payWith };
         public static PlayerAction CreateUnit(string troopType) => new PlayerAction { Kind = ActionKinds.UnitCreate, TroopType = troopType };
+        public static PlayerAction Purchase(string productId, string receipt) => new PlayerAction { Kind = ActionKinds.StorePurchase, ProductId = productId, Receipt = receipt };
         public static PlayerAction SeeGuide(string guideId) => new PlayerAction { Kind = ActionKinds.GuideSeen, GuideId = guideId };
         public static PlayerAction ResetGuides() => new PlayerAction { Kind = ActionKinds.GuideReset };
         public static PlayerAction DisbandUnit(string unitId) => new PlayerAction { Kind = ActionKinds.UnitDisband, UnitId = unitId };

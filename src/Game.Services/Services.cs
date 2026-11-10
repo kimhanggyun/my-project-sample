@@ -27,6 +27,31 @@ namespace Game.Services
         }
     }
 
+    /// <summary>로그인 방식이 꺼져 있을 때 (실제 SDK 연결 전·막아 둔 방식): 로그인은 늘 실패.</summary>
+    public sealed class OffAuthService : IAuthService
+    {
+        public bool IsSignedIn => false;
+        public string AccountId => null;
+        public bool IsGuest => false;
+        public void SignInAutomatically(Action<bool> done) => done?.Invoke(false);
+    }
+
+    /// <summary>개발용 가짜 외부 로그인 (구글·애플 SDK 연결 전 흐름 확인): 늘 성공, 계정 = "방식-fake-local".</summary>
+    public sealed class FakeProviderAuthService : IAuthService
+    {
+        private readonly string _provider;
+        public FakeProviderAuthService(string provider) { _provider = provider; }
+        public bool IsSignedIn { get; private set; }
+        public string AccountId { get; private set; }
+        public bool IsGuest => false;
+        public void SignInAutomatically(Action<bool> done)
+        {
+            IsSignedIn = true;
+            AccountId = _provider + "-fake-local";
+            done?.Invoke(true);
+        }
+    }
+
     public enum PurchaseOutcome { Succeeded, Cancelled, Unavailable, Failed }
 
     public interface IStoreService

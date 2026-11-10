@@ -1,6 +1,9 @@
 {
   "_comment": "개발 빌드 외부 서비스 설정. 규칙 스위치와 별개 (docs/dev-rules.md 4장).",
   "auth": "fake",
+  "_authMethods": "로그인 방식별: auth.google / auth.apple = off(막음) / fake(개발용 가짜) / 실제 SDK 구현 이름 (백엔드 정한 뒤). 애플은 사용자 결정으로 잠시 막음 (startup.json도 tobe)",
+  "auth.google": "fake",
+  "auth.apple": "off",
   "store": "fake",
   "rewardedAd": "fake",
   "bannerAd": "off",

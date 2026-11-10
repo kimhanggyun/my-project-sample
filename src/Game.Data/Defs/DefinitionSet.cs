@@ -151,7 +151,20 @@ namespace Game.Data.Defs
                     Kind = JsonUtil.RequireString(pr, "kind", "products"),
                     Convenience = pr.Value<bool?>("convenience") ?? false,
                     PlayPaths = JsonUtil.StringList(pr, "playPaths"),
+                    PriceKrw = pr.Value<long?>("priceKRW"),
+                    AdFreeDays = pr.Value<int?>("adFreeDays"),
                 };
+                if (pr["grants"] is JObject grants)
+                {
+                    var g = new Dictionary<string, long>();
+                    foreach (var kv in grants.Properties())
+                    {
+                        long amount = kv.Value.Value<long>();
+                        if (amount <= 0) throw new DataException($"products.json '{def.Id}': grants.{kv.Name}는 0보다 커야 합니다.");
+                        g[kv.Name] = amount;
+                    }
+                    def.Grants = g;
+                }
                 AddUnique(products, def.Id, def, "products.json");
             }
             set.Products = products;

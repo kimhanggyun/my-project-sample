@@ -110,6 +110,12 @@ namespace Game.Data.Defs
         /// <summary>편의 기능(광고 제거 등)은 결제로만 얻어도 된다.</summary>
         public bool Convenience { get; internal set; }
         public IReadOnlyList<string> PlayPaths { get; internal set; }
+        /// <summary>원화 가격 (지금은 임시 테스트 값). 없으면 상점에 나오지 않는다.</summary>
+        public long? PriceKrw { get; internal set; }
+        /// <summary>받는 자원 (자원 id → 양).</summary>
+        public IReadOnlyDictionary<string, long> Grants { get; internal set; } = new Dictionary<string, long>();
+        /// <summary>배너 광고 제거 기간 (일, 0 = 영구). 광고 제거 상품이 아니면 null.</summary>
+        public int? AdFreeDays { get; internal set; }
     }
 
     public static class SlotIds
