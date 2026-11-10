@@ -625,5 +625,18 @@
   "ui.generals.stats": "통솔 {0} · 무력 {1} · 지략 {2}",
   "ui.step.allies": "아군 편성",
   "ui.step.allyLine": "{0}  {1}  병력 {2}",
-  "ui.result.noLossUnits": "손실 없는 부대 {0}개"
+  "ui.result.noLossUnits": "손실 없는 부대 {0}개",
+  "ui.tab.gacha": "장수 모집",
+  "ui.tab.codex": "도감",
+  "ui.tab.replay": "녹화",
+  "ui.tab.mail": "우편",
+  "ui.tab.alliance": "연합",
+  "ui.tab.settings": "설정",
+  "ui.settings.server": "서버 연결 (개발용)",
+  "ui.settings.serverNow": "지금: {0}",
+  "ui.settings.mode.off": "끔",
+  "ui.settings.mode.fake": "기기 안 가짜 서버",
+  "ui.settings.mode.http": "주소의 서버",
+  "ui.settings.serverNote": "PC 테스트 서버에 붙이려면 위 칸에 http://(PC 주소):5000 을 넣고 [주소의 서버]. 누르면 처음부터 다시 시작합니다.",
+  "ui.settings.serverBadUrl": "주소는 http:// 또는 https:// 로 시작해야 합니다."
 }

@@ -29,6 +29,13 @@ namespace Game.Unity.Screens
             { "hiring", () => new HiringTabView() },
             { "troop", () => new TroopGrowthTabView() },
             { "territory", () => new TerritoryTabView() },
+            // 따로 열던 화면도 탭으로 (나중에 필요 없는 탭은 mainTabs.json에서 hidden으로)
+            { "gacha", () => new ScreenTabView(() => new GachaScreen()) },
+            { "codex", () => new ScreenTabView(() => new CodexScreen()) },
+            { "replay", () => new ScreenTabView(() => new ReplayListScreen()) },
+            { "mail", () => new ScreenTabView(() => new MailScreen()) },
+            { "alliance", () => new ScreenTabView(() => new AllianceScreen()) },
+            { "settings", () => new ScreenTabView(() => new SettingsScreen()) },
         };
 
         private readonly string _initial;
@@ -98,6 +105,20 @@ namespace Game.Unity.Screens
     public interface ITabView
     {
         void Build(GameApp app, RectTransform root);
+    }
+
+    /// <summary>원래 한 화면이던 것(모집·도감·녹화·우편·연합·설정)을 탭 안에 그린다. 화면의 버튼으로 다른 화면을 열면 그 화면으로 넘어간다.</summary>
+    public sealed class ScreenTabView : ITabView
+    {
+        private readonly System.Func<GameScreen> _make;
+        public ScreenTabView(System.Func<GameScreen> make) { _make = make; }
+
+        public void Build(GameApp app, RectTransform root)
+        {
+            var screen = _make();
+            screen.Attach(app, root);
+            screen.Build();
+        }
     }
 
     /// <summary>준비 중인 탭 (main-screen.md 2장: TO-BE 탭은 자리를 두고 "준비 중" 화면).</summary>
