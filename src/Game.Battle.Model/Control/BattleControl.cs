@@ -123,15 +123,45 @@ namespace Game.Battle.Model.Control
         // ---- 버튼 명령 ----
 
         /// <summary>전군 진군 (하단 고정 버튼, 4.3.2): 지휘 가능한 모든 군단. 받은 군단 수.</summary>
+        /// <summary>
+        /// 전군 진군 (R-60): 군단마다 자기 줄을 지키며 우리 진영의 앞 방향으로 곧게 (전장 끝까지, 공격 이동: 가는 길의 적과 싸운다).
+        /// 가장 가까운 적으로 모이지 않는다.
+        /// </summary>
         public int AdvanceAll()
         {
             int n = 0;
             foreach (var c in OwnCorps())
-                if (CanCommand(c) && Issue(c, CommandKinds.Advance)) n++;
+                if (CanCommand(c) && Straight(c, Forward(c), Fix.FromInt(Context.Field.Width + Context.Field.Height), MoveModes.AttackMove)) n++;
             return n;
         }
 
-        public bool Advance() => Issue(Selected, CommandKinds.Advance);
+        /// <summary>진군 (R-60): 고른 군단이 앞으로 곧게 (공격 이동).</summary>
+        public bool Advance() => CanCommand(Selected) && Straight(Selected, Forward(Selected), Fix.FromInt(Context.Field.Width + Context.Field.Height), MoveModes.AttackMove);
+
+        /// <summary>
+        /// 후퇴 (R-60): 고른 군단이 뒤로 곧게 fallBackCells칸 (강행: 멈추지 않는다). 전장을 떠나는 퇴각(<see cref="Retreat"/>)과 달리
+        /// 계속 명령할 수 있어 다시 진군하면 앞으로 나간다 (위장 후퇴로 끌어들이기).
+        /// </summary>
+        public bool FallBack() => CanCommand(Selected) && Straight(Selected, Vec.Zero - Forward(Selected), Context.Combat.FallBackCells, MoveModes.Forced);
+
+        /// <summary>우리 진영의 앞 방향 (출발 위치의 방향). 군단이 몸을 돌려도 바뀌지 않는다.</summary>
+        private Vec Forward(CorpsState c)
+        {
+            string f = c.Setup.Facing;
+            if (f == null && Context.Setup.Map.Spawns.TryGetValue(c.Team, out var spawn)) f = spawn.Facing;
+            return Facing.Parse(f ?? "N");
+        }
+
+        /// <summary>지금 위치에서 dir로 cells칸 (전장 안으로 자름). 지금 자리와 같아지면(벽에 붙음) 명령하지 않는다.</summary>
+        private bool Straight(CorpsState c, Vec dir, Fix cells, string mode)
+        {
+            var f = Context.Field;
+            var p = c.Anchor + dir * cells;
+            var half = Fix.FromRatio(1, 2);
+            p = new Vec(Fix.Clamp(p.X, half, Fix.FromInt(f.Width) - half), Fix.Clamp(p.Y, half, Fix.FromInt(f.Height) - half));
+            if (p.X == c.Anchor.X && p.Y == c.Anchor.Y) return false;
+            return Issue(c, CommandKinds.MoveTo, cmd => { cmd.X = p.X; cmd.Y = p.Y; cmd.Mode = mode; cmd.Queued = Queueing; });
+        }
         public bool Hold() => Issue(Selected, CommandKinds.Hold);
 
         /// <summary>휴식 (사기·책략 회복이 빠름, 싸우면 깨짐). 예약 모드면 예약.</summary>

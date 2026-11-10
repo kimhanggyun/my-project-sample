@@ -51,6 +51,8 @@ namespace Game.Data.Defs
         /// <summary>협공 대기: 이만큼 기다리면 한 번 묻고, 응답 시간이 더 지나면 단독 공격 (4.3.4).</summary>
         public Fix CoordinateWaitSec { get; private set; }
         public Fix CoordinateResponseSec { get; private set; }
+        /// <summary>후퇴 한 번에 뒤로 물러나는 칸 (R-60).</summary>
+        public Fix FallBackCells { get; private set; }
         public Fix FlankPp { get; private set; }
         public Fix RearPp { get; private set; }
         public Fix FrontDot { get; private set; }
@@ -236,6 +238,7 @@ namespace Game.Data.Defs
                 RestSkillPointMultiplier = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restSkillPointMultiplier", Fix.FromInt(2), c + ".orders"),
                 CoordinateWaitSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateWaitSec", Fix.FromInt(30), c + ".orders"),
                 CoordinateResponseSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateResponseSec", Fix.FromInt(10), c + ".orders"),
+                FallBackCells = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "fallBackCells", Fix.FromInt(8), c + ".orders"),
                 FlankPp = JsonUtil.RequireFix(dir, "flankPp", c + ".direction"),
                 RearPp = JsonUtil.RequireFix(dir, "rearPp", c + ".direction"),
                 FrontDot = JsonUtil.RequireFix(dir, "frontDot", c + ".direction"),
