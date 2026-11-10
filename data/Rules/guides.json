@@ -1,0 +1,62 @@
+{
+  "_comment": "처음 안내 (R-62, story.md 7장). place = 화면 자리 id (tab.<탭 id>, screen.step, screen.battle). lines = 문자열 키. 한 자리에 여러 안내가 있으면 차례로 하나씩. 지금은 임시 문장",
+  "guides": [
+    {
+      "id": "welcome",
+      "place": "tab.story",
+      "lines": [
+        "guide.welcome.1",
+        "guide.welcome.2",
+        "guide.welcome.3"
+      ]
+    },
+    {
+      "id": "step",
+      "place": "screen.step",
+      "lines": [
+        "guide.step.1",
+        "guide.step.2"
+      ]
+    },
+    {
+      "id": "battle",
+      "place": "screen.battle",
+      "lines": [
+        "guide.battle.1",
+        "guide.battle.2",
+        "guide.battle.3",
+        "guide.battle.4"
+      ]
+    },
+    {
+      "id": "formation",
+      "place": "tab.formation",
+      "lines": [
+        "guide.formation.1",
+        "guide.formation.2"
+      ]
+    },
+    {
+      "id": "care",
+      "place": "tab.care",
+      "lines": [
+        "guide.care.1",
+        "guide.care.2"
+      ]
+    },
+    {
+      "id": "general",
+      "place": "tab.general",
+      "lines": [
+        "guide.general.1"
+      ]
+    },
+    {
+      "id": "practice",
+      "place": "tab.practice",
+      "lines": [
+        "guide.practice.1"
+      ]
+    }
+  ]
+}

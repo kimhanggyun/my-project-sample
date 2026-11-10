@@ -35,6 +35,8 @@ namespace Game.Campaign
         /// <summary>연습 대결 횟수를 센 날 (서버 시각 unix 일)과 그날 횟수 (R-59). 예전 세이브는 0.</summary>
         public long PracticeDay { get; set; }
         public int PracticeCount { get; set; }
+        /// <summary>본 처음 안내 id (R-62). 세이브에 남아 서버·다른 기기에서도 다시 나오지 않는다.</summary>
+        public List<string> SeenGuides { get; set; } = new List<string>();
 
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);
