@@ -1,12 +1,70 @@
 {
-  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). 순서대로 표시, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 가로 스크롤.",
+  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). 순서대로 표시, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 가로 스크롤. 지금은 확인용으로 모든 컨텐츠를 탭에 둔다 (필요 없는 탭은 나중에 hidden).",
   "tabs": [
-    { "id": "story", "nameKey": "ui.tab.story", "status": "active" },
-    { "id": "general", "nameKey": "ui.tab.general", "status": "active" },
-    { "id": "troop", "nameKey": "ui.tab.troop", "status": "active" },
-    { "id": "formation", "nameKey": "ui.tab.formation", "status": "active" },
-    { "id": "territory", "nameKey": "ui.tab.territory", "status": "active" },
-    { "id": "hiring", "nameKey": "ui.tab.hiring", "status": "active" },
-    { "id": "pvp", "nameKey": "ui.tab.pvp", "status": "tobe" }
+    {
+      "id": "story",
+      "nameKey": "ui.tab.story",
+      "status": "active"
+    },
+    {
+      "id": "general",
+      "nameKey": "ui.tab.general",
+      "status": "active"
+    },
+    {
+      "id": "troop",
+      "nameKey": "ui.tab.troop",
+      "status": "active"
+    },
+    {
+      "id": "formation",
+      "nameKey": "ui.tab.formation",
+      "status": "active"
+    },
+    {
+      "id": "territory",
+      "nameKey": "ui.tab.territory",
+      "status": "active"
+    },
+    {
+      "id": "hiring",
+      "nameKey": "ui.tab.hiring",
+      "status": "active"
+    },
+    {
+      "id": "gacha",
+      "nameKey": "ui.tab.gacha",
+      "status": "active"
+    },
+    {
+      "id": "codex",
+      "nameKey": "ui.tab.codex",
+      "status": "active"
+    },
+    {
+      "id": "replay",
+      "nameKey": "ui.tab.replay",
+      "status": "active"
+    },
+    {
+      "id": "mail",
+      "nameKey": "ui.tab.mail",
+      "status": "active"
+    },
+    {
+      "id": "alliance",
+      "nameKey": "ui.tab.alliance",
+      "status": "active"
+    },
+    {
+      "id": "settings",
+      "nameKey": "ui.tab.settings",
+      "status": "active"
+    },
+    {
+      "id": "pvp",
+      "nameKey": "ui.tab.pvp",
+      "status": "tobe"
+    }
   ]
 }

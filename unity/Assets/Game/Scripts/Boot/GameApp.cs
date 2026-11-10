@@ -29,6 +29,14 @@ namespace Game.Unity.Boot
         {
             Application.targetFrameRate = 60;
             BuildCanvas();
+            Boot();
+        }
+
+        /// <summary>데이터·세이브·서비스를 다시 준비하고 시작 순서부터 (설정 화면에서 서버 연결을 바꾼 뒤).</summary>
+        public void Reboot() => Boot();
+
+        private void Boot()
+        {
             try
             {
                 Context = GameContext.Create(

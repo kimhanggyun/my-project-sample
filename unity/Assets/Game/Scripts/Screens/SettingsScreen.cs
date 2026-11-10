@@ -55,6 +55,22 @@ namespace Game.Unity.Screens
                 Ctx.LoadProfile(p => { if (line != null && p != null) line.text = T("ui.settings.nickname", p.Nickname ?? T("ui.settings.noNickname")); });
             }
 
+            // 개발 빌드: 서버 연결 고르기 (설정 파일을 고치거나 다시 빌드하지 않고 PC 서버에 붙는다)
+            if (Debug.isDebugBuild)
+            {
+                var server = Ui.Card(body, "Server");
+                Ui.Label(server, T("ui.settings.server"));
+                string now = T("ui.settings.mode." + Ctx.OnlineMode) + (Ctx.OnlineMode == Game.Online.OnlineConfig.Http ? "  " + Ctx.OnlineUrl : "");
+                Ui.Label(server, T("ui.settings.serverNow", now), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+                var url = Ui.TextInput(server, "http://192.168.0.10:5000", 80, 90, 28);
+                url.text = Ctx.OnlineOverride?.Url ?? Ctx.OnlineUrl ?? "";
+                var row = Ui.Row(server, "Modes", 90, 8);
+                Ui.Button(row, T("ui.settings.mode.off"), () => ApplyServer(Game.Online.OnlineConfig.Off, null), 90, fontSize: 26);
+                Ui.Button(row, T("ui.settings.mode.fake"), () => ApplyServer(Game.Online.OnlineConfig.Fake, null), 90, fontSize: 26);
+                Ui.Button(row, T("ui.settings.mode.http"), () => ApplyServer(Game.Online.OnlineConfig.Http, url.text.Trim()), 90, fontSize: 26);
+                _serverNote = Ui.Label(server, T("ui.settings.serverNote"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            }
+
             var services = Ui.Card(body, "Services");
             Ui.Label(services, T("ui.settings.services"));
             foreach (var kv in Ctx.ServiceChoices) Ui.Label(services, kv.Key + ": " + kv.Value, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -64,6 +80,20 @@ namespace Game.Unity.Screens
             _resetNote = Ui.Label(reset, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
 
             Ui.Button(Root, T("ui.common.back"), () => App.ShowMain());
+        }
+
+        private Text _serverNote;
+
+        /// <summary>고른 서버 연결을 저장하고 처음부터 다시 시작한다.</summary>
+        private void ApplyServer(string mode, string url)
+        {
+            if (mode == Game.Online.OnlineConfig.Http && (string.IsNullOrEmpty(url) || !(url.StartsWith("http://") || url.StartsWith("https://"))))
+            {
+                _serverNote.text = Ui.Colored(T("ui.settings.serverBadUrl"), Palette.Bad);
+                return;
+            }
+            Ctx.SetOnlineOverride(mode, url);
+            App.Reboot();
         }
 
         private void OnReset()

@@ -95,6 +95,14 @@ namespace Game.Unity.Boot
             c.SuspendedBattle = BattleResume.Read(saveStore);
 
             var choices = ReadServiceChoices(config, serviceConfigFile);
+            // 개발 빌드: 설정 화면에서 고른 서버 연결이 설정 파일보다 앞선다 (폰에서 다시 빌드하지 않고 PC 서버에 붙기)
+            c.OnlineOverride = ReadOnlineOverride(saveStore);
+            if (Debug.isDebugBuild && c.OnlineOverride != null && !string.IsNullOrEmpty(c.OnlineOverride.Mode))
+            {
+                choices[OnlineConfig.Key] = c.OnlineOverride.Mode;
+                if (!string.IsNullOrEmpty(c.OnlineOverride.Url)) choices[OnlineConfig.UrlKey] = c.OnlineOverride.Url;
+            }
+            c.OnlineUrl = choices.TryGetValue(OnlineConfig.UrlKey, out var u0) ? u0 : null;
             var cfg = new ServiceConfig(choices);
             var reg = ServiceRegistry.WithBuiltIns();
             // 실제 SDK 구현은 여기서 reg.Register(...)로 더한다 (설정에서 이름으로 고른다).
@@ -125,6 +133,32 @@ namespace Game.Unity.Boot
             else { c.Online = new OfflineOnlineService(); c.OnlineMode = OnlineConfig.Off; }
             c.Sync = new CloudSync(c.Online, clock);
             return c;
+        }
+
+        /// <summary>개발용 서버 연결 선택 (설정 화면, 기기에 저장). 설정 파일의 online·onlineUrl보다 앞선다.</summary>
+        public sealed class OnlineChoice
+        {
+            public string Mode { get; set; }
+            public string Url { get; set; }
+        }
+
+        public const string OnlineOverrideKey = "dev.online";
+        public OnlineChoice OnlineOverride { get; private set; }
+        /// <summary>지금 쓰는 서버 주소 (http일 때).</summary>
+        public string OnlineUrl { get; private set; }
+
+        private static OnlineChoice ReadOnlineOverride(ISaveStore store)
+        {
+            try { return store.Exists(OnlineOverrideKey) ? OnlineJson.Read<OnlineChoice>(store.Read(OnlineOverrideKey)) : null; }
+            catch (Exception) { return null; }
+        }
+
+        /// <summary>서버 연결을 바꿔 저장한다 (mode = off / fake / http, 다시 시작하면 적용). null이면 설정 파일대로.</summary>
+        public void SetOnlineOverride(string mode, string url)
+        {
+            if (mode == null) { if (_saveStore.Exists(OnlineOverrideKey)) _saveStore.Delete(OnlineOverrideKey); OnlineOverride = null; return; }
+            OnlineOverride = new OnlineChoice { Mode = mode, Url = url };
+            _saveStore.Write(OnlineOverrideKey, OnlineJson.Write(OnlineOverride));
         }
 
         private static Dictionary<string, string> ReadServiceChoices(IDataSource config, string file)
