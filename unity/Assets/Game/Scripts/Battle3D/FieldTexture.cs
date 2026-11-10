@@ -49,12 +49,15 @@ namespace Game.Unity.Battle3D
             _pixels = new Color32[f.Width * f.Height];
         }
 
+        /// <summary>안개 끄고 보기 (녹화 재생): 모든 칸을 밝게.</summary>
+        public bool RevealAll { get; set; }
+
         public void Refresh()
         {
             var field = _ctx.Field;
             int w = field.Width, h = field.Height;
             _ctx.Vision.TryGetValue(_team, out var vision);
-            bool fog = vision?.VisibleCells != null && vision.ExploredCells != null;
+            bool fog = !RevealAll && vision?.VisibleCells != null && vision.ExploredCells != null;
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++)
                 {

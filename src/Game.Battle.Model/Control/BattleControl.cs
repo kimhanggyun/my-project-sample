@@ -57,6 +57,12 @@ namespace Game.Battle.Model.Control
         public string Team { get; }
         public BattleContext Context => _sim.Context;
 
+        /// <summary>안개 끄고 보기 (녹화 재생 전용, replay.md 3장): 모든 군단이 보인다. 전투 규칙(시야·AI)은 바뀌지 않는다.</summary>
+        public bool RevealAll { get; set; }
+
+        /// <summary>이 화면에 보이는 군단인가 (내 팀 시야, 또는 안개 끄고 보기).</summary>
+        public bool Sees(CorpsState c) => c != null && (RevealAll || Context.IsVisibleTo(Team, c));
+
         /// <summary>선택된 아군 군단 (없으면 null).</summary>
         public CorpsState Selected { get; private set; }
         /// <summary>대상 지정 중인 스킬 id (없으면 null).</summary>

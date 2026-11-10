@@ -22,7 +22,7 @@ namespace Game.Unity.Battle3D
         private struct Ring { public LineRenderer Line; public Vector3 Center; public float Start, Radius; }
 
         private readonly BattleField3D _field;
-        private readonly string _team;
+        private readonly Game.Battle.Model.Control.BattleControl _ctl;
         private readonly Mesh _cube;
         private readonly Material _arrowMat, _flameMat, _emberMat;
         private readonly List<Arrow> _arrows = new List<Arrow>();
@@ -34,10 +34,10 @@ namespace Game.Unity.Battle3D
 
         public float Clock { get; private set; }
 
-        internal BattleEffects3D(BattleField3D field, string team, Mesh cube, System.Func<Color, Material> material, System.Func<Color, LineRenderer> newLine)
+        internal BattleEffects3D(BattleField3D field, Game.Battle.Model.Control.BattleControl ctl, Mesh cube, System.Func<Color, Material> material, System.Func<Color, LineRenderer> newLine)
         {
             _field = field;
-            _team = team;
+            _ctl = ctl;
             _cube = cube;
             _newLine = newLine;
             _arrowMat = material(new Color(0.25f, 0.18f, 0.10f));
@@ -60,7 +60,7 @@ namespace Game.Unity.Battle3D
                     if (_nextArrow.TryGetValue(u, out var next) && next > Clock) continue;
                     _nextArrow[u] = Clock + ArrowEvery;
                     var target = Owner(ctx, u.AttackTarget);
-                    if (!ctx.IsVisibleTo(_team, c) && (target == null || !ctx.IsVisibleTo(_team, target))) continue;
+                    if (!_ctl.Sees(c) && (target == null || !_ctl.Sees(target))) continue;
                     var from = _field.ToWorld(u.Position) + Vector3.up * 0.4f;
                     var to = _field.ToWorld(u.AttackTarget.Position) + Vector3.up * 0.2f;
                     for (int k = 0; k < 3 && _arrows.Count < MaxArrows; k++)

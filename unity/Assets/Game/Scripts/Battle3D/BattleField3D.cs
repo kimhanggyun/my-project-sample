@@ -105,7 +105,7 @@ namespace Game.Unity.Battle3D
             light.intensity = 1.1f;
 
             // 바닥
-            _texture = new FieldTexture(ctx, ctl.Team);
+            _texture = new FieldTexture(ctx, ctl.Team) { RevealAll = ctl.RevealAll };
             _texture.Refresh();
             var ground = new GameObject("Ground");
             ground.transform.SetParent(_root.transform, false);
@@ -138,7 +138,7 @@ namespace Game.Unity.Battle3D
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
 
-            Effects = new BattleEffects3D(this, ctl.Team, _cube, col => Own(NewMaterial(col)), col =>
+            Effects = new BattleEffects3D(this, ctl, _cube, col => Own(NewMaterial(col)), col =>
             {
                 var l = Line("Fx", col, 0.2f, true);
                 return l;
@@ -287,7 +287,7 @@ namespace Game.Unity.Battle3D
             foreach (var kv in _flags)
             {
                 var c = kv.Key;
-                bool shown = c.InBattle && ctx.IsVisibleTo(_ctl.Team, c);
+                bool shown = c.InBattle && _ctl.Sees(c);
                 kv.Value.gameObject.SetActive(shown);
                 if (!shown) continue;
                 Place(kv.Value, c.Anchor, flagScale);
@@ -296,7 +296,7 @@ namespace Game.Unity.Battle3D
             foreach (var kv in _lastSeen)
             {
                 var c = kv.Key;
-                bool show = !ctx.IsVisibleTo(_ctl.Team, c) && vision != null && vision.LastSeen.TryGetValue(c.Id, out var seen) && Place(kv.Value, seen, flagScale * 0.8f);
+                bool show = !_ctl.Sees(c) && vision != null && vision.LastSeen.TryGetValue(c.Id, out var seen) && Place(kv.Value, seen, flagScale * 0.8f);
                 kv.Value.gameObject.SetActive(show);
             }
 
@@ -383,7 +383,7 @@ namespace Game.Unity.Battle3D
             foreach (var b in _allSoldierBatches) b.Matrices.Clear();
             foreach (var c in ctx.Corps)
             {
-                if (!c.InBattle || !ctx.IsVisibleTo(_ctl.Team, c)) continue;
+                if (!c.InBattle || !_ctl.Sees(c)) continue;
                 int teamColor = c == _ctl.Selected ? Selected : c.Team == _ctl.Team ? Ally : Enemy;
                 var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
                 var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
