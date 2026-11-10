@@ -49,15 +49,47 @@ namespace Game.Tests.Battle
             Assert.Same(ctl.OwnCorps()[0], ctl.Selected);
         }
 
-        [Fact(DisplayName = "전군 진군: 지휘 가능한 아군 군단마다 진군 명령 하나")]
+        [Fact(DisplayName = "R-60 전군 진군: 군단마다 자기 줄(가로 위치)을 지키며 앞으로 곧게 공격 이동 (가운데로 모이지 않는다)")]
         public void AdvanceAll()
         {
             var (sim, ctl) = Make();
             int n = ctl.AdvanceAll();
             Assert.Equal(ctl.OwnCorps().Count(ctl.CanCommand), n);
-            Assert.Equal(n, sim.CommandLog.Count(c => c.Kind == CommandKinds.Advance));
+            var moves = sim.CommandLog.Where(c => c.Kind == CommandKinds.MoveTo).ToList();
+            Assert.Equal(n, moves.Count);
+            Assert.All(moves, m => Assert.Equal(MoveModes.AttackMove, m.Mode));
+            foreach (var m in moves)
+            {
+                var c = sim.Context.FindCorps(m.CorpsId);
+                Assert.Equal(c.Anchor.X, m.X); // 앞(북쪽)으로만: 가로 위치 그대로
+                Assert.True(m.Y < c.Anchor.Y);
+            }
+            Assert.Equal(n, moves.Select(m => m.X).Distinct().Count()); // 줄이 겹치지 않는다
+        }
+
+        [Fact(DisplayName = "R-60 후퇴: 뒤로 곧게 fallBackCells칸 강행 이동, 계속 명령할 수 있어 다시 진군하면 앞으로 (퇴각과 다르다)")]
+        public void FallBackThenAdvance()
+        {
+            var (sim, ctl) = Make();
+            var a = ctl.OwnCorps()[0];
+            ctl.Select(a.Id);
+            ctl.AdvanceAll();
+            for (int i = 0; i < 60; i++) sim.Step();
+            var before = a.Anchor;
+            Assert.True(ctl.FallBack());
+            var back = sim.CommandLog.Last();
+            Assert.Equal((CommandKinds.MoveTo, MoveModes.Forced), (back.Kind, back.Mode));
+            Assert.Equal(before.X, back.X);
+            Assert.True(back.Y > before.Y); // 남쪽(뒤)으로
+            for (int i = 0; i < 30; i++) sim.Step();
+            Assert.Equal(CorpsStatus.Active, a.Status); // 전장을 떠나지 않는다
+            Assert.True(ctl.CanCommand(a));
+            Assert.True(ctl.Advance());
+            var fwd = sim.CommandLog.Last();
+            Assert.True(fwd.Y < a.Anchor.Y); // 다시 앞으로
+            Assert.True(ctl.Retreat()); // 퇴각은 따로 (전장 이탈)
             sim.Step();
-            Assert.All(ctl.OwnCorps().Where(c => c.InBattle), c => Assert.Equal(OrderKinds.Advance, c.Order.Kind));
+            Assert.Equal(CorpsStatus.Retreating, a.Status);
         }
 
         [Fact(DisplayName = "전장 누름: 선택 없이 빈 땅은 무시, 선택 후 빈 땅은 고른 이동 방식으로 이동, 아군 부대원을 누르면 그 군단 선택")]

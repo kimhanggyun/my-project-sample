@@ -666,5 +666,7 @@
   "practice.p_rookie": "수련 상대 (초급)",
   "practice.p_veteran": "노련한 무관 (중급)",
   "practice.p_master": "명장 (상급)",
-  "trait.fierce": "맹장"
+  "trait.fierce": "맹장",
+  "ui.cmd.fallBack": "후퇴",
+  "ui.cmd.withdraw": "퇴각(이탈)"
 }

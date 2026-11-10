@@ -199,7 +199,7 @@ namespace Game.Unity.Screens
             var orders = Ui.Row(_panelBody, "Orders", RowHeight, 6);
             _orderButtons.Add(Ui.Button(orders, T("ui.cmd.advance"), () => Report(_ctl.Advance()), RowHeight, fontSize: 26));
             _orderButtons.Add(Ui.Button(orders, T("ui.cmd.hold"), () => Report(_ctl.Hold()), RowHeight, fontSize: 26));
-            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.retreat"), () => Report(_ctl.Retreat()), RowHeight, fontSize: 26));
+            _orderButtons.Add(Ui.Button(orders, T("ui.cmd.fallBack"), () => Report(_ctl.FallBack()), RowHeight, fontSize: 26)); // 뒤로 곧게 (R-60)
             _delegateButton = Ui.Button(orders, "", ToggleDelegate, RowHeight, fontSize: 26);
             _orderButtons.Add(_delegateButton);
             _moveModeButton = Ui.Button(orders, "", NextMoveMode, RowHeight, fontSize: 24);
@@ -209,6 +209,7 @@ namespace Game.Unity.Screens
             _queueButton = Ui.Button(plans, "", () => { _ctl.SetQueueing(!_ctl.Queueing); _dirty = true; }, RowHeight, fontSize: 24);
             _orderButtons.Add(Ui.Button(plans, T("ui.cmd.rest"), () => Report(_ctl.Rest()), RowHeight, fontSize: 24));
             _orderButtons.Add(Ui.Button(plans, T("ui.cmd.coordinate"), () => Report(_ctl.Coordinate()), RowHeight, fontSize: 24));
+            _orderButtons.Add(Ui.Button(plans, T("ui.cmd.withdraw"), () => Report(_ctl.Retreat()), RowHeight, Palette.ButtonDisabled, 24)); // 전장 이탈 (퇴각)
             _skillRow = Ui.Row(_panelBody, "Skills", RowHeight, 6);
 
             // ⑤ 하단: 전군 진군 + 군단 카드

@@ -97,12 +97,13 @@
     "rearStandoffCells": 8
   },
   "orders": {
-    "_comment": "명령 예약·휴식·협공 대기 (battle.md 4.3.4~4.3.5). 수치는 예시.",
+    "_comment": "명령 예약·휴식·협공 대기 (battle.md 4.3.4~4.3.5). 수치는 예시. fallBackCells = 후퇴 한 번에 뒤로 물러나는 칸 (R-60, 예시).",
     "queueMax": 5,
     "restMoraleMultiplier": 2,
     "restSkillPointMultiplier": 2,
     "coordinateWaitSec": 30,
-    "coordinateResponseSec": 10
+    "coordinateResponseSec": 10,
+    "fallBackCells": 8
   },
   "discipline": {
     "_comment": "규율 (battle.md 2.6, R-56): 통솔 위주 + 지략 일부. 규율 50이면 기본값, 높을수록 진형 전환이 빠르다. 전환 중에는 받는 피해가 늘고 이전 진형을 쓴다. 수치는 예시",
