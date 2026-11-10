@@ -69,6 +69,16 @@ namespace Game.Unity.Screens
                 Ui.Button(row, T("ui.settings.mode.fake"), () => ApplyServer(Game.Online.OnlineConfig.Fake, null), 90, fontSize: 26);
                 Ui.Button(row, T("ui.settings.mode.http"), () => ApplyServer(Game.Online.OnlineConfig.Http, url.text.Trim()), 90, fontSize: 26);
                 _serverNote = Ui.Label(server, T("ui.settings.serverNote"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+
+                // 화면 스타일 비교 (UI 1단계 임시, Ui/styles.json)
+                var style = Ui.Card(body, "Style");
+                Ui.Label(style, T("ui.settings.style"));
+                var styles = Ui.Row(style, "Styles", 90, 8);
+                foreach (var kv in UiStyle.Available)
+                {
+                    string id = kv.Key;
+                    var b = Ui.Button(styles, T(kv.Value), () => { Ctx.SetStyleOverride(id); App.Reboot(); }, 90, id == UiStyle.Current ? Palette.ButtonActive : (Color?)null, 26);
+                }
             }
 
             var services = Ui.Card(body, "Services");

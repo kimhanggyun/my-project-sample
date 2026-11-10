@@ -39,10 +39,14 @@ namespace Game.Unity.Boot
         {
             try
             {
+                var store = new FileSaveStore(Application.persistentDataPath);
+                // 화면 스타일 (UI 1단계 임시): 개발 빌드는 설정에서 고른 것, 아니면 데이터의 기본
+                UiStyle.Apply(GameDataPaths.Data(), Debug.isDebugBuild && store.Exists(UiStyle.OverrideKey) ? store.Read(UiStyle.OverrideKey) : null);
+                if (_backdrop != null) _backdrop.color = Palette.Background;
                 Context = GameContext.Create(
                     GameDataPaths.Data(),
                     GameDataPaths.Config(),
-                    new FileSaveStore(Application.persistentDataPath),
+                    store,
                     new SystemTimeProvider(),
                     GameDataPaths.ServiceConfigFile,
                     url => new Game.Unity.Online.UnityWebTransport(this, url),

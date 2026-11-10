@@ -741,5 +741,8 @@
   "ui.formationDrag.corpsLine": "제{0}군단  {1} · {2}   병력 {3} / {4}",
   "ui.formationDrag.edit": "장수·진형",
   "ui.formationDrag.reserve": "대기 부대",
-  "ui.formationDrag.noReserve": "모든 부대가 편성되어 있습니다."
+  "ui.formationDrag.noReserve": "모든 부대가 편성되어 있습니다.",
+  "ui.settings.style": "화면 스타일 (개발용, 누르면 다시 시작)",
+  "style.basic": "기본",
+  "style.temp1": "임시 스타일1"
 }

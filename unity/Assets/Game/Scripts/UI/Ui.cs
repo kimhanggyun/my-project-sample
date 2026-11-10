@@ -4,22 +4,22 @@ using UnityEngine.UI;
 
 namespace Game.Unity.UI
 {
-    /// <summary>임시 화면용 색 (화면 디자인 전까지).</summary>
+    /// <summary>임시 화면용 색 (화면 디자인 전까지). 시작할 때 스타일 데이터로 덮어쓴다 (<see cref="UiStyle"/>).</summary>
     public static class Palette
     {
-        public static readonly Color Background = new Color(0.10f, 0.11f, 0.13f);
-        public static readonly Color Bar = new Color(0.16f, 0.17f, 0.20f);
-        public static readonly Color Card = new Color(0.20f, 0.21f, 0.25f);
-        public static readonly Color Button = new Color(0.28f, 0.33f, 0.45f);
-        public static readonly Color ButtonActive = new Color(0.55f, 0.42f, 0.20f);
-        public static readonly Color ButtonDisabled = new Color(0.22f, 0.22f, 0.24f);
-        public static readonly Color Text = new Color(0.93f, 0.93f, 0.90f);
-        public static readonly Color TextDim = new Color(0.62f, 0.63f, 0.66f);
-        public static readonly Color Ally = new Color(0.55f, 0.75f, 1.00f);
-        public static readonly Color Enemy = new Color(1.00f, 0.55f, 0.50f);
-        public static readonly Color Good = new Color(0.55f, 0.90f, 0.55f);
-        public static readonly Color Bad = new Color(1.00f, 0.45f, 0.40f);
-        public static readonly Color Overlay = new Color(0f, 0f, 0f, 0.6f);
+        public static Color Background = new Color(0.10f, 0.11f, 0.13f);
+        public static Color Bar = new Color(0.16f, 0.17f, 0.20f);
+        public static Color Card = new Color(0.20f, 0.21f, 0.25f);
+        public static Color Button = new Color(0.28f, 0.33f, 0.45f);
+        public static Color ButtonActive = new Color(0.55f, 0.42f, 0.20f);
+        public static Color ButtonDisabled = new Color(0.22f, 0.22f, 0.24f);
+        public static Color Text = new Color(0.93f, 0.93f, 0.90f);
+        public static Color TextDim = new Color(0.62f, 0.63f, 0.66f);
+        public static Color Ally = new Color(0.55f, 0.75f, 1.00f);
+        public static Color Enemy = new Color(1.00f, 0.55f, 0.50f);
+        public static Color Good = new Color(0.55f, 0.90f, 0.55f);
+        public static Color Bad = new Color(1.00f, 0.45f, 0.40f);
+        public static Color Overlay = new Color(0f, 0f, 0f, 0.6f);
     }
 
     /// <summary>
@@ -116,7 +116,7 @@ namespace Game.Unity.UI
             var rt = Rect(parent, "Label");
             var t = rt.gameObject.AddComponent<Text>();
             t.font = Font;
-            t.fontSize = size;
+            t.fontSize = Mathf.RoundToInt(size * UiStyle.FontScale);
             t.alignment = align;
             t.color = color ?? Palette.Text;
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -131,6 +131,7 @@ namespace Game.Unity.UI
         {
             var rt = Rect(parent, "Button");
             var img = Background(rt, color ?? Palette.Button);
+            Round(img);
             var b = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
             b.targetGraphic = img;
             if (onClick != null) b.onClick.AddListener(() => onClick());
@@ -239,9 +240,19 @@ namespace Game.Unity.UI
         public static RectTransform Card(Transform parent, string name, int padding = 24, int spacing = 8)
         {
             var rt = Rect(parent, name);
-            Background(rt, Palette.Card);
+            Round(Background(rt, Palette.Card));
             Column(rt, spacing, padding);
             return rt;
+        }
+
+        /// <summary>스타일에 둥글기가 있으면 둥근 모서리 판으로 (UiStyle).</summary>
+        public static Image Round(Image img)
+        {
+            var sprite = UiStyle.Rounded();
+            if (sprite == null) return img;
+            img.sprite = sprite;
+            img.type = Image.Type.Sliced;
+            return img;
         }
 
         public static void Clear(Transform t)
