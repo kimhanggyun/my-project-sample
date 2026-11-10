@@ -1,0 +1,22 @@
+name: server-image
+
+# 서버 컨테이너가 빌드되는지 (docs/impl/server.md 5.5). 레지스트리에 올리는 것은 클라우드를 정한 뒤.
+on:
+  push:
+    paths: ['server/**', 'src/**', 'data/**', '.dockerignore']
+  pull_request:
+    paths: ['server/**', 'src/**', 'data/**', '.dockerignore']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f server/Game.Server/Dockerfile -t game-server .
+      - name: Smoke test
+        run: |
+          docker run -d --name gs -p 8080:8080 game-server
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8080/v1/time && break; sleep 1; done
+          curl -sf -X POST http://127.0.0.1:8080/v1/auth/guest -H "Content-Type: application/json" -d '{}'
+          docker logs gs 2>&1 | grep -iE "unhandled|exception" && exit 1 || true
