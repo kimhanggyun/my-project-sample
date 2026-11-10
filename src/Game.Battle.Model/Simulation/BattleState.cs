@@ -46,6 +46,8 @@ namespace Game.Battle.Model.Simulation
         public const string Forced = "forced";
         /// <summary>공격 이동: 가는 길에 감지 거리 안의 적을 찾아 공격.</summary>
         public const string AttackMove = "attackMove";
+        /// <summary>지원 이동 (후위의 진군, R-63): 곧게 가다가 적이 advanceRoles.rearStandoffCells 안에 들어오면 그 자리에 멈춰 싸운다 (쫓지 않는다).</summary>
+        public const string Support = "support";
     }
 
     /// <summary>군단의 현재 명령. 명령 처리기·AI만 바꾼다.</summary>

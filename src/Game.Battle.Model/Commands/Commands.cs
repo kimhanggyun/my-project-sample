@@ -93,7 +93,7 @@ namespace Game.Battle.Model.Commands
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             string mode = cmd.Mode ?? MoveModes.Normal;
-            if (mode != MoveModes.Normal && mode != MoveModes.Forced && mode != MoveModes.AttackMove) return false;
+            if (mode != MoveModes.Normal && mode != MoveModes.Forced && mode != MoveModes.AttackMove && mode != MoveModes.Support) return false;
             return ctx.Field.Map.InBounds((int)cmd.X.FloorToLong(), (int)cmd.Y.FloorToLong());
         }
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
