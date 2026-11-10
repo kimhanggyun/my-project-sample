@@ -161,6 +161,9 @@ namespace Game.Unity.Boot
             _saveStore.Write(OnlineOverrideKey, OnlineJson.Write(OnlineOverride));
         }
 
+        /// <summary>개발 빌드: 화면 스타일을 골라 저장한다 (다시 시작하면 적용).</summary>
+        public void SetStyleOverride(string styleId) => _saveStore.Write(Game.Unity.UI.UiStyle.OverrideKey, styleId);
+
         private static Dictionary<string, string> ReadServiceChoices(IDataSource config, string file)
         {
             var choices = new Dictionary<string, string>();
