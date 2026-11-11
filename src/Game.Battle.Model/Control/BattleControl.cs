@@ -236,6 +236,29 @@ namespace Game.Battle.Model.Control
             });
         }
 
+        /// <summary>선택 군단의 예약 중 지점이 있는 것 (경유 표식, 4.3.5): 예약 자리, 지점, 종류.</summary>
+        public List<(int Index, Vec Point, string Kind)> QueuedPoints()
+        {
+            var list = new List<(int, Vec, string)>();
+            if (Selected == null) return list;
+            for (int i = 0; i < Selected.Queue.Count; i++)
+            {
+                var q = Selected.Queue[i];
+                bool point = q.Kind == CommandKinds.MoveTo
+                    || (q.Kind == CommandKinds.UseSkill && Context.Defs.Skills.TryGetValue(q.SkillId ?? "", out var s) && (s.TargetType == SkillTargets.Point || s.TargetType == SkillTargets.Area));
+                if (point) list.Add((i, new Vec(q.X, q.Y), q.Kind == CommandKinds.MoveTo ? q.Kind : q.SkillId));
+            }
+            return list;
+        }
+
+        /// <summary>예약 하나 취소 (표식을 누름).</summary>
+        public bool RemoveQueued(int index) =>
+            Issue(Selected, CommandKinds.EditQueue, c => { c.Mode = "remove"; c.Index = index; });
+
+        /// <summary>예약 하나의 지점 옮기기 (표식을 끌어 놓음).</summary>
+        public bool MoveQueued(int index, Vec point) =>
+            Issue(Selected, CommandKinds.EditQueue, c => { c.Mode = "move"; c.Index = index; c.X = point.X; c.Y = point.Y; });
+
         public bool Attack(string targetCorpsId) =>
             Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Queued = Queueing; });
 

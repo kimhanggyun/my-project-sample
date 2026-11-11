@@ -35,6 +35,8 @@ namespace Game.Battle.Model.Events
         public const string CoordinateWaiting = "coordinateWaiting";
         /// <summary>예약을 꺼냈는데 받을 수 없어 건너뜀 (battle.md 4.3.6). 값 = 스킬 id 또는 명령 종류.</summary>
         public const string QueuedSkipped = "queuedSkipped";
+        /// <summary>지점 이동인데 길이 막혀 더 갈 수 없음 → 멈추고 다음 예약으로 (battle.md 4.3.6).</summary>
+        public const string PathBlocked = "pathBlocked";
     }
 
     internal static class EventLog

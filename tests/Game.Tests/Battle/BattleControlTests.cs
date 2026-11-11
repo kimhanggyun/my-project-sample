@@ -288,6 +288,32 @@ namespace Game.Tests.Battle
             Assert.False(BattleControl.UsableOnArrival("enemyCorps"));
         }
 
+        [Fact(DisplayName = "R-70 예약 고치기: 경유 표식을 누르면 그 예약만 취소, 끌면 지점만 옮긴다 (기록에 남아 다시 돌려도 같다)")]
+        public void EditQueue()
+        {
+            var (sim, ctl) = Make();
+            var a = Own(ctl, "general_a");
+            ctl.Select(a.Id);
+            Assert.True(ctl.MoveTo(EmptyPoint(sim.Context, a), MoveModes.Normal, false));
+            var w1 = new Vec(Fix.FromInt(3), Fix.FromInt(20));
+            var w2 = new Vec(Fix.FromInt(5), Fix.FromInt(20));
+            var w3 = new Vec(Fix.FromInt(7), Fix.FromInt(20));
+            ctl.MoveTo(w1, MoveModes.Normal, true);
+            ctl.MoveTo(w2, MoveModes.Normal, true);
+            ctl.MoveTo(w3, MoveModes.Normal, true);
+            sim.Step();
+            Assert.Equal(new[] { w1, w2, w3 }, ctl.QueuedPoints().Select(q => q.Point));
+            Assert.True(ctl.RemoveQueued(1));
+            sim.Step();
+            Assert.Equal(new[] { w1, w3 }, ctl.QueuedPoints().Select(q => q.Point));
+            var moved = new Vec(Fix.FromInt(9), Fix.FromInt(21));
+            Assert.True(ctl.MoveQueued(0, moved));
+            sim.Step();
+            Assert.Equal(new[] { moved, w3 }, ctl.QueuedPoints().Select(q => q.Point));
+            Assert.Equal(OrderKinds.MoveTo, a.Order.Kind); // 지금 명령은 그대로
+            Assert.False(ctl.RemoveQueued(5)); // 없는 자리
+        }
+
         [Fact(DisplayName = "스킬 확인 모드 (4.2): 지점 스킬은 누름으로 자리만 잡고(미리보기 반지름·사거리), 확인하면 쓴다. 취소하면 아무 명령 없음")]
         public void AimThenConfirm()
         {

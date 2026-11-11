@@ -47,6 +47,13 @@ namespace Game.Battle.Model.Systems
                     corps.PathIndex = 0;
                     corps.PathGoal = goal;
                     corps.PathPlannedTick = ctx.Tick;
+                    // 막힘 (4.3.6, R-70): 지점 이동인데 더 갈 수 있는 칸이 없으면 멈추고 알린 뒤 다음 예약으로
+                    if (corps.Path.Count == 0 && corps.Order.Kind == OrderKinds.MoveTo && !chasing)
+                    {
+                        Events.EventLog.Add(ctx, Events.EventKinds.PathBlocked, corps.Id);
+                        Commands.OrderQueue.Finish(ctx, corps);
+                        continue;
+                    }
                 }
                 var before = corps.Anchor;
                 Move(ctx, corps, members);

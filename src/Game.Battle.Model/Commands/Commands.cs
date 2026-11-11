@@ -23,6 +23,8 @@ namespace Game.Battle.Model.Commands
         public string SkillId { get; set; }
         /// <summary>예약: 지금 명령 뒤에 넣는다 (경유, battle.md 4.3.5). 지금 명령이 대기면 바로 실행.</summary>
         public bool Queued { get; set; }
+        /// <summary>editQueue: 고칠 예약의 자리 (0부터).</summary>
+        public int Index { get; set; }
 
         public BattleCommand Clone() => (BattleCommand)MemberwiseClone();
     }
@@ -46,6 +48,8 @@ namespace Game.Battle.Model.Commands
         /// <summary>위임 켜기/끄기 (Mode "on"/"off"). 스위치 delegate.</summary>
         public const string Delegate = "delegate";
         public const string DelegateFlag = "delegate";
+        /// <summary>예약 고치기 (battle.md 4.3.5, R-70): Mode "remove" = Index번 예약 취소, "move" = Index번 예약의 지점을 (X, Y)로.</summary>
+        public const string EditQueue = "editQueue";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -85,7 +89,35 @@ namespace Game.Battle.Model.Commands
             .Register(new RetreatHandler())
             .Register(new ChangeFormationHandler())
             .Register(new Skills.UseSkillHandler())
-            .Register(new DelegateHandler());
+            .Register(new DelegateHandler())
+            .Register(new EditQueueHandler());
+    }
+
+    internal sealed class EditQueueHandler : ICommandHandler
+    {
+        public string Kind => CommandKinds.EditQueue;
+
+        public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            if (cmd.Index < 0 || cmd.Index >= corps.Queue.Count) return false;
+            if (cmd.Mode == "remove") return true;
+            if (cmd.Mode != "move") return false;
+            var q = corps.Queue[cmd.Index];
+            if (!ctx.Field.Map.InBounds((int)cmd.X.FloorToLong(), (int)cmd.Y.FloorToLong())) return false;
+            // 지점이 있는 예약만 옮긴다: 지점 이동, 지점·범위 스킬
+            if (q.Kind == CommandKinds.MoveTo) return true;
+            return q.Kind == CommandKinds.UseSkill && ctx.Defs.Skills.TryGetValue(q.SkillId ?? "", out var s)
+                   && (s.TargetType == Skills.SkillTargets.Point || s.TargetType == Skills.SkillTargets.Area);
+        }
+
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            if (cmd.Mode == "remove") { corps.Queue.RemoveAt(cmd.Index); return; }
+            var moved = corps.Queue[cmd.Index].Clone();
+            moved.X = cmd.X;
+            moved.Y = cmd.Y;
+            corps.Queue[cmd.Index] = moved;
+        }
     }
 
     internal sealed class AdvanceHandler : ICommandHandler
