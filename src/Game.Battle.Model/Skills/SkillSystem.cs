@@ -82,9 +82,17 @@ namespace Game.Battle.Model.Skills
     /// 스킬 사용 명령 (battle.md 2.8, 4.2). 받을 때 점수·횟수를 낸다 (실패·취소해도 돌려주지 않음, R-12).
     /// 사거리 밖이면 다가간 뒤 쓴다. 다가가는 중 대상을 잃으면 취소.
     /// </summary>
-    public sealed class UseSkillHandler : ICommandHandler
+    public sealed class UseSkillHandler : ICommandHandler, IQueueCheck
     {
         public string Kind => CommandKinds.UseSkill;
+
+        /// <summary>예약 (R-69): 아는 스킬·요구 능력치·대상·남은 횟수만. 점수·사용 조건(지형·바람 …)은 꺼낼 때 본다.</summary>
+        public bool CanQueue(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            if (cmd.SkillId == null || !ctx.Defs.Skills.TryGetValue(cmd.SkillId, out var skill)) return false;
+            if (!corps.KnowsSkill(skill.Id) || !SkillRules.RequirementsMet(corps, skill)) return false;
+            return SkillRules.MakeCast(ctx, corps, skill, cmd) != null && corps.SkillPoints.UsesLeft(skill.Id) >= 1;
+        }
 
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {

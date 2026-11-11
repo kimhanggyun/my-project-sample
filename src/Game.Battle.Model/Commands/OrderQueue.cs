@@ -19,7 +19,13 @@ namespace Game.Battle.Model.Commands
             {
                 var cmd = corps.Queue[0];
                 corps.Queue.RemoveAt(0);
-                if (ctx.Commands == null || !ctx.Commands.TryGet(cmd.Kind, out var h) || !h.IsValid(ctx, corps, cmd)) continue;
+                if (ctx.Commands == null || !ctx.Commands.TryGet(cmd.Kind, out var h)) continue;
+                if (!h.IsValid(ctx, corps, cmd))
+                {
+                    // 받을 수 없는 예약은 건너뛰고 알린다 (4.3.6: 도착했는데 스킬 조건 불충족 등)
+                    Events.EventLog.Add(ctx, Events.EventKinds.QueuedSkipped, corps.Id, cmd.SkillId ?? cmd.Kind);
+                    continue;
+                }
                 var before = corps.Order;
                 h.Apply(ctx, corps, cmd);
                 if (ReferenceEquals(before, corps.Order) && corps.PendingSkill == null) continue; // 진형 바꾸기처럼 명령이 그대로면 다음 예약도

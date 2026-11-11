@@ -36,6 +36,8 @@ namespace Game.Battle.Model.Control
         Skill,
         /// <summary>명령을 받지 않았다 (퇴각 중, 도발, 조건·대상 불가 …).</summary>
         Rejected,
+        /// <summary>지점 스킬의 자리를 골랐다 (확인 모드): <see cref="BattleControl.ConfirmAim"/>로 쓰거나 다시 눌러 옮긴다.</summary>
+        Aimed,
     }
 
     /// <summary>
@@ -67,6 +69,13 @@ namespace Game.Battle.Model.Control
         public CorpsState Selected { get; private set; }
         /// <summary>대상 지정 중인 스킬 id (없으면 null).</summary>
         public string TargetingSkill { get; private set; }
+        /// <summary>
+        /// true면 지점·범위 스킬(과 자리를 먼저 고르는 자신 스킬)은 누름으로 자리만 잡고(<see cref="AimPoint"/>, 효과 범위 미리보기),
+        /// <see cref="ConfirmAim"/>으로 쓴다 (battle.md 4.2, 화면). false면 누르자마자 쓴다.
+        /// </summary>
+        public bool ConfirmPointSkills { get; set; }
+        /// <summary>확인 모드에서 고른 자리.</summary>
+        public Vec? AimPoint { get; private set; }
         /// <summary>빈 땅을 눌렀을 때 쓰는 이동 방식 (<see cref="MoveModes"/>).</summary>
         public string MoveMode { get; private set; } = MoveModes.Normal;
         /// <summary>예약 모드: 켜져 있으면 이동·공격·휴식·협공 명령을 지금 명령 뒤에 넣는다 (경유, battle.md 4.3.5).</summary>
@@ -282,8 +291,9 @@ namespace Game.Battle.Model.Control
         public bool PressSkill(string skillId)
         {
             if (!CanCommand(Selected) || !Context.Defs.Skills.TryGetValue(skillId ?? "", out var skill)) return false;
-            if (TargetingSkill == skillId) { TargetingSkill = null; return false; }
-            if (skill.TargetType == SkillTargets.Self)
+            if (TargetingSkill == skillId) { CancelTargeting(); return false; }
+            AimPoint = null;
+            if (skill.TargetType == SkillTargets.Self && !skill.MoveFirst)
             {
                 TargetingSkill = null;
                 return Issue(Selected, CommandKinds.UseSkill, c => c.SkillId = skillId);
@@ -292,7 +302,41 @@ namespace Game.Battle.Model.Control
             return true;
         }
 
-        public void CancelTargeting() => TargetingSkill = null;
+        public void CancelTargeting() { TargetingSkill = null; AimPoint = null; }
+
+        /// <summary>미리보기 반지름: 대상 범위(radius), 없으면 효과의 반지름 중 가장 큰 것 (예: 간파). 0이면 한 점.</summary>
+        public Fix PreviewRadius(string skillId)
+        {
+            if (!Context.Defs.Skills.TryGetValue(skillId ?? "", out var skill)) return Fix.Zero;
+            Fix r = skill.Radius;
+            foreach (var e in skill.Effects)
+                if (e.Has("radius")) { var v = e.FixOr("radius", Fix.Zero); if (v > r) r = v; }
+            return r;
+        }
+
+        /// <summary>고른 자리가 사거리 안인가 (사거리 밖이면 다가간 뒤 쓴다). 자리를 먼저 고르는 자신 스킬은 늘 true.</summary>
+        public bool AimInRange()
+        {
+            if (AimPoint == null || Selected == null || !Context.Defs.Skills.TryGetValue(TargetingSkill ?? "", out var skill) || skill.Range == null) return true;
+            var d = AimPoint.Value - Selected.Anchor;
+            return d.LengthSquared <= skill.Range.Value * skill.Range.Value;
+        }
+
+        /// <summary>고른 자리에 지정 중인 스킬을 쓴다 (확인 모드). 자리를 먼저 고르는 자신 스킬은 그 자리로 이동한 뒤.</summary>
+        public bool ConfirmAim()
+        {
+            if (AimPoint == null || TargetingSkill == null) return false;
+            bool ok = UseAt(TargetingSkill, AimPoint.Value);
+            CancelTargeting();
+            return ok;
+        }
+
+        private bool UseAt(string skillId, Vec point)
+        {
+            var skill = Context.Defs.Skills[skillId];
+            if (skill.TargetType == SkillTargets.Self) return MoveThenSkill(point, MoveModes.Normal, skillId, false);
+            return Issue(Selected, CommandKinds.UseSkill, c => { c.SkillId = skillId; c.X = point.X; c.Y = point.Y; });
+        }
 
         // ---- 전장 누름 (4.1) ----
 
@@ -315,7 +359,11 @@ namespace Game.Battle.Model.Control
                     if (hit == null) return TapResult.None; // 군단을 골라야 한다: 지정 모드 유지
                     ok = Issue(Selected, CommandKinds.UseSkill, c => { c.SkillId = id; c.TargetCorpsId = hit.Id; });
                 }
-                else ok = Issue(Selected, CommandKinds.UseSkill, c => { c.SkillId = id; c.X = point.X; c.Y = point.Y; });
+                else
+                {
+                    if (ConfirmPointSkills) { AimPoint = point; return TapResult.Aimed; } // 자리만 잡고 미리보기
+                    ok = UseAt(id, point);
+                }
                 TargetingSkill = null;
                 return ok ? TapResult.Skill : TapResult.Rejected;
             }

@@ -56,6 +56,15 @@ namespace Game.Battle.Model.Commands
         void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd);
     }
 
+    /// <summary>
+    /// 예약으로 넣을 때의 검사가 지금 쓸 때와 다른 명령 (battle.md 4.3.6, R-69): 예약은 꺼낼 때 <see cref="ICommandHandler.IsValid"/>로 다시 보고,
+    /// 넣을 때는 이것만 본다 (예: 스킬의 지형·점수 조건은 도착해서).
+    /// </summary>
+    public interface IQueueCheck
+    {
+        bool CanQueue(BattleContext ctx, CorpsState corps, BattleCommand cmd);
+    }
+
     public sealed class CommandRegistry
     {
         private readonly Dictionary<string, ICommandHandler> _handlers = new Dictionary<string, ICommandHandler>();

@@ -61,6 +61,10 @@ namespace Game.Unity.Screens
         private Button _collapseButton;
         private Button _queueButton;
         private RectTransform _prompt;
+        // 스킬 지정 막대 (4.2): 무엇을 지정 중인지, [여기에 쓰기] [취소]
+        private RectTransform _aimBar;
+        private Text _aimText;
+        private Button _aimConfirm;
         private Text _promptText;
         private string _promptCorps;
         private RectTransform _panelBody;
@@ -129,7 +133,7 @@ namespace Game.Unity.Screens
             }
             if (_resumedSim != null && !_autoFinish) _paused = true; // 이어 할 때는 멈춘 채로 시작
             var ctx = _sim.Context;
-            _ctl = new BattleControl(_sim, _viewTeam ?? StoryFlow.PlayerTeam) { RevealAll = _revealAll };
+            _ctl = new BattleControl(_sim, _viewTeam ?? StoryFlow.PlayerTeam) { RevealAll = _revealAll, ConfirmPointSkills = true }; // 지점 스킬은 범위를 보고 확인
             _ctl.Refresh();
             _tickSeconds = (float)ctx.Combat.TickSeconds.ToDisplayDouble();
             _speech = new SpeechPlanner(ctx.Defs, ctx.Flags, ctx.Combat.TickSeconds,
@@ -188,6 +192,20 @@ namespace Game.Unity.Screens
             Ui.Button(pr, T("ui.cmd.keepWaiting"), () => { Report(_ctl.KeepCoordinating(_promptCorps)); ClosePrompt(); }, 90, fontSize: 28);
             Ui.Button(pr, T("ui.cmd.attackNow"), () => { Report(_ctl.AttackNow(_promptCorps)); ClosePrompt(); }, 90, Palette.ButtonActive, 28);
             _prompt.gameObject.SetActive(false);
+
+            _aimBar = Ui.Rect(_fieldArea, "AimBar");
+            _aimBar.anchorMin = new Vector2(0.05f, 0f);
+            _aimBar.anchorMax = new Vector2(0.95f, 0f);
+            _aimBar.pivot = new Vector2(0.5f, 0f);
+            _aimBar.sizeDelta = new Vector2(0f, 170f);
+            _aimBar.anchoredPosition = new Vector2(0f, 16f);
+            Ui.Background(_aimBar, new Color(0.1f, 0.1f, 0.12f, 0.9f));
+            Ui.Column(_aimBar, 8, 10);
+            _aimText = Ui.Label(_aimBar, "", 26, TextAnchor.MiddleCenter);
+            var ar = Ui.Row(_aimBar, "Buttons", 84, 10);
+            _aimConfirm = Ui.Button(ar, T("ui.aim.confirm"), () => { Notice(_ctl.ConfirmAim() ? T("ui.cmd.done.skill") : T("ui.cmd.rejected")); _dirty = true; }, 84, Palette.ButtonActive, 28);
+            Ui.Button(ar, T("ui.aim.cancel"), () => { _ctl.CancelTargeting(); Notice(T("ui.cmd.cancelled")); _dirty = true; }, 84, fontSize: 28);
+            _aimBar.gameObject.SetActive(false);
             _notice = Ui.Label(_fieldArea, "", 28, TextAnchor.UpperCenter, Palette.Text);
             _notice.rectTransform.anchorMin = new Vector2(0f, 1f);
             _notice.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -342,6 +360,7 @@ namespace Game.Unity.Screens
                 case TapResult.Attack: Notice(T("ui.cmd.done.attack")); break;
                 case TapResult.Move: Notice(T("ui.cmd.done.move")); break;
                 case TapResult.Skill: Notice(T("ui.cmd.done.skill")); break;
+                case TapResult.Aimed: break; // 지정 막대가 안내
                 case TapResult.Rejected: Notice(T("ui.cmd.rejected")); break;
                 default: if (_ctl.Selected == null) Notice(T("ui.cmd.selectFirst")); break;
             }
@@ -671,6 +690,7 @@ namespace Game.Unity.Screens
                 button.targetGraphic.color = corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled;
             }
 
+            RefreshAimBar();
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
             SetLabel(_queueButton, _ctl.Queueing ? T("ui.cmd.queueOn", _ctl.QueueCount, ctx.Combat.OrderQueueMax) : T("ui.cmd.queueOff", _ctl.QueueCount));
             _queueButton.targetGraphic.color = _ctl.Queueing ? Palette.ButtonActive : Palette.Button;
@@ -736,6 +756,24 @@ namespace Game.Unity.Screens
                 Ui.SetEnabled(b, s.Affordable);
                 if (_ctl.TargetingSkill == id) b.targetGraphic.color = Palette.ButtonActive;
             }
+        }
+
+        /// <summary>스킬 지정 중일 때만: 무엇을, 어디에 (사거리 밖이면 다가가서 씀, 자리를 먼저 고르는 스킬은 이동 후).</summary>
+        private void RefreshAimBar()
+        {
+            string id = _ctl.TargetingSkill;
+            bool on = id != null && !IsReplay && _ctl.CanCommand(_ctl.Selected) && _sim.Context.Defs.Skills.ContainsKey(id);
+            _aimBar.gameObject.SetActive(on);
+            if (!on) return;
+            var skill = _sim.Context.Defs.Skills[id];
+            string name = T(skill.NameKey);
+            bool corpsTarget = skill.TargetType == "enemyCorps" || skill.TargetType == "allyCorps";
+            string line;
+            if (_ctl.AimPoint == null) line = T(corpsTarget ? "ui.aim.pickCorps" : skill.MoveFirst ? "ui.aim.pickPlace" : "ui.aim.pickPoint", name);
+            else if (skill.MoveFirst) line = T("ui.aim.placeChosen", name);
+            else line = T(_ctl.AimInRange() ? "ui.aim.inRange" : "ui.aim.outOfRange", name);
+            _aimText.text = line;
+            _aimConfirm.gameObject.SetActive(_ctl.AimPoint != null);
         }
 
         private string OrderName(CorpsState c)
