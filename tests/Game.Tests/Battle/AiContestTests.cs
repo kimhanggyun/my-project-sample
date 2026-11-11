@@ -122,6 +122,21 @@ namespace Game.Tests.Battle
             for (ulong seed = 1; seed < 30; seed++) Run(seed); // 고를 수 없는 행동이면 Play가 false → 무한 반복이 된다
         }
 
+        [Fact(DisplayName = "라운드 기록에 회심 표시 (화면 연출용): 맞은 쪽에만, 피해가 없으면 없다")]
+        public void CritFlags()
+        {
+            int crits = 0;
+            for (ulong seed = 1; seed < 200; seed++)
+            {
+                var s = new ContestSession(Duel, new ContestFighter("a", Fix.FromInt(60), "calm"), new ContestFighter("b", Fix.FromInt(60), "calm"), new SeededRandom(seed));
+                s.Play("charge", "attack"); // A만 피해 (×1.5), B는 아무 일 없음
+                var r = s.Rounds[0];
+                Assert.False(r.CritOnB);
+                if (r.CritOnA) crits++;
+            }
+            Assert.InRange(crits, 1, 199); // 회심 확률대로 가끔
+        }
+
         [Fact(DisplayName = "대결 발생: 능력치 차이가 기준 밖이면 없다")]
         public void Trigger()
         {
