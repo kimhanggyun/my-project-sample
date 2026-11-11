@@ -35,22 +35,22 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3000
+          "troops": 4490
         },
         {
           "slot": "center",
           "troopType": "archer",
-          "troops": 3000
+          "troops": 4490
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 3000
+          "troops": 4490
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 3000
+          "troops": 4490
         }
       ],
       "role": "commander"
@@ -66,17 +66,17 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3460
+          "troops": 4600
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 3460
+          "troops": 4600
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 3460
+          "troops": 4600
         }
       ]
     }
@@ -87,6 +87,7 @@
       "warCry"
     ],
     "gold": 500,
+    "supply": 350000,
     "exp": 1000
   },
   "events": [

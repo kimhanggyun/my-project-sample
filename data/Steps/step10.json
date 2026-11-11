@@ -28,22 +28,32 @@
         {
           "slot": "vanguard",
           "troopType": "cavalry",
-          "troops": 4300
+          "troops": 5000
         },
         {
           "slot": "center",
           "troopType": "cavalry",
-          "troops": 4300
+          "troops": 5000
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 4300
+          "troops": 5000
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 4300
+          "troops": 5000
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "archer",
+          "troops": 5000
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "spearman",
+          "troops": 5000
         }
       ],
       "role": "commander"
@@ -59,17 +69,32 @@
         {
           "slot": "vanguard",
           "troopType": "archer",
-          "troops": 4000
+          "troops": 5000
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 4000
+          "troops": 5000
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 4000
+          "troops": 5000
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "infantry",
+          "troops": 5000
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "spearman",
+          "troops": 5000
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "archer",
+          "troops": 5000
         }
       ]
     },
@@ -84,17 +109,17 @@
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 3500
+          "troops": 4420
         },
         {
           "slot": "center",
           "troopType": "spearman",
-          "troops": 3500
+          "troops": 4420
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 3500
+          "troops": 4420
         }
       ],
       "reserve": true
@@ -106,6 +131,7 @@
       "arrowRain"
     ],
     "gold": 1200,
+    "supply": 600000,
     "exp": 2300
   },
   "events": [

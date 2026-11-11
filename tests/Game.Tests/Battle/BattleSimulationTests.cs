@@ -272,7 +272,8 @@ namespace Game.Tests.Battle
         public void ReplayFromLog()
         {
             var r1 = BattleSimulation.Run(TwoVsTwo(42), PlayerOrders());
-            Assert.Equal(PlayerOrders().Count, r1.Commands.Count);
+            // 받아들여진 명령만 기록된다 (그 순간 안 보이는 적 공격 등은 거절, R-65 뒤로 B2가 늦게 보인다)
+            Assert.True(r1.Commands.Count >= 3, "기록된 명령 " + r1.Commands.Count);
             var r2 = BattleSimulation.Run(TwoVsTwo(42), r1.Commands);
             Assert.Equal(r1.StateHash, r2.StateHash);
         }

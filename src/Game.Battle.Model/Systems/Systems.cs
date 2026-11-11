@@ -83,6 +83,7 @@ namespace Game.Battle.Model.Systems
                 }
                 case OrderKinds.Advance:
                 {
+                    if (order.Lane) return ctx.LaneEnd(corps); // AI 진군: 자기 줄로 곧게 (가까워지면 AI가 공격으로 바꾼다, R-65)
                     var target = ctx.NearestEnemy(corps);
                     if (target == null) return ctx.AdvanceFallback(corps); // 안 보이면 마지막 목격 위치·적 시작 위치로
                     if (order.ByRole && corps.Setup.AdvanceRole != null && corps.Setup.AdvanceRole != AdvanceRoles.Vanguard)

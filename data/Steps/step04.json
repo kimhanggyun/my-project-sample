@@ -108,6 +108,7 @@
       "rally"
     ],
     "gold": 400,
+    "supply": 300000,
     "exp": 800
   },
   "events": [

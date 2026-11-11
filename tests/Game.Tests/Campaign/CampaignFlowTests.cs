@@ -133,7 +133,8 @@ namespace Game.Tests.Campaign
                 Assert.Equal(ur.Wounded, unit.Wounded);
                 Assert.Equal(Kit.D.Campaign.CohesionWinGain, unit.Cohesion);
             }
-            Assert.Equal(supply0 - plan.SupplyTaken + report.SupplyReturned + report.SupplyCaptured, state.Wallet[ResourceIds.Supply]);
+            long supplyReward = plan.Step.RewardResources.TryGetValue(ResourceIds.Supply, out var sr) ? sr : 0; // 첫 클리어 군량 보상
+            Assert.Equal(supply0 - plan.SupplyTaken + report.SupplyReturned + report.SupplyCaptured + supplyReward, state.Wallet[ResourceIds.Supply]);
             Assert.True(report.SupplyCaptured > 0, "이겼는데 포획한 군량이 없습니다.");
             Assert.Contains("fishScale", state.LearnedFormations);
             Assert.Equal(gold0 + 200, state.Wallet[ResourceIds.Gold]);

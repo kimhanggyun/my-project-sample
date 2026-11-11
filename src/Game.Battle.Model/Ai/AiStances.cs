@@ -1,3 +1,4 @@
+using Game.Foundation.Math;
 using System.Collections.Generic;
 using Game.Battle.Model.Geometry;
 using Game.Battle.Model.Simulation;
@@ -42,16 +43,31 @@ namespace Game.Battle.Model.Ai
 
     internal static class AiOrders
     {
-        /// <summary>지금 공격 중인 대상이 가장 가까운 보이는 적이면 유지, 아니면 그 적. 보이는 적이 없으면 진군.</summary>
+        /// <summary>
+        /// 가장 가까운 보이는 적이 aiEngageCells 안이면 그 적을 공격 (지금 대상이면 유지).
+        /// 멀거나 안 보이면 자기 줄로 곧게 진군 (R-65: 가운데로 모이지 않는다). 줄 끝(전장 끝)에 닿았는데도 멀면 예전처럼 그 적·목격 위치로.
+        /// </summary>
         public static void AttackNearest(BattleContext ctx, CorpsState corps)
         {
             var current = corps.Order.Kind == OrderKinds.Attack ? ctx.FindCorps(corps.Order.TargetCorpsId) : null;
             var nearest = ctx.NearestEnemy(corps);
-            if (nearest == null)
+            var engage = ctx.Combat.AiEngageCells;
+            bool close = nearest != null && Vec.DistanceSquared(nearest.Anchor, corps.Anchor) <= engage * engage;
+            if (!close)
             {
-                // 보이는 적이 없으면 진군 (마지막 목격 위치·적 시작 위치로, 보이면 그때 공격)
-                if (corps.Order.Kind != OrderKinds.Advance) corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Advance, Mode = MoveModes.AttackMove });
-                return;
+                bool atEnd = Vec.DistanceSquared(ctx.LaneEnd(corps), corps.Anchor) <= Fix.FromInt(1);
+                if (!atEnd)
+                {
+                    if (corps.Order.Kind != OrderKinds.Advance || !corps.Order.Lane)
+                        corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Advance, Mode = MoveModes.AttackMove, Lane = true });
+                    return;
+                }
+                if (nearest == null)
+                {
+                    // 줄 끝인데 보이는 적이 없으면: 마지막 목격 위치·적 시작 위치로 (보이면 그때 공격)
+                    if (corps.Order.Kind != OrderKinds.Advance || corps.Order.Lane) corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Advance, Mode = MoveModes.AttackMove });
+                    return;
+                }
             }
             if (current != null && current.InBattle && current == nearest) return;
             corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Attack, TargetCorpsId = nearest.Id, Mode = MoveModes.AttackMove });

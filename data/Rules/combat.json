@@ -7,6 +7,8 @@
   "moveCellsPerSecondAtSpeed50": 1.0,
   "contactRadius": 1.0,
   "perceptionCells": 6,
+  "_aiEngageCells": "AI(적·위임)의 진군: 보이는 적이 이 거리(칸) 안이면 공격, 멀면 자기 줄로 곧게 (R-65, 예시)",
+  "aiEngageCells": 12,
   "direction": {
     "flankPp": 15,
     "rearPp": 30,
