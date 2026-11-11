@@ -79,7 +79,7 @@ namespace Game.Flow
                     state.GeneralShards.TryGetValue(id, out var n);
                     state.GeneralShards[id] = n + 1;
                 }
-                else state.Generals.Add(new GeneralState { GeneralId = id, Level = 1 });
+                else state.Generals.Add(GeneralState.Join(_defs.Generals[id])); // 기본 스킬·특성과 함께 (등용·합류와 같게)
                 r.Pulls.Add(new GachaPull { GeneralId = id, Grade = grade.Id, Duplicate = dup });
             }
             state.GachaPity[b.Id] = sincePity;

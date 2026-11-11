@@ -89,6 +89,9 @@ namespace Game.Flow
         public List<string> Rescued { get; } = new List<string>();
         public List<string> UnlockedFormations { get; } = new List<string>();
         public List<string> UnlockedSkills { get; } = new List<string>();
+        /// <summary>합류한 장수 (첫 클리어 보상). 이미 있던 장수면 JoinedAsShard에.</summary>
+        public List<string> JoinedGenerals { get; } = new List<string>();
+        public List<string> JoinedAsShard { get; } = new List<string>();
         public Dictionary<string, long> RewardResources { get; } = new Dictionary<string, long>();
         public List<(string generalId, GrowthReward reward)> GrowthRewards { get; } = new List<(string, GrowthReward)>();
         /// <summary>장수 id → 레벨업 결과 (오른 것만).</summary>
@@ -502,6 +505,20 @@ namespace Game.Flow
             foreach (var s in step.RewardSkills) report.UnlockedSkills.Add(s); // 스킬 해금 = 스킬북 획득처 (상점·보상), 장수에게 쓰는 것은 키우기 탭
             var wallet = new Wallet(state.Wallet);
             foreach (var kv in step.RewardResources) { wallet.Add(kv.Key, kv.Value); report.RewardResources[kv.Key] = kv.Value; }
+            // 장수 합류 (A3): 없으면 새 장수(기본 스킬·특성), 있으면 조각 1개 (모집 중복과 같다)
+            foreach (var id in step.RewardGenerals)
+            {
+                if (!_defs.Generals.TryGetValue(id, out var def)) continue;
+                if (state.FindGeneral(id) != null)
+                {
+                    state.GeneralShards.TryGetValue(id, out var n);
+                    state.GeneralShards[id] = n + 1;
+                    report.JoinedAsShard.Add(id);
+                    continue;
+                }
+                state.Generals.Add(GeneralState.Join(def));
+                report.JoinedGenerals.Add(id);
+            }
         }
 
         /// <summary>전투에 들어갈 장수 능력치: 정의 + 성장분, 경상이면 배율 (CorpsValidator.EffectiveStat).</summary>

@@ -88,7 +88,10 @@
     ],
     "gold": 500,
     "supply": 350000,
-    "exp": 1000
+    "exp": 1000,
+    "joinGenerals": [
+      "general_e"
+    ]
   },
   "events": [
     {

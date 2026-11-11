@@ -6,6 +6,15 @@ namespace Game.Campaign.Roster
     /// <summary>보유 장수 1명의 상태 (세이브됨). 정의(GeneralDef)는 데이터에, 바뀌는 값만 여기.</summary>
     public sealed class GeneralState
     {
+        /// <summary>새로 합류한 장수 (레벨 1, 기본 스킬·특성). 모집·등용·스토리 합류가 같이 쓴다.</summary>
+        public static GeneralState Join(Game.Data.Defs.GeneralDef def)
+        {
+            var g = new GeneralState { GeneralId = def.Id, Level = 1 };
+            if (def.InnateSkills != null) g.LearnedSkills.AddRange(def.InnateSkills);
+            if (def.Traits != null) g.LearnedTraits.AddRange(def.Traits);
+            return g;
+        }
+
         public string GeneralId { get; set; }
         public int Level { get; set; } = 1;
         public long Exp { get; set; }

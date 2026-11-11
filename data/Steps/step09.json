@@ -187,7 +187,10 @@
     "unlockSkills": [],
     "gold": 1100,
     "supply": 550000,
-    "exp": 2100
+    "exp": 2100,
+    "joinGenerals": [
+      "general_g"
+    ]
   },
   "events": [
     {

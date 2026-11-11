@@ -59,6 +59,11 @@ namespace Game.Unity.Screens
             Section(body, "ui.result.injuries", injuries);
             Section(body, "ui.result.capturedOwn", Names(_report.CapturedOwn));
             Section(body, "ui.result.newPrisoners", Names(_report.NewPrisoners));
+            if (_report.NewPrisoners.Count > 0) Ui.Label(body, T("ui.result.prisonerHint"), 24, TextAnchor.MiddleLeft, Palette.TextDim); // 포로 탭에서 등용·해방 (R-66)
+            Section(body, "ui.result.joined", Names(_report.JoinedGenerals));
+            var shards = new List<string>();
+            foreach (var id in _report.JoinedAsShard) shards.Add(T("ui.result.shardLine", Ctx.GeneralName(id)));
+            Section(body, "ui.result.joinedShard", shards);
             Section(body, "ui.result.rescued", Names(_report.Rescued));
 
             var formations = new List<string>();

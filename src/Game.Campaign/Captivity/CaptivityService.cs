@@ -134,11 +134,7 @@ namespace Game.Campaign.Captivity
             if (rng.Chance(RecruitChance(p)))
             {
                 state.Prisoners.Remove(p);
-                var def = _defs.Generals[generalId];
-                var g = new GeneralState { GeneralId = generalId };
-                g.LearnedSkills.AddRange(def.InnateSkills);
-                g.LearnedTraits.AddRange(def.Traits);
-                state.Generals.Add(g);
+                state.Generals.Add(GeneralState.Join(_defs.Generals[generalId]));
                 return RecruitOutcome.Recruited;
             }
             if (_flags.IsEnabled(CaptivityFlags.RecruitRetry))
