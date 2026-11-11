@@ -28,21 +28,26 @@
 3. **Cloud Shell**(콘솔 오른쪽 위 `>_`)에서 아래를 한 번 실행한다. `PROJECT`, `GH_REPO`만 바꾼다.
 
 ```bash
-PROJECT=ancientwar-dev            # 1번 프로젝트 id
+PROJECT=unitygame1-dev
 REGION=asia-northeast3
 GH_REPO=kimhanggyun/my-project-sample
 BUCKET=$PROJECT-game-store
 
 gcloud config set project $PROJECT
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com iamcredentials.googleapis.com storage.googleapis.com
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com storage.googleapis.com
 gcloud artifacts repositories create game --repository-format=docker --location=$REGION
 gcloud storage buckets create gs://$BUCKET --location=$REGION --uniform-bucket-level-access
+
+# 서버 실행용 서비스 계정: 버킷(세이브 저장)에만 쓸 수 있다
+gcloud iam service-accounts create game-runtime --display-name="Game server runtime"
+RUNTIME=game-runtime@$PROJECT.iam.gserviceaccount.com
+gcloud storage buckets add-iam-policy-binding gs://$BUCKET --member=serviceAccount:$RUNTIME --role=roles/storage.objectAdmin
 
 # 배포용 서비스 계정 + GitHub Actions가 키 없이 쓰게 (Workload Identity)
 gcloud iam service-accounts create deployer --display-name="GitHub deploy"
 SA=deployer@$PROJECT.iam.gserviceaccount.com
-for ROLE in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser roles/storage.admin; do
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=$ROLE
+for ROLE in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser; do
+  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=$ROLE --condition=None
 done
 gcloud iam workload-identity-pools create github --location=global
 gcloud iam workload-identity-pools providers create-oidc github --location=global --workload-identity-pool=github \
@@ -53,19 +58,16 @@ POOL=$(gcloud iam workload-identity-pools describe github --location=global --fo
 gcloud iam service-accounts add-iam-policy-binding $SA --role=roles/iam.workloadIdentityUser \
   --member=principalSet://iam.googleapis.com/$POOL/attribute.repository/$GH_REPO
 
-# 서버(Cloud Run 기본 서비스 계정)가 버킷에 쓸 수 있게
-NUM=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
-gcloud storage buckets add-iam-policy-binding gs://$BUCKET --member=serviceAccount:$NUM-compute@developer.gserviceaccount.com --role=roles/storage.objectAdmin
-
 echo "GCP_PROJECT_ID=$PROJECT"
 echo "GCP_REGION=$REGION"
 echo "GCP_WIF_PROVIDER=$POOL/providers/github"
 echo "GCP_SERVICE_ACCOUNT=$SA"
+echo "GCP_RUNTIME_SA=$RUNTIME"
 echo "GCS_BUCKET=$BUCKET"
 echo "FIREBASE_PROJECT_ID=$PROJECT"
 ```
 
-4. 마지막에 찍힌 6줄을 GitHub 저장소 → Settings → Secrets and variables → Actions → **Variables** 탭에 같은 이름으로 넣는다 (비밀값이 아니라서 Variables).
+4. 마지막에 찍힌 7줄을 GitHub 저장소 → Settings → Secrets and variables → Actions → **Variables** 탭에 같은 이름으로 넣는다 (비밀값이 아니라서 Variables).
 5. GitHub → Actions → `deploy-cloudrun` → **Run workflow**. 끝에 `서버 주소: https://game-server-….run.app`이 찍히면 성공.
 6. 게임 설정 화면(개발 빌드) → 서버 연결 → [http]에 그 주소를 넣으면 폰이 클라우드 서버에 붙는다.
 

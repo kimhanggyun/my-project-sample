@@ -2,7 +2,7 @@ name: deploy-cloudrun
 
 # 게임 서버를 Google Cloud Run에 올린다 (docs/impl/deploy-cloudrun.md). 손으로만 실행 (Actions 탭 → Run workflow).
 # 저장소 설정 → Secrets and variables → Actions → Variables에 아래 값이 있어야 한다 (비밀값 없음: 키 대신 Workload Identity 사용).
-#   GCP_PROJECT_ID, GCP_REGION(asia-northeast3), GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GCS_BUCKET, FIREBASE_PROJECT_ID
+#   GCP_PROJECT_ID, GCP_REGION(asia-northeast3), GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT(배포용), GCP_RUNTIME_SA(서버 실행용), GCS_BUCKET, FIREBASE_PROJECT_ID
 on:
   workflow_dispatch:
 
@@ -38,6 +38,7 @@ jobs:
             --image "$IMAGE" \
             --region "$REGION" \
             --allow-unauthenticated \
+            --service-account "${{ vars.GCP_RUNTIME_SA }}" \
             --min-instances 0 \
             --max-instances 1 \
             --execution-environment gen2 \
