@@ -44,6 +44,11 @@
 | `grass`, `bush`, `reed` | Nature Kit 풀·덤불 |
 | `house` | Town/Castle Kit 집 |
 
+### 2.1 장수 초상 (전투 정보 패널)
+
+- `unity/Assets/Game/Resources/Art/portraits/<장수 id>.png` (예: `general_a.png`)를 넣고 Texture Type을 **Sprite (2D and UI)**로 둔다. 코드 수정은 필요 없다.
+- 그림이 없으면 진영 색 원 안에 이름 첫 글자를 보여 준다 (`Portrait.cs`).
+
 ## 3. 주의
 
 - 모델은 **메시 하나만** 쓴다 (여러 조각으로 된 모델은 첫 조각만). 조각이 여러 개면 Unity에서 하나로 합치거나 다른 모델을 고른다.

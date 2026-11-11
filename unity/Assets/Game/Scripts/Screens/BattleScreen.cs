@@ -25,6 +25,7 @@ namespace Game.Unity.Screens
         private const float TopHeight = 64f;
         private const float StatusHeight = 40f;
         private const float HeadHeight = 56f;
+        private const float PortraitSize = 104f;
         private const float RowHeight = 72f;
         private const float CardHeight = 92f;
         private const float NoticeSeconds = 2.5f;
@@ -80,12 +81,18 @@ namespace Game.Unity.Screens
         private RectTransform _panelBody;
         private bool _collapsed;
         private Text _selectedInfo;
+        // ③ 선택 군단 (battle.md 4장): 초상, 병력·사기·책략 게이지, 진형 목록, 적 정보
+        private Portrait _portrait;
+        private RectTransform _troopGauge, _moraleGauge, _pointGauge;
+        private RectTransform _formationRow;
+        private string _formationRowKey;
+        private Text _enemyInfo;
+        private CorpsState _inspected;
         private Text _notice;
         private Button _pauseButton;
         private Button _speedButton;
         private Button _delegateButton;
         private Button _moveModeButton;
-        private Button _formationButton;
         private RectTransform _skillRow;
         private readonly List<(CorpsState corps, Button button, Text text)> _cards = new List<(CorpsState, Button, Text)>();
         private readonly List<Button> _orderButtons = new List<Button>();
@@ -240,11 +247,19 @@ namespace Game.Unity.Screens
 
             // ③④ 선택 군단 정보 + 명령 (접기·펴기, battle.md 4장: 전장이 가려지지 않게)
             var panel = Ui.Card(Root, "Selected", 10, 6);
-            var head = Ui.Row(panel, "Head", HeadHeight, 8);
-            _selectedInfo = Ui.Label(head, "", 24);
-            Ui.Size(_selectedInfo, flexibleWidth: 5);
-            _collapseButton = Ui.Button(head, "", ToggleCollapse, HeadHeight, fontSize: 24);
-            Ui.Size(_collapseButton, width: 150);
+            var head = Ui.Row(panel, "Head", PortraitSize, 10);
+            _portrait = new Portrait(head, PortraitSize);
+            Ui.Size(_portrait.Rect, PortraitSize, PortraitSize, flexibleWidth: 0);
+            var info = Ui.Rect(head, "Info");
+            Ui.Size(info, flexibleWidth: 5);
+            Ui.Column(info, 3);
+            _selectedInfo = Ui.Label(info, "", 22);
+            Ui.Size(_selectedInfo, 56);
+            _troopGauge = Ui.Gauge(info, Palette.Good, 12);
+            _moraleGauge = Ui.Gauge(info, new Color(0.95f, 0.65f, 0.25f), 10);
+            _pointGauge = Ui.Gauge(info, new Color(0.45f, 0.65f, 0.95f), 10);
+            _collapseButton = Ui.Button(head, "", ToggleCollapse, PortraitSize, fontSize: 24);
+            Ui.Size(_collapseButton, width: 130);
             _panelBody = Ui.Rect(panel, "Body");
             Ui.Column(_panelBody, 6);
             var orders = Ui.Row(_panelBody, "Orders", RowHeight, 6);
@@ -254,14 +269,15 @@ namespace Game.Unity.Screens
             _delegateButton = Ui.Button(orders, "", ToggleDelegate, RowHeight, fontSize: 26);
             _orderButtons.Add(_delegateButton);
             _moveModeButton = Ui.Button(orders, "", NextMoveMode, RowHeight, fontSize: 24);
-            _formationButton = Ui.Button(orders, "", () => Report(_ctl.NextFormation()), RowHeight, fontSize: 24);
-            _orderButtons.Add(_formationButton);
             var plans = Ui.Row(_panelBody, "Plans", RowHeight, 6);
             _queueButton = Ui.Button(plans, "", () => { _ctl.SetQueueing(!_ctl.Queueing); _dirty = true; }, RowHeight, fontSize: 24);
             _orderButtons.Add(Ui.Button(plans, T("ui.cmd.rest"), () => Report(_ctl.Rest()), RowHeight, fontSize: 24));
             _orderButtons.Add(Ui.Button(plans, T("ui.cmd.coordinate"), () => Report(_ctl.Coordinate()), RowHeight, fontSize: 24));
             _orderButtons.Add(Ui.Button(plans, T("ui.cmd.withdraw"), () => Report(_ctl.Retreat()), RowHeight, Palette.ButtonDisabled, 24)); // 전장 이탈 (퇴각)
             _skillRow = Ui.Row(_panelBody, "Skills", RowHeight, 6);
+            _formationRow = Ui.Row(_panelBody, "Formations", RowHeight, 6); // 배운 진형 목록, 지금 진형 강조
+            _enemyInfo = Ui.Label(_panelBody, "", 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Size(_enemyInfo, 32);
 
             // ⑤ 하단: 전군 진군 + 군단 카드
             var bottom = Ui.Row(Root, "Cards", CardHeight, 6);
@@ -372,6 +388,8 @@ namespace Game.Unity.Screens
             }
             // 메뉴 바깥을 누르면 메뉴를 닫고 그 누름은 그대로 (빠른 조작: 빈 땅 = 이동, 적 = 공격, 4.3.3)
             if (_radial.IsOpen) CloseCorpsMenu();
+            var hitEnemy = _ctl.Pick(point);
+            if (hitEnemy != null && hitEnemy.Team != _ctl.Team) _inspected = hitEnemy; // 적 정보 줄에 보인다
             var r = _ctl.Tap(point);
             OnTap(r);
             if (r == TapResult.Selected) OpenCorpsMenu(_ctl.Selected); // 아군 군단을 누르면 원형 메뉴
@@ -806,8 +824,9 @@ namespace Game.Unity.Screens
             foreach (var b in _orderButtons) Ui.SetEnabled(b, can);
             SetLabel(_delegateButton, sel != null && sel.Delegated ? T("ui.cmd.delegateOff") : T("ui.cmd.delegateOn"));
             SetLabel(_moveModeButton, T("ui.cmd.moveMode", T("ui.moveMode." + _ctl.MoveMode)));
-            SetLabel(_formationButton, T("ui.cmd.formation"));
-            if (can && _ctl.Formations().Count < 2) Ui.SetEnabled(_formationButton, false);
+            RefreshHead(sel);
+            RefreshFormations(can);
+            RefreshEnemyInfo(sel);
             RefreshSkills(can);
 
             foreach (var (corps, button, text) in _cards)
@@ -884,6 +903,56 @@ namespace Game.Unity.Screens
                 Ui.SetEnabled(b, s.Affordable);
                 if (_ctl.TargetingSkill == id) b.targetGraphic.color = Palette.ButtonActive;
             }
+        }
+
+        /// <summary>초상과 게이지: 병력(남은/처음), 사기(0~100), 책략 점수(처음 점수나 100 중 큰 것 기준).</summary>
+        private void RefreshHead(CorpsState sel)
+        {
+            bool on = sel != null;
+            _portrait.Rect.gameObject.SetActive(on);
+            foreach (var g in new[] { _troopGauge, _moraleGauge, _pointGauge }) g.parent.gameObject.SetActive(on);
+            if (!on) return;
+            _portrait.Show(sel.Setup.General?.Id, GeneralOf(sel), sel.Team == StoryFlow.PlayerTeam ? Palette.Ally : Palette.Enemy);
+            Ui.SetGauge(_troopGauge, sel.StartTroops > 0 ? (float)sel.Troops / sel.StartTroops : 0f);
+            Ui.SetGauge(_moraleGauge, (float)sel.Morale.ToDisplayDouble() / 100f);
+            float scale = Mathf.Max(100f, (float)sel.SkillPoints.Start.ToDisplayDouble());
+            Ui.SetGauge(_pointGauge, (float)sel.SkillPoints.Points.ToDisplayDouble() / scale);
+        }
+
+        /// <summary>진형 목록: 누르면 그 진형으로 (바꾸는 중이면 바뀔 진형을 강조). 선택·진형이 바뀔 때만 다시 만든다.</summary>
+        private void RefreshFormations(bool can)
+        {
+            var sel = _ctl.Selected;
+            var list = can ? _ctl.Formations() : new List<string>();
+            string now = sel == null ? "" : (sel.PendingFormation ?? sel.Formation).Id;
+            string key = (sel?.Id ?? "-") + "|" + now + "|" + string.Join(",", list);
+            if (key == _formationRowKey) return;
+            _formationRowKey = key;
+            Ui.Clear(_formationRow);
+            _formationRow.gameObject.SetActive(list.Count > 1);
+            foreach (var f in list)
+            {
+                string id = f;
+                string name = _sim.Context.Defs.Formations.TryGetValue(id, out var fd) ? T(fd.NameKey) : id;
+                var b = Ui.Button(_formationRow, name, () => Report(_ctl.ChangeFormation(id)), RowHeight, id == now ? Palette.ButtonActive : Palette.Button, 24);
+                if (id == now) b.interactable = false;
+            }
+        }
+
+        /// <summary>
+        /// 적 정보: 선택 군단이 치는 적, 없으면 마지막으로 누른 적. 보이면 병력(백 단위 어림)·진형·사기, 안 보이면 이름만.
+        /// </summary>
+        private void RefreshEnemyInfo(CorpsState sel)
+        {
+            var ctx = _sim.Context;
+            CorpsState enemy = null;
+            if (sel != null && sel.Order.Kind == OrderKinds.Attack) enemy = ctx.FindCorps(sel.Order.TargetCorpsId);
+            if (enemy == null) enemy = _inspected;
+            if (enemy == null || !enemy.InBattle) { _enemyInfo.text = T("ui.enemyInfo.none"); return; }
+            if (!_ctl.Sees(enemy)) { _enemyInfo.text = T("ui.enemyInfo.hidden", CorpsName(enemy.Id)); return; }
+            string formation = ctx.Defs.Formations.TryGetValue(enemy.Formation.Id, out var f) ? T(f.NameKey) : enemy.Formation.Id;
+            long troops = (enemy.Troops + 50) / 100 * 100;
+            _enemyInfo.text = T("ui.enemyInfo.line", CorpsName(enemy.Id), troops.ToString("N0"), formation, enemy.Morale.FloorToLong());
         }
 
         /// <summary>스킬 지정 중일 때만: 무엇을, 어디에 (사거리 밖이면 다가가서 씀, 자리를 먼저 고르는 스킬은 이동 후).</summary>
