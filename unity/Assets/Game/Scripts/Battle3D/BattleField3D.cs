@@ -180,10 +180,20 @@ namespace Game.Unity.Battle3D
                 while (baseType != null && types.TryGetValue(baseType, out var d) && d.Parent != null) baseType = d.Parent;
                 var mat = Own(NewMaterial(SoldierColors[color]));
                 mat.enableInstancing = true;
-                b = new InstanceBatch(SoldierMeshes.For(baseType), new[] { mat }, Matrix4x4.identity);
+                // 부위별 재질: 갑옷(팀 색) · 얼굴 · 무기 · 다리·말
+                b = new InstanceBatch(SoldierMeshes.For(baseType), new[] { mat, PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(2, SoldierMeshes.MetalColor), PartMaterial(3, SoldierMeshes.DarkColor) }, Matrix4x4.identity);
                 _allSoldierBatches.Add(b);
             }
             return _soldierBatches[(troop, color)] = b;
+        }
+
+        private readonly Material[] _partMaterials = new Material[4];
+        private Material PartMaterial(int i, Color c)
+        {
+            if (_partMaterials[i] != null) return _partMaterials[i];
+            var m = Own(NewMaterial(c));
+            m.enableInstancing = true;
+            return _partMaterials[i] = m;
         }
 
         /// <summary>쓰러진 병사 (병력이 줄어 화면 병사가 빠진 자리에 남는다, 전투가 끝날 때까지). 최대 개수까지만.</summary>
