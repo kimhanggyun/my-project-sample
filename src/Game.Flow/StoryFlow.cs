@@ -516,6 +516,7 @@ namespace Game.Flow
                 Intellect = CorpsValidator.EffectiveStat(_defs, g, "intellect"),
                 Temperament = def.Temperament,
                 Skills = new List<string>(g.LearnedSkills),
+                Traits = new List<string>(g.LearnedTraits),
             };
         }
 

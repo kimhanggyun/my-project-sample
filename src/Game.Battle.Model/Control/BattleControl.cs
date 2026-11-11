@@ -242,9 +242,9 @@ namespace Game.Battle.Model.Control
                     SkillId = s.Id,
                     NameKey = s.NameKey,
                     TargetType = s.TargetType,
-                    Cost = s.Cost,
+                    Cost = Combat.TraitEffects.SkillCost(Context, Selected, s.Id, s.Cost),
                     UsesLeft = Selected.SkillPoints.UsesLeft(s.Id),
-                    Affordable = Selected.SkillPoints.CanUse(s.Id, s.Cost, true),
+                    Affordable = Selected.SkillPoints.CanUse(s.Id, Combat.TraitEffects.SkillCost(Context, Selected, s.Id, s.Cost), true),
                 });
             return list;
         }

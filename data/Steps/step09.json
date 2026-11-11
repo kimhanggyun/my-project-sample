@@ -20,7 +20,7 @@
     {
       "id": "enemy_corps_91",
       "general": "enemy_general_02",
-      "formation": "column",
+      "formation": "square",
       "ai": "aggressive",
       "difficulty": "normal",
       "supplyMinutes": 10,
@@ -137,6 +137,47 @@
           "troops": 5000
         }
       ]
+    },
+    {
+      "id": "enemy_reserve_91",
+      "general": "enemy_general_04",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "spearman",
+          "troops": 4500
+        },
+        {
+          "slot": "center",
+          "troopType": "infantry",
+          "troops": 4500
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "spearman",
+          "troops": 4500
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "archer",
+          "troops": 4500
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "infantry",
+          "troops": 4500
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "archer",
+          "troops": 4500
+        }
+      ],
+      "reserve": true
     }
   ],
   "rewards": {
@@ -158,6 +199,25 @@
         {
           "type": "dialogue",
           "key": "dialogue.step09.battle"
+        }
+      ]
+    },
+    {
+      "id": "reserve",
+      "trigger": {
+        "type": "teamTroopsBelow",
+        "team": "enemy",
+        "ratio": 0.75
+      },
+      "actions": [
+        {
+          "type": "reinforce",
+          "corps": "enemy_reserve_91"
+        },
+        {
+          "type": "dialogue",
+          "key": "dialogue.step09.reinforce",
+          "corps": "enemy_reserve_91"
         }
       ]
     }

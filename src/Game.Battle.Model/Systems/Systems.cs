@@ -428,6 +428,7 @@ namespace Game.Battle.Model.Systems
                     // 용맹 (R-56): 용맹이 높은 장수의 군단은 손실에 덜 흔들린다
                     if (ctx.IsEnabled(RuleFlagIds.Valor)) loss = loss * c.ValorMoraleLossMultiplier(c.Valor(corps.Setup.General.Might, corps.Setup.General.Leadership));
                     loss = loss * TagEffects.MoraleLossMultiplier(c, corps); // 정예 등 (R-58)
+                    loss = loss * TraitEffects.MoraleLossMultiplier(ctx, corps); // 군기·불굴 등 특성 (R-67)
                     m -= loss;
                 }
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;

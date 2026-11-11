@@ -35,22 +35,22 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 4490
+          "troops": 4740
         },
         {
           "slot": "center",
           "troopType": "archer",
-          "troops": 4490
+          "troops": 4740
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 4490
+          "troops": 4740
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 4490
+          "troops": 4740
         }
       ],
       "role": "commander"
@@ -66,17 +66,17 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 4600
+          "troops": 4850
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 4600
+          "troops": 4850
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 4600
+          "troops": 4850
         }
       ]
     }

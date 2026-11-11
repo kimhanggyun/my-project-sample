@@ -104,6 +104,8 @@ namespace Game.Battle.Model.Simulation
         public string Temperament { get; set; }
         /// <summary>가진 스킬 전부 (기본 스킬 + 배운 스킬). 보유 스킬은 전부 가지고 출진한다.</summary>
         public List<string> Skills { get; set; } = new List<string>();
+        /// <summary>가진 특성 (traits.json의 효과가 전투에 들어간다, R-67).</summary>
+        public List<string> Traits { get; set; } = new List<string>();
 
         /// <summary>통솔·무력·지략 밖의 능력치 (능력치는 확장형, battle.md 2.9).</summary>
         public Dictionary<string, Fix> OtherStats { get; set; } = new Dictionary<string, Fix>();
@@ -120,6 +122,7 @@ namespace Game.Battle.Model.Simulation
         public static GeneralSnapshot From(GeneralDef def) => new GeneralSnapshot
         {
             Skills = new List<string>(def.InnateSkills),
+            Traits = new List<string>(def.Traits ?? new List<string>()),
             Id = def.Id,
             Leadership = def.Stats.Get("leadership"),
             Might = def.Stats.Get("might"),

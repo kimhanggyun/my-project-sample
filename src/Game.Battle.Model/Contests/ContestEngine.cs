@@ -29,6 +29,8 @@ namespace Game.Battle.Model.Contests
         public bool Retreated { get; internal set; }
         public bool Withdrew { get; internal set; }
         public bool Fallen => Resource <= Fix.Zero;
+        /// <summary>주는 피해 % (장수 특성 contestDamagePct, R-67). 0이면 보정 없음.</summary>
+        public Fix DamagePct { get; set; }
 
         public ContestFighter(string id, Fix stat, string temperament)
         {
@@ -168,6 +170,7 @@ namespace Game.Battle.Model.Contests
         private Fix Damage(Fix baseDamage, ContestFighter me, ContestFighter them, bool crit)
         {
             Fix pct = Fix.Clamp((them.Stat - me.Stat) * Def.StatInfluencePctPerPoint, -Def.StatInfluenceMaxPct, Def.StatInfluenceMaxPct);
+            pct += them.DamagePct; // 때리는 쪽 특성 (R-67)
             return Vary(baseDamage * (Fix.Hundred + pct) / Fix.Hundred, crit);
         }
 

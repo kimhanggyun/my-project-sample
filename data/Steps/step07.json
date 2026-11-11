@@ -62,39 +62,39 @@
       "id": "enemy_corps_72",
       "general": "enemy_general_02",
       "formation": "square",
-      "ai": "defensive",
+      "ai": "aggressive",
       "difficulty": "normal",
       "supplyMinutes": 10,
       "units": [
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3580
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 5000
+          "troops": 3580
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3580
         },
         {
           "slot": "rightWing",
           "troopType": "infantry",
-          "troops": 5000
+          "troops": 3580
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 5000
+          "troops": 3580
         },
         {
           "slot": "rightGuard",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3580
         }
       ]
     }

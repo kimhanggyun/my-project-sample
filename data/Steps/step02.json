@@ -38,32 +38,32 @@
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 4580
+          "troops": 4670
         },
         {
           "slot": "center",
           "troopType": "archer",
-          "troops": 4580
+          "troops": 4670
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 4430
+          "troops": 4520
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 4430
+          "troops": 4520
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 3480
+          "troops": 3550
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 3480
+          "troops": 3550
         }
       ],
       "supplyMinutes": 10
@@ -82,32 +82,32 @@
         {
           "slot": "vanguard",
           "troopType": "cavalry",
-          "troops": 3950
+          "troops": 4030
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 4430
+          "troops": 4520
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 3950
+          "troops": 4030
         },
         {
           "slot": "rightWing",
           "troopType": "infantry",
-          "troops": 3950
+          "troops": 4030
         },
         {
           "slot": "leftGuard",
           "troopType": "infantry",
-          "troops": 3010
+          "troops": 3070
         },
         {
           "slot": "rightGuard",
           "troopType": "infantry",
-          "troops": 3010
+          "troops": 3070
         }
       ],
       "supplyMinutes": 10
@@ -127,22 +127,22 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3950
+          "troops": 4030
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 3950
+          "troops": 4030
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 3480
+          "troops": 3550
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 3480
+          "troops": 3550
         }
       ],
       "supplyMinutes": 10

@@ -92,14 +92,14 @@ namespace Game.Battle.Model.Skills
             if (!corps.KnowsSkill(skill.Id) || !SkillRules.RequirementsMet(corps, skill)) return false;
             var cast = SkillRules.MakeCast(ctx, corps, skill, cmd);
             if (cast == null) return false;
-            return corps.SkillPoints.CanUse(skill.Id, skill.Cost, SkillRules.ConditionsMet(cast));
+            return corps.SkillPoints.CanUse(skill.Id, Combat.TraitEffects.SkillCost(ctx, corps, skill.Id, skill.Cost), SkillRules.ConditionsMet(cast));
         }
 
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             var skill = ctx.Defs.Skills[cmd.SkillId];
             var cast = SkillRules.MakeCast(ctx, corps, skill, cmd);
-            if (!corps.SkillPoints.TryConsume(skill.Id, skill.Cost, SkillRules.ConditionsMet(cast))) return;
+            if (!corps.SkillPoints.TryConsume(skill.Id, Combat.TraitEffects.SkillCost(ctx, corps, skill.Id, skill.Cost), SkillRules.ConditionsMet(cast))) return;
             if (SkillRules.InRange(cast))
             {
                 SkillRules.Cast(cast);

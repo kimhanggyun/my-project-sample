@@ -52,6 +52,8 @@ namespace Game.Data.Defs
         public PracticeRules Practice { get; private set; } = PracticeRules.None;
         /// <summary>처음 안내 (Rules/guides.json, R-62). 파일이 없으면 안내 없음.</summary>
         public GuideRules Guides { get; private set; } = GuideRules.None;
+        /// <summary>특성 정의 (Rules/traits.json, R-67). 파일이 없으면 특성 효과 없음.</summary>
+        public TraitRules Traits { get; private set; } = TraitRules.None;
         /// <summary>부대 키우기 (Rules/troopGrowth.json, 없으면 훈련·승급 없음).</summary>
         public TroopGrowthRules TroopGrowth { get; private set; } = TroopGrowthRules.None;
 
@@ -274,6 +276,7 @@ namespace Game.Data.Defs
             if (source.Exists(RulesDir + GachaRules.File)) set.Gacha = GachaRules.From(Read(RulesDir + GachaRules.File), set.Generals);
             if (source.Exists(RulesDir + PracticeRules.File)) set.Practice = PracticeRules.From(Read(RulesDir + PracticeRules.File), set.Temperaments);
             if (source.Exists(RulesDir + GuideRules.File)) set.Guides = GuideRules.From(Read(RulesDir + GuideRules.File));
+            if (source.Exists(RulesDir + TraitRules.File)) set.Traits = TraitRules.From(Read(RulesDir + TraitRules.File));
 
             set.StartingKit = ReadStartingKit(Read(theme + "startingKit.json"));
 
