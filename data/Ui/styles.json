@@ -1,5 +1,5 @@
 {
-  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 최종 아트 방향은 미정",
+  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안)",
   "default": "basic",
   "styles": {
     "basic": {
@@ -7,9 +7,19 @@
       "cornerRadius": 0,
       "fontScale": 1.0,
       "colors": {
-        "background": "#1A1C21", "bar": "#292B33", "card": "#333640", "button": "#475473", "buttonActive": "#8C6B33",
-        "buttonDisabled": "#38383D", "text": "#EDEDE6", "textDim": "#9EA1A8", "ally": "#8CBFFF", "enemy": "#FF8C80",
-        "good": "#8CE68C", "bad": "#FF7366", "overlay": "#00000099"
+        "background": "#1A1C21",
+        "bar": "#292B33",
+        "card": "#333640",
+        "button": "#475473",
+        "buttonActive": "#8C6B33",
+        "buttonDisabled": "#38383D",
+        "text": "#EDEDE6",
+        "textDim": "#9EA1A8",
+        "ally": "#8CBFFF",
+        "enemy": "#FF8C80",
+        "good": "#8CE68C",
+        "bad": "#FF7366",
+        "overlay": "#00000099"
       }
     },
     "temp1": {
@@ -17,9 +27,39 @@
       "cornerRadius": 22,
       "fontScale": 0.9,
       "colors": {
-        "background": "#15130F", "bar": "#241F18", "card": "#2E2820", "button": "#5A4630", "buttonActive": "#A8752E",
-        "buttonDisabled": "#332E28", "text": "#F2E8D5", "textDim": "#A89C86", "ally": "#7FB2E6", "enemy": "#E67A66",
-        "good": "#9CCF7A", "bad": "#E0614F", "overlay": "#000000AA"
+        "background": "#15130F",
+        "bar": "#241F18",
+        "card": "#2E2820",
+        "button": "#5A4630",
+        "buttonActive": "#A8752E",
+        "buttonDisabled": "#332E28",
+        "text": "#F2E8D5",
+        "textDim": "#A89C86",
+        "ally": "#7FB2E6",
+        "enemy": "#E67A66",
+        "good": "#9CCF7A",
+        "bad": "#E0614F",
+        "overlay": "#000000AA"
+      }
+    },
+    "ink": {
+      "nameKey": "style.ink",
+      "cornerRadius": 10,
+      "fontScale": 0.95,
+      "colors": {
+        "background": "#E9E1CF",
+        "bar": "#D6CAB2",
+        "card": "#F4EEE0",
+        "button": "#D2C3A6",
+        "buttonActive": "#C45A44",
+        "buttonDisabled": "#DCD5C7",
+        "text": "#2B2620",
+        "textDim": "#6E665A",
+        "ally": "#2F5D8A",
+        "enemy": "#A8322A",
+        "good": "#3E7A3A",
+        "bad": "#B03A2E",
+        "overlay": "#2B2620AA"
       }
     }
   }
