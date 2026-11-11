@@ -79,7 +79,7 @@ namespace Game.Unity.Boot
 
         /// <summary>데이터·세이브·서비스를 준비한다. 실패하면 예외 (부팅 화면이 오류로 보여준다).</summary>
         public static GameContext Create(IDataSource data, IDataSource config, ISaveStore saveStore, ITimeProvider time, string serviceConfigFile,
-            Func<string, IOnlineTransport> transportFactory = null, Func<ILocationService> deviceLocation = null)
+            Func<string, IOnlineTransport> transportFactory = null, Func<ILocationService> deviceLocation = null, MonoBehaviour host = null)
         {
             var clock = new ServerClock(time);
             var c = new GameContext { Data = data, Time = clock, Clock = clock, _saveStore = saveStore };
@@ -109,6 +109,9 @@ namespace Game.Unity.Boot
             var reg = ServiceRegistry.WithBuiltIns();
             // 실제 SDK 구현은 여기서 reg.Register(...)로 더한다 (설정에서 이름으로 고른다).
             if (deviceLocation != null) reg.Register(ServiceIds.Location, Game.Unity.Online.UnityLocationService.ImplName, deviceLocation);
+            if (host != null)
+                reg.Register<IAuthService>(ServiceIds.AuthFor(ServiceIds.SignInGoogle), Game.Unity.Online.GoogleFirebaseAuthService.ImplName,
+                    () => new Game.Unity.Online.GoogleFirebaseAuthService(host, cfg.Value(Game.Unity.Online.GoogleFirebaseAuthService.ApiKeyKey), cfg.Value(Game.Unity.Online.GoogleFirebaseAuthService.WebClientIdKey)));
             c.Auth = reg.Create<IAuthService>(ServiceIds.Auth, cfg);
             c._services = reg;
             c._serviceConfig = cfg;
@@ -341,8 +344,29 @@ namespace Game.Unity.Boot
             catch (Exception e) { Debug.LogWarning("로그인 방식 '" + method + "': " + e.Message); done?.Invoke(false); return; }
             provider.SignInAutomatically(ok =>
             {
-                if (ok) { Auth = provider; StartupRecord.SignInMethod = method; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
-                done?.Invoke(ok);
+                if (!ok) { done?.Invoke(false); return; }
+                void Finish()
+                {
+                    Auth = provider;
+                    StartupRecord.SignInMethod = method;
+                    StartupFlow.WriteRecord(_saveStore, StartupRecord);
+                    done?.Invoke(true);
+                }
+                // 서버(http)가 있고 로그인 증명이 있으면 서버 계정도 그 사용자 것으로 (Firebase, deploy-cloudrun.md 3장)
+                if (provider.IdToken == null || !(Online is HttpOnlineService http)) { Finish(); return; }
+                string before = http.AccountId;
+                http.SignInWithFirebase(provider.IdToken, serverOk =>
+                {
+                    if (!serverOk) { Debug.LogWarning("서버 로그인(Firebase) 실패"); done?.Invoke(false); return; }
+                    if (before != http.AccountId)
+                    {
+                        // 다른 계정: 처음 맞추는 것으로 (진행이 더 앞선 쪽이 남는다, CloudSync), 이전 계정의 보내지 못한 기록은 버린다
+                        Link.Revision = 0;
+                        Link.Journal.Clear();
+                    }
+                    KeepAccount();
+                    Finish();
+                });
             });
         }
 

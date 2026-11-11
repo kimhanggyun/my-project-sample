@@ -96,6 +96,20 @@ namespace Game.Online
             });
         }
 
+        /// <summary>
+        /// Firebase 로그인 (POST /v1/auth/firebase): 서버가 ID 토큰을 확인하고 그 사용자의 계정 토큰을 준다. 지금 토큰(게스트 등)을 바꾼다.
+        /// 서버가 Firebase를 쓰지 않으면(404) 실패.
+        /// </summary>
+        public void SignInWithFirebase(string idToken, Action<bool> done)
+        {
+            _transport.Send("POST", OnlineRoutes.FirebaseSignIn, OnlineJson.Write(new ExternalSignInRequest { IdToken = idToken }), null, (status, body) =>
+            {
+                var r = status == 200 ? Parse<SignInResponse>(body) : null;
+                if (r?.Token != null) { Token = r.Token; AccountId = r.AccountId; }
+                done?.Invoke(r?.Token != null);
+            });
+        }
+
         public void GetTime(Action<ServerTimeResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Time, null, null, (status, body) => done?.Invoke(status == 200 ? Parse<ServerTimeResponse>(body) : null));
 

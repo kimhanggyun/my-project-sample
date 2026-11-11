@@ -50,7 +50,8 @@ namespace Game.Unity.Boot
                     new SystemTimeProvider(),
                     GameDataPaths.ServiceConfigFile,
                     url => new Game.Unity.Online.UnityWebTransport(this, url),
-                    () => new Game.Unity.Online.UnityLocationService(this));
+                    () => new Game.Unity.Online.UnityLocationService(this),
+                    this);
             }
             catch (Exception e)
             {

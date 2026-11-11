@@ -1,0 +1,21 @@
+// 구글 로그인 (Credential Manager) 안드로이드 라이브러리 — docs/impl/deploy-cloudrun.md 5장.
+// Unity가 이 폴더(.androidlib)를 Gradle 모듈로 함께 빌드한다.
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'net.itgold.unitygame1.auth'
+    compileSdk 35
+    defaultConfig {
+        minSdk 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.credentials:credentials:1.3.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+}

@@ -96,6 +96,38 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.OK, (await c.GetAsync(OnlineRoutes.Me)).StatusCode); // 받은 토큰으로 다른 API
         }
 
+        private sealed class ClientTransport : IOnlineTransport
+        {
+            private readonly HttpClient _c;
+            public ClientTransport(HttpClient c) { _c = c; }
+            public void Send(string method, string path, string jsonBody, string bearerToken, Action<int, string> done)
+            {
+                var req = new HttpRequestMessage(new HttpMethod(method), path);
+                if (jsonBody != null) req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                if (bearerToken != null) req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+                var res = _c.SendAsync(req).GetAwaiter().GetResult();
+                done((int)res.StatusCode, res.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            }
+        }
+
+        [Fact(DisplayName = "기기 HttpOnlineService: 게스트로 쓰다가 Firebase 로그인하면 그 사용자 계정 토큰으로 바뀐다")]
+        public void ClientSwitchesFromGuest()
+        {
+            using var f = new WithFirebase();
+            var online = new HttpOnlineService(new ClientTransport(f.CreateClient()), "ancientwar");
+            bool ok = false;
+            online.SignIn(r => ok = r);
+            Assert.True(ok);
+            string guest = online.AccountId;
+            online.SignInWithFirebase(Token("userC"), r => ok = r);
+            Assert.True(ok);
+            Assert.NotEqual(guest, online.AccountId);
+            string google = online.AccountId;
+            online.SignInWithFirebase(Token(aud: "x"), r => ok = r);
+            Assert.False(ok);
+            Assert.Equal(google, online.AccountId); // 실패하면 그대로
+        }
+
         [Fact]
         public async Task OffWithoutConfig()
         {
