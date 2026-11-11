@@ -61,6 +61,7 @@
 |---|---|
 | [impl/core.md](impl/core.md) | **규칙 핵심 코드 (순수 C#)**: 폴더, 의존 방향, 고정소수점·JSON·난수 결정, 테스트 실행 |
 | [impl/server.md](impl/server.md) | **서버 기반**: 온라인 메시지·경계, 서버 전투 검증(R-40), 참고 서버 API |
+| [impl/deploy-cloudrun.md](impl/deploy-cloudrun.md) | **서버 배포**: Google Cloud Run + Firebase 로그인, 사용자가 할 일 (2026-11-11) |
 | [impl/unity/decisions.md](impl/unity/decisions.md) | Unity 버전·렌더링·3D 아트·SDK·백엔드 후보 (잠정, 설계 후 확정) |
 | [impl/unity/art.md](impl/unity/art.md) | 임시 3D 아트 연결: 아트 목록, 무료 에셋 넣는 방법 |
 | [impl/unity/checklist.md](impl/unity/checklist.md) | 에디터·폰 일괄 확인 목록 (설정 조합별 순서와 기대 결과) |

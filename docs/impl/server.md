@@ -127,6 +127,11 @@ docker run -p 8080:8080 -v game-store:/data/store game-server
 - 지금 저장소는 폴더 저장(`FolderStore`, 한 대용). 여러 대·관리형 DB는 클라우드를 정한 뒤 (6장 4번).
 - 개발 중 PC 테스트: 컨테이너 없이 서버 실행 파일 묶음(`start-server.bat`)으로도 된다 — 같은 서버 코드.
 
+## 5.6 클라우드 배포 (2026-11-11)
+
+- **Google Cloud Run + Firebase 로그인**으로 정했다. 배포 순서·사용자가 할 일·로그인 흐름은 [deploy-cloudrun.md](deploy-cloudrun.md).
+- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. `Game:AllowFakeReceipts=false`면 가짜 결제 영수증을 거절한다.
+
 ## 6. 다음 단계
 
 1. ~~기기 쪽 HTTP 구현 + 서비스 설정 `online` + 로그인 → 세이브 받기 → 전투 제출 흐름~~ (5장, 완료).

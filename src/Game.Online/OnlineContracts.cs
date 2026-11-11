@@ -9,6 +9,12 @@ namespace Game.Online
     // 서버와 주고받는 메시지 (백엔드 종류와 무관, docs/impl/server.md). JSON은 OnlineJson.Settings로 (Fix는 원본 정수).
 
     /// <summary>게스트 로그인 결과. 토큰은 다음 요청의 Authorization: Bearer.</summary>
+    /// <summary>외부 로그인 요청: Firebase ID 토큰.</summary>
+    public sealed class ExternalSignInRequest
+    {
+        public string IdToken { get; set; }
+    }
+
     public sealed class SignInResponse
     {
         public string AccountId { get; set; }
@@ -21,6 +27,8 @@ namespace Game.Online
     public static class OnlineRoutes
     {
         public const string GuestSignIn = "/v1/auth/guest";
+        /// <summary>Firebase 로그인 (POST, 본문 <see cref="ExternalSignInRequest"/>): 서버가 ID 토큰을 확인하고 계정 토큰을 준다. 설정이 없으면 404.</summary>
+        public const string FirebaseSignIn = "/v1/auth/firebase";
         public const string Time = "/v1/time";
         public const string Games = "/v1/games";
         public const string MyGames = "/v1/me/games";
