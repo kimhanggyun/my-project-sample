@@ -192,6 +192,7 @@
 | 부상병 자연 회복 시간 | 30분 (마지막으로 부상병이 생긴 때부터, `casualty.woundedRecoverMinutes`) | 예시 (R-61). 운영 중 조정 가능 |
 | 승리 포획률 | 100% (`campaign.json` `supply.captureRate`) | 확정 예시 (battle.md 기본값) |
 | 스텝 보상 | 돈 200~1,600 + **군량 15만 + 5만 × (스텝 번호 − 1)** (2026-11-11, 진행이 군량 부족으로 막히지 않게) | 예시. 군량 수입(노획·보상)과 보충 비용을 함께 맞춘다 |
+| 화면 병사 예산 | `balance.json` `display.soldierBudget` 900 (전장 전체, R-28) | 예시. 폰 성능을 보며 조정 |
 | AI 공격 전환 거리 | `combat.json` `aiEngageCells` 12칸 (R-65) | 예시 |
 
 ---
