@@ -173,8 +173,39 @@ namespace Game.Unity.Battle3D
                 b = new InstanceBatch(model.Mesh, _art.Tinted(model, SoldierColors[color], _art.TintOf(key)), model.Local);
                 _allSoldierBatches.Add(b);
             }
-            else b = CubeBatch(color);
+            else
+            {
+                // 모델이 없으면 코드로 만든 병종 인형 (SoldierMeshes): 1단계 병종 모양
+                string baseType = troop;
+                while (baseType != null && types.TryGetValue(baseType, out var d) && d.Parent != null) baseType = d.Parent;
+                var mat = Own(NewMaterial(SoldierColors[color]));
+                mat.enableInstancing = true;
+                b = new InstanceBatch(SoldierMeshes.For(baseType), new[] { mat }, Matrix4x4.identity);
+                _allSoldierBatches.Add(b);
+            }
             return _soldierBatches[(troop, color)] = b;
+        }
+
+        /// <summary>쓰러진 병사 (병력이 줄어 화면 병사가 빠진 자리에 남는다, 전투가 끝날 때까지). 최대 개수까지만.</summary>
+        private const int FallenMax = 4000;
+        private readonly Dictionary<Game.Battle.Model.Simulation.SubUnitState, long> _shownSoldiers = new Dictionary<Game.Battle.Model.Simulation.SubUnitState, long>();
+        private InstanceBatch _fallen;
+        private InstanceBatch Fallen
+        {
+            get
+            {
+                if (_fallen != null) return _fallen;
+                var m = Own(NewMaterial(new Color(0.18f, 0.16f, 0.14f)));
+                m.enableInstancing = true;
+                return _fallen = new InstanceBatch(_cube, new[] { m }, Matrix4x4.TRS(new Vector3(0f, SoldierMeshes.FallenScale.y / 2f, 0f), Quaternion.identity, SoldierMeshes.FallenScale));
+            }
+        }
+
+        private void AddFallen(Vector3 p, int seed)
+        {
+            if (Fallen.Matrices.Count >= FallenMax) return;
+            p.y = GroundHeight(p.x, p.z);
+            Fallen.Add(p, Quaternion.Euler(0f, (seed * 73) % 360, 0f));
         }
 
         private InstanceBatch CubeBatch(int color)
@@ -406,7 +437,18 @@ namespace Game.Unity.Battle3D
                 var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
                 foreach (var u in c.Units)
                 {
-                    if (!u.Alive) continue;
+                    if (!u.Alive)
+                    {
+                        // 방금 전멸한 부대: 남아 있던 화면 병사가 모두 쓰러진다
+                        if (_shownSoldiers.TryGetValue(u, out var was) && was > 0 && _unitPos.TryGetValue(u, out var lastPos))
+                        {
+                            int sd = Mathf.CeilToInt(Mathf.Sqrt(was));
+                            float hd = (sd - 1) * SoldierSpacing / 2f;
+                            for (int i = 0; i < was; i++) AddFallen(lastPos.cur + rot * new Vector3(i % sd * SoldierSpacing - hd, 0f, hd - i / sd * SoldierSpacing), i + u.GetHashCode());
+                        }
+                        _shownSoldiers[u] = 0;
+                        continue;
+                    }
                     var batch = SoldierBatch(u.Troop.Id, u.Confused ? Confused : teamColor);
                     // 맞을 때: 상자는 밝은 색으로, 모델은 (색을 밝힐 수 없어) 살짝 튀어 오른다
                     bool isCube = batch.Mesh == _cube;
@@ -425,6 +467,14 @@ namespace Game.Unity.Battle3D
                         lunge = lunge.sqrMagnitude > 1e-6f ? lunge.normalized * 0.12f : Vector3.zero;
                     }
                     float half = (side - 1) * SoldierSpacing / 2f;
+                    // 병력이 줄어 화면 병사가 빠지면 그 자리에 쓰러진 병사를 남긴다 (손실이 눈에 보이게)
+                    if (_shownSoldiers.TryGetValue(u, out var before) && before > n)
+                    {
+                        int sb = Mathf.CeilToInt(Mathf.Sqrt(before));
+                        float hb = (sb - 1) * SoldierSpacing / 2f;
+                        for (long i = n; i < before; i++) AddFallen(cur + rot * new Vector3(i % sb * SoldierSpacing - hb, 0f, hb - i / sb * SoldierSpacing), (int)i + u.GetHashCode());
+                    }
+                    _shownSoldiers[u] = n;
                     for (int i = 0; i < n; i++)
                     {
                         var p = center + rot * new Vector3(i % side * SoldierSpacing - half, 0f, half - i / side * SoldierSpacing);
@@ -439,6 +489,7 @@ namespace Game.Unity.Battle3D
                 }
             }
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
+            _fallen?.Draw(Rig.Camera);
             foreach (var b in _allPropBatches) b.Draw(Rig.Camera);
             Effects.Draw(ctx, Rig.Camera);
         }
