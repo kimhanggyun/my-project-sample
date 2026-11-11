@@ -209,7 +209,7 @@ namespace Game.Server
                 registry.Register(new StrategyGameModule(code, packages, new FileDataSource(ServerPaths.DataRoot(g["DataRoot"])), g["Theme"] ?? code, time, store));
             }
             if (!any)
-                registry.Register(new StrategyGameModule(DefaultGame, new[] { "com.myproject.ancientwar" },
+                registry.Register(new StrategyGameModule(DefaultGame, new[] { "net.itgold.unitygame1" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
             bool allowFake = !string.Equals(config["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase);
             foreach (var code in registry.Codes)
