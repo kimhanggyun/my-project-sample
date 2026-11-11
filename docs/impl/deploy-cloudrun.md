@@ -87,7 +87,7 @@ echo "FIREBASE_PROJECT_ID=$PROJECT"
 
 ## 4. 지금 상태 (2026-11-11)
 
-- 첫 배포 완료: `https://game-server-883012601666.asia-northeast3.run.app` (Actions `deploy-cloudrun`으로 다시 배포).
+- 첫 배포 완료: `https://game-server-883012601666.asia-northeast3.run.app` (Actions `deploy-cloudrun`으로 다시 배포). 개발 빌드의 기본 서버 연결이 이 주소다 (`config/services.development.json`, 설정 화면에서 바꾸면 그쪽이 앞선다).
 - Firebase 프로젝트 `unitygame1-dev`, 안드로이드 앱 `net.itgold.unitygame1`, 디버그 SHA-1 등록, 구글 로그인 사용.
 
 ## 5. 기기 구글 로그인 (Firebase SDK 없이)

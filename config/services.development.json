@@ -13,7 +13,8 @@
   "_location": "location = off / fake (fakeLocation 좌표) / device (기기 GPS, 폰에서 권한을 묻는다)",
   "location": "fake",
   "fakeLocation": "37.5665,126.9780",
-  "online": "off",
-  "onlineUrl": "http://localhost:5000",
+  "_online": "개발 빌드 기본: 클라우드 테스트 서버(Cloud Run, docs/impl/deploy-cloudrun.md)에 붙는다. 로컬 PC 서버를 쓰려면 설정 화면의 서버 연결에서 바꾼다 (off / fake / http + 주소)",
+  "online": "http",
+  "onlineUrl": "https://game-server-883012601666.asia-northeast3.run.app",
   "onlineGame": "ancientwar"
 }
