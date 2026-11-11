@@ -195,7 +195,8 @@
 | R-60 | **진군·후퇴 (명령 = 행위)**: 진군·전군 진군 = 군단마다 지금 가로 위치 그대로 우리 진영의 앞 방향으로 곧게 (전장 끝까지, 공격 이동). 후퇴 = 뒤로 곧게 fallBackCells(8)칸 강행 이동, 군단은 전장에 남고 계속 명령 가능 (다시 진군하면 앞으로). 퇴각(이탈)은 따로: 전장을 떠남 | [content/battle.md](content/battle.md) 4.3.2 |
 | R-61 | **부상병 자연 회복·보충**: 부대에 부상병이 새로 생기면 회복 시각 = 지금 + woundedRecoverMinutes(30분, 0이면 자연 회복 없음). 시각이 지나면 그 부대의 부상병 전부가 병력으로 (새 부상이 생기면 시각을 다시 잡는다). 치료로 부상병이 0이 되면 시각도 지운다. 시간 경과 처리는 화면을 열 때와 출진 직전(기기), 전투 검증 직전(서버, 출진 시각 기준)에 한다. 편성 한도까지 보충 = 기본 편성의 군단마다 장수 한도 − (병력 + 부상병)을 칸 id 순서로 부대 자리까지 나눠 징병 (부대마다 징병 행동) | [content/battle.md](content/battle.md) 2.4.4 |
 | R-62 | **처음 안내**: 안내 = id·자리(place)·문장 키들 (`Rules/guides.json`, id 겹침·빈 문장은 읽을 때 거절). 화면이 자리 id로 물으면 아직 안 본 첫 안내. 다 읽고 닫으면 행동 `guide.seen`(GuideId): 없는 안내이거나 이미 봤으면 거절. `guide.reset`은 본 기록을 모두 지운다 (지울 것이 없으면 거절). 본 기록은 세이브(SeenGuides)에 남는다 | [content/story.md](content/story.md) 7장 |
-| R-63 | **곧은 진군의 역할**: 진군·전군 진군에서 선봉·역할 없음 = 자기 줄 그대로 앞으로 곧게(공격 이동). 측면 = (앞 + 바깥쪽 옆) 방향으로 flankOffsetCells(6)칸 공격 이동 → 예약으로 그 줄에서 앞으로 곧게 (바깥쪽 = 앞 방향에 수직, 아군 중심에서 이 군단 쪽, 가운데면 선봉처럼). 후위 = 앞으로 곧게 지원 이동(support): 가장 가까운 적이 rearStandoffCells(8) 안이면 제자리 (쫓지 않음) | [content/battle.md](content/battle.md) 4.3.2 |
+| R-63 | **곧은 진군의 역할** (2026-11-11 고침): 진군·전군 진군에서 선봉·측면·역할 없음 = 자기 줄 그대로 앞으로 곧게(공격 이동, 군단마다 이동 명령 하나). 후위 = 앞으로 곧게 지원 이동(support): 가장 가까운 적이 rearStandoffCells(8) 안이면 제자리 (쫓지 않음) | [content/battle.md](content/battle.md) 4.3.2 |
+| R-65 | **AI 진군은 자기 줄로** (적·위임): 가장 가까운 보이는 적이 aiEngageCells(12) 안이면 그 적 공격(지금 대상이면 유지). 아니면 자기 줄 진군(Lane): 목표 = 지금 위치에서 앞 방향으로 전장 끝까지 (공격 이동). 줄 끝(1칸 안)에 닿았는데도 멀면 그 적 공격, 안 보이면 예전 진군(마지막 목격 위치·적 시작 위치) | [content/battle.md](content/battle.md) 4.3.2 |
 | R-64 | **결제 상품 받기**: 행동 `store.purchase`(ProductId, Receipt). 상점 상품(가격 있음)이 아니거나 영수증이 비면 거절. 반영 = grants 자원 더하기 + 광고 제거(adFreeDays 0 = 영구, 아니면 끝나는 시각 = max(지금 끝, 행동 시각) + 일수 × 86400). 서버는 영수증을 먼저 검사: 결제가 아니면 통과, 가짜 영수증(`fake:`)은 서버 설정이 허락할 때만, 같은 영수증은 한 번만 | [content/economy.md](content/economy.md) 4장 |
 | R-39 | **부대 창설·해산**: 창설은 기본 병종(1단계)만, 보유 부대 수 상한(`campaign.json` `units.maxCount`)까지, 병력 0·훈련도 0·결속 0으로 생긴다 (징병·모병으로 채움). 해산은 기본·상황별 어느 편성에도 없는 부대만, 병력·부상병은 사라진다 | [formation.md](content/formation.md) 4.1 |
 | R-36 | **명령 예약**: 예약 명령은 지금 명령이 대기면 바로, 아니면 뒤에 (상한 넘으면 거절). 지금 명령이 끝나면(도착·대상 사라짐·지점 스킬 사용) 차례로 꺼내고, 받을 수 없는 예약은 건너뛴다. 예약이 아닌 새 명령은 예약을 비운다 | [battle.md](content/battle.md) 4.3.5·4.3.6 |
@@ -232,7 +233,7 @@
 - 역할 진군(R-34)은 `tests/Game.Tests/Battle/RoleAdvanceTests.cs`.
 - 편성 편집(R-5 저장 검사)·병력 보충(R-33)·치료(R-10)는 `tests/Game.Tests/Campaign/FormationEditorTests.cs`.
 - 스킬북 습득·전투 기록(R-31, R-32, N-13)은 `tests/Game.Tests/Campaign/SkillBookTests.cs`, 이벤트 발생 자체는 `Battle/VisionSkillTests.cs`.
-- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`, 전투 이어하기(R-55)는 `BattleResumeTests.cs`, 규율·용맹(R-56)은 `tests/Game.Tests/Battle/DisciplineValorTests.cs`, 한계 돌파(R-57)는 `GachaTests.cs`, 병종 태그 효과(R-58)는 `tests/Game.Tests/Battle/TagEffectTests.cs`, 연습 대결(R-59)은 `PracticeTests.cs`, 진군·후퇴(R-60)·곧은 진군의 역할(R-63)은 `BattleControlTests.cs`, 부상병 자연 회복·보충(R-61)은 `WoundedRecoveryTests.cs`·`CampaignPlaythroughTests.cs`(새 게임 위임 출진 + 회복·보충으로 모든 스텝 클리어), 처음 안내(R-62)는 `GuideTests.cs`, 결제(R-64)는 `PurchaseTests.cs`·서버 `ServerTests.Purchase`.
+- 장수 모집(R-51)은 `tests/Game.Tests/Campaign/GachaTests.cs`, 부대 키우기(R-52)는 `TroopGrowthTests.cs`, 숨은 보상(R-53)은 `LevelSecretTests.cs`, 전투 녹화(R-54)는 `ReplayTests.cs`, 전투 이어하기(R-55)는 `BattleResumeTests.cs`, 규율·용맹(R-56)은 `tests/Game.Tests/Battle/DisciplineValorTests.cs`, 한계 돌파(R-57)는 `GachaTests.cs`, 병종 태그 효과(R-58)는 `tests/Game.Tests/Battle/TagEffectTests.cs`, 연습 대결(R-59)은 `PracticeTests.cs`, 진군·후퇴(R-60)·곧은 진군의 역할(R-63)은 `BattleControlTests.cs`, AI 진군(R-65)은 기준 전투·`StepBalanceTests`, 부상병 자연 회복·보충(R-61)은 `WoundedRecoveryTests.cs`·`CampaignPlaythroughTests.cs`(새 게임 위임 출진 + 회복·보충으로 모든 스텝 클리어), 처음 안내(R-62)는 `GuideTests.cs`, 결제(R-64)는 `PurchaseTests.cs`·서버 `ServerTests.Purchase`.
 - 좌표 → 지역(R-45)은 `tests/Game.Tests/TerritoryTests.cs`, 영토 전투·차지(R-46)는 `Campaign/TerritoryBattleTests.cs`, 수입(R-47)은 `Campaign/TerritoryIncomeTests.cs`, 수비 편성(R-48)은 `Campaign/TerritoryDefenseTests.cs`, 연합(R-49, R-50)은 `Campaign/AllianceTests.cs`, HTTP는 `ServerTests.TerritoryCapture`.
 - 고용(R-24~R-27 등록·가격·동시 고용, R-43)은 `tests/Game.Tests/Campaign/HiringTests.cs`, 제한·이력(R-44)은 `HireBookTests.cs`, HTTP는 `ServerTests.HireFlow`.
 
@@ -292,3 +293,4 @@
 | v1.29 | 2026-11-10 | R-62 처음 안내 추가 |
 | v1.30 | 2026-11-10 | R-63 곧은 진군에 역할 반영 (측면 벌리기, 후위 지원 이동) |
 | v1.31 | 2026-11-10 | R-64 결제 상품 받기 (임시 테스트 가격, 서버 영수증 검사) |
+| v1.32 | 2026-11-11 | R-63 측면도 곧게 (벌리기 뺌), R-65 AI 진군은 자기 줄로. 기준 전투 2개 갱신, 스텝 적 병력·군량 보상 조정 |

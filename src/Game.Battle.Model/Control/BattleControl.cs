@@ -139,47 +139,14 @@ namespace Game.Battle.Model.Control
         public bool Advance() => CanCommand(Selected) && AdvanceByRole(Selected);
 
         /// <summary>
-        /// 역할별 곧은 진군 (R-63). 선봉·역할 없음: 앞으로 곧게 (공격 이동).
-        /// 측면: 바깥쪽(아군 중심에서 먼 쪽)으로 flankOffsetCells만큼 비스듬히 벌린 뒤 그 줄로 곧게 (적의 옆으로).
-        /// 후위: 앞으로 곧게 가다가 적이 rearStandoffCells 안에 들어오면 멈춰 싸운다 (지원 이동, 쫓지 않음).
+        /// 역할별 곧은 진군 (R-63, 2026-11-11 고침): 선봉·측면·역할 없음 = 자기 줄 그대로 앞으로 곧게 (공격 이동).
+        /// 후위 = 앞으로 곧게 가다가 적이 rearStandoffCells 안에 들어오면 멈춰 싸운다 (지원 이동, 쫓지 않음).
         /// </summary>
         private bool AdvanceByRole(CorpsState c)
         {
-            var forward = Forward(c);
             var far = Fix.FromInt(Context.Field.Width + Context.Field.Height);
-            string role = c.Setup.AdvanceRole;
-            if (role == AdvanceRoles.Rear) return Straight(c, forward, far, MoveModes.Support);
-            if (role == AdvanceRoles.Flank)
-            {
-                var side = OutwardSide(c, forward);
-                if (side.HasValue)
-                {
-                    var offset = Context.Combat.FlankOffsetCells;
-                    if (Straight(c, forward + side.Value, offset, MoveModes.AttackMove))
-                    {
-                        var p = Clamp(c.Anchor + (forward + side.Value) * offset);
-                        var end = Clamp(p + forward * far);
-                        Issue(c, CommandKinds.MoveTo, cmd => { cmd.X = end.X; cmd.Y = end.Y; cmd.Mode = MoveModes.AttackMove; cmd.Queued = true; });
-                        return true;
-                    }
-                }
-            }
-            return Straight(c, forward, far, MoveModes.AttackMove);
-        }
-
-        /// <summary>앞 방향에 수직인 바깥쪽 (아군 중심에서 이 군단 쪽). 가운데에 있으면 null.</summary>
-        private Vec? OutwardSide(CorpsState c, Vec forward)
-        {
-            Fix sx = Fix.Zero, sy = Fix.Zero;
-            int n = 0;
-            foreach (var a in Context.Corps)
-                if (a.Team == c.Team && a.InBattle) { sx += a.Anchor.X; sy += a.Anchor.Y; n++; }
-            if (n == 0) return null;
-            var center = new Vec(sx / Fix.FromInt(n), sy / Fix.FromInt(n));
-            var side = forward.RightOf();
-            var d = side.Dot(c.Anchor - center);
-            if (d == Fix.Zero) return null;
-            return d > Fix.Zero ? side : side * Fix.FromInt(-1);
+            string mode = c.Setup.AdvanceRole == AdvanceRoles.Rear ? MoveModes.Support : MoveModes.AttackMove;
+            return Straight(c, Context.Forward(c), far, mode);
         }
 
         /// <summary>
@@ -188,13 +155,7 @@ namespace Game.Battle.Model.Control
         /// </summary>
         public bool FallBack() => CanCommand(Selected) && Straight(Selected, Vec.Zero - Forward(Selected), Context.Combat.FallBackCells, MoveModes.Forced);
 
-        /// <summary>우리 진영의 앞 방향 (출발 위치의 방향). 군단이 몸을 돌려도 바뀌지 않는다.</summary>
-        private Vec Forward(CorpsState c)
-        {
-            string f = c.Setup.Facing;
-            if (f == null && Context.Setup.Map.Spawns.TryGetValue(c.Team, out var spawn)) f = spawn.Facing;
-            return Facing.Parse(f ?? "N");
-        }
+        private Vec Forward(CorpsState c) => Context.Forward(c);
 
         /// <summary>지금 위치에서 dir로 cells칸 (전장 안으로 자름). 지금 자리와 같아지면(벽에 붙음) 명령하지 않는다.</summary>
         private bool Straight(CorpsState c, Vec dir, Fix cells, string mode)
@@ -204,13 +165,7 @@ namespace Game.Battle.Model.Control
             return Issue(c, CommandKinds.MoveTo, cmd => { cmd.X = p.X; cmd.Y = p.Y; cmd.Mode = mode; cmd.Queued = Queueing; });
         }
 
-        /// <summary>전장 안으로 자른 점.</summary>
-        private Vec Clamp(Vec p)
-        {
-            var f = Context.Field;
-            var half = Fix.FromRatio(1, 2);
-            return new Vec(Fix.Clamp(p.X, half, Fix.FromInt(f.Width) - half), Fix.Clamp(p.Y, half, Fix.FromInt(f.Height) - half));
-        }
+        private Vec Clamp(Vec p) => Context.ClampToField(p);
 
         public bool Hold() => Issue(Selected, CommandKinds.Hold);
 

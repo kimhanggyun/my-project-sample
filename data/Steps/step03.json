@@ -100,6 +100,7 @@
     ],
     "unlockSkills": [],
     "gold": 300,
+    "supply": 250000,
     "exp": 600
   },
   "events": [

@@ -28,32 +28,32 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 4800
+          "troops": 4080
         },
         {
           "slot": "center",
           "troopType": "spearman",
-          "troops": 4800
+          "troops": 4080
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 4800
+          "troops": 4080
         },
         {
           "slot": "rightWing",
           "troopType": "archer",
-          "troops": 4800
+          "troops": 4080
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 4800
+          "troops": 4080
         },
         {
           "slot": "rightGuard",
           "troopType": "cavalry",
-          "troops": 4800
+          "troops": 4080
         }
       ],
       "role": "commander"
@@ -69,22 +69,22 @@
         {
           "slot": "vanguard",
           "troopType": "cavalry",
-          "troops": 4680
+          "troops": 3980
         },
         {
           "slot": "center",
           "troopType": "cavalry",
-          "troops": 4680
+          "troops": 3980
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 4680
+          "troops": 3980
         },
         {
           "slot": "rightWing",
           "troopType": "cavalry",
-          "troops": 4680
+          "troops": 3980
         }
       ]
     },
@@ -99,22 +99,22 @@
         {
           "slot": "vanguard",
           "troopType": "archer",
-          "troops": 4200
+          "troops": 3570
         },
         {
           "slot": "center",
           "troopType": "archer",
-          "troops": 4200
+          "troops": 3570
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 4200
+          "troops": 3570
         },
         {
           "slot": "rightWing",
           "troopType": "archer",
-          "troops": 4200
+          "troops": 3570
         }
       ]
     },
@@ -129,17 +129,17 @@
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 4320
+          "troops": 3670
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 4320
+          "troops": 3670
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 4320
+          "troops": 3670
         }
       ],
       "reserve": true
@@ -152,6 +152,7 @@
       "taunt"
     ],
     "gold": 1600,
+    "supply": 700000,
     "exp": 3200
   },
   "events": [

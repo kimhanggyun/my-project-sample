@@ -59,6 +59,8 @@ namespace Game.Battle.Model.Simulation
         public string Mode { get; set; } = MoveModes.Normal;
         /// <summary>진군을 군단 역할(<see cref="CorpsSetup.AdvanceRole"/>)대로 (플레이어의 진군·전군 진군 명령). AI의 진군은 역할을 쓰지 않는다.</summary>
         public bool ByRole { get; set; }
+        /// <summary>AI 진군 (R-65): 가장 가까운 적으로 모이지 않고 자기 줄(지금 가로 위치)로 앞으로 곧게.</summary>
+        public bool Lane { get; set; }
     }
 
     public static class OrderKinds
@@ -329,6 +331,24 @@ namespace Game.Battle.Model.Simulation
         }
 
         public bool IsEnabled(string flag) => Flags.IsEnabled(flag);
+
+        /// <summary>우리 진영의 앞 방향 (군단 설정의 방향, 없으면 팀 시작 위치의 방향). 군단이 몸을 돌려도 바뀌지 않는다.</summary>
+        public Vec Forward(CorpsState c)
+        {
+            string f = c.Setup.Facing;
+            if (f == null && Setup.Map.Spawns.TryGetValue(c.Team, out var spawn)) f = spawn.Facing;
+            return Geometry.Facing.Parse(f ?? "N");
+        }
+
+        /// <summary>전장 안으로 자른 점.</summary>
+        public Vec ClampToField(Vec p)
+        {
+            var half = Fix.FromRatio(1, 2);
+            return new Vec(Fix.Clamp(p.X, half, Fix.FromInt(Field.Width) - half), Fix.Clamp(p.Y, half, Fix.FromInt(Field.Height) - half));
+        }
+
+        /// <summary>자기 줄로 앞으로 곧게 간 끝 (전장 끝, R-60·R-65).</summary>
+        public Vec LaneEnd(CorpsState c) => ClampToField(c.Anchor + Forward(c) * Fix.FromInt(Field.Width + Field.Height));
 
         /// <summary>
         /// 보이는 적이 없을 때 진군할 곳: 마지막으로 본 가장 가까운 적 위치, 그것도 없으면 적 팀 시작 위치.

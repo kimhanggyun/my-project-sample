@@ -90,6 +90,7 @@
       "reveal"
     ],
     "gold": 1000,
+    "supply": 500000,
     "exp": 1900
   },
   "events": [

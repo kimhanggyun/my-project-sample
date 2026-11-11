@@ -29,32 +29,32 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3500
+          "troops": 3150
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 3500
+          "troops": 3150
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 3000
+          "troops": 2700
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 3000
+          "troops": 2700
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 2500
+          "troops": 2250
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 2500
+          "troops": 2250
         }
       ]
     },
@@ -70,32 +70,32 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3000
+          "troops": 2700
         },
         {
           "slot": "center",
           "troopType": "spearman",
-          "troops": 3000
+          "troops": 2700
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 3000
+          "troops": 2700
         },
         {
           "slot": "rightWing",
           "troopType": "infantry",
-          "troops": 3000
+          "troops": 2700
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 1500
+          "troops": 1350
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 1500
+          "troops": 1350
         }
       ]
     }
@@ -106,6 +106,7 @@
     ],
     "unlockSkills": [],
     "gold": 200,
+    "supply": 150000,
     "exp": 300
   },
   "events": [
