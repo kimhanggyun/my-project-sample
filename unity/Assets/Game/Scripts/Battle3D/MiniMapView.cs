@@ -44,8 +44,14 @@ namespace Game.Unity.Battle3D
             foreach (var c in ctl.Context.Corps) _dots[c] = Mark(c.Team == ctl.Team ? Palette.Ally : Palette.Enemy, Dot);
         }
 
+        public bool Visible => _rect.gameObject.activeSelf;
+
+        /// <summary>미니맵 접기·펴기 (상단 바 버튼, battle.md 4장 ①).</summary>
+        public void SetVisible(bool on) => _rect.gameObject.SetActive(on);
+
         public void Refresh()
         {
+            if (!Visible) return;
             var ctx = _ctl.Context;
             foreach (var kv in _dots)
             {
