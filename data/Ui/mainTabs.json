@@ -12,6 +12,11 @@
       "status": "active"
     },
     {
+      "id": "prisoner",
+      "nameKey": "ui.tab.prisoner",
+      "status": "active"
+    },
+    {
       "id": "practice",
       "nameKey": "ui.tab.practice",
       "status": "active"
