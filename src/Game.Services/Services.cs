@@ -10,6 +10,8 @@ namespace Game.Services
         bool IsSignedIn { get; }
         string AccountId { get; }
         bool IsGuest { get; }
+        /// <summary>서버에 보여 줄 로그인 증명 (Firebase ID 토큰, docs/impl/deploy-cloudrun.md 3장). 게스트·가짜·끔은 null (서버는 게스트로).</summary>
+        string IdToken { get; }
         void SignInAutomatically(Action<bool> done);
     }
 
@@ -19,6 +21,7 @@ namespace Game.Services
         public bool IsSignedIn { get; private set; }
         public string AccountId { get; private set; }
         public bool IsGuest => true;
+        public string IdToken => null;
         public void SignInAutomatically(Action<bool> done)
         {
             IsSignedIn = true;
@@ -33,6 +36,7 @@ namespace Game.Services
         public bool IsSignedIn => false;
         public string AccountId => null;
         public bool IsGuest => false;
+        public string IdToken => null;
         public void SignInAutomatically(Action<bool> done) => done?.Invoke(false);
     }
 
@@ -44,6 +48,7 @@ namespace Game.Services
         public bool IsSignedIn { get; private set; }
         public string AccountId { get; private set; }
         public bool IsGuest => false;
+        public string IdToken => null;
         public void SignInAutomatically(Action<bool> done)
         {
             IsSignedIn = true;

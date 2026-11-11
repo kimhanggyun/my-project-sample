@@ -32,7 +32,7 @@
 ## 3.1 로그인·약관 지금 상태 (2026-11-10 사용자 결정)
 
 - **로그인 방식마다 서비스를 따로 고른다**: 서비스 `auth.google`, `auth.apple` = `off`(막음) / `fake`(개발용 가짜, 계정 `방식-fake-local`) / 실제 SDK 구현 이름. 게스트는 `auth`.
-  - 개발 빌드: 구글 `fake`, Apple `off`. 출시 빌드: 둘 다 `off` (실제 SDK는 백엔드를 정한 뒤 붙인다: 구글 = Play Games/구글 로그인, Apple = Sign in with Apple).
+  - 구글: `credentialManager` (안드로이드 Credential Manager + Firebase → 서버 계정, 2026-11-11, [../../impl/deploy-cloudrun.md](../../impl/deploy-cloudrun.md) 5장). 에디터에서는 가짜로 대신. Apple: `off`.
   - 버튼: `startup.json`에서 구글 `active`, **Apple `tobe`(잠시 막음)**. 다시 열려면 `active` + `auth.apple` 구현.
   - 주의: 아이폰 출시 때 구글 로그인을 넣으면 애플 정책상 Apple 로그인도 함께 열어야 한다 (2장).
 - **약관**: 약관 동의 화면(이용약관·개인정보 처리방침, 필수 동의 → 시작)은 그대로 두고 본문은 "나중에 약관 들어갈 자리" (문자열 `ui.terms.body.*`). 실제 문서가 생기면 문자열만 바꾸고 `termsVersion`을 올려 다시 동의를 받는다.

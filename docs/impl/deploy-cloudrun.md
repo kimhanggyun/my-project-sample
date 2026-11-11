@@ -85,9 +85,29 @@ echo "FIREBASE_PROJECT_ID=$PROJECT"
 - 게스트 → 구글 계정 연동(기존 진행 옮기기)은 다음 단계.
 - 코드: `server/Game.Server/FirebaseAuth.cs` (확인기), `Stores.SignInExternal`, 테스트 `tests/Game.Server.Tests/FirebaseAuthTests.cs`.
 
-## 4. 다음 단계
+## 4. 지금 상태 (2026-11-11)
 
-1. Unity: Firebase Auth SDK + 구글 로그인을 `auth.google` 구현으로 붙인다 (`google-services.json` 필요).
-2. 기기 `HttpOnlineService`에 Firebase 로그인 호출 추가, 게스트 진행을 구글 계정으로 옮기기.
+- 첫 배포 완료: `https://game-server-883012601666.asia-northeast3.run.app` (Actions `deploy-cloudrun`으로 다시 배포).
+- Firebase 프로젝트 `unitygame1-dev`, 안드로이드 앱 `net.itgold.unitygame1`, 디버그 SHA-1 등록, 구글 로그인 사용.
+
+## 5. 기기 구글 로그인 (Firebase SDK 없이)
+
+```
+[구글로 로그인] → 안드로이드 Credential Manager (계정 고르기, 다음부터는 승인한 계정으로 자동)
+  → 구글 ID 토큰 → Firebase Auth REST accounts:signInWithIdp → Firebase ID 토큰
+  → 서버 POST /v1/auth/firebase → 계정 토큰 (기기에 보관, 게스트 토큰을 대신함)
+```
+
+- 플러그인: `unity/Assets/Plugins/Android/GoogleSignIn.androidlib` (Java `GoogleSignInBridge`, 의존 `androidx.credentials` 1.3.0 · `googleid` 1.1.1, Gradle 모듈로 함께 빌드).
+- C#: `Online/GoogleFirebaseAuthService` (서비스 `auth.google` = `credentialManager`). 에디터·안드로이드가 아닌 곳에서는 가짜 로그인으로 대신한다 (서버는 게스트 그대로).
+- 설정: `config/services.*.json`의 `firebaseApiKey`, `googleWebClientId`(google-services.json의 api_key, client_type 3). 앱에 들어가는 공개 식별자라 저장소에 둔다. 출시 전에 GCP 콘솔에서 이 API 키를 안드로이드 앱(패키지 + SHA-1)·Identity Toolkit API로 제한한다.
+- 계정이 바뀌면(게스트 → 구글) 처음 맞추는 것으로 다시 동기화한다: 진행이 더 앞선 쪽(깬 스텝 수)이 남는다 (CloudSync). 이전 계정의 보내지 못한 기록은 버린다.
+- `google-services.json` 파일 자체는 쓰지 않는다 (Firebase SDK를 쓰지 않으므로).
+- 출시 서명(업로드 키·Play 앱 서명)의 SHA-1도 출시 전에 Firebase에 추가해야 한다.
+
+## 6. 다음 단계
+
+1. 폰에서 구글 로그인 확인 (안드로이드 빌드: 플러그인 Gradle 빌드, 계정 고르기, 서버 계정).
+2. 애플 로그인 (같은 흐름, providerId apple.com).
 3. 결제 영수증 실제 검증 (Google Play Developer API).
 4. 사용자가 늘면 저장소를 Firestore로 (`IGameStore` 구현 추가) → 인스턴스 여러 대.
