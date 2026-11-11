@@ -1,6 +1,6 @@
 # 포로 · 구출 · 등용
 
-> 상태: 기획 확정 (구현 전) · 범위: Step 2
+> 상태: 기획 확정 · 구현: 포로 발생·구출·기한 석방 규칙, **포로 탭에서 등용 시도·해방 (2026-11-11, R-66)** · 범위: Step 2
 > 전체 흐름: [../flow.md](../flow.md) · 전투 중 포로 발생 규칙: [battle.md](battle.md) 2.5.1 · 구조: [../structure.md](../structure.md)(../structure.md) Campaign 모듈
 
 ## 1. 규칙

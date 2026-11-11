@@ -520,6 +520,10 @@ namespace Game.Online
         public const string GuideReset = "guide.reset";
         /// <summary>결제 상품 받기 (ProductId, Receipt, R-64): 서버가 영수증을 검증한 뒤에만 반영한다.</summary>
         public const string StorePurchase = "store.purchase";
+        /// <summary>잡은 적 장수 등용 시도 (GeneralId, Seed, R-66): 성공하면 아군 장수, 실패하면 재시도 대기(또는 해방).</summary>
+        public const string PrisonerRecruit = "prisoner.recruit";
+        /// <summary>잡은 적 장수 해방 (GeneralId, R-66): 해방 보상.</summary>
+        public const string PrisonerRelease = "prisoner.release";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>

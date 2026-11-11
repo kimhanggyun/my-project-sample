@@ -25,6 +25,7 @@ namespace Game.Unity.Screens
         {
             { "story", () => new StoryTabView() },
             { "general", () => new GeneralsTabView() },
+            { "prisoner", () => new PrisonerTabView() },
             { "formation", () => new FormationTabView() },
             { "hiring", () => new HiringTabView() },
             { "troop", () => new TroopGrowthTabView() },
