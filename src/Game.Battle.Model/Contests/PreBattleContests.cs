@@ -26,6 +26,8 @@ namespace Game.Battle.Model.Contests
                 var cb = ctx.FindCorps(cs.CorpsB);
                 var a = new ContestFighter(ca.Setup.General.Id, ca.Setup.General.Stat(def.Stat), ca.Setup.General.Temperament);
                 var b = new ContestFighter(cb.Setup.General.Id, cb.Setup.General.Stat(def.Stat), cb.Setup.General.Temperament);
+                a.DamagePct = Combat.TraitEffects.ContestDamagePct(ctx.Defs, ca.Setup.General.Traits);
+                b.DamagePct = Combat.TraitEffects.ContestDamagePct(ctx.Defs, cb.Setup.General.Traits);
                 var session = new ContestSession(def, a, b, ctx.Random);
                 var ai = new AiContestChooser(ctx.Defs.Ai, ctx.Random);
                 var r = ContestRunner.Run(session, new RecordedChooser(cs.ChoicesA, ai), new RecordedChooser(cs.ChoicesB, ai));

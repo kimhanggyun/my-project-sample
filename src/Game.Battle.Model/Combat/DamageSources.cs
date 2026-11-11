@@ -65,6 +65,7 @@ namespace Game.Battle.Model.Combat
             new MoraleSource(),
             new StatusAttackSource(),
             new ConditionSource(),
+            new TraitSource(),
         };
     }
 

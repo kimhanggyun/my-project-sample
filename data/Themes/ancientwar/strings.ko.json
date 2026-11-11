@@ -800,5 +800,19 @@
   "temperament.cunning": "교활",
   "temperament.loyal": "충직",
   "temperament.arrogant": "오만",
-  "temperament.timid": "소심"
+  "temperament.timid": "소심",
+  "trait.fierce.desc": "근접 소부대 공격 +5%p",
+  "trait.discipline": "군기",
+  "trait.discipline.desc": "병력 손실로 떨어지는 사기 −10%",
+  "trait.keenEye": "간파의 눈",
+  "trait.keenEye.desc": "간파 비용 −30%",
+  "trait.fireExpert.desc": "화계 비용 −25%",
+  "trait.blazeMaster.desc": "화계 비용 −40%",
+  "trait.nightRaid.desc": "밤에 공격 +10%p",
+  "trait.rainMarch.desc": "비 올 때 공격 +5%p·방어 +5%p",
+  "trait.peerless.desc": "일기토·논쟁에서 주는 피해 +20%",
+  "trait.unbroken.desc": "병력 손실로 떨어지는 사기 −25%",
+  "ui.general.traits": "특성",
+  "ui.general.noTraits": "특성 없음",
+  "ui.general.temperament": "성향: {0}"
 }

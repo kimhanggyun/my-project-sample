@@ -55,6 +55,9 @@
     "woundedRecovery": {
       "default": true
     },
+    "traits": {
+      "default": true
+    },
     "pauseAllowed": {
       "default": true
     },

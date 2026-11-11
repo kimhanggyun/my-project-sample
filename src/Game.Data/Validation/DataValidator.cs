@@ -54,7 +54,12 @@ namespace Game.Data.Validation
             {
                 CheckStatRanges(d, g.Stats, "장수 " + g.Id, errors);
                 CheckString(d, g.NameKey, errors);
+                // 특성 (R-67): 특성 정의가 있으면 장수의 기본 특성은 모두 정의되어 있어야 한다
+                if (d.Traits.Traits.Count > 0 && g.Traits != null)
+                    foreach (var t in g.Traits)
+                        if (!d.Traits.Traits.ContainsKey(t)) errors.Add($"장수 '{g.Id}': 정의되지 않은 특성 '{t}' (traits.json).");
             }
+            foreach (var t in d.Traits.Traits.Values) { CheckString(d, t.NameKey, errors); CheckString(d, t.DescKey, errors); }
 
             foreach (var p in d.Products.Values)
                 if (!p.Convenience && p.PlayPaths.Count == 0)

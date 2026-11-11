@@ -40,6 +40,18 @@ namespace Game.Unity.Screens
                 if (Ctx.Defs.Stats.TryGetValue(id, out var sd)) parts.Add(T(sd.NameKey) + " " + CorpsValidator.EffectiveStat(Ctx.Defs, g, id).FloorToLong());
             Ui.Label(stats, string.Join("   ", parts));
 
+            // 성향·특성 (traits.md, R-67): 특성은 전투에 실제 효과가 있다
+            var traits = Ui.Card(list, "Traits");
+            if (Ctx.Defs.Generals.TryGetValue(_generalId, out var gd))
+                Ui.Label(traits, T("ui.general.temperament", T("temperament." + gd.Temperament)), Ui.FontSmall);
+            Ui.Label(traits, T("ui.general.traits"));
+            if (g.LearnedTraits.Count == 0) Ui.Label(traits, T("ui.general.noTraits"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            foreach (var t in g.LearnedTraits)
+            {
+                bool defined = Ctx.Defs.Traits.Traits.TryGetValue(t, out var td);
+                Ui.Label(traits, Ui.Colored(T(defined ? td.NameKey : "trait." + t), Palette.Good) + "  " + Ui.Colored(defined ? T(td.DescKey) : "", Palette.TextDim), 26);
+            }
+
             // 한계 돌파 (R-57): 모집에서 겹친 장수의 조각으로 레벨 상한을 올린다
             if (Ctx.Defs.Gacha.MaxLimitBreak > 0)
             {

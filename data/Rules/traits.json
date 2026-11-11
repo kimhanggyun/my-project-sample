@@ -1,0 +1,121 @@
+{
+  "_comment": "장수 특성 (traits.md 3장, R-67). 효과 type: attackPp·defensePp(피해 %p, 가산 → 상한 R-1) / moraleLossMul(손실 사기 배율) / skillCostPct(스킬 비용 %, skills 비면 전부) / contestDamagePct(대결에서 주는 피해 %). 조건(없으면 늘): terrain, timeOfDay, weather, troopTag, targetRetreating, holding. 수치는 예시 (open-values.md). 지금은 플레이로 얻을 수 있는 특성만 정의, 나머지(traits.md 목록)는 얻는 경로와 함께 추가",
+  "traits": [
+    {
+      "id": "fierce",
+      "nameKey": "trait.fierce",
+      "descKey": "trait.fierce.desc",
+      "effects": [
+        {
+          "type": "attackPp",
+          "value": 5,
+          "troopTag": "melee"
+        }
+      ]
+    },
+    {
+      "id": "discipline",
+      "nameKey": "trait.discipline",
+      "descKey": "trait.discipline.desc",
+      "effects": [
+        {
+          "type": "moraleLossMul",
+          "value": 0.9
+        }
+      ]
+    },
+    {
+      "id": "keenEye",
+      "nameKey": "trait.keenEye",
+      "descKey": "trait.keenEye.desc",
+      "effects": [
+        {
+          "type": "skillCostPct",
+          "value": -30,
+          "skills": [
+            "reveal"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fireExpert",
+      "nameKey": "trait.fireExpert",
+      "descKey": "trait.fireExpert.desc",
+      "effects": [
+        {
+          "type": "skillCostPct",
+          "value": -25,
+          "skills": [
+            "fireAttack"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blazeMaster",
+      "nameKey": "trait.blazeMaster",
+      "descKey": "trait.blazeMaster.desc",
+      "effects": [
+        {
+          "type": "skillCostPct",
+          "value": -40,
+          "skills": [
+            "fireAttack"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nightRaid",
+      "nameKey": "trait.nightRaid",
+      "descKey": "trait.nightRaid.desc",
+      "effects": [
+        {
+          "type": "attackPp",
+          "value": 10,
+          "timeOfDay": "night"
+        }
+      ]
+    },
+    {
+      "id": "rainMarch",
+      "nameKey": "trait.rainMarch",
+      "descKey": "trait.rainMarch.desc",
+      "effects": [
+        {
+          "type": "attackPp",
+          "value": 5,
+          "weather": "rain"
+        },
+        {
+          "type": "defensePp",
+          "value": 5,
+          "weather": "rain"
+        }
+      ]
+    },
+    {
+      "id": "peerless",
+      "nameKey": "trait.peerless",
+      "descKey": "trait.peerless.desc",
+      "effects": [
+        {
+          "type": "contestDamagePct",
+          "value": 20
+        }
+      ]
+    },
+    {
+      "id": "unbroken",
+      "nameKey": "trait.unbroken",
+      "descKey": "trait.unbroken.desc",
+      "effects": [
+        {
+          "type": "moraleLossMul",
+          "value": 0.75
+        }
+      ]
+    }
+  ]
+}
