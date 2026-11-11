@@ -59,6 +59,9 @@ namespace Game.Battle.Model.Contests
         public Fix ResourceB { get; internal set; }
         public Fix ChargeA { get; internal set; }
         public Fix ChargeB { get; internal set; }
+        /// <summary>이 라운드에 회심(큰 피해)을 맞았나 (화면 연출용, 결과 계산에는 쓰지 않는다).</summary>
+        public bool CritOnA { get; internal set; }
+        public bool CritOnB { get; internal set; }
     }
 
     public sealed class ContestResult
@@ -93,6 +96,8 @@ namespace Game.Battle.Model.Contests
         public ContestResult Result { get; private set; }
         public bool IsOver => Result != null;
 
+        private bool _crit;
+
         public ContestSession(ContestDef def, ContestFighter a, ContestFighter b, IRandom rng)
         {
             Def = def;
@@ -115,14 +120,19 @@ namespace Game.Battle.Model.Contests
         {
             if (IsOver || !CanChoose(A, actionA) || !CanChoose(B, actionB)) return false;
             string ba = Def.Action(actionA).Base, bb = Def.Action(actionB).Base;
+            _crit = false;
             ApplyCell(A, B, ba, bb);
+            bool critOnA = _crit;
+            _crit = false;
             ApplyCell(B, A, bb, ba);
+            bool critOnB = _crit;
             A.Resource = Fix.Max(Fix.Zero, A.Resource);
             B.Resource = Fix.Max(Fix.Zero, B.Resource);
             _rounds.Add(new ContestRound
             {
                 Number = _rounds.Count + 1, ActionA = actionA, ActionB = actionB,
                 ResourceA = A.Resource, ResourceB = B.Resource, ChargeA = A.Charge, ChargeB = B.Charge,
+                CritOnA = critOnA, CritOnB = critOnB,
             });
             CheckEnd();
             return true;
@@ -166,7 +176,7 @@ namespace Game.Battle.Model.Contests
             if (_rng == null) return v;
             int r = _rng.NextInt(-Def.VariancePct, Def.VariancePct + 1);
             v = v * Fix.FromInt(100 + r) / Fix.Hundred;
-            if (crit && _rng.Chance(Def.CritChance)) v = v * Def.CritMultiplier;
+            if (crit && _rng.Chance(Def.CritChance)) { v = v * Def.CritMultiplier; _crit = true; }
             return v;
         }
 
