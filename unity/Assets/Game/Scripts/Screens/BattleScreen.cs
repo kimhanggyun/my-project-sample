@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Game.Battle.Model.Control;
 using Game.Battle.Model.Events;
@@ -22,6 +23,7 @@ namespace Game.Unity.Screens
     {
         private const int MaxTicksPerFrame = 40;
         private const float TopHeight = 64f;
+        private const float StatusHeight = 40f;
         private const float HeadHeight = 56f;
         private const float RowHeight = 72f;
         private const float CardHeight = 92f;
@@ -61,6 +63,11 @@ namespace Game.Unity.Screens
         private const float BubbleSeconds = 3f;
 
         private Text _clock;
+        // 상단 바 둘째 줄 (battle.md 4장 ①): 군량 게이지, 바람, 날씨·시간대
+        private Text _supplyText;
+        private RectTransform _supplyFill;
+        private Text _envText;
+        private Button _mapButton;
         private Button _collapseButton;
         private Button _queueButton;
         private RectTransform _prompt;
@@ -157,7 +164,22 @@ namespace Game.Unity.Screens
                 Ui.Button(top, T(enemyView ? "ui.replay.viewAlly" : "ui.replay.viewEnemy"), () => ReplayView(enemyView ? StoryFlow.PlayerTeam : StoryFlow.EnemyTeam, _revealAll), TopHeight, fontSize: 26);
                 Ui.Button(top, T(_revealAll ? "ui.replay.fogOn" : "ui.replay.fogOff"), () => ReplayView(_ctl.Team, !_revealAll), TopHeight, fontSize: 26);
             }
+            _mapButton = Ui.Button(top, "", ToggleMiniMap, TopHeight, fontSize: 26);
             Ui.Button(top, T(IsReplay ? "ui.replay.stop" : "ui.battle.skip"), IsReplay ? (System.Action)(() => App.Show(new ReplayListScreen())) : SkipToEnd, TopHeight, fontSize: 28);
+
+            var status = Ui.Row(Root, "Status", StatusHeight, 10);
+            _supplyText = Ui.Label(status, "", 22, TextAnchor.MiddleLeft);
+            Ui.Size(_supplyText, width: 150);
+            var gauge = Ui.Rect(status, "SupplyGauge");
+            Ui.Size(gauge, StatusHeight - 16, flexibleWidth: 2);
+            Ui.Background(gauge, new Color(0f, 0f, 0f, 0.45f));
+            _supplyFill = Ui.Rect(gauge, "Fill");
+            _supplyFill.anchorMin = Vector2.zero;
+            _supplyFill.anchorMax = new Vector2(1f, 1f);
+            _supplyFill.offsetMin = _supplyFill.offsetMax = Vector2.zero;
+            Ui.Background(_supplyFill, Palette.Good);
+            _envText = Ui.Label(status, "", 22, TextAnchor.MiddleRight);
+            Ui.Size(_envText, flexibleWidth: 3);
 
             // ② 전장 (3D 카메라가 이 영역에 그린다. 위에 깔린 투명 판이 누름·끌기·확대를 받는다)
             App.SetBackdrop(false);
@@ -635,6 +657,45 @@ namespace Game.Unity.Screens
             _dirty = true;
         }
 
+        private void ToggleMiniMap()
+        {
+            _miniMap.SetVisible(!_miniMap.Visible);
+            _dirty = true;
+        }
+
+        /// <summary>상단 둘째 줄: 아군 군량(남은/가져온, 게이지 색은 적을수록 붉게), 바람(화면 기준 방향 화살표 + 세기), 날씨·시간대.</summary>
+        private void RefreshStatus()
+        {
+            long have = 0, start = 0;
+            foreach (var c in _ctl.OwnCorps()) { have += c.Supply; start += c.StartSupply; }
+            float ratio = start > 0 ? Mathf.Clamp01((float)have / start) : 1f;
+            _supplyText.text = T("ui.battle.supply", Mathf.RoundToInt(ratio * 100f));
+            _supplyFill.anchorMax = new Vector2(ratio, 1f);
+            _supplyFill.GetComponent<Image>().color = ratio > 0.5f ? Palette.Good : ratio > 0.2f ? new Color(0.9f, 0.7f, 0.25f) : Palette.Bad;
+
+            var env = _sim.Context.Environment;
+            string wind = T("ui.battle.windNone");
+            var strength = env.WindStrength;
+            if (strength > Game.Foundation.Math.Fix.Zero) wind = T("ui.battle.wind", WindArrow(env.WindDirection), T("ui.battle.windLevel." + System.Math.Min(3, strength.CeilToLong())));
+            string weather = env.EffectiveWeather.Id != null && Ctx.Defs.Strings.ContainsKey("weather." + env.EffectiveWeather.Id) ? T("weather." + env.EffectiveWeather.Id) : "";
+            string time = env.EffectiveTime.Id != null && Ctx.Defs.Strings.ContainsKey("timeOfDay." + env.EffectiveTime.Id) ? T("timeOfDay." + env.EffectiveTime.Id) : "";
+            _envText.text = string.Join("  ", new[] { wind, weather, time }.Where(x => x.Length > 0));
+            SetLabel(_mapButton, T(_miniMap.Visible ? "ui.battle.mapHide" : "ui.battle.mapShow"));
+        }
+
+        /// <summary>바람이 불어 가는 방향을 지금 카메라 화면 기준 8방향 화살표로.</summary>
+        private string WindArrow(Vec dir)
+        {
+            var cam = _field.Rig.Camera;
+            var center = new Vec(Game.Foundation.Math.Fix.FromInt(_field.Width / 2), Game.Foundation.Math.Fix.FromInt(_field.Height / 2));
+            Vector3 a = cam.WorldToScreenPoint(_field.ToWorld(center));
+            Vector3 b = cam.WorldToScreenPoint(_field.ToWorld(new Vec(center.X + dir.X * Game.Foundation.Math.Fix.FromInt(4), center.Y + dir.Y * Game.Foundation.Math.Fix.FromInt(4))));
+            float ang = Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg; // 0 = 오른쪽, 반시계
+            string[] arrows = { "→", "↗", "↑", "↖", "←", "↙", "↓", "↘" };
+            int i = Mathf.RoundToInt(((ang % 360f) + 360f) % 360f / 45f) % 8;
+            return arrows[i];
+        }
+
         private void TogglePause() { _paused = !_paused; _dirty = true; }
         private void NextSpeed() { _speedIndex = (_speedIndex + 1) % Speeds.Length; _dirty = true; }
 
@@ -723,7 +784,9 @@ namespace Game.Unity.Screens
             var ctx = _sim.Context;
             long elapsed = (ctx.Combat.TickSeconds * ctx.Tick).FloorToLong();
             long max = (Setup.MaxMinutes * 60).FloorToLong();
-            _clock.text = T("ui.battle.time", elapsed, max);
+            // 전투명 + 주차 (1분 = 1주, battle.md 4장 ①)
+            _clock.text = T("ui.battle.top", T(_plan.Step.NameKey), elapsed / 60 + 1, System.Math.Max(1, max / 60));
+            RefreshStatus();
             SetLabel(_pauseButton, _paused ? T("ui.battle.resume") : T("ui.battle.pause"));
             SetLabel(_speedButton, T("ui.battle.speed", Speeds[_speedIndex]));
 
