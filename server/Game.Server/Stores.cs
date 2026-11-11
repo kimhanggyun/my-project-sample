@@ -15,6 +15,8 @@ namespace Game.Server
     public interface IPlatformStore
     {
         SignInResponse CreateGuest();
+        /// <summary>외부 로그인(제공자 + 사용자 id)으로: 처음이면 새 계정, 아니면 그 계정에 새 토큰.</summary>
+        SignInResponse SignInExternal(string provider, string subject);
         /// <summary>토큰 → 계정 id (없으면 null).</summary>
         string AccountOf(string token);
         /// <summary>그 게임에 처음 들어오면 가입 기록을 남긴다. 처음이면 true.</summary>
@@ -71,6 +73,8 @@ namespace Game.Server
         {
             /// <summary>토큰 → 계정.</summary>
             public Dictionary<string, string> Tokens { get; set; } = new Dictionary<string, string>();
+            /// <summary>"제공자:사용자 id" → 계정 id (외부 로그인).</summary>
+            public Dictionary<string, string> External { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → (게임 코드 → 가입 시각).</summary>
             public Dictionary<string, Dictionary<string, long>> Memberships { get; set; } = new Dictionary<string, Dictionary<string, long>>();
             /// <summary>계정 → 닉네임.</summary>
@@ -101,6 +105,24 @@ namespace Game.Server
                 Persist();
             }
             return r;
+        }
+
+        public SignInResponse SignInExternal(string provider, string subject)
+        {
+            string key = provider + ":" + subject;
+            lock (_lock)
+            {
+                if (!Data.External.TryGetValue(key, out var accountId))
+                {
+                    accountId = "acct-" + NewId(8);
+                    Data.External[key] = accountId;
+                    Data.Memberships[accountId] = new Dictionary<string, long>();
+                }
+                var r = new SignInResponse { AccountId = accountId, Token = NewId(24) };
+                Data.Tokens[r.Token] = accountId;
+                Persist();
+                return r;
+            }
         }
 
         public string AccountOf(string token)

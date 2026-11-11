@@ -1,0 +1,51 @@
+name: deploy-cloudrun
+
+# 게임 서버를 Google Cloud Run에 올린다 (docs/impl/deploy-cloudrun.md). 손으로만 실행 (Actions 탭 → Run workflow).
+# 저장소 설정 → Secrets and variables → Actions → Variables에 아래 값이 있어야 한다 (비밀값 없음: 키 대신 Workload Identity 사용).
+#   GCP_PROJECT_ID, GCP_REGION(asia-northeast3), GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GCS_BUCKET, FIREBASE_PROJECT_ID
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.GCP_PROJECT_ID != '' }}
+    env:
+      REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
+      SERVICE: game-server
+      IMAGE: ${{ vars.GCP_REGION || 'asia-northeast3' }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/game/game-server:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and push image
+        run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build -f server/Game.Server/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+      - name: Deploy
+        # 테스트 단계: 인스턴스 1대(폴더 저장소를 Cloud Storage 버킷에 붙여 쓰므로 동시에 2대 이상 쓰면 안 된다), 요청 없으면 0대.
+        # uid/gid 1654 = .NET 이미지의 app 사용자 (버킷 폴더에 쓸 수 있게).
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 1 \
+            --execution-environment gen2 \
+            --add-volume "name=store,type=cloud-storage,bucket=${{ vars.GCS_BUCKET }},mount-options=uid=1654;gid=1654" \
+            --add-volume-mount "volume=store,mount-path=/data/store" \
+            --set-env-vars "Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }},Game__AllowFakeReceipts=false"
+      - name: Smoke test
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
+          echo "서버 주소: $URL"
+          curl -sf "$URL/v1/time"

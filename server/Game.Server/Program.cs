@@ -23,6 +23,12 @@ builder.Services.AddSingleton(sp =>
 });
 builder.Services.AddSingleton<IPlatformStore>(sp => sp.GetRequiredService<InMemoryStore>());
 builder.Services.AddSingleton<IGameStore>(sp => sp.GetRequiredService<InMemoryStore>());
+// Firebase 로그인 (docs/impl/deploy-cloudrun.md): Game:Firebase:ProjectId가 있을 때만
+builder.Services.AddSingleton<IExternalTokenVerifier>(sp =>
+{
+    var project = builder.Configuration["Game:Firebase:ProjectId"];
+    return string.IsNullOrEmpty(project) ? null : new FirebaseTokenVerifier(project, FirebaseTokenVerifier.GoogleCerts(new System.Net.Http.HttpClient()));
+});
 builder.Services.AddSingleton(sp => ServerSetup.Registry(builder.Configuration, sp.GetRequiredService<ITimeProvider>(), sp.GetRequiredService<IGameStore>()));
 
 var app = builder.Build();
@@ -31,6 +37,14 @@ long Now() => time.UtcNow.ToUnixTimeSeconds();
 
 // 공통 (플랫폼)
 app.MapPost(OnlineRoutes.GuestSignIn, (IPlatformStore p) => Json(p.CreateGuest()));
+app.MapPost(OnlineRoutes.FirebaseSignIn, async (HttpRequest req, IPlatformStore p, IServiceProvider sp) =>
+{
+    var verifier = sp.GetService<IExternalTokenVerifier>();
+    if (verifier == null) return Results.NotFound();
+    var body = await Body<ExternalSignInRequest>(req);
+    var who = verifier.Verify(body?.IdToken, Now());
+    return who == null ? Results.Unauthorized() : Json(p.SignInExternal(who.Provider, who.Subject));
+});
 app.MapGet(OnlineRoutes.Time, () => Json(new ServerTimeResponse { UnixSeconds = Now() }));
 app.MapGet(OnlineRoutes.Games, (GameRegistry r) => Json(new GameListResponse { Games = new List<string>(r.Codes) }));
 app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
