@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using Game.Battle.Model.Control;
 using Game.Battle.Model.Events;
+using Game.Battle.Model.Geometry;
 using Game.Battle.Model.Simulation;
 using Game.Flow;
 using Game.Unity.Battle3D;
@@ -39,6 +40,10 @@ namespace Game.Unity.Screens
         private readonly Vector3[] _corners = new Vector3[4];
         private RadialMenu _radial;
         private CorpsState _radialCorps;
+        // 이동 지점 고르기 (4.3.5): 메뉴 "이동" → 땅을 누르면 그 자리에 방식 고리
+        private bool _pickingPoint;
+        private int _waypoints;
+        private Vec? _ringPoint;
         private float _tickSeconds;
         private float _accumulator;
         private int _speedIndex;
@@ -314,9 +319,16 @@ namespace Game.Unity.Screens
         private void OnFieldTap(Vector2 screen)
         {
             if (_finished || IsReplay) return;
+            if (!_field.ScreenToField(screen, out var point)) { if (_radial.IsOpen) CloseCorpsMenu(); return; }
+            // 이동 지점 고르는 중: 아군 군단이 아니면 그 자리에 방식 고리 (다른 곳을 누르면 그리로 옮김)
+            if (_pickingPoint && _ctl.CanCommand(_ctl.Selected))
+            {
+                var hit = _ctl.Pick(point);
+                if (hit == null || hit.Team != _ctl.Team) { OpenMethodMenu(point); return; }
+                EndPicking();
+            }
             // 메뉴 바깥을 누르면 메뉴를 닫고 그 누름은 그대로 (빠른 조작: 빈 땅 = 이동, 적 = 공격, 4.3.3)
             if (_radial.IsOpen) CloseCorpsMenu();
-            if (!_field.ScreenToField(screen, out var point)) return;
             var r = _ctl.Tap(point);
             OnTap(r);
             if (r == TapResult.Selected) OpenCorpsMenu(_ctl.Selected); // 아군 군단을 누르면 원형 메뉴
@@ -340,6 +352,7 @@ namespace Game.Unity.Screens
 
         private void OpenCorpsMenu(CorpsState corps)
         {
+            EndPicking();
             if (corps == null || IsReplay || !_ctl.CanCommand(corps)) { CloseCorpsMenu(); return; }
             _radialCorps = corps;
             bool delegated = corps.Delegated;
@@ -347,7 +360,7 @@ namespace Game.Unity.Screens
             {
                 Pick(T("ui.cmd.advance"), () => _ctl.Advance(), !delegated),
                 Sub(T("ui.radial.wait"), OpenWaitMenu, !delegated),
-                Sub(T("ui.radial.move"), OpenMoveMenu, !delegated),
+                new RadialMenu.Item { Label = T("ui.radial.move"), Enabled = !delegated, OnPick = StartPicking },
                 Sub(T("ui.radial.skill"), OpenSkillMenu, !delegated && _ctl.Skills().Count > 0),
                 Sub(T("ui.radial.formation"), OpenFormationMenu, !delegated && _ctl.Formations().Count > 1),
                 Pick(T("ui.cmd.fallBack"), () => _ctl.FallBack(), !delegated),
@@ -363,20 +376,81 @@ namespace Game.Unity.Screens
             Pick(T("ui.radial.stay"), () => _ctl.Hold()),
         });
 
-        /// <summary>이동: 방식을 고르면 다음에 누른 땅으로 그 방식 이동 (4.3.5).</summary>
-        private void OpenMoveMenu()
+        /// <summary>이동: 먼저 갈 곳을 누르고, 그 자리에서 방식을 고른다 (4.3.5).</summary>
+        private void StartPicking()
         {
+            var corps = _radialCorps;
+            CloseCorpsMenu();
+            _radialCorps = corps;
+            _pickingPoint = true;
+            _waypoints = 0;
+            Notice(T("ui.radial.pickPoint"));
+        }
+
+        private void EndPicking()
+        {
+            _pickingPoint = false;
+            _waypoints = 0;
+            _ringPoint = null;
+        }
+
+        /// <summary>누른 지점의 방식 고리: 이동·강행·공격 이동·경유·도착 후 스킬. 가운데 = 취소.</summary>
+        private void OpenMethodMenu(Vec point)
+        {
+            _radialCorps = _ctl.Selected;
+            bool queued = _waypoints > 0; // 경유 뒤의 지점은 앞 지점 다음에 예약
             var items = new List<RadialMenu.Item>();
             foreach (var m in MoveModesInOrder)
             {
                 string mode = m;
+                items.Add(new RadialMenu.Item { Label = T("ui.moveMode." + mode), OnPick = () => FinishPicking(_ctl.MoveTo(point, mode, queued)) });
+            }
+            items.Add(new RadialMenu.Item
+            {
+                Label = T("ui.radial.via"),
+                Enabled = _ctl.QueueCount + _waypoints < _sim.Context.Combat.OrderQueueMax,
+                OnPick = () =>
+                {
+                    bool ok = _ctl.MoveTo(point, MoveModes.Normal, queued);
+                    _radial.Close();
+                    _ringPoint = null;
+                    if (!ok) { FinishPicking(false); return; }
+                    _waypoints++;
+                    Notice(T("ui.radial.nextPoint", _waypoints));
+                    _dirty = true;
+                },
+            });
+            bool anySkill = false;
+            foreach (var sk in _ctl.Skills()) anySkill |= BattleControl.UsableOnArrival(sk.TargetType);
+            items.Add(new RadialMenu.Item { Label = T("ui.radial.thenSkill") + " ›", Enabled = anySkill, OnPick = () => OpenArrivalSkillMenu(point, queued) });
+            _radial.Open(T("ui.radial.cancel"), () => { CloseCorpsMenu(); EndPicking(); Notice(T("ui.radial.moveCancelled")); }, items);
+            _ringPoint = point;
+            FollowCorps();
+        }
+
+        private void OpenArrivalSkillMenu(Vec point, bool queued)
+        {
+            var items = new List<RadialMenu.Item>();
+            foreach (var sk in _ctl.Skills())
+            {
+                if (!BattleControl.UsableOnArrival(sk.TargetType)) continue;
+                string id = sk.SkillId;
                 items.Add(new RadialMenu.Item
                 {
-                    Label = T("ui.moveMode." + mode), Active = _ctl.MoveMode == mode,
-                    OnPick = () => { _ctl.SetMoveMode(mode); CloseCorpsMenu(); Notice(T("ui.radial.pickPoint", T("ui.moveMode." + mode))); _dirty = true; },
+                    Label = T(sk.NameKey) + "\n" + sk.Cost.FloorToLong(), Enabled = sk.Affordable,
+                    OnPick = () => FinishPicking(_ctl.MoveThenSkill(point, MoveModes.Normal, id, queued)),
                 });
             }
-            OpenSub(items);
+            _radial.Open(T("ui.radial.back"), () => OpenMethodMenu(point), items);
+            _ringPoint = point;
+            FollowCorps();
+        }
+
+        private void FinishPicking(bool ok)
+        {
+            CloseCorpsMenu();
+            EndPicking();
+            Report(ok);
         }
 
         private void OpenSkillMenu()
@@ -428,7 +502,8 @@ namespace Game.Unity.Screens
         private void CloseCorpsMenu()
         {
             _radial.Close();
-            _radialCorps = null;
+            _ringPoint = null;
+            if (!_pickingPoint) _radialCorps = null;
         }
 
         /// <summary>메뉴가 군단을 따라간다. 군단이 지휘할 수 없게 되거나(퇴각·위임 해제 아님) 선택이 바뀌면 닫는다.</summary>
@@ -436,9 +511,9 @@ namespace Game.Unity.Screens
         {
             if (!_radial.IsOpen) return;
             var c = _radialCorps;
-            if (c == null || c != _ctl.Selected || !_ctl.CanCommand(c)) { CloseCorpsMenu(); return; }
+            if (c == null || c != _ctl.Selected || !_ctl.CanCommand(c)) { CloseCorpsMenu(); EndPicking(); return; }
             var cam = _field.Rig.Camera;
-            Vector3 sp = cam.WorldToScreenPoint(_field.ToWorld(c.Anchor));
+            Vector3 sp = cam.WorldToScreenPoint(_field.ToWorld(_ringPoint ?? c.Anchor)); // 방식 고리는 누른 땅에
             if (sp.z > 0 && RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local))
                 _radial.Follow(local);
         }

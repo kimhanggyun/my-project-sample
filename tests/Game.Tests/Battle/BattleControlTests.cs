@@ -262,5 +262,30 @@ namespace Game.Tests.Battle
             Assert.Equal(0, ctl.QueueCount); // 예약 아닌 새 명령이 예약을 비움
             Assert.True(a.Resting);
         }
+
+        [Fact(DisplayName = "이동 방식 고르기 (4.3.5): 경유는 첫 지점 바로, 다음 지점부터 예약. 도착 후 스킬은 이동 + 지점 스킬 예약")]
+        public void PointThenMethod()
+        {
+            var (sim, ctl) = Make();
+            var a = Own(ctl, "general_a");
+            ctl.Select(a.Id);
+            var p1 = EmptyPoint(sim.Context, a);
+            Assert.True(ctl.MoveTo(p1, MoveModes.Forced, false));
+            Assert.True(ctl.MoveTo(new Vec(Fix.FromInt(3), Fix.FromInt(20)), MoveModes.Normal, true));
+            sim.Step();
+            Assert.Equal((OrderKinds.MoveTo, 1), (a.Order.Kind, ctl.QueueCount));
+            Assert.Equal(MoveModes.Forced, sim.CommandLog.First(c => c.CorpsId == a.Id).Mode);
+
+            var c = Own(ctl, "general_c"); // reveal (지점)
+            ctl.Select(c.Id);
+            var p = EmptyPoint(sim.Context, c);
+            Assert.True(ctl.MoveThenSkill(p, MoveModes.Normal, "reveal", false));
+            var skill = sim.CommandLog.Last();
+            Assert.Equal((CommandKinds.UseSkill, "reveal", true, p), (skill.Kind, skill.SkillId, skill.Queued, new Vec(skill.X, skill.Y)));
+            sim.Step();
+            Assert.Equal((OrderKinds.MoveTo, 1), (c.Order.Kind, ctl.QueueCount)); // 이동 중, 스킬은 도착 뒤
+            Assert.False(ctl.MoveThenSkill(p, MoveModes.Normal, "rally", false)); // 모르는 스킬
+            Assert.False(BattleControl.UsableOnArrival("enemyCorps"));
+        }
     }
 }

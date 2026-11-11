@@ -201,6 +201,32 @@ namespace Game.Battle.Model.Control
         public bool MoveTo(Vec point, string mode = null) =>
             Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; c.Queued = Queueing; });
 
+        /// <summary>
+        /// 지점을 고른 뒤 방식으로 이동 (4.3.5). queued면 지금 명령 뒤에 예약 (경유를 이어 붙일 때 두 번째 지점부터).
+        /// </summary>
+        public bool MoveTo(Vec point, string mode, bool queued) =>
+            Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; c.Queued = queued || Queueing; });
+
+        /// <summary>도착 후 쓸 수 있는 스킬: 자신·지점·범위 대상 (군단 대상은 도착 지점과 무관해 뺀다).</summary>
+        public static bool UsableOnArrival(string targetType) =>
+            targetType == SkillTargets.Self || targetType == SkillTargets.Point || targetType == SkillTargets.Area;
+
+        /// <summary>
+        /// 이동 후 스킬 (4.3.5 "스킬": 예 숲에 도착하면 복병): 그 지점으로 이동 + 도착하면 쓸 스킬을 예약 (지점·범위 스킬은 그 지점에).
+        /// 스킬 점수는 예약을 꺼낼 때 낸다. 둘 다 받아야 true (이동만 받고 스킬을 못 받으면 false).
+        /// </summary>
+        public bool MoveThenSkill(Vec point, string mode, string skillId, bool queued)
+        {
+            if (!CanCommand(Selected) || !Context.Defs.Skills.TryGetValue(skillId ?? "", out var skill) || !UsableOnArrival(skill.TargetType)) return false;
+            if (!MoveTo(point, mode, queued)) return false;
+            return Issue(Selected, CommandKinds.UseSkill, c =>
+            {
+                c.SkillId = skillId;
+                if (skill.TargetType != SkillTargets.Self) { c.X = point.X; c.Y = point.Y; }
+                c.Queued = true;
+            });
+        }
+
         public bool Attack(string targetCorpsId) =>
             Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Queued = Queueing; });
 
