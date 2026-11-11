@@ -95,6 +95,69 @@ namespace Game.Unity.Battle3D
             return Built[baseType ?? ""] = m;
         }
 
+        /// <summary>장수 재질 순서: 0 = 갑옷·망토(팀 색), 1 = 얼굴, 2 = 금빛 장식·무기, 3 = 말(흰 말).</summary>
+        public static readonly Color GoldColor = new Color(0.95f, 0.76f, 0.26f);
+        public static readonly Color GeneralHorseColor = new Color(0.9f, 0.88f, 0.84f);
+
+        /// <summary>
+        /// 장수 인형 (부대원과 구별, 2026-11-11): 부대원보다 크게(약 1.8배), 흰 말을 타고, 금빛 투구·깃털·어깨 장식, 팀 색 망토, 금빛 칼.
+        /// 총대장(commander)은 등에 군기(깃대 + 팀 색 깃발)를 하나 더 단다. 원점은 발밑.
+        /// </summary>
+        public static Mesh General(bool commander)
+        {
+            string key = commander ? "#commander" : "#general";
+            if (Built.TryGetValue(key, out var m) && m != null) return m;
+            var parts = new List<CombineInstance>[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
+            var cube = Builtin("Cube");
+            var sphere = Builtin("Sphere");
+            var capsule = Builtin("Capsule");
+            var cylinder = Builtin("Cylinder");
+            int part = Dark;
+            const float k = 1.8f; // 부대원 대비 크기
+            void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
+                parts[part].Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(pos * k, Quaternion.Euler(euler), scale * k) });
+
+            // 흰 말
+            Add(cube, new Vector3(0f, 0.14f, 0f), new Vector3(0.13f, 0.12f, 0.32f));
+            Add(cube, new Vector3(0f, 0.24f, 0.18f), new Vector3(0.075f, 0.13f, 0.085f), new Vector3(-30f, 0f, 0f));
+            for (int i = 0; i < 4; i++)
+                Add(cube, new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.045f, i < 2 ? 0.12f : -0.12f), new Vector3(0.032f, 0.09f, 0.032f));
+            float lift = 0.17f;
+            // 갑옷·망토 (팀 색)
+            part = Team;
+            Add(capsule, new Vector3(0f, lift + 0.17f, 0f), new Vector3(0.12f, 0.12f, 0.1f));
+            Add(cube, new Vector3(0f, lift + 0.15f, -0.07f), new Vector3(0.15f, 0.22f, 0.015f), new Vector3(12f, 0f, 0f)); // 망토
+            Add(cube, new Vector3(0f, 0.2f, 0f), new Vector3(0.14f, 0.03f, 0.2f)); // 말 안장 덮개
+            // 얼굴
+            part = Skin;
+            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.085f, 0.085f, 0.085f));
+            // 금빛: 투구·깃털·어깨·칼
+            part = Metal;
+            Add(cube, new Vector3(0f, lift + 0.38f, 0f), new Vector3(0.105f, 0.04f, 0.105f));
+            Add(cube, new Vector3(0f, lift + 0.45f, -0.01f), new Vector3(0.018f, 0.1f, 0.04f));        // 깃털
+            Add(sphere, new Vector3(-0.07f, lift + 0.24f, 0f), new Vector3(0.05f, 0.04f, 0.06f));       // 어깨
+            Add(sphere, new Vector3(0.07f, lift + 0.24f, 0f), new Vector3(0.05f, 0.04f, 0.06f));
+            Add(cube, new Vector3(0.08f, lift + 0.26f, 0.05f), new Vector3(0.016f, 0.2f, 0.02f), new Vector3(25f, 0f, 0f)); // 칼
+            if (commander)
+            {
+                // 총대장 군기: 등 뒤 깃대(금) + 깃발(팀 색)
+                Add(cylinder, new Vector3(-0.05f, lift + 0.42f, -0.08f), new Vector3(0.01f, 0.2f, 0.01f));
+                part = Team;
+                Add(cube, new Vector3(-0.05f - 0.06f, lift + 0.56f, -0.08f), new Vector3(0.12f, 0.08f, 0.01f));
+            }
+            var subs = new CombineInstance[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var pm = new Mesh();
+                if (parts[i].Count > 0) pm.CombineMeshes(parts[i].ToArray(), true, true);
+                subs[i] = new CombineInstance { mesh = pm, transform = Matrix4x4.identity };
+            }
+            m = new Mesh { name = commander ? "general_commander" : "general" };
+            m.CombineMeshes(subs, false, false);
+            m.RecalculateBounds();
+            return Built[key] = m;
+        }
+
         /// <summary>쓰러진 병사 표시 (낮고 납작한 상자).</summary>
         public static readonly Vector3 FallenScale = new Vector3(0.12f, 0.035f, 0.26f);
     }

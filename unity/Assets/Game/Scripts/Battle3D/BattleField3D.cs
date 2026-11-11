@@ -187,7 +187,20 @@ namespace Game.Unity.Battle3D
             return _soldierBatches[(troop, color)] = b;
         }
 
-        private readonly Material[] _partMaterials = new Material[4];
+        /// <summary>장수 묶음: (총대장 여부, 색) → 인형 (SoldierMeshes.General).</summary>
+        private readonly Dictionary<(bool commander, int color), InstanceBatch> _generalBatches = new Dictionary<(bool, int), InstanceBatch>();
+        private InstanceBatch GeneralBatch(bool commander, int color)
+        {
+            if (_generalBatches.TryGetValue((commander, color), out var b)) return b;
+            var team = Own(NewMaterial(SoldierColors[color]));
+            team.enableInstancing = true;
+            b = new InstanceBatch(SoldierMeshes.General(commander),
+                new[] { team, PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(4, SoldierMeshes.GoldColor), PartMaterial(5, SoldierMeshes.GeneralHorseColor) }, Matrix4x4.identity);
+            _allSoldierBatches.Add(b);
+            return _generalBatches[(commander, color)] = b;
+        }
+
+        private readonly Material[] _partMaterials = new Material[6];
         private Material PartMaterial(int i, Color c)
         {
             if (_partMaterials[i] != null) return _partMaterials[i];
@@ -496,6 +509,17 @@ namespace Game.Unity.Battle3D
                         p.y = GroundHeight(p.x, p.z) + bob + (flash && !isCube ? 0.08f : 0f);
                         (flash ? hitBatch : batch).Add(p, rot);
                     }
+                }
+                // 장수: 군단 한가운데 조금 뒤, 부대원보다 크게 (총대장은 군기)
+                Vector3 sum = Vector3.zero;
+                int alive = 0;
+                foreach (var u in c.Units)
+                    if (u.Alive && _unitPos.TryGetValue(u, out var up)) { sum += Vector3.Lerp(up.prev, up.cur, alpha); alive++; }
+                if (alive > 0)
+                {
+                    var gp = sum / alive + rot * new Vector3(0f, 0f, -0.9f);
+                    gp.y = GroundHeight(gp.x, gp.z);
+                    GeneralBatch(c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander, teamColor).Add(gp, rot);
                 }
             }
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
