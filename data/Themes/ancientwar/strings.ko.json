@@ -814,5 +814,9 @@
   "trait.unbroken.desc": "병력 손실로 떨어지는 사기 −25%",
   "ui.general.traits": "특성",
   "ui.general.noTraits": "특성 없음",
-  "ui.general.temperament": "성향: {0}"
+  "ui.general.temperament": "성향: {0}",
+  "ui.result.joined": "새 장수 합류",
+  "ui.result.joinedShard": "이미 있는 장수 → 조각",
+  "ui.result.shardLine": "{0} 조각 +1",
+  "ui.result.prisonerHint": "잡은 적 장수는 포로 탭에서 등용하거나 풀어 줄 수 있습니다."
 }

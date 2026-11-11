@@ -277,6 +277,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<StepEnemyCorpsDef> Enemy { get; private set; }
         public IReadOnlyList<string> RewardFormations { get; private set; }
         public IReadOnlyList<string> RewardSkills { get; private set; }
+        /// <summary>첫 클리어에 합류하는 장수 (rewards.joinGenerals, generals.md 1장: 뽑기에서만 나오는 장수 없음). 이미 있으면 조각 1개.</summary>
+        public IReadOnlyList<string> RewardGenerals { get; private set; }
         public IReadOnlyDictionary<string, long> RewardResources { get; private set; }
         /// <summary>승리 시 출전 장수 경험치 (전투 레벨업 배율 적용 전).</summary>
         public long RewardExp { get; private set; }
@@ -381,6 +383,7 @@ namespace Game.Data.Defs
                 Enemy = enemy,
                 RewardFormations = JsonUtil.StringList(rewards, "unlockFormations"),
                 RewardSkills = JsonUtil.StringList(rewards, "unlockSkills"),
+                RewardGenerals = JsonUtil.StringList(rewards, "joinGenerals"),
                 RewardResources = res,
                 RewardExp = rewards.Value<long?>("exp") ?? 0,
                 Events = events,
