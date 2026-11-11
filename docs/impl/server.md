@@ -60,7 +60,7 @@
 
 실행: `dotnet run --project server/Game.Server`. 설정:
 - `Game:StoreRoot` = 저장 폴더 (없으면 메모리).
-- `Game:Games:0:Code` / `DataRoot` / `Theme` / `PackageIds:0` … = 등록할 게임들. 없으면 이 저장소의 게임 하나(`ancientwar`, data 폴더는 위로 찾음, 앱 id `com.myproject.ancientwar` — 임시).
+- `Game:Games:0:Code` / `DataRoot` / `Theme` / `PackageIds:0` … = 등록할 게임들. 없으면 이 저장소의 게임 하나(`ancientwar`, data 폴더는 위로 찾음, 앱 id `net.itgold.unitygame1` (2026-11-11 결정)).
 
 ### 게임 추가하기
 1. 그 게임의 서버 처리를 `IGameModule`로 구현한다 (같은 엔진의 게임이면 `StrategyGameModule`에 그 게임 데이터 폴더만 주면 된다).

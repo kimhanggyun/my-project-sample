@@ -374,7 +374,7 @@ namespace Game.Server.Tests
             var c = await SignedIn();
             var games = await Read<GameListResponse>(await c.GetAsync(OnlineRoutes.Games));
             Assert.Contains(ServerSetup.DefaultGame, games.Games);
-            var resolved = await Read<ResolveAppResponse>(await c.GetAsync(OnlineRoutes.ResolveApp("com.myproject.ancientwar")));
+            var resolved = await Read<ResolveAppResponse>(await c.GetAsync(OnlineRoutes.ResolveApp("net.itgold.unitygame1")));
             Assert.Equal(ServerSetup.DefaultGame, resolved.Game);
             Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync(OnlineRoutes.ResolveApp("com.unknown"))).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync(OnlineRoutes.Save("nogame"))).StatusCode);
@@ -394,7 +394,7 @@ namespace Game.Server.Tests
             {
                 builder.UseSetting("Game:Games:0:Code", "ancientwar");
                 builder.UseSetting("Game:Games:0:Theme", "ancientwar");
-                builder.UseSetting("Game:Games:0:PackageIds:0", "com.myproject.ancientwar");
+                builder.UseSetting("Game:Games:0:PackageIds:0", "net.itgold.unitygame1");
                 builder.UseSetting("Game:Games:1:Code", "secondgame");
                 builder.UseSetting("Game:Games:1:Theme", "ancientwar");
                 builder.UseSetting("Game:Games:1:PackageIds:0", "com.myproject.second");

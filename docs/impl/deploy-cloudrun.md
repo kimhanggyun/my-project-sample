@@ -19,11 +19,11 @@
 
 콘솔에서 하는 일이다. 막히면 화면을 캡처해 보내면 된다. **비밀번호·키 값은 채팅에 붙이지 않는다.**
 
-1. **Google Cloud 프로젝트**: https://console.cloud.google.com 에서 새 프로젝트 (예: `ancientwar-dev`), **결제 계정 연결** (무료 사용량 안에서도 필요).
+1. **Google Cloud 프로젝트**: https://console.cloud.google.com 에서 새 프로젝트 (구글 플레이 개발자 콘솔 계정과는 다른 곳. 같은 구글 계정으로 로그인하면 된다) (예: `ancientwar-dev`), **결제 계정 연결** (무료 사용량 안에서도 필요).
 2. **Firebase**: https://console.firebase.google.com 에서 "프로젝트 추가" → 1번 프로젝트를 고른다 (같은 프로젝트를 쓰면 프로젝트 id도 같다).
    - Authentication → 시작하기 → 로그인 방법: **Google 사용 설정** (Apple은 막아 둔 상태이므로 나중에).
    - 프로젝트 설정 → 앱 추가 → **Android** → `google-services.json` 받기 (Unity SDK를 붙일 때 쓴다, 저장소에는 넣지 않는다).
-   - **패키지 이름을 먼저 정한다**: 지금 Unity 프로젝트는 템플릿 기본값(`com.UnityTechnologies.com.unity.template.urpblank`)이다. 스토어에 올린 뒤에는 바꿀 수 없으므로 `com.<회사·개인 이름>.<게임 이름>` 형태로 정해 Unity(Player Settings → Other Settings → Package Name)와 Firebase에 같은 값을 넣는다. 서버 설정의 `PackageIds`도 같은 값으로 (지금 기본 `com.myproject.ancientwar`).
+   - **패키지 이름: `net.itgold.unitygame1`** (2026-11-11 결정). Unity(Player Settings → Package Name)·서버 기본 `PackageIds`에 넣어 두었다. Firebase 안드로이드 앱 등록 때 이 값을 쓴다. 스토어에 올린 뒤에는 바꿀 수 없다.
    - 디버그 서명 SHA-1 등록 (Unity 키스토어 기준, 방법은 SDK 붙일 때 안내).
 3. **Cloud Shell**(콘솔 오른쪽 위 `>_`)에서 아래를 한 번 실행한다. `PROJECT`, `GH_REPO`만 바꾼다.
 
