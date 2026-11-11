@@ -40,7 +40,8 @@
       "cost": 25,
       "usesPerBattle": 1,
       "target": {
-        "type": "self"
+        "type": "self",
+        "moveFirst": true
       },
       "conditions": [
         {

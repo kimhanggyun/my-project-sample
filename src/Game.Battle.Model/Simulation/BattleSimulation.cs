@@ -83,7 +83,9 @@ namespace Game.Battle.Model.Simulation
             var corps = Context.FindCorps(command.CorpsId);
             if (corps == null || corps.Setup.Controller != Controllers.Player || corps.Status != CorpsStatus.Active) return false;
             if (corps.HasStatus(StatusIds.Taunted)) return false; // 도발당한 동안은 명령을 받지 않는다
-            if (!_ext.Commands.TryGet(command.Kind, out var handler) || !handler.IsValid(Context, corps, command)) return false;
+            if (!_ext.Commands.TryGet(command.Kind, out var handler)) return false;
+            bool ok = command.Queued && handler is Commands.IQueueCheck q ? q.CanQueue(Context, corps, command) : handler.IsValid(Context, corps, command);
+            if (!ok) return false;
             if (command.Queued && corps.Queue.Count >= Context.Combat.OrderQueueMax) return false; // 예약 상한
             var stamped = command.Clone();
             stamped.Tick = Context.Tick;
@@ -101,13 +103,15 @@ namespace Game.Battle.Model.Simulation
             {
                 var corps = ctx.FindCorps(cmd.CorpsId);
                 if (corps.Status != CorpsStatus.Active || corps.HasStatus(StatusIds.Taunted)) continue;
-                if (!_ext.Commands.TryGet(cmd.Kind, out var h) || !h.IsValid(ctx, corps, cmd)) continue;
-                // 예약: 지금 명령이 진행 중이면 뒤에 넣는다 (지금이 대기면 바로)
+                if (!_ext.Commands.TryGet(cmd.Kind, out var h)) continue;
+                // 예약: 지금 명령이 진행 중이면 뒤에 넣는다 (지금이 대기면 바로). 넣을 때의 검사는 IQueueCheck가 있으면 그것 (R-69)
                 if (cmd.Queued && !Commands.OrderQueue.IsIdle(corps))
                 {
-                    if (corps.Queue.Count < ctx.Combat.OrderQueueMax) corps.Queue.Add(cmd);
+                    bool can = h is Commands.IQueueCheck q ? q.CanQueue(ctx, corps, cmd) : h.IsValid(ctx, corps, cmd);
+                    if (can && corps.Queue.Count < ctx.Combat.OrderQueueMax) corps.Queue.Add(cmd);
                     continue;
                 }
+                if (!h.IsValid(ctx, corps, cmd)) continue;
                 var before = corps.Order;
                 h.Apply(ctx, corps, cmd);
                 // 플레이어가 내린 이동·공격·대기 명령은 위임 중에도 끝날 때까지 우선 (진형·스킬처럼 명령을 바꾸지 않는 것은 제외)

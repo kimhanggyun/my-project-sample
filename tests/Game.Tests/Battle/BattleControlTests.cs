@@ -287,5 +287,67 @@ namespace Game.Tests.Battle
             Assert.False(ctl.MoveThenSkill(p, MoveModes.Normal, "rally", false)); // 모르는 스킬
             Assert.False(BattleControl.UsableOnArrival("enemyCorps"));
         }
+
+        [Fact(DisplayName = "스킬 확인 모드 (4.2): 지점 스킬은 누름으로 자리만 잡고(미리보기 반지름·사거리), 확인하면 쓴다. 취소하면 아무 명령 없음")]
+        public void AimThenConfirm()
+        {
+            var (sim, ctl) = Make();
+            ctl.ConfirmPointSkills = true;
+            var c = Own(ctl, "general_c"); // reveal (지점, 효과 반지름 4)
+            ctl.Select(c.Id);
+            Assert.Equal(Fix.FromInt(4), ctl.PreviewRadius("reveal"));
+            Assert.Equal(Fix.FromInt(2), ctl.PreviewRadius("arrowRain")); // 대상 범위
+            int logged = sim.CommandLog.Count;
+            Assert.True(ctl.PressSkill("reveal"));
+            var p = EmptyPoint(sim.Context, c);
+            Assert.Equal(TapResult.Aimed, ctl.Tap(p));
+            Assert.Equal(p, ctl.AimPoint);
+            Assert.True(ctl.AimInRange()); // 사거리 없음
+            var p2 = new Vec(p.X + Fix.FromInt(1), p.Y);
+            Assert.Equal(TapResult.Aimed, ctl.Tap(p2)); // 다시 누르면 자리를 옮긴다
+            Assert.Equal(logged, sim.CommandLog.Count);
+            ctl.CancelTargeting();
+            Assert.Null(ctl.AimPoint);
+            Assert.False(ctl.ConfirmAim());
+
+            ctl.PressSkill("reveal");
+            ctl.Tap(p2);
+            Assert.True(ctl.ConfirmAim());
+            var cmd = sim.CommandLog.Last();
+            Assert.Equal(("reveal", p2), (cmd.SkillId, new Vec(cmd.X, cmd.Y)));
+            Assert.Null(ctl.TargetingSkill);
+        }
+
+        [Fact(DisplayName = "R-69 복병 지점 지정: 자리를 먼저 고르는 스킬은 그 자리로 이동 + 도착 후 복병 예약 (지형 조건은 도착해서 보고, 안 맞으면 건너뛰고 알림)")]
+        public void AmbushPoint()
+        {
+            var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
+            var state = StartingKitService.CreateNewGame(Kit.D);
+            state.FindGeneral("general_c").LearnedSkills.Add("ambush");
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
+            Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+            var sim = new BattleSimulation(plan.Setup);
+            var ctl = new BattleControl(sim, StoryFlow.PlayerTeam);
+            var c = Own(ctl, "general_c");
+            ctl.Select(c.Id);
+            Assert.True(Kit.D.Skills["ambush"].MoveFirst);
+            Assert.True(ctl.PressSkill("ambush"));
+            Assert.Equal("ambush", ctl.TargetingSkill); // 바로 쓰지 않고 자리 고르기
+            // 적에게서 먼 쪽(뒤)으로 두 칸: 싸우지 않고 도착한다
+            var back = c.Anchor.Y < Fix.FromInt(sim.Context.Field.Map.Height / 2) ? -2 : 2;
+            var p = new Vec(c.Anchor.X, c.Anchor.Y + Fix.FromInt(back));
+            Assert.Equal(TapResult.Skill, ctl.Tap(p)); // 확인 모드가 아니면 바로 (이동 + 예약)
+            var move = sim.CommandLog[sim.CommandLog.Count - 2];
+            var skill = sim.CommandLog.Last();
+            Assert.Equal((CommandKinds.MoveTo, CommandKinds.UseSkill, "ambush", true), (move.Kind, skill.Kind, skill.SkillId, skill.Queued));
+            sim.Step();
+            Assert.Single(c.Queue); // 넓은 땅이라 지금은 쓸 수 없어도 예약은 받는다
+            // 도착할 때까지 돌린다: 그 자리가 숨을 땅이 아니면 건너뛰고 알림
+            for (int i = 0; i < 3000 && c.Queue.Count > 0 && c.InBattle; i++) sim.Step();
+            Assert.True(c.Queue.Count == 0, $"tick {sim.Context.Tick} over {sim.IsOver} order {c.Order.Kind} anchor {c.Anchor} target {p} inBattle {c.InBattle}");
+            bool used = sim.Context.Log.Any(e => e.Kind == Game.Battle.Model.Events.EventKinds.SkillUsed && e.CorpsId == c.Id && e.Data == "ambush");
+            bool skipped = sim.Context.Log.Any(e => e.Kind == Game.Battle.Model.Events.EventKinds.QueuedSkipped && e.CorpsId == c.Id && e.Data == "ambush");
+            Assert.True(used ^ skipped);
+        }
     }
 }

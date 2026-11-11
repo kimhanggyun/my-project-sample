@@ -40,6 +40,8 @@ namespace Game.Data.Defs
         /// <summary>사거리 (칸). 없으면 전장 어디든.</summary>
         public Fix? Range { get; internal set; }
         public Fix Radius { get; internal set; }
+        /// <summary>자신 대상이지만 쓸 자리를 먼저 고른다: 그 지점으로 이동한 뒤 쓴다 (예: 복병, battle.md 4.2). target.moveFirst.</summary>
+        public bool MoveFirst { get; internal set; }
         /// <summary>전조 시간: 사용 후 효과가 나타나기까지.</summary>
         public Fix TelegraphSec { get; internal set; }
         public IReadOnlyList<SkillPart> Conditions { get; internal set; }
@@ -76,6 +78,7 @@ namespace Game.Data.Defs
                 TargetType = JsonUtil.RequireString(target, "type", c + ".target"),
                 Range = target.TryGetValue("range", out var rt) ? JsonUtil.ToFix(rt, c + ".target.range") : (Fix?)null,
                 Radius = JsonUtil.FixOr(target, "radius", Fix.Zero, c + ".target"),
+                MoveFirst = target.Value<bool?>("moveFirst") ?? false,
                 TelegraphSec = JsonUtil.FixOr(o, "telegraphSec", Fix.Zero, c),
                 Conditions = Parts(o, "conditions", c),
                 Effects = Parts(o, "effects", c),

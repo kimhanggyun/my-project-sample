@@ -54,6 +54,11 @@ namespace Game.Unity.Battle3D
         private readonly float[] _vertexHeights;
         private readonly LineRenderer _path;
         private readonly LineRenderer _range;
+        // 스킬 자리 미리보기 (4.2): 효과 범위 테두리, 사거리 안이면 밝은 색, 밖이면 붉은 색 (다가가서 쓴다)
+        private readonly LineRenderer _aimIn;
+        private readonly LineRenderer _aimOut;
+        private static readonly Color AimInColor = new Color(1f, 0.92f, 0.55f);
+        private static readonly Color AimOutColor = new Color(0.9f, 0.35f, 0.25f);
         private readonly List<Vector3> _pathPoints = new List<Vector3>();
         private readonly List<Transform> _waypoints = new List<Transform>();
         private Mesh _cylinder;
@@ -136,6 +141,8 @@ namespace Game.Unity.Battle3D
             }
             _path = Line("Path", PathColor, 0.12f, false);
             _range = Line("Range", RangeColor, 0.12f, true);
+            _aimIn = Line("AimIn", AimInColor, 0.16f, true);
+            _aimOut = Line("AimOut", AimOutColor, 0.16f, true);
 
             _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
             _ring.gameObject.SetActive(false); // 원판은 쓰지 않는다 (테두리 _ringLine)
@@ -416,6 +423,25 @@ namespace Game.Unity.Battle3D
                     float a = i * Mathf.PI * 2f / RangeSegments;
                     float x = center.x + Mathf.Cos(a) * r, z = center.z + Mathf.Sin(a) * r;
                     _range.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.1f, z));
+                }
+            }
+
+            // 고른 자리의 효과 범위 (확인 전 미리보기)
+            var aim = ring && _ctl.TargetingSkill != null ? _ctl.AimPoint : null;
+            bool inRange = aim.HasValue && _ctl.AimInRange();
+            _aimIn.gameObject.SetActive(aim.HasValue && inRange);
+            _aimOut.gameObject.SetActive(aim.HasValue && !inRange);
+            if (aim.HasValue)
+            {
+                var line = inRange ? _aimIn : _aimOut;
+                var center = ToWorld(aim.Value);
+                float r = Mathf.Max(0.8f, (float)_ctl.PreviewRadius(_ctl.TargetingSkill).ToDisplayDouble()); // 한 점 스킬도 보이게
+                line.positionCount = RangeSegments;
+                for (int i = 0; i < RangeSegments; i++)
+                {
+                    float a = i * Mathf.PI * 2f / RangeSegments;
+                    float x = center.x + Mathf.Cos(a) * r, z = center.z + Mathf.Sin(a) * r;
+                    line.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.14f, z));
                 }
             }
         }

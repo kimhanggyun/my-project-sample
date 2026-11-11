@@ -33,6 +33,8 @@ namespace Game.Battle.Model.Events
         public const string Ambushed = "ambushed";
         /// <summary>협공 대기가 길어짐 (한 번 묻는다, battle.md 4.3.4). 응답이 없으면 곧 단독 공격.</summary>
         public const string CoordinateWaiting = "coordinateWaiting";
+        /// <summary>예약을 꺼냈는데 받을 수 없어 건너뜀 (battle.md 4.3.6). 값 = 스킬 id 또는 명령 종류.</summary>
+        public const string QueuedSkipped = "queuedSkipped";
     }
 
     internal static class EventLog
