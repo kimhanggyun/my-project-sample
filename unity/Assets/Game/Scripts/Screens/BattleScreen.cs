@@ -39,6 +39,9 @@ namespace Game.Unity.Screens
         private readonly Dictionary<CorpsState, Text> _flagLabels = new Dictionary<CorpsState, Text>();
         private readonly Vector3[] _corners = new Vector3[4];
         private RadialMenu _radial;
+        // 경유 표식 (4.3.5, R-70): 번호, 누르면 그 예약 취소, 끌면 옮김
+        private readonly List<(Button button, Text text)> _marks = new List<(Button, Text)>();
+        private readonly List<int> _markIndex = new List<int>();
         private CorpsState _radialCorps;
         // 이동 지점 고르기 (4.3.5): 메뉴 "이동" → 땅을 누르면 그 자리에 방식 고리
         private bool _pickingPoint;
@@ -537,6 +540,67 @@ namespace Game.Unity.Screens
                 _radial.Follow(local);
         }
 
+        // ---- 경유 표식 ----
+
+        private void UpdateWaypointMarks()
+        {
+            var points = !IsReplay && _ctl.CanCommand(_ctl.Selected) ? _ctl.QueuedPoints() : new List<(int Index, Vec Point, string Kind)>();
+            var cam = _field.Rig.Camera;
+            int shown = 0;
+            for (int i = 0; i < points.Count; i++)
+            {
+                Vector3 sp = cam.WorldToScreenPoint(_field.ToWorld(points[i].Point) + Vector3.up * 0.3f);
+                if (sp.z <= 0 || !cam.pixelRect.Contains(sp) || !RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local)) continue;
+                if (shown >= _marks.Count) _marks.Add(NewMark(_marks.Count));
+                var (button, text) = _marks[shown];
+                while (_markIndex.Count <= shown) _markIndex.Add(0);
+                _markIndex[shown] = points[i].Index;
+                button.gameObject.SetActive(true);
+                ((RectTransform)button.transform).anchoredPosition = local;
+                // 번호 = 가는 차례, 스킬 예약이면 스킬 이름 첫 글자를 붙인다
+                string label = (i + 1).ToString();
+                if (points[i].Kind != Game.Battle.Model.Commands.CommandKinds.MoveTo && _sim.Context.Defs.Skills.TryGetValue(points[i].Kind, out var sd))
+                    label += T(sd.NameKey).Substring(0, 1);
+                text.text = label;
+                shown++;
+            }
+            for (int i = shown; i < _marks.Count; i++) _marks[i].button.gameObject.SetActive(false);
+        }
+
+        private (Button, Text) NewMark(int slot)
+        {
+            var b = Ui.Button(_fieldArea, "", () => RemoveMark(slot), 64, new Color(0.75f, 0.85f, 1f, 0.95f), 26);
+            var rt = (RectTransform)b.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(64, 64);
+            var img = (Image)b.targetGraphic;
+            img.sprite = UiShapes.Circle;
+            img.type = Image.Type.Simple;
+            var text = b.GetComponentInChildren<Text>();
+            text.color = new Color(0.1f, 0.1f, 0.15f);
+            var drag = b.gameObject.AddComponent<DragItem>();
+            drag.GhostParent = _fieldArea;
+            drag.Dropped += (_, screen) => DropMark(slot, screen);
+            return (b, text);
+        }
+
+        private void RemoveMark(int slot)
+        {
+            if (slot >= _markIndex.Count) return;
+            bool ok = _ctl.RemoveQueued(_markIndex[slot]);
+            Notice(ok ? T("ui.waypoint.removed") : T("ui.cmd.rejected"));
+            _dirty = true;
+        }
+
+        private void DropMark(int slot, Vector2 screen)
+        {
+            if (slot >= _markIndex.Count || !_field.ScreenToField(screen, out var point)) return;
+            bool ok = _ctl.MoveQueued(_markIndex[slot], point);
+            Notice(ok ? T("ui.waypoint.moved") : T("ui.cmd.rejected"));
+            _dirty = true;
+        }
+
         private void Report(bool accepted)
         {
             Notice(accepted ? T("ui.cmd.accepted") : T("ui.cmd.rejected"));
@@ -710,6 +774,7 @@ namespace Game.Unity.Screens
             _field.Draw(Mathf.Clamp01(_accumulator / _tickSeconds), _fxDelta);
             _miniMap.Refresh();
             FollowCorps();
+            UpdateWaypointMarks();
             var ctx = _sim.Context;
             var cam = _field.Rig.Camera;
             foreach (var kv in _flagLabels)
