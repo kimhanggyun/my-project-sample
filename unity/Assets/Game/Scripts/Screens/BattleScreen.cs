@@ -37,6 +37,8 @@ namespace Game.Unity.Screens
         private RectTransform _fieldArea;
         private readonly Dictionary<CorpsState, Text> _flagLabels = new Dictionary<CorpsState, Text>();
         private readonly Vector3[] _corners = new Vector3[4];
+        private RadialMenu _radial;
+        private CorpsState _radialCorps;
         private float _tickSeconds;
         private float _accumulator;
         private int _speedIndex;
@@ -165,6 +167,7 @@ namespace Game.Unity.Screens
                 _flagLabels[c] = label;
             }
             _miniMap = new MiniMapView(_fieldArea, _ctl, _field, 220f);
+            _radial = new RadialMenu(_fieldArea); // 군단 원형 메뉴 (battle.md 4.3.3)
 
             // 협공 대기 물음 (battle.md 4.3.4): [계속 대기] [공격]
             _prompt = Ui.Rect(_fieldArea, "Prompt");
@@ -218,7 +221,7 @@ namespace Game.Unity.Screens
             foreach (var c in _ctl.OwnCorps())
             {
                 var corps = c;
-                var b = Ui.Button(bottom, "", () => { if (_ctl.Select(corps.Id)) _field.LookAt(corps); _dirty = true; }, CardHeight, fontSize: 22);
+                var b = Ui.Button(bottom, "", () => { if (_ctl.Select(corps.Id)) { _field.LookAt(corps); OpenCorpsMenu(corps); } _dirty = true; }, CardHeight, fontSize: 22);
                 _cards.Add((corps, b, b.GetComponentInChildren<Text>()));
             }
 
@@ -260,6 +263,7 @@ namespace Game.Unity.Screens
                 return;
             }
             if (_noticeLeft > 0 && (_noticeLeft -= deltaTime) <= 0) _notice.text = "";
+            _radial.Tick(deltaTime);
             int steps = 0;
             if (!_paused)
             {
@@ -309,8 +313,13 @@ namespace Game.Unity.Screens
 
         private void OnFieldTap(Vector2 screen)
         {
-            if (_finished || IsReplay || !_field.ScreenToField(screen, out var point)) return;
-            OnTap(_ctl.Tap(point));
+            if (_finished || IsReplay) return;
+            // 메뉴 바깥을 누르면 메뉴를 닫고 그 누름은 그대로 (빠른 조작: 빈 땅 = 이동, 적 = 공격, 4.3.3)
+            if (_radial.IsOpen) CloseCorpsMenu();
+            if (!_field.ScreenToField(screen, out var point)) return;
+            var r = _ctl.Tap(point);
+            OnTap(r);
+            if (r == TapResult.Selected) OpenCorpsMenu(_ctl.Selected); // 아군 군단을 누르면 원형 메뉴
         }
 
         private void OnTap(TapResult r)
@@ -325,6 +334,113 @@ namespace Game.Unity.Screens
                 default: if (_ctl.Selected == null) Notice(T("ui.cmd.selectFirst")); break;
             }
             _dirty = true;
+        }
+
+        // ---- 군단 원형 메뉴 (battle.md 4.3.3): 진군·대기·이동·스킬·진형·후퇴·위임 ----
+
+        private void OpenCorpsMenu(CorpsState corps)
+        {
+            if (corps == null || IsReplay || !_ctl.CanCommand(corps)) { CloseCorpsMenu(); return; }
+            _radialCorps = corps;
+            bool delegated = corps.Delegated;
+            _radial.Open(T("ui.radial.close"), CloseCorpsMenu, new List<RadialMenu.Item>
+            {
+                Pick(T("ui.cmd.advance"), () => _ctl.Advance(), !delegated),
+                Sub(T("ui.radial.wait"), OpenWaitMenu, !delegated),
+                Sub(T("ui.radial.move"), OpenMoveMenu, !delegated),
+                Sub(T("ui.radial.skill"), OpenSkillMenu, !delegated && _ctl.Skills().Count > 0),
+                Sub(T("ui.radial.formation"), OpenFormationMenu, !delegated && _ctl.Formations().Count > 1),
+                Pick(T("ui.cmd.fallBack"), () => _ctl.FallBack(), !delegated),
+                new RadialMenu.Item { Label = T(delegated ? "ui.cmd.delegateOff" : "ui.cmd.delegateOn"), Active = delegated, OnPick = () => { CloseCorpsMenu(); ToggleDelegate(); } },
+            });
+            FollowCorps();
+        }
+
+        private void OpenWaitMenu() => OpenSub(new List<RadialMenu.Item>
+        {
+            Pick(T("ui.cmd.rest"), () => _ctl.Rest()),
+            Pick(T("ui.cmd.coordinate"), () => _ctl.Coordinate()),
+            Pick(T("ui.radial.stay"), () => _ctl.Hold()),
+        });
+
+        /// <summary>이동: 방식을 고르면 다음에 누른 땅으로 그 방식 이동 (4.3.5).</summary>
+        private void OpenMoveMenu()
+        {
+            var items = new List<RadialMenu.Item>();
+            foreach (var m in MoveModesInOrder)
+            {
+                string mode = m;
+                items.Add(new RadialMenu.Item
+                {
+                    Label = T("ui.moveMode." + mode), Active = _ctl.MoveMode == mode,
+                    OnPick = () => { _ctl.SetMoveMode(mode); CloseCorpsMenu(); Notice(T("ui.radial.pickPoint", T("ui.moveMode." + mode))); _dirty = true; },
+                });
+            }
+            OpenSub(items);
+        }
+
+        private void OpenSkillMenu()
+        {
+            var items = new List<RadialMenu.Item>();
+            foreach (var s in _ctl.Skills())
+            {
+                string id = s.SkillId;
+                items.Add(new RadialMenu.Item
+                {
+                    Label = T(s.NameKey) + "\n" + s.Cost.FloorToLong(), Enabled = s.Affordable, Active = _ctl.TargetingSkill == id,
+                    OnPick = () => { CloseCorpsMenu(); PressSkill(id); },
+                });
+            }
+            OpenSub(items);
+        }
+
+        private void OpenFormationMenu()
+        {
+            var items = new List<RadialMenu.Item>();
+            var defs = _sim.Context.Defs;
+            foreach (var f in _ctl.Formations())
+            {
+                string id = f;
+                bool now = _radialCorps.Formation.Id == id || (_radialCorps.Reforming && _radialCorps.PendingFormation.Id == id);
+                items.Add(new RadialMenu.Item
+                {
+                    Label = defs.Formations.TryGetValue(id, out var fd) ? T(fd.NameKey) : id, Active = now, Enabled = !now,
+                    OnPick = () => { CloseCorpsMenu(); Report(_ctl.ChangeFormation(id)); },
+                });
+            }
+            OpenSub(items);
+        }
+
+        /// <summary>하위 고리: 가운데 버튼은 "뒤로".</summary>
+        private void OpenSub(List<RadialMenu.Item> items)
+        {
+            var corps = _radialCorps;
+            _radial.Open(T("ui.radial.back"), () => OpenCorpsMenu(corps), items);
+            FollowCorps();
+        }
+
+        private RadialMenu.Item Pick(string label, System.Func<bool> order, bool enabled = true) =>
+            new RadialMenu.Item { Label = label, Enabled = enabled, OnPick = () => { CloseCorpsMenu(); Report(order()); } };
+
+        private static RadialMenu.Item Sub(string label, System.Action open, bool enabled) =>
+            new RadialMenu.Item { Label = label + " ›", Enabled = enabled, OnPick = open };
+
+        private void CloseCorpsMenu()
+        {
+            _radial.Close();
+            _radialCorps = null;
+        }
+
+        /// <summary>메뉴가 군단을 따라간다. 군단이 지휘할 수 없게 되거나(퇴각·위임 해제 아님) 선택이 바뀌면 닫는다.</summary>
+        private void FollowCorps()
+        {
+            if (!_radial.IsOpen) return;
+            var c = _radialCorps;
+            if (c == null || c != _ctl.Selected || !_ctl.CanCommand(c)) { CloseCorpsMenu(); return; }
+            var cam = _field.Rig.Camera;
+            Vector3 sp = cam.WorldToScreenPoint(_field.ToWorld(c.Anchor));
+            if (sp.z > 0 && RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local))
+                _radial.Follow(local);
         }
 
         private void Report(bool accepted)
@@ -498,6 +614,7 @@ namespace Game.Unity.Screens
             _field.SetViewport(new Rect(_corners[0].x, _corners[0].y, _corners[2].x - _corners[0].x, _corners[2].y - _corners[0].y));
             _field.Draw(Mathf.Clamp01(_accumulator / _tickSeconds), _fxDelta);
             _miniMap.Refresh();
+            FollowCorps();
             var ctx = _sim.Context;
             var cam = _field.Rig.Camera;
             foreach (var kv in _flagLabels)
