@@ -180,10 +180,33 @@ namespace Game.Unity.Battle3D
                 while (baseType != null && types.TryGetValue(baseType, out var d) && d.Parent != null) baseType = d.Parent;
                 var mat = Own(NewMaterial(SoldierColors[color]));
                 mat.enableInstancing = true;
-                b = new InstanceBatch(SoldierMeshes.For(baseType), new[] { mat }, Matrix4x4.identity);
+                // 부위별 재질: 갑옷(팀 색) · 얼굴 · 무기 · 다리·말
+                b = new InstanceBatch(SoldierMeshes.For(baseType), new[] { mat, PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(2, SoldierMeshes.MetalColor), PartMaterial(3, SoldierMeshes.DarkColor) }, Matrix4x4.identity);
                 _allSoldierBatches.Add(b);
             }
             return _soldierBatches[(troop, color)] = b;
+        }
+
+        /// <summary>장수 묶음: (총대장 여부, 색) → 인형 (SoldierMeshes.General).</summary>
+        private readonly Dictionary<(bool commander, int color), InstanceBatch> _generalBatches = new Dictionary<(bool, int), InstanceBatch>();
+        private InstanceBatch GeneralBatch(bool commander, int color)
+        {
+            if (_generalBatches.TryGetValue((commander, color), out var b)) return b;
+            var team = Own(NewMaterial(SoldierColors[color]));
+            team.enableInstancing = true;
+            b = new InstanceBatch(SoldierMeshes.General(commander),
+                new[] { team, PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(4, SoldierMeshes.GoldColor), PartMaterial(5, SoldierMeshes.GeneralHorseColor) }, Matrix4x4.identity);
+            _allSoldierBatches.Add(b);
+            return _generalBatches[(commander, color)] = b;
+        }
+
+        private readonly Material[] _partMaterials = new Material[6];
+        private Material PartMaterial(int i, Color c)
+        {
+            if (_partMaterials[i] != null) return _partMaterials[i];
+            var m = Own(NewMaterial(c));
+            m.enableInstancing = true;
+            return _partMaterials[i] = m;
         }
 
         /// <summary>쓰러진 병사 (병력이 줄어 화면 병사가 빠진 자리에 남는다, 전투가 끝날 때까지). 최대 개수까지만.</summary>
@@ -486,6 +509,17 @@ namespace Game.Unity.Battle3D
                         p.y = GroundHeight(p.x, p.z) + bob + (flash && !isCube ? 0.08f : 0f);
                         (flash ? hitBatch : batch).Add(p, rot);
                     }
+                }
+                // 장수: 군단 한가운데 조금 뒤, 부대원보다 크게 (총대장은 군기)
+                Vector3 sum = Vector3.zero;
+                int alive = 0;
+                foreach (var u in c.Units)
+                    if (u.Alive && _unitPos.TryGetValue(u, out var up)) { sum += Vector3.Lerp(up.prev, up.cur, alpha); alive++; }
+                if (alive > 0)
+                {
+                    var gp = sum / alive + rot * new Vector3(0f, 0f, -0.9f);
+                    gp.y = GroundHeight(gp.x, gp.z);
+                    GeneralBatch(c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander, teamColor).Add(gp, rot);
                 }
             }
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
