@@ -14,6 +14,8 @@ namespace Game.Battle.Model.Events
         /// <summary>테마 문자열 키.</summary>
         public string LineKey { get; internal set; }
         public int Priority { get; internal set; }
+        /// <summary>경고 빠른 버튼 (speech.json quickActions, D20).</summary>
+        public IReadOnlyList<string> QuickActions { get; internal set; } = new List<string>();
     }
 
     /// <summary>
@@ -52,7 +54,7 @@ namespace Game.Battle.Model.Events
             _last[key] = e.Tick;
             string line = s.LineKey;
             if (s.PerDataKeyPrefix != null && e.Data != null && _strings.ContainsKey(s.PerDataKeyPrefix + e.Data)) line = s.PerDataKeyPrefix + e.Data;
-            return new Speech { Tick = e.Tick, CorpsId = e.CorpsId, Kind = s.Kind, LineKey = line, Priority = _rules.KindPriority[s.Kind] };
+            return new Speech { Tick = e.Tick, CorpsId = e.CorpsId, Kind = s.Kind, LineKey = line, Priority = _rules.KindPriority[s.Kind], QuickActions = s.QuickActions };
         }
 
         /// <summary>전체 기록 → 말풍선 목록 (틱 순, 같은 틱은 우선순위 높은 것 먼저).</summary>

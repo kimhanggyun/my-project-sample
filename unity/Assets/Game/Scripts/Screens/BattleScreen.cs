@@ -74,6 +74,12 @@ namespace Game.Unity.Screens
         private RectTransform _prompt;
         // 스킬 지정 막대 (4.2): 무엇을 지정 중인지, [여기에 쓰기] [취소]
         private RectTransform _aimBar;
+        // 경고 빠른 버튼 (battle.md 4.4, D20): 경고 말풍선이 뜨면 그 군단에 바로 내릴 명령
+        private RectTransform _quickBar;
+        private Text _quickText;
+        private RectTransform _quickButtons;
+        private float _quickLeft;
+        private const float QuickSeconds = 6f;
         private Text _aimText;
         private Button _aimConfirm;
         private Text _promptText;
@@ -249,6 +255,18 @@ namespace Game.Unity.Screens
             _notice.rectTransform.sizeDelta = new Vector2(0f, 48f);
             _notice.rectTransform.anchoredPosition = new Vector2(0f, -8f);
 
+            _quickBar = Ui.Rect(_fieldArea, "QuickBar");
+            _quickBar.anchorMin = new Vector2(0.05f, 1f);
+            _quickBar.anchorMax = new Vector2(0.95f, 1f);
+            _quickBar.pivot = new Vector2(0.5f, 1f);
+            _quickBar.sizeDelta = new Vector2(0f, 150f);
+            _quickBar.anchoredPosition = new Vector2(0f, -60f);
+            Ui.Background(_quickBar, new Color(0.30f, 0.12f, 0.08f, 0.9f));
+            Ui.Column(_quickBar, 6, 10);
+            _quickText = Ui.Label(_quickBar, "", 26, TextAnchor.MiddleCenter);
+            _quickButtons = Ui.Row(_quickBar, "Buttons", 76, 8);
+            _quickBar.gameObject.SetActive(false);
+
             // ③④ 선택 군단 정보 + 명령 (접기·펴기, battle.md 4장: 전장이 가려지지 않게)
             var panel = Ui.Card(Root, "Selected", 10, 6);
             var head = Ui.Row(panel, "Head", PortraitSize, 10);
@@ -331,6 +349,7 @@ namespace Game.Unity.Screens
                 return;
             }
             if (_noticeLeft > 0 && (_noticeLeft -= deltaTime) <= 0) _notice.text = "";
+            if (_quickLeft > 0 && (_quickLeft -= deltaTime) <= 0) _quickBar.gameObject.SetActive(false);
             _radial.Tick(deltaTime);
             int steps = 0;
             if (!_paused)
@@ -700,6 +719,33 @@ namespace Game.Unity.Screens
             }));
         }
 
+        /// <summary>경고 빠른 버튼: 그 군단을 고르고 바로 명령. 6초 뒤 저절로 닫힌다 (실제 시간).</summary>
+        private void ShowQuick(CorpsState corps, string line, IReadOnlyList<string> actions)
+        {
+            Ui.Clear(_quickButtons);
+            _quickText.text = GeneralOf(corps) + ": \"" + line + "\"";
+            foreach (var a in actions)
+            {
+                string act = a;
+                bool can = act != "regroup" || (corps.KnownSkills != null && corps.KnownSkills.Any(k => k.Id == "regroup"));
+                var b = Ui.Button(_quickButtons, T("ui.quick." + act), () =>
+                {
+                    _quickBar.gameObject.SetActive(false);
+                    if (!_ctl.Select(corps.Id)) return;
+                    bool ok = act == "fallBack" ? _ctl.FallBack()
+                        : act == "rest" ? _ctl.Rest()
+                        : act == "hold" ? _ctl.Hold()
+                        : act == "withdraw" ? _ctl.Retreat()
+                        : act == "regroup" && _ctl.PressSkill("regroup");
+                    Report(ok);
+                }, 76, Palette.ButtonActive, 26);
+                if (!can) Ui.SetEnabled(b, false);
+            }
+            Ui.Button(_quickButtons, T("ui.quick.close"), () => _quickBar.gameObject.SetActive(false), 76, fontSize: 26);
+            _quickBar.gameObject.SetActive(true);
+            _quickLeft = QuickSeconds;
+        }
+
         private void ToggleMiniMap()
         {
             _miniMap.SetVisible(!_miniMap.Visible);
@@ -810,6 +856,8 @@ namespace Game.Unity.Screens
                 if (e.Kind == EventKinds.Dialogue) { Add(string.IsNullOrEmpty(who) ? T(e.Data) : who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; } // 말한 군단이 없으면(지문) 이름 없이
                 var sp = _speech.Feed(e);
                 if (sp != null) { Add(who + ": \"" + T(sp.LineKey) + "\""); Bubble(corps, T(sp.LineKey)); }
+                if (sp != null && sp.Kind == "warning" && sp.QuickActions.Count > 0 && !IsReplay && !_autoFinish && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
+                    ShowQuick(corps, T(sp.LineKey), sp.QuickActions);
                 string sysKey = "ui.event." + e.Kind;
                 if (Ctx.Defs.Strings.ContainsKey(sysKey)) Add(Ui.Colored(T(sysKey, who), Palette.TextDim));
             }
@@ -834,6 +882,20 @@ namespace Game.Unity.Screens
             _collapsed = !_collapsed;
             _panelBody.gameObject.SetActive(!_collapsed);
             _dirty = true;
+        }
+
+        /// <summary>깃발 이름 (D20): 아군은 군단 번호(①②…), 총대장은 ★, 그다음 장수 이름.</summary>
+        private string FlagName(CorpsState c)
+        {
+            string mark = "";
+            if (c.Team == _ctl.Team)
+            {
+                int n = 0;
+                foreach (var o in _sim.Context.Corps) { if (o.Team != c.Team) continue; if (o == c) break; n++; }
+                mark = n < 20 ? ((char)('\u2460' + n)).ToString() : (n + 1) + ".";
+            }
+            if (c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander) mark = "★" + mark;
+            return mark + GeneralOf(c);
         }
 
         private string GeneralOf(CorpsState c) => c.Setup.General != null ? Ctx.GeneralName(c.Setup.General.Id) : c.Id;
@@ -918,7 +980,7 @@ namespace Game.Unity.Screens
                 if (!shown) continue;
                 if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local))
                     kv.Value.rectTransform.anchoredPosition = local;
-                string name = GeneralOf(c);
+                string name = FlagName(c);
                 if (_bubbles.TryGetValue(c, out var bubble))
                 {
                     float left = bubble.left - _fxDelta;
