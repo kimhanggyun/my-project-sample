@@ -123,6 +123,7 @@ namespace Game.Data.Defs
                     Group = JsonUtil.RequireString(f, "group", "formations"),
                     Tier = JsonUtil.RequireString(f, "tier", "formations"),
                     Slots = ReadSlots(f),
+                    Stats = FormationStats.From(f["stats"] as JObject, "formations.stats"),
                 };
                 AddUnique(formations, def.Id, def, "formations.json");
             }

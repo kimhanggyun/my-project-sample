@@ -188,6 +188,7 @@ namespace Game.Battle.Model.Environment
                         Events.EventLog.Add(ctx, Events.EventKinds.FireHit, corps.Id, by);
                     Fix loss = Fix.FromInt(u.Troops) * k.FireTroopLossPctPerSecond / 100 * k.TickSeconds;
                     if (u.Troop.HasTag("flammable")) loss = loss * k.FireFlammableTagMultiplier;
+                    loss = loss * Combat.FormationStatEffects.AreaDamageMultiplier(ctx, corps); // 범위 피해 감소 (R-72)
                     u.PendingLoss += loss;
                     hit = true;
                 }

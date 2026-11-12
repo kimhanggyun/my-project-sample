@@ -1,25 +1,25 @@
 {
   "winner": "teamB",
   "endReason": "defeat",
-  "ticks": 876,
-  "elapsedSeconds": "87.6",
+  "ticks": 971,
+  "elapsedSeconds": "97.1",
   "commands": 0,
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "e4dc21b6825ef37e",
+  "stateHash": "874d31475982d36d",
   "corps": [
     {
       "id": "A",
       "team": "teamA",
       "status": "Retreated",
       "startTroops": 6000,
-      "remainingTroops": 4861,
-      "losses": 1139,
+      "remainingTroops": 4731,
+      "losses": 1269,
       "startSupply": 1000000,
-      "remainingSupply": 944972,
-      "finalMorale": "24.9729",
-      "skillPointsLeft": "5.32",
+      "remainingSupply": 939800,
+      "finalMorale": "25.92",
+      "skillPointsLeft": "5.2",
       "units": [
         {
           "slot": "vanguard",
@@ -37,13 +37,13 @@
           "slot": "leftWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 912
+          "remaining": 833
         },
         {
           "slot": "rightWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 949
+          "remaining": 898
         },
         {
           "slot": "leftGuard",
@@ -64,18 +64,18 @@
       "team": "teamB",
       "status": "Active",
       "startTroops": 6000,
-      "remainingTroops": 4941,
-      "losses": 1059,
+      "remainingTroops": 4755,
+      "losses": 1245,
       "startSupply": 1000000,
-      "remainingSupply": 945170,
-      "finalMorale": "51.9207",
-      "skillPointsLeft": "11.92",
+      "remainingSupply": 940518,
+      "finalMorale": "51.4694",
+      "skillPointsLeft": "13.58",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 340
+          "remaining": 154
         },
         {
           "slot": "center",

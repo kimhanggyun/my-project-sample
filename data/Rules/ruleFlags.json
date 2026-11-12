@@ -19,6 +19,7 @@
     "formationCounters": {
       "default": true
     },
+    "formationStats": { "default": true },
     "flankBonus": {
       "default": true
     },

@@ -7,7 +7,7 @@
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "e473341f0aee9b28",
+  "stateHash": "d25286a7e30b15be",
   "corps": [
     {
       "id": "A",
@@ -68,7 +68,7 @@
       "losses": 678,
       "startSupply": 1000000,
       "remainingSupply": 887599,
-      "finalMorale": "58.4583",
+      "finalMorale": "60",
       "skillPointsLeft": "50",
       "units": [
         {

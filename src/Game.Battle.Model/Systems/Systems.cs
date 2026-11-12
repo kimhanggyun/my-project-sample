@@ -177,6 +177,7 @@ namespace Game.Battle.Model.Systems
                 Fix pp = Fix.Max(Fix.FromInt(-90), ctx.Environment.MovePp(dir, members));
                 dist = dist * (Fix.Hundred + pp) / Fix.Hundred;
             }
+            dist = dist * FormationStatEffects.MoveMultiplier(ctx, corps); // 진형 이동 속도 (R-72)
             while (dist > Fix.Zero && corps.PathIndex < corps.Path.Count)
             {
                 Vec wp = corps.Path[corps.PathIndex].Center;
@@ -436,6 +437,7 @@ namespace Game.Battle.Model.Systems
                     if (ctx.IsEnabled(RuleFlagIds.Valor)) loss = loss * c.ValorMoraleLossMultiplier(c.Valor(corps.Setup.General.Might, corps.Setup.General.Leadership));
                     loss = loss * TagEffects.MoraleLossMultiplier(c, corps); // 정예 등 (R-58)
                     loss = loss * TraitEffects.MoraleLossMultiplier(ctx, corps); // 군기·불굴 등 특성 (R-67)
+                    loss = loss * FormationStatEffects.MoraleLossMultiplier(ctx, corps); // 진형 응집력 (R-72)
                     m -= loss;
                 }
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;

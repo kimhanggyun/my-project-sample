@@ -27,7 +27,7 @@
     {
       "id": "enemy_corps_51",
       "general": "enemy_general_03",
-      "formation": "circle",
+      "formation": "square",
       "ai": "ambusher",
       "difficulty": "normal",
       "supplyMinutes": 10,
@@ -35,22 +35,22 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 4740
+          "troops": 5000
         },
         {
           "slot": "center",
           "troopType": "archer",
-          "troops": 4740
+          "troops": 5000
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 4740
+          "troops": 5000
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 4740
+          "troops": 5000
         }
       ],
       "role": "commander"
@@ -66,17 +66,32 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 4850
+          "troops": 5000
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 4850
+          "troops": 5000
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 4850
+          "troops": 5000
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "infantry",
+          "troops": 5000
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "spearman",
+          "troops": 5000
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "spearman",
+          "troops": 1100
         }
       ]
     }

@@ -1,31 +1,31 @@
 {
   "winner": "teamA",
   "endReason": "defeat",
-  "ticks": 642,
-  "elapsedSeconds": "64.2",
+  "ticks": 653,
+  "elapsedSeconds": "65.3",
   "commands": 2,
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "05955ed4a0c9ec25",
+  "stateHash": "42a66c0fb9c1fc57",
   "corps": [
     {
       "id": "A",
       "team": "teamA",
       "status": "Active",
       "startTroops": 6000,
-      "remainingTroops": 5708,
-      "losses": 292,
+      "remainingTroops": 5688,
+      "losses": 312,
       "startSupply": 1000000,
-      "remainingSupply": 955857,
-      "finalMorale": "55.7545",
-      "skillPointsLeft": "47.84",
+      "remainingSupply": 955162,
+      "finalMorale": "56.0356",
+      "skillPointsLeft": "48.06",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 768
+          "remaining": 752
         },
         {
           "slot": "center",
@@ -37,7 +37,7 @@
           "slot": "leftWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 940
+          "remaining": 936
         },
         {
           "slot": "rightWing",
@@ -64,11 +64,11 @@
       "team": "teamB",
       "status": "Retreated",
       "startTroops": 6000,
-      "remainingTroops": 5446,
-      "losses": 554,
+      "remainingTroops": 5415,
+      "losses": 585,
       "startSupply": 1000000,
-      "remainingSupply": 956614,
-      "finalMorale": "25.7441",
+      "remainingSupply": 955971,
+      "finalMorale": "25.8815",
       "skillPointsLeft": "60",
       "units": [
         {
@@ -93,13 +93,13 @@
           "slot": "rightWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 502
+          "remaining": 470
         },
         {
           "slot": "leftGuard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 963
+          "remaining": 964
         },
         {
           "slot": "rightGuard",

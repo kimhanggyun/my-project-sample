@@ -31,6 +31,9 @@
           "x": 1.5,
           "y": -1.5
         }
+      },
+      "stats": {
+        "moraleLossPct": -10
       }
     },
     {
@@ -63,6 +66,12 @@
           "x": 0,
           "y": -6
         }
+      },
+      "stats": {
+        "moveSpeedPct": 25,
+        "flankDefensePp": -15,
+        "frontDefensePp": -5,
+        "rangedPp": -10
       }
     },
     {
@@ -95,6 +104,11 @@
           "x": 1.5,
           "y": 0
         }
+      },
+      "stats": {
+        "rangedPp": 10,
+        "frontDefensePp": -5,
+        "flankDefensePp": -5
       }
     },
     {
@@ -127,6 +141,11 @@
           "x": 3,
           "y": -3
         }
+      },
+      "stats": {
+        "areaDamageTakenPct": -40,
+        "moraleLossPct": 15,
+        "frontDefensePp": -5
       }
     },
     {
@@ -159,6 +178,12 @@
           "x": 1.5,
           "y": -1
         }
+      },
+      "stats": {
+        "breakthroughPp": 8,
+        "moraleLossPct": -10,
+        "flankDefensePp": -5,
+        "envelopPp": -5
       }
     },
     {
@@ -191,6 +216,10 @@
           "x": 1.5,
           "y": -1
         }
+      },
+      "stats": {
+        "envelopPp": 10,
+        "frontDefensePp": -5
       }
     },
     {
@@ -223,6 +252,13 @@
           "x": 0.8,
           "y": -1.5
         }
+      },
+      "stats": {
+        "breakthroughPp": 15,
+        "moveSpeedPct": 10,
+        "flankDefensePp": -10,
+        "rearDefensePp": -10,
+        "moraleLossPct": 10
       }
     },
     {
@@ -255,6 +291,13 @@
           "x": 1.5,
           "y": -1.8
         }
+      },
+      "stats": {
+        "flankDefensePp": 15,
+        "rearDefensePp": 20,
+        "breakthroughPp": -8,
+        "moveSpeedPct": -25,
+        "moraleLossPct": -10
       }
     },
     {
@@ -287,6 +330,11 @@
           "x": 3,
           "y": 3
         }
+      },
+      "stats": {
+        "rangedPp": 8,
+        "envelopPp": 5,
+        "frontDefensePp": -5
       }
     },
     {
@@ -319,6 +367,10 @@
           "x": 2,
           "y": 0
         }
+      },
+      "stats": {
+        "breakthroughPp": 5,
+        "moraleLossPct": -5
       }
     }
   ],
