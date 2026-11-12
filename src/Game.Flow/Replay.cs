@@ -39,13 +39,22 @@ namespace Game.Flow
     {
         public const string File = "Rules/replay.json";
         public int MaxSaved { get; private set; } = 20;
+        /// <summary>공유 녹화 목록에 보이는 개수 (스텝마다, R-81).</summary>
+        public int SharedListMax { get; private set; } = 20;
+        /// <summary>서버가 게임마다 남기는 공유 녹화 수 (넘으면 오래된 것부터 지움).</summary>
+        public int SharedStoreMax { get; private set; } = 500;
 
         public static ReplayRules Load(IDataSource source)
         {
             var o = JsonUtil.ParseObject(source.ReadText(File));
             int max = (int)JsonUtil.RequireLong(o, "maxSaved", File);
             if (max < 1) throw new DataException(File + ": maxSaved는 1 이상이어야 합니다.");
-            return new ReplayRules { MaxSaved = max };
+            return new ReplayRules
+            {
+                MaxSaved = max,
+                SharedListMax = o.ContainsKey("sharedListMax") ? (int)JsonUtil.RequireLong(o, "sharedListMax", File) : 20,
+                SharedStoreMax = o.ContainsKey("sharedStoreMax") ? (int)JsonUtil.RequireLong(o, "sharedStoreMax", File) : 500,
+            };
         }
     }
 
@@ -224,6 +233,55 @@ namespace Game.Flow
                 if (reader.TokenType == JsonToken.Null) return t == typeof(Fix?) ? (object)null : Fix.Zero;
                 return Fix.FromRaw(Convert.ToInt64(reader.Value));
             }
+        }
+    }
+}
+
+namespace Game.Flow
+{
+    /// <summary>
+    /// 녹화 공유 (공략, replay.md 5장, R-81): 서버(와 가짜 서버)가 같은 규칙으로 받고 고른다.
+    /// 받기 = 지금 규칙으로 다시 돌려 결과 지문이 같을 때만 (조작·옛 규칙 녹화는 거절).
+    /// 고르기 = 그 스텝의 것 중 이긴 것 먼저, 손실률 낮은 것, 짧은 것, 최근 것 순으로 SharedListMax개.
+    /// </summary>
+    public static class SharedReplays
+    {
+        public static Game.Online.ShareReplayResponse Validate(ReplayService service, string json, out ReplayRecord record)
+        {
+            record = null;
+            try { record = ReplayService.Read(json); } catch (Exception) { record = null; }
+            if (record == null || record.Setup == null || string.IsNullOrEmpty(record.StepId))
+                return new Game.Online.ShareReplayResponse { Ok = false, Reason = ReplayStatus.Broken };
+            var check = service.Check(record);
+            if (!check.Ok) return new Game.Online.ShareReplayResponse { Ok = false, Reason = check.Status };
+            return new Game.Online.ShareReplayResponse { Ok = true, Replay = Summary(record) };
+        }
+
+        public static Game.Online.SharedReplaySummary Summary(ReplayRecord r) => new Game.Online.SharedReplaySummary
+        {
+            StepId = r.StepId,
+            Won = r.Won,
+            Seconds = r.Seconds,
+            PlayerStartTroops = r.PlayerStartTroops,
+            PlayerLosses = r.PlayerLosses,
+            Hash = r.Hash,
+        };
+
+        public static List<Game.Online.SharedReplaySummary> Pick(IEnumerable<Game.Online.SharedReplaySummary> all, string stepId, int max)
+        {
+            var list = new List<Game.Online.SharedReplaySummary>();
+            foreach (var s in all) if (s.StepId == stepId) list.Add(s);
+            list.Sort((a, b) =>
+            {
+                if (a.Won != b.Won) return a.Won ? -1 : 1;
+                // 손실률 (정수 비교: a.loss/a.start < b.loss/b.start)
+                long l = a.PlayerLosses * System.Math.Max(1, b.PlayerStartTroops), r = b.PlayerLosses * System.Math.Max(1, a.PlayerStartTroops);
+                if (l != r) return l < r ? -1 : 1;
+                if (a.Seconds != b.Seconds) return a.Seconds < b.Seconds ? -1 : 1;
+                return b.SharedAtUnixSeconds.CompareTo(a.SharedAtUnixSeconds);
+            });
+            if (list.Count > max) list.RemoveRange(max, list.Count - max);
+            return list;
         }
     }
 }

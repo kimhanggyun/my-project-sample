@@ -29,6 +29,9 @@ namespace Game.Tests.Campaign
             public void RegisterHire(HireListingRequest r, Action<HireListingResponse> done) { if (Down) done(null); else _inner.RegisterHire(r, done); }
             public void Unregister(string id, Action<bool?> done) { if (Down) done(null); else _inner.Unregister(id, done); }
             public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
+            public void ShareReplay(ShareReplayRequest r, Action<ShareReplayResponse> done) { if (Down) done(null); else _inner.ShareReplay(r, done); }
+            public void GetSharedReplays(string s, Action<SharedReplayListResponse> done) { if (Down) done(null); else _inner.GetSharedReplays(s, done); }
+            public void GetSharedReplay(string id, Action<SharedReplayResponse> done) { if (Down) done(null); else _inner.GetSharedReplay(id, done); }
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
             public void GetProfile(Action<ProfileResponse> done) { if (Down) done(null); else _inner.GetProfile(done); }
             public void SetNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.SetNickname(n, done); }

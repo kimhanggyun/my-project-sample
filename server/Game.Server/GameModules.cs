@@ -47,6 +47,11 @@ namespace Game.Server
         AllianceResponse JoinAlliance(string accountId, string allianceId);
         AllianceResponse LeaveAlliance(string accountId);
         AllianceResponse ManageAlliance(string accountId, AllianceManageRequest request);
+
+        // ---- 녹화 공유 (R-81) ----
+        ShareReplayResponse ShareReplay(string accountId, string nickname, ShareReplayRequest request);
+        SharedReplayListResponse SharedReplays(string stepId);
+        SharedReplayResponse SharedReplay(string id);
     }
 
     /// <summary>게임 등록표: 게임 코드·앱 id → 게임.</summary>
@@ -112,6 +117,32 @@ namespace Game.Server
             _actions = new PlayerActionRunner(_defs);
             _hire = new HireRules(_defs);
             _territory = TerritoryBattles.TryLoad(source);
+            _replays = new ReplayService(new StoryFlow(_defs, source, time));
+            _replayRules = ReplayRules.Load(source);
+        }
+
+        private readonly ReplayService _replays;
+        private readonly ReplayRules _replayRules;
+
+        /// <summary>녹화 공유 (R-81): 지금 규칙으로 다시 돌려 같을 때만 받는다.</summary>
+        public ShareReplayResponse ShareReplay(string accountId, string nickname, ShareReplayRequest req)
+        {
+            var res = Game.Flow.SharedReplays.Validate(_replays, req?.ReplayJson, out _);
+            if (!res.Ok) return res;
+            res.Replay.OwnerAccountId = accountId;
+            res.Replay.OwnerName = nickname;
+            res.Replay.SharedAtUnixSeconds = Now;
+            res.Replay = _store.AddSharedReplay(Code, res.Replay, req.ReplayJson, _replayRules.SharedStoreMax);
+            return res;
+        }
+
+        public SharedReplayListResponse SharedReplays(string stepId) =>
+            new SharedReplayListResponse { Items = Game.Flow.SharedReplays.Pick(_store.SharedReplays(Code), stepId, _replayRules.SharedListMax) };
+
+        public SharedReplayResponse SharedReplay(string id)
+        {
+            var (s, json) = _store.GetSharedReplay(Code, id);
+            return s == null ? null : new SharedReplayResponse { Replay = s, ReplayJson = json };
         }
 
         public string Code { get; }

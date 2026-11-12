@@ -502,6 +502,34 @@ namespace Game.Flow
         /// <summary>우편: 영토 수입만 (가짜 시장의 등록자는 내 등록을 고용하지 않는다).</summary>
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse { Mail = new List<Mail>(_mail) });
 
+        // ---- 녹화 공유 (R-81): 기기 안 메모리. 서버와 같은 검사·고르기 ----
+        private readonly List<(SharedReplaySummary summary, string json)> _shared = new List<(SharedReplaySummary, string)>();
+        private ReplayService _replayService;
+
+        public void ShareReplay(ShareReplayRequest request, Action<ShareReplayResponse> done)
+        {
+            if (_replayService == null) _replayService = new ReplayService(new StoryFlow(_defs, _source, _time));
+            var res = SharedReplays.Validate(_replayService, request?.ReplayJson, out _);
+            if (res.Ok)
+            {
+                _shared.RemoveAll(x => x.summary.OwnerAccountId == AccountId && x.summary.Hash == res.Replay.Hash);
+                res.Replay.Id = "r-" + (_shared.Count + 1) + "-" + Now;
+                res.Replay.OwnerAccountId = AccountId;
+                res.Replay.SharedAtUnixSeconds = Now;
+                _shared.Add((res.Replay, request.ReplayJson));
+            }
+            done?.Invoke(res);
+        }
+
+        public void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done) =>
+            done?.Invoke(new SharedReplayListResponse { Items = SharedReplays.Pick(_shared.ConvertAll(x => x.summary), stepId, ReplayRules.Load(_source).SharedListMax) });
+
+        public void GetSharedReplay(string id, Action<SharedReplayResponse> done)
+        {
+            var hit = _shared.Find(x => x.summary.Id == id);
+            done?.Invoke(hit.summary == null ? null : new SharedReplayResponse { Replay = hit.summary, ReplayJson = hit.json });
+        }
+
         private long Now => _time.UtcNow.ToUnixTimeSeconds();
         private static CloudSave Copy(CloudSave s) => new CloudSave { Revision = s.Revision, Json = s.Json, SavedAtUnixSeconds = s.SavedAtUnixSeconds };
     }
