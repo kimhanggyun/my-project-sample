@@ -92,6 +92,10 @@ namespace Game.Data.Defs
         public Fix ValorMoraleLossCutPerPoint { get; private set; }
         public Fix MinValorMoraleLossMultiplier { get; private set; }
         public Fix MaxValorMoraleLossMultiplier { get; private set; }
+        /// <summary>전열 (R-73, combat.json frontLine): 근접 소부대가 앞줄에서 함께 싸우는 병력 (진형 정면 폭 %를 곱함). 0이면 제한 없음.</summary>
+        public Fix FrontLineTroopsPerUnit { get; private set; }
+        /// <summary>앞줄이 쓰러진 만큼 뒷줄이 채우는 속도: 1초에 앞줄 한도의 %.</summary>
+        public Fix FrontLineRefillPctPerSecond { get; private set; }
         /// <summary>태그 → 손실 사기 하락 배율 (R-58, combat.json tagEffects). 없으면 1.</summary>
         public IReadOnlyDictionary<string, Fix> TagMoraleLossMultiplier { get; private set; } = new Dictionary<string, Fix>();
         /// <summary>태그 → 포위 포로 압력 배율 (R-58). 없으면 1.</summary>
@@ -242,6 +246,8 @@ namespace Game.Data.Defs
                 CoordinateWaitSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateWaitSec", Fix.FromInt(30), c + ".orders"),
                 CoordinateResponseSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateResponseSec", Fix.FromInt(10), c + ".orders"),
                 FallBackCells = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "fallBackCells", Fix.FromInt(8), c + ".orders"),
+                FrontLineTroopsPerUnit = JsonUtil.FixOr(o["frontLine"] as JObject ?? new JObject(), "troopsPerUnit", Fix.Zero, c + ".frontLine"),
+                FrontLineRefillPctPerSecond = JsonUtil.FixOr(o["frontLine"] as JObject ?? new JObject(), "refillPctPerSecond", Fix.FromInt(25), c + ".frontLine"),
                 FlankPp = JsonUtil.RequireFix(dir, "flankPp", c + ".direction"),
                 RearPp = JsonUtil.RequireFix(dir, "rearPp", c + ".direction"),
                 FrontDot = JsonUtil.RequireFix(dir, "frontDot", c + ".direction"),

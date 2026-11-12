@@ -20,7 +20,7 @@
     {
       "id": "enemy_corps_a1",
       "general": "enemy_general_04",
-      "formation": "arrowhead",
+      "formation": "crescent",
       "ai": "aggressive",
       "difficulty": "normal",
       "supplyMinutes": 10,
@@ -109,22 +109,22 @@
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 4860
+          "troops": 5000
         },
         {
           "slot": "center",
           "troopType": "spearman",
-          "troops": 4860
+          "troops": 5000
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 4860
+          "troops": 5000
         },
         {
           "slot": "rightWing",
           "troopType": "archer",
-          "troops": 4860
+          "troops": 5000
         }
       ],
       "reserve": true
@@ -157,7 +157,7 @@
       "trigger": {
         "type": "teamTroopsBelow",
         "team": "enemy",
-        "ratio": 0.7
+        "ratio": 0.8
       },
       "actions": [
         {
