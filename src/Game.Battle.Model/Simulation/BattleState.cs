@@ -317,6 +317,8 @@ namespace Game.Battle.Model.Simulation
         public Dictionary<string, string> Injuries { get; } = new Dictionary<string, string>();
         /// <summary>전투 중 일기토 (R-71). 끝난 것도 남긴다 (화면이 결과를 읽는다).</summary>
         public List<Contests.DuelState> Duels { get; } = new List<Contests.DuelState>();
+        /// <summary>플레이어 군단이 받고 아직 답하지 않은 일기토 신청 (R-79).</summary>
+        public List<Contests.DuelOffer> DuelOffers { get; } = new List<Contests.DuelOffer>();
         /// <summary>이 전투의 논쟁에서 세뇌로 진 장수 (포로가 되면 등용 보너스).</summary>
         public HashSet<string> Brainwashed { get; } = new HashSet<string>();
         /// <summary>전투 이벤트 기록 (말풍선·연출·리플레이·숨은 보상).</summary>

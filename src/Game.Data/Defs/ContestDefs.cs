@@ -162,6 +162,8 @@ namespace Game.Data.Defs
         public bool Scouting { get; internal set; }
         /// <summary>사령관 협공 (R-75): 앞선 군단이 뒤처진 같은 편을 기다렸다 함께 치고, 붙으면 같은 편이 싸우는 적을 함께 친다.</summary>
         public bool Coordinate { get; internal set; }
+        /// <summary>장수가 일기토를 거는가 (R-79). 판을 크게 흔드는 수라 어려움에서만.</summary>
+        public bool Challenges { get; internal set; }
     }
 
     /// <summary>AI 수치 (ai.json).</summary>
@@ -186,6 +188,8 @@ namespace Game.Data.Defs
         }
         public Fix RallyMoraleDrop { get; internal set; }
         public Fix RevealSearchCells { get; internal set; }
+        /// <summary>AI가 일기토를 거는 최소 능력치 차이 (R-79).</summary>
+        public Fix ChallengeEdge { get; internal set; }
         public IReadOnlyDictionary<string, int> ContestBaseWeights { get; internal set; }
         public int ContestFullChargeSpecialWeight { get; internal set; }
         public Fix ContestLowResourceAtOrBelow { get; internal set; }
@@ -234,6 +238,7 @@ namespace Game.Data.Defs
                     CounterFormationChance = JsonUtil.RequireFix(d, "counterFormationChance", ctx),
                     Scouting = d.Value<bool?>("scouting") ?? false,
                     Coordinate = d.Value<bool?>("coordinate") ?? false,
+                    Challenges = d.Value<bool?>("challenges") ?? false,
                 };
             }
             var sk = JsonUtil.RequireObject(o, "skills", c);
@@ -263,6 +268,7 @@ namespace Game.Data.Defs
                 Difficulties = diffs,
                 RallyMoraleDrop = JsonUtil.RequireFix(sk, "rallyMoraleDrop", c + ".skills"),
                 RevealSearchCells = JsonUtil.RequireFix(sk, "revealSearchCells", c + ".skills"),
+                ChallengeEdge = JsonUtil.FixOr(sk, "challengeEdge", Fix.FromInt(5), c + ".skills"),
                 ContestBaseWeights = weights,
                 ContestFullChargeSpecialWeight = (int)JsonUtil.RequireLong(ct, "fullChargeSpecialWeight", c),
                 ContestLowResourceAtOrBelow = JsonUtil.RequireFix(ct, "lowResourceAtOrBelow", c),

@@ -207,6 +207,14 @@ namespace Game.Battle.Model.Control
         }
         public bool Retreat() => Issue(Selected, CommandKinds.Retreat);
 
+        /// <summary>적이 건 일기토에 답한다 (R-79). 받은 신청이 없으면 false.</summary>
+        public bool AnswerDuel(string corpsId, bool accept)
+        {
+            var c = Context.FindCorps(corpsId);
+            return c != null && Contests.InBattleDuels.OfferTo(Context, c.Id) != null
+                && Issue(c, CommandKinds.DuelAnswer, x => x.Mode = accept ? "accept" : "refuse");
+        }
+
         public bool MoveTo(Vec point, string mode = null) =>
             Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; c.Queued = Queueing; });
 

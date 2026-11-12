@@ -28,32 +28,32 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3470
+          "troops": 3370
         },
         {
           "slot": "center",
           "troopType": "spearman",
-          "troops": 3470
+          "troops": 3370
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 3470
+          "troops": 3370
         },
         {
           "slot": "rightWing",
           "troopType": "archer",
-          "troops": 3470
+          "troops": 3370
         },
         {
           "slot": "leftGuard",
           "troopType": "infantry",
-          "troops": 3470
+          "troops": 3370
         },
         {
           "slot": "rightGuard",
           "troopType": "spearman",
-          "troops": 3470
+          "troops": 3370
         }
       ],
       "role": "commander"
@@ -69,27 +69,27 @@
         {
           "slot": "vanguard",
           "troopType": "cavalry",
-          "troops": 3120
+          "troops": 3030
         },
         {
           "slot": "center",
           "troopType": "cavalry",
-          "troops": 3120
+          "troops": 3030
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 3120
+          "troops": 3030
         },
         {
           "slot": "rightWing",
           "troopType": "cavalry",
-          "troops": 3120
+          "troops": 3030
         },
         {
           "slot": "leftGuard",
           "troopType": "cavalry",
-          "troops": 3120
+          "troops": 3030
         }
       ]
     }

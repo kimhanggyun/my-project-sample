@@ -6,7 +6,8 @@ using Game.Data.Defs;
 namespace Game.Flow
 {
     /// <summary>
-    /// 전투 중 일기토를 플레이어가 한 라운드씩 고르게 한다 (R-71). 플레이어 = 건 쪽(A).
+    /// 전투 중 일기토를 플레이어가 한 라운드씩 고르게 한다 (R-71). 플레이어가 건 쪽(A)이든 받은 쪽(B, R-79)이든
+    /// 화면에는 늘 플레이어를 A(왼쪽)로 보여 준다 (받은 쪽이면 라운드·결과를 뒤집은 사본).
     /// 계산은 전투와 같은 <see cref="InBattleDuels.Simulate"/> (이 대결만의 시드)라, 화면이 보여 준 결과가 명령 duelChoices로 그대로 전투에 들어간다.
     /// </summary>
     public sealed class BattleDuelPlay : IContestPlay
@@ -21,13 +22,18 @@ namespace Game.Flow
             _sim = sim;
             _duel = duel;
             Def = sim.Context.Defs.Contests[duel.ContestId];
+            PlayerIsA = sim.Context.FindCorps(duel.CorpsA).Setup.Controller == Controllers.Player;
             Recalculate();
         }
 
         public DuelState Duel => _duel;
+        /// <summary>플레이어가 건 쪽인가. 아니면 받은 쪽 (R-79).</summary>
+        public bool PlayerIsA { get; }
+        private string PlayerCorps => PlayerIsA ? _duel.CorpsA : _duel.CorpsB;
+        private string OpponentCorps => PlayerIsA ? _duel.CorpsB : _duel.CorpsA;
         public ContestDef Def { get; }
-        public string GeneralA => _sim.Context.FindCorps(_duel.CorpsA).Setup.General?.Id;
-        public string GeneralB => _sim.Context.FindCorps(_duel.CorpsB).Setup.General?.Id;
+        public string GeneralA => _sim.Context.FindCorps(PlayerCorps).Setup.General?.Id;
+        public string GeneralB => _sim.Context.FindCorps(OpponentCorps).Setup.General?.Id;
         public ulong Seed => _duel.Seed;
         public IReadOnlyList<string> Choices => _choices;
         public bool IsOver { get; private set; }
@@ -72,14 +78,15 @@ namespace Game.Flow
         /// <summary>전투에 넣을 명령 (플레이어 쪽 선택 기록).</summary>
         public Game.Battle.Model.Commands.BattleCommand Command() => new Game.Battle.Model.Commands.BattleCommand
         {
-            CorpsId = _duel.CorpsA,
+            CorpsId = PlayerCorps,
             Kind = Game.Battle.Model.Commands.CommandKinds.DuelChoices,
             Mode = string.Join(",", _choices),
         };
 
         private void Recalculate()
         {
-            _full = InBattleDuels.Simulate(_sim.Context.Defs, _sim.Context.Setup, _duel, _choices, true);
+            var r = InBattleDuels.Simulate(_sim.Context.Defs, _sim.Context.Setup, _duel, _choices, PlayerIsA);
+            _full = PlayerIsA ? r : r.Mirror(); // 화면은 늘 플레이어 = A
             IsOver = _full.Rounds.Count <= _choices.Count;
         }
     }

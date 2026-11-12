@@ -8,6 +8,20 @@ using Game.Foundation.Random;
 
 namespace Game.Battle.Model.Contests
 {
+    /// <summary>플레이어 군단이 받은 일기토 신청 (R-79). 답(duelAnswer)이나 기한을 기다린다. 그동안 두 군단은 계속 싸운다.</summary>
+    public sealed class DuelOffer
+    {
+        public string ContestId { get; internal set; }
+        /// <summary>건 쪽.</summary>
+        public string CorpsA { get; internal set; }
+        /// <summary>받은 쪽 (플레이어).</summary>
+        public string CorpsB { get; internal set; }
+        public long DeadlineTick { get; internal set; }
+        internal Fix AcceptChance { get; set; }
+        internal Fix RefuseMorale { get; set; }
+        internal long DecideTicks { get; set; }
+    }
+
     /// <summary>전투 중 일기토 하나 (battle.md 2.7.5, R-71). 결과가 날 때까지 두 군단은 서로 싸우지 않고 그 자리에 선다.</summary>
     public sealed class DuelState
     {
@@ -35,6 +49,13 @@ namespace Game.Battle.Model.Contests
         /// <summary>틱마다: 기한이 지났거나 한쪽이 전장을 떠난 대결을 끝낸다.</summary>
         internal static void Step(BattleContext ctx)
         {
+            // 답이 없는 신청 (R-79): 기한이 지나면 받는 장수의 성향 확률로. 한쪽이 전장을 떠나면 없던 일로
+            for (int i = ctx.DuelOffers.Count - 1; i >= 0; i--)
+            {
+                var o = ctx.DuelOffers[i];
+                if (!ctx.FindCorps(o.CorpsA).InBattle || !ctx.FindCorps(o.CorpsB).InBattle) { ctx.DuelOffers.RemoveAt(i); continue; }
+                if (ctx.Tick >= o.DeadlineTick) Decide(ctx, o, ctx.Random.Chance(o.AcceptChance));
+            }
             for (int i = ctx.Duels.Count - 1; i >= 0; i--)
             {
                 var d = ctx.Duels[i];
@@ -70,7 +91,23 @@ namespace Game.Battle.Model.Contests
             return ContestRunner.Run(session, playerIsA ? mine : ai, playerIsA ? ai : mine);
         }
 
-        /// <summary>신청을 받아 응함/거절을 정한다 (스킬 효과 challenge).</summary>
+        /// <summary>대기 중인 신청 (플레이어 군단이 받은 것, R-79).</summary>
+        public static DuelOffer OfferTo(BattleContext ctx, string corpsId)
+        {
+            foreach (var o in ctx.DuelOffers) if (o.CorpsB == corpsId) return o;
+            return null;
+        }
+
+        internal static bool HasOffer(BattleContext ctx, string corpsId)
+        {
+            foreach (var o in ctx.DuelOffers) if (o.CorpsA == corpsId || o.CorpsB == corpsId) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 신청을 받아 응함/거절을 정한다 (스킬 효과 challenge). 받는 쪽이 플레이어가 직접 지휘하는 군단이면 (위임 아님)
+        /// 바로 정하지 않고 신청을 남긴다 → 명령 duelAnswer로 응함/거절, offerSec 안에 답이 없으면 성향 확률로 (R-79).
+        /// </summary>
         internal static void Challenge(SkillCast cast, SkillPart p)
         {
             var ctx = cast.Battle;
@@ -79,25 +116,51 @@ namespace Game.Battle.Model.Contests
             string contestId = p.Has("contest") ? p.String("contest") : "duel";
             if (b == null || !b.InBattle || a.Setup.General == null || b.Setup.General == null) return;
             if (!ctx.Defs.Contests.TryGetValue(contestId, out var def) || !ctx.IsEnabled(def.Flag)) return;
-            if (a.DuelWith != null || b.DuelWith != null) return;
+            if (a.DuelWith != null || b.DuelWith != null || HasOffer(ctx, a.Id) || HasOffer(ctx, b.Id)) return;
             // 응할 확률: 성향별 (없으면 기본값). 거부 성향이면 늘 거절
             Fix chance = p.FixOr("acceptChance", Fix.FromDecimal(0.5m));
             string key = "accept." + (b.Setup.General.Temperament ?? "");
             if (p.Has(key)) chance = p.Fix(key);
             foreach (var t in def.RefuseTemperaments) if (t == b.Setup.General.Temperament) chance = Fix.Zero;
-            if (!ctx.Random.Chance(chance))
+            var offer = new DuelOffer
             {
-                b.Morale = Fix.Clamp(b.Morale + p.FixOr("refuseMorale", Fix.Zero), Fix.Zero, Fix.Hundred);
+                ContestId = contestId,
+                CorpsA = a.Id,
+                CorpsB = b.Id,
+                AcceptChance = chance,
+                RefuseMorale = p.FixOr("refuseMorale", Fix.Zero),
+                DecideTicks = SkillRules.Ticks(ctx, p.FixOr("decideSec", Fix.FromInt(30))),
+                DeadlineTick = ctx.Tick + SkillRules.Ticks(ctx, p.FixOr("offerSec", Fix.FromInt(10))),
+            };
+            if (b.Setup.Controller == Controllers.Player && !b.Delegated)
+            {
+                ctx.DuelOffers.Add(offer);
+                Events.EventLog.Add(ctx, Events.EventKinds.DuelOffered, b.Id, a.Id);
+                return;
+            }
+            Decide(ctx, offer, ctx.Random.Chance(chance));
+        }
+
+        /// <summary>신청에 답한다: 응하면 대결 시작, 아니면 받은 쪽 사기 + refuseMorale.</summary>
+        internal static void Decide(BattleContext ctx, DuelOffer o, bool accept)
+        {
+            ctx.DuelOffers.Remove(o);
+            var a = ctx.FindCorps(o.CorpsA);
+            var b = ctx.FindCorps(o.CorpsB);
+            if (!a.InBattle || !b.InBattle || a.DuelWith != null || b.DuelWith != null) return;
+            if (!accept)
+            {
+                b.Morale = Fix.Clamp(b.Morale + o.RefuseMorale, Fix.Zero, Fix.Hundred);
                 Events.EventLog.Add(ctx, Events.EventKinds.DuelRefused, b.Id, a.Id);
                 return;
             }
             var d = new DuelState
             {
-                ContestId = contestId,
+                ContestId = o.ContestId,
                 CorpsA = a.Id,
                 CorpsB = b.Id,
                 StartTick = ctx.Tick,
-                DeadlineTick = ctx.Tick + SkillRules.Ticks(ctx, p.FixOr("decideSec", Fix.FromInt(30))),
+                DeadlineTick = ctx.Tick + o.DecideTicks,
                 Seed = unchecked(ctx.Setup.Seed * 0x9E3779B97F4A7C15UL + (ulong)ctx.Tick * 0xBF58476D1CE4E5B9UL + (ulong)a.Index * 31UL + (ulong)b.Index),
             };
             ctx.Duels.Add(d);
@@ -157,7 +220,8 @@ namespace Game.Battle.Model.Contests
         public string Type => "targetCanDuel";
         public bool IsMet(SkillCast c, SkillPart p) =>
             c.TargetCorps != null && c.TargetCorps.Setup.General != null && c.Caster.Setup.General != null
-            && c.TargetCorps.DuelWith == null && c.Caster.DuelWith == null;
+            && c.TargetCorps.DuelWith == null && c.Caster.DuelWith == null
+            && !InBattleDuels.HasOffer(c.Battle, c.TargetCorps.Id) && !InBattleDuels.HasOffer(c.Battle, c.Caster.Id);
     }
 
     /// <summary>명령 duelChoices (R-71): 플레이어 쪽 일기토 선택 기록 (Mode = 행동 id를 쉼표로). 대기 중인 대결이 있어야 한다.</summary>
@@ -175,5 +239,14 @@ namespace Game.Battle.Model.Contests
                 foreach (var s in cmd.Mode.Split(',')) if (s.Length > 0) choices.Add(s);
             InBattleDuels.Resolve(ctx, d, choices, d.CorpsA == corps.Id);
         }
+    }
+
+    /// <summary>명령 duelAnswer (R-79): 받은 일기토 신청에 답한다. Mode "accept" = 응함, 그 밖 = 거절.</summary>
+    internal sealed class DuelAnswerHandler : ICommandHandler
+    {
+        public string Kind => CommandKinds.DuelAnswer;
+        public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) => InBattleDuels.OfferTo(ctx, corps.Id) != null;
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
+            InBattleDuels.Decide(ctx, InBattleDuels.OfferTo(ctx, corps.Id), cmd.Mode == "accept");
     }
 }
