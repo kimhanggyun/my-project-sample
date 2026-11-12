@@ -55,6 +55,9 @@ namespace Game.Unity.Battle3D
         private readonly LineRenderer _path;
         private readonly LineRenderer _range;
         // 스킬 자리 미리보기 (4.2): 효과 범위 테두리, 사거리 안이면 밝은 색, 밖이면 붉은 색 (다가가서 쓴다)
+        // 맵 오브젝트 (R-78): 테두리 + 기둥, 차지한 팀 색 (아무도 없으면 회색)
+        private readonly List<(Game.Battle.Model.Victory.MapObjectState state, LineRenderer ring, MeshRenderer pillar)> _objects = new List<(Game.Battle.Model.Victory.MapObjectState, LineRenderer, MeshRenderer)>();
+        private Material _objAlly, _objEnemy, _objNone;
         private readonly LineRenderer _aimIn;
         private readonly LineRenderer _aimOut;
         private static readonly Color AimInColor = new Color(1f, 0.92f, 0.55f);
@@ -150,6 +153,27 @@ namespace Game.Unity.Battle3D
             _ringLine.positionCount = RingSegments;
             _cylinder = cylinder;
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
+            _objAlly = Own(NewMaterial(AllyColor));
+            _objEnemy = Own(NewMaterial(EnemyColor));
+            _objNone = Own(NewMaterial(new Color(0.75f, 0.72f, 0.65f)));
+            foreach (var o in ctx.Objects)
+            {
+                var ring = Line("Object " + o.Setup.Id, new Color(0.75f, 0.72f, 0.65f), 0.14f, true);
+                var center = ToWorld(o.Center);
+                float r = (float)o.Setup.Radius.ToDisplayDouble();
+                ring.positionCount = RangeSegments;
+                for (int i = 0; i < RangeSegments; i++)
+                {
+                    float a = i * Mathf.PI * 2f / RangeSegments;
+                    float x = center.x + Mathf.Cos(a) * r, z = center.z + Mathf.Sin(a) * r;
+                    ring.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.12f, z));
+                }
+                // 기둥 높이로 종류 구분: 망루 높게, 보급소 낮고 넓게, 점령 구역 깃대
+                var size = o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Watchtower ? new Vector3(0.6f, 2.2f, 0.6f)
+                    : o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Depot ? new Vector3(1.2f, 0.4f, 1.2f) : new Vector3(0.2f, 1.6f, 0.2f);
+                var pillar = Part(_root.transform, cylinder, _objNone, center + new Vector3(0f, size.y, 0f), size);
+                _objects.Add((o, ring, pillar.GetComponent<MeshRenderer>()));
+            }
             _target = Part(_root.transform, cylinder, Own(NewMaterial(Color.white)), Vector3.zero, new Vector3(0.5f, 0.03f, 0.5f));
 
             Effects = new BattleEffects3D(this, ctl, _cube, col => Own(NewMaterial(col)), col =>
@@ -424,6 +448,13 @@ namespace Game.Unity.Battle3D
                     float x = center.x + Mathf.Cos(a) * r, z = center.z + Mathf.Sin(a) * r;
                     _range.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.1f, z));
                 }
+            }
+
+            foreach (var (state, ringLine, pillar) in _objects)
+            {
+                var mat = state.Owner == null ? _objNone : state.Owner == _ctl.Team ? _objAlly : _objEnemy;
+                ringLine.sharedMaterial = mat;
+                if (pillar != null) pillar.sharedMaterial = mat;
             }
 
             // 고른 자리의 효과 범위 (확인 전 미리보기)

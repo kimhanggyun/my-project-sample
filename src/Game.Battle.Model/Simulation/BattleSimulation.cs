@@ -73,6 +73,7 @@ namespace Game.Battle.Model.Simulation
             Context.Environment = Environment.EnvironmentSystem.Create(Context);
             Spawn();
             _contests = Contests.PreBattleContests.Run(Context, setup.Contests, Context.Injuries);
+            Victory.ObjectiveSystem.Init(Context);
             VisionSystem.Init(Context);
         }
 
@@ -137,6 +138,7 @@ namespace Game.Battle.Model.Simulation
             }
 
             Environment.EnvironmentSystem.Step(ctx);
+            Victory.ObjectiveSystem.Step(ctx); // 보급소·망루·점령 구역 (R-78)
             FormationChangeSystem.Step(ctx);
             SkillSystem.Step(ctx);
             StatusSystem.Enforce(ctx);
@@ -362,6 +364,12 @@ namespace Game.Battle.Model.Simulation
             var teams = new HashSet<string>();
             foreach (var id in s.DefeatConditions)
                 if (!ext.Victory.Contains(id)) Fail($"없는 패배 조건 '{id}'.");
+            foreach (var o in s.Objects ?? new List<Victory.MapObjectSetup>())
+            {
+                if (o.Type != Victory.MapObjectSetup.Depot && o.Type != Victory.MapObjectSetup.Watchtower && o.Type != Victory.MapObjectSetup.Zone) Fail($"없는 맵 오브젝트 종류 '{o.Type}'.");
+                if (o.Type == Victory.MapObjectSetup.Zone && (o.Team == null || o.Seconds <= Fix.Zero)) Fail($"점령 구역 '{o.Id}': 팀과 초가 필요합니다.");
+            }
+            if (s.DefeatConditions.Contains(Victory.VictoryConditionIds.HoldOut) && s.HoldOut == null) Fail("패배 조건 holdOut에는 HoldOut 설정이 필요합니다.");
             foreach (var c in s.Corps)
             {
                 if (c.Id == null || !ids.Add(c.Id)) Fail($"군단 id '{c.Id}'가 비었거나 중복.");

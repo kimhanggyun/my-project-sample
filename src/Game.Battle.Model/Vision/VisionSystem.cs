@@ -93,6 +93,13 @@ namespace Game.Battle.Model.Vision
                 }
                 foreach (var z in ctx.Reveals)
                     if (z.Team == v.Team) MarkCircle(ctx, v, z.Center, z.Radius);
+                // 망루 (R-78): 차지한 팀이 그 자리에서 본다
+                foreach (var o in ctx.Objects)
+                    if (o.Setup.Type == Victory.MapObjectSetup.Watchtower && o.Owner == v.Team)
+                    {
+                        observers.Add((o.Center, o.Setup.Value));
+                        MarkCircle(ctx, v, o.Center, o.Setup.Value);
+                    }
 
                 foreach (var e in ctx.Corps)
                 {

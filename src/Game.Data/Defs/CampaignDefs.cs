@@ -206,6 +206,38 @@ namespace Game.Data.Defs
         public long Troops { get; internal set; }
     }
 
+    /// <summary>스텝 맵 오브젝트 (R-78): depot·watchtower·zone.</summary>
+    public sealed class StepObjectDef
+    {
+        public string Id { get; internal set; }
+        public string Type { get; internal set; }
+        public Fix X { get; internal set; }
+        public Fix Y { get; internal set; }
+        public Fix Radius { get; internal set; }
+        public Fix Value { get; internal set; }
+        public string Team { get; internal set; }
+        public Fix Seconds { get; internal set; }
+
+        internal static List<StepObjectDef> List(JObject o, string c)
+        {
+            var list = new List<StepObjectDef>();
+            if (!(o["objects"] is JArray arr)) return list;
+            foreach (JObject x in arr)
+                list.Add(new StepObjectDef
+                {
+                    Id = JsonUtil.RequireString(x, "id", c + ".objects"),
+                    Type = JsonUtil.RequireString(x, "type", c + ".objects"),
+                    X = JsonUtil.RequireFix(x, "x", c + ".objects"),
+                    Y = JsonUtil.RequireFix(x, "y", c + ".objects"),
+                    Radius = JsonUtil.FixOr(x, "radius", Fix.FromInt(3), c + ".objects"),
+                    Value = JsonUtil.FixOr(x, "value", Fix.Zero, c + ".objects"),
+                    Team = x.Value<string>("team"),
+                    Seconds = JsonUtil.FixOr(x, "seconds", Fix.Zero, c + ".objects"),
+                });
+            return list;
+        }
+    }
+
     public sealed class StepEnemyCorpsDef
     {
         public string Id { get; internal set; }
@@ -264,6 +296,11 @@ namespace Game.Data.Defs
         /// <summary>구출 전투면 그 수용소 id (이기면 그 수용소의 아군 장수 구출).</summary>
         public string RescueCamp { get; private set; }
         public IReadOnlyList<string> DefeatConditions { get; private set; }
+        /// <summary>맵 오브젝트·점령 구역 (R-78). 팀은 "player"/"enemy".</summary>
+        public IReadOnlyList<StepObjectDef> Objects { get; private set; } = new List<StepObjectDef>();
+        /// <summary>버티기 (R-78): 이 팀("player"/"enemy")이 HoldOutSeconds까지 남으면 이긴다. 없으면 null.</summary>
+        public string HoldOutTeam { get; private set; }
+        public Fix HoldOutSeconds { get; private set; }
         public string Weather { get; private set; }
         public string TimeOfDay { get; private set; }
         public string WindDirection { get; private set; }
@@ -371,6 +408,9 @@ namespace Game.Data.Defs
                 Camp = o.Value<string>("camp"),
                 RescueCamp = o.Value<string>("rescueCamp"),
                 DefeatConditions = o["defeatConditions"] != null ? JsonUtil.StringList(o, "defeatConditions") : new List<string> { "annihilation", "commander" },
+                Objects = StepObjectDef.List(o, "steps"),
+                HoldOutTeam = (o["holdOut"] as JObject)?.Value<string>("team"),
+                HoldOutSeconds = o["holdOut"] is JObject ho ? JsonUtil.RequireFix(ho, "seconds", "steps.holdOut") : Fix.Zero,
                 Weather = o.Value<string>("weather") ?? "clear",
                 TimeOfDay = o.Value<string>("timeOfDay") ?? "day",
                 WindDirection = wind?.Value<string>("direction"),

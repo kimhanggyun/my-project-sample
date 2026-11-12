@@ -166,6 +166,9 @@ namespace Game.Flow
             StepProgress.IsUnlocked(_defs.StepIndex, state, stepId, Captivity.CampsWithCaptives(state));
 
         /// <summary>출진 준비: 상태는 바꾸지 않는다. 문제(편성·군량·해금)는 Errors로 돌려준다.</summary>
+        /// <summary>스텝 데이터의 팀 이름("player"/"enemy") → 전투 팀 id.</summary>
+        private static string StepTeam(string t) => t == "enemy" ? EnemyTeam : PlayerTeam;
+
         public SortiePlan Prepare(CampaignState state, SortieRequest request)
         {
             var plan = new SortiePlan { PreparedAtUnixSeconds = _time.UtcNow.ToUnixTimeSeconds(), Location = request.Location };
@@ -202,11 +205,18 @@ namespace Game.Flow
                 Seed = request.Seed,
                 MaxMinutes = step.MaxMinutes,
                 DefeatConditions = new List<string>(step.DefeatConditions),
+                HoldOut = step.HoldOutTeam == null ? null : new Game.Battle.Model.Victory.HoldOutSetup { Team = StepTeam(step.HoldOutTeam), Seconds = step.HoldOutSeconds },
                 Weather = step.Weather,
                 TimeOfDay = step.TimeOfDay,
                 Wind = new WindSetup { Direction = step.WindDirection, Strength = step.WindStrength },
             };
             setup.InitialExplored[PlayerTeam] = StepProgress.Explored(state, step.Id, map.Width * map.Height);
+            foreach (var ob in step.Objects) // 맵 오브젝트·점령 구역 (R-78)
+                setup.Objects.Add(new Game.Battle.Model.Victory.MapObjectSetup
+                {
+                    Id = ob.Id, Type = ob.Type, X = ob.X, Y = ob.Y, Radius = ob.Radius, Value = ob.Value,
+                    Team = ob.Team == null ? null : StepTeam(ob.Team), Seconds = ob.Seconds,
+                });
 
             // 아군: 편성에서 (부상병은 부대에 따로 있으므로 병력만), 군량은 하루 소비 비율로 나눔
             var daily = new List<long>();
