@@ -61,7 +61,8 @@
         "attack": 60,
         "defense": 45,
         "speed": 80,
-        "vision": 65
+        "vision": 65,
+        "pursuit": 80
       }
     },
     {
@@ -80,7 +81,9 @@
         "defense": 30,
         "speed": 70,
         "vision": 85,
-        "detection": 70
+        "detection": 70,
+        "pursuit": 70,
+        "judgment": 60
       }
     },
     {
@@ -98,7 +101,8 @@
       "stats": {
         "attack": 45,
         "defense": 75,
-        "speed": 38
+        "speed": 38,
+        "pursuit": 35
       }
     },
     {
@@ -151,7 +155,8 @@
         "attack": 70,
         "defense": 62,
         "speed": 62,
-        "vision": 60
+        "vision": 60,
+        "pursuit": 70
       }
     },
     {
@@ -171,7 +176,9 @@
       "stats": {
         "attack": 52,
         "defense": 85,
-        "speed": 36
+        "speed": 36,
+        "pursuit": 30,
+        "judgment": 65
       }
     },
     {
@@ -190,7 +197,9 @@
       "stats": {
         "attack": 55,
         "defense": 72,
-        "speed": 24
+        "speed": 24,
+        "pursuit": 25,
+        "judgment": 60
       }
     },
     {
@@ -208,7 +217,8 @@
       "stats": {
         "attack": 70,
         "defense": 36,
-        "speed": 30
+        "speed": 30,
+        "judgment": 65
       }
     },
     {
@@ -228,7 +238,9 @@
         "attack": 80,
         "defense": 70,
         "speed": 56,
-        "vision": 58
+        "vision": 58,
+        "pursuit": 75,
+        "judgment": 65
       }
     }
   ]
