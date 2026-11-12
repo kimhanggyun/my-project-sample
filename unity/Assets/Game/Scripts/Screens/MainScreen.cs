@@ -59,11 +59,14 @@ namespace Game.Unity.Screens
             var top = Ui.Row(Root, "TopBar", TopBarHeight, 16);
             Ui.Background(top, Palette.Bar);
             top.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(24, 24, 14, 14);
-            string res = T("resource.supply") + " " + Ctx.Resource(ResourceIds.Supply).ToString("N0") + "   "
-                       + T("resource.gold") + " " + Ctx.Resource(ResourceIds.Gold).ToString("N0") + "   "
-                       + T("resource.gem") + " " + Ctx.Resource(ResourceIds.Gem).ToString("N0");
-            Ui.Size(Ui.Label(top, res, Ui.FontSmall), flexibleWidth: 4);
-            Ui.Size(Ui.Button(top, T("ui.top.settings"), () => App.Show(new SettingsScreen()), 80, fontSize: 28), width: 160);
+            // 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1), 상점·설정 버튼
+            foreach (var id in new[] { ResourceIds.Supply, ResourceIds.Gold, ResourceIds.Gem })
+            {
+                Ui.Size(Ui.Label(top, T("resource." + id) + " " + Ctx.Resource(id).ToString("N0"), 26, TextAnchor.MiddleRight), flexibleWidth: 2);
+                Ui.Size(Ui.Button(top, "+", () => App.ShowMain("shop"), 64, Palette.ButtonActive, 30), width: 56);
+            }
+            Ui.Size(Ui.Button(top, T("ui.top.shop"), () => App.ShowMain("shop"), 80, fontSize: 26), width: 110);
+            Ui.Size(Ui.Button(top, T("ui.top.settings"), () => App.Show(new SettingsScreen()), 80, fontSize: 26), width: 110);
 
             // 가운데: 탭 내용
             _content = Ui.Rect(Root, "Content");
@@ -76,6 +79,7 @@ namespace Game.Unity.Screens
             Ui.Background(barBg, Palette.Bar);
             Ui.Size(barBg, TabBarHeight);
             var bar = Ui.HScrollRow(barBg, "Tabs", TabBarHeight, 6, 8);
+            var alerts = Game.Flow.TabAlerts.Compute(Ctx.Defs, Ctx.State, Ctx.Flow, Ctx.Clock.UtcNow.ToUnixTimeSeconds());
             Ui.Fill((RectTransform)bar.parent.parent);
             float width = Mathf.Max(MinTabWidth, (GameApp.ReferenceWidth - 16f) / Mathf.Min(VisibleTabs, Mathf.Max(1, tabs.Count)) - 6f);
             foreach (var t in tabs)
@@ -85,6 +89,7 @@ namespace Game.Unity.Screens
                 Ui.Size(b, width: width);
                 if (t.Status != MainTabEntry.Active) b.GetComponentInChildren<Text>().color = Palette.TextDim;
                 _tabButtons[t.Id] = b;
+                if (alerts.Contains(t.Id) && t.Status == MainTabEntry.Active) Dot(b); // 할 일이 있는 탭 (E21)
             }
 
             MainTabEntry first = null;
@@ -94,6 +99,21 @@ namespace Game.Unity.Screens
                 if (first == null && t.Status == MainTabEntry.Active) first = t;
             }
             if (first != null) Select(first);
+        }
+
+        /// <summary>탭 버튼 오른쪽 위 빨간 점.</summary>
+        private static void Dot(Button b)
+        {
+            var dot = Ui.Rect(b.transform, "AlertDot");
+            dot.anchorMin = dot.anchorMax = new Vector2(1f, 1f);
+            dot.pivot = new Vector2(1f, 1f);
+            dot.sizeDelta = new Vector2(22f, 22f);
+            dot.anchoredPosition = new Vector2(-6f, -6f);
+            var img = Ui.Background(dot, new Color(0.92f, 0.22f, 0.18f));
+            img.sprite = UiShapes.Circle;
+            img.raycastTarget = false;
+            var le = dot.gameObject.AddComponent<LayoutElement>();
+            le.ignoreLayout = true;
         }
 
         private void Select(MainTabEntry tab)
