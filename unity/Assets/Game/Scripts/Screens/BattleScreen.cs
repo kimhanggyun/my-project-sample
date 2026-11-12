@@ -954,6 +954,11 @@ namespace Game.Unity.Screens
                 case EventKinds.DuelOffered: Sfx.Play("alert", 0.7f, 0.3f); break;
                 case EventKinds.DuelStarted: Sfx.Play("duel"); break;
                 case EventKinds.DuelEnded: Sfx.Play("clash", 0.9f); break;
+                case EventKinds.TrapSprung:
+                case EventKinds.RockfallHit: Sfx.Play("drum"); Sfx.Play("clash", 0.8f); break;
+                case EventKinds.FeignSprung: Sfx.Play("horn", 0.8f); Sfx.Play("cheer", 0.6f); break;
+                case EventKinds.TrapFound:
+                case EventKinds.DecoyExposed: Sfx.Play("alert", 0.6f, 0.3f); break;
             }
         }
 

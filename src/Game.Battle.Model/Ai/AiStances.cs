@@ -93,6 +93,25 @@ namespace Game.Battle.Model.Ai
         /// 가장 가까운 보이는 적이 aiEngageCells 안이면 그 적을 공격 (지금 대상이면 유지).
         /// 멀거나 안 보이면 자기 줄로 곧게 진군 (R-65: 가운데로 모이지 않는다). 줄 끝(전장 끝)에 닿았는데도 멀면 예전처럼 그 적·목격 위치로.
         /// </summary>
+        /// <summary>
+        /// 위장 깃발 (R-80): 보이는 상대 팀 깃발이 진짜 적보다 가까우면 그쪽으로 공격 이동 (AI는 진짜와 구별하지 못한다).
+        /// </summary>
+        private static bool ChaseDecoy(BattleContext ctx, CorpsState corps, CorpsState nearest)
+        {
+            Skills.Decoy best = null;
+            Fix bestD = nearest == null ? Fix.FromInt(1 << 20) : Vec.DistanceSquared(nearest.Anchor, corps.Anchor);
+            foreach (var d in ctx.Decoys)
+            {
+                if (d.Team == corps.Team || !ctx.IsPointVisibleTo(corps.Team, d.Point)) continue;
+                Fix dd = Vec.DistanceSquared(d.Point, corps.Anchor);
+                if (dd < bestD) { best = d; bestD = dd; }
+            }
+            if (best == null) return false;
+            if (corps.Order.Kind != OrderKinds.MoveTo || corps.Order.Point.X != best.Point.X || corps.Order.Point.Y != best.Point.Y)
+                corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.MoveTo, Point = best.Point, Mode = MoveModes.AttackMove });
+            return true;
+        }
+
         public static void AttackNearest(BattleContext ctx, CorpsState corps)
         {
             var current = corps.Order.Kind == OrderKinds.Attack ? ctx.FindCorps(corps.Order.TargetCorpsId) : null;
@@ -107,6 +126,7 @@ namespace Game.Battle.Model.Ai
                 if (corps.Order.Kind != OrderKinds.Hold) corps.AssignOrder(new CorpsOrder());
                 return;
             }
+            if (!close && ChaseDecoy(ctx, corps, nearest)) return; // 위장 깃발에 속는다 (R-80)
             if (!close)
             {
                 bool atEnd = Vec.DistanceSquared(ctx.LaneEnd(corps), corps.Anchor) <= Fix.FromInt(1);

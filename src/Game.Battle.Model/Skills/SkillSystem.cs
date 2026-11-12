@@ -65,7 +65,13 @@ namespace Game.Battle.Model.Skills
             .Register(new QuickFormationEffect())
             .Register(new FocusFireEffect())
             .Register(new Contests.ChallengeEffect())
-            .Register(new Contests.TargetCanDuel());
+            .Register(new Contests.TargetCanDuel())
+            .Register(new TrapEffect())
+            .Register(new RockfallEffect())
+            .Register(new DecoyEffect())
+            .Register(new FeignedRetreatEffect())
+            .Register(new CasterAbove())
+            .Register(new CasterEngaged());
     }
 
     /// <summary>전조가 끝나면 나타날 효과.</summary>

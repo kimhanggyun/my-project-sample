@@ -45,6 +45,16 @@ namespace Game.Battle.Model.Events
         public const string DuelRefused = "duelRefused";
         /// <summary>전투 중 일기토가 끝남. 군단 = 건 쪽, 값 = "끝 종류:이긴 쪽 또는 물러난 쪽(A/B)".</summary>
         public const string DuelEnded = "duelEnded";
+        /// <summary>함정을 밟음 (R-80). 군단 = 밟은 쪽, 값 = 놓은 군단.</summary>
+        public const string TrapSprung = "trapSprung";
+        /// <summary>함정이 간파에 걸려 사라짐. 군단 = 놓은 군단.</summary>
+        public const string TrapFound = "trapFound";
+        /// <summary>낙석에 맞음. 군단 = 맞은 쪽, 값 = 쓴 군단.</summary>
+        public const string RockfallHit = "rockfallHit";
+        /// <summary>위장 깃발이 들킴 (간파·가까이 감). 값 = 깃발을 세운 팀.</summary>
+        public const string DecoyExposed = "decoyExposed";
+        /// <summary>거짓 퇴각에 속아 추격하다 흐트러짐. 군단 = 속은 쪽, 값 = 거짓 퇴각한 군단.</summary>
+        public const string FeignSprung = "feignSprung";
     }
 
     internal static class EventLog

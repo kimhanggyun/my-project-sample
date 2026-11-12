@@ -139,6 +139,8 @@ namespace Game.Battle.Model.Simulation
         public const string QuickFormation = "quickFormation";
         /// <summary>원거리 소부대가 한 적 군단을 노림 (집중 사격, R-76).</summary>
         public const string FocusFire = "focusFire";
+        /// <summary>거짓 퇴각 중 (R-80). 끝나면 돌아서서 반격.</summary>
+        public const string FeignedRetreat = "feignedRetreat";
     }
 
     public sealed class CorpsState
@@ -146,6 +148,8 @@ namespace Game.Battle.Model.Simulation
         public int Index { get; internal set; }
         /// <summary>전투 중 일기토 상대 군단 (R-71). 대결 중이면 서로 싸우지 않고 명령을 받지 않는다. 없으면 null.</summary>
         public string DuelWith { get; internal set; }
+        /// <summary>진행 중인 거짓 퇴각 (R-80).</summary>
+        internal Skills.FeignPlan Feign { get; set; }
         public string Id => Setup.Id;
         public string Team => Setup.Team;
         public CorpsSetup Setup { get; internal set; }
@@ -319,6 +323,10 @@ namespace Game.Battle.Model.Simulation
         public List<Contests.DuelState> Duels { get; } = new List<Contests.DuelState>();
         /// <summary>플레이어 군단이 받고 아직 답하지 않은 일기토 신청 (R-79).</summary>
         public List<Contests.DuelOffer> DuelOffers { get; } = new List<Contests.DuelOffer>();
+        /// <summary>숨겨 둔 함정 (R-80). 놓은 팀만 본다.</summary>
+        public List<Skills.FieldTrap> Traps { get; } = new List<Skills.FieldTrap>();
+        /// <summary>위장 깃발 (R-80).</summary>
+        public List<Skills.Decoy> Decoys { get; } = new List<Skills.Decoy>();
         /// <summary>이 전투의 논쟁에서 세뇌로 진 장수 (포로가 되면 등용 보너스).</summary>
         public HashSet<string> Brainwashed { get; } = new HashSet<string>();
         /// <summary>전투 이벤트 기록 (말풍선·연출·리플레이·숨은 보상).</summary>
@@ -329,6 +337,15 @@ namespace Game.Battle.Model.Simulation
         public HashSet<int> FiredEvents { get; } = new HashSet<int>();
 
         /// <summary>그 팀이 지금 이 군단을 보는가 (안개·은신 반영). 같은 팀은 항상 보인다.</summary>
+        /// <summary>그 팀이 지금 이 지점을 보는가 (안개).</summary>
+        public bool IsPointVisibleTo(string team, Vec p)
+        {
+            if (!Vision.TryGetValue(team, out var v) || v.VisibleCells == null) return false;
+            int x = (int)p.X.FloorToLong(), y = (int)p.Y.FloorToLong();
+            if (!Field.Map.InBounds(x, y)) return false;
+            return v.VisibleCells[y * Field.Width + x];
+        }
+
         public bool IsVisibleTo(string team, CorpsState corps) =>
             corps.Team == team || (Vision.TryGetValue(team, out var v) && v.VisibleCorps.Contains(corps.Id));
 
