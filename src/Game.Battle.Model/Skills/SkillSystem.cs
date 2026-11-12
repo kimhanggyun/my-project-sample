@@ -60,6 +60,10 @@ namespace Game.Battle.Model.Skills
             .Register(new OnConcealingTerrain())
             .Register(new NotEngaged())
             .Register(new CasterHasTag())
+            .Register(new ConfuseEffect())
+            .Register(new FortifyEffect())
+            .Register(new QuickFormationEffect())
+            .Register(new FocusFireEffect())
             .Register(new Contests.ChallengeEffect())
             .Register(new Contests.TargetCanDuel());
     }
@@ -453,7 +457,78 @@ namespace Game.Battle.Model.Skills
         public string Type => "clearConfusion";
         public void Apply(SkillCast c, SkillPart p)
         {
-            foreach (var u in c.Caster.Units) u.ConfusedTicks = 0;
+            // allyRadius가 있으면 둘레 아군 군단도 (고무·재정비 범위 보강, R-76)
+            Fix r = p.FixOr("allyRadius", Fix.Zero);
+            foreach (var a in c.Battle.Corps)
+            {
+                if (a.Team != c.Caster.Team || !a.InBattle) continue;
+                if (a != c.Caster && Vec.DistanceSquared(a.Anchor, c.Caster.Anchor) > r * r) continue;
+                foreach (var u in a.Units) u.ConfusedTicks = 0;
+            }
+        }
+    }
+
+    /// <summary>혼란 (R-76): 대상 군단의 살아 있는 소부대 중 ratio만큼(올림)을 durationSec 동안 혼란. 고르는 순서는 시드 난수.</summary>
+    internal sealed class ConfuseEffect : ISkillEffect
+    {
+        public string Type => "confuse";
+        public void Apply(SkillCast c, SkillPart p)
+        {
+            var t = c.TargetCorps;
+            if (t == null || !t.InBattle) return;
+            var alive = new List<SubUnitState>();
+            foreach (var u in t.Units) if (u.Alive) alive.Add(u);
+            int n = (int)System.Math.Min(alive.Count, (Fix.FromInt(alive.Count) * p.Fix("ratio")).CeilToLong());
+            long ticks = SkillRules.Ticks(c.Battle, p.Fix("durationSec"));
+            for (int i = 0; i < n && alive.Count > 0; i++)
+            {
+                int k = c.Battle.Random.NextInt(0, alive.Count);
+                Events.Confusion.Apply(c.Battle, alive[k], ticks);
+                alive.RemoveAt(k);
+            }
+        }
+    }
+
+    /// <summary>철벽 (R-76): durationSec 동안 제자리(움직이지 않음), 받는 피해 −defensePp, 손실 사기 + moraleLossPct%.</summary>
+    internal sealed class FortifyEffect : ISkillEffect
+    {
+        public string Type => "fortify";
+        public void Apply(SkillCast c, SkillPart p)
+        {
+            c.Caster.AssignOrder(new CorpsOrder());
+            c.Caster.AddStatus(new StatusEffect
+            {
+                Id = "fortify." + c.Skill.Id,
+                TicksLeft = SkillRules.Ticks(c.Battle, p.Fix("durationSec")),
+                DefensePp = p.FixOr("defensePp", Fix.Zero),
+                MoraleLossPct = p.FixOr("moraleLossPct", Fix.Zero),
+                Immobile = true,
+            });
+        }
+    }
+
+    /// <summary>진형 급변 (R-76): durationSec 안의 다음 진형 변경 한 번은 바로 바뀐다.</summary>
+    internal sealed class QuickFormationEffect : ISkillEffect
+    {
+        public string Type => "quickFormation";
+        public void Apply(SkillCast c, SkillPart p) =>
+            c.Caster.AddStatus(new StatusEffect { Id = StatusIds.QuickFormation, TicksLeft = SkillRules.Ticks(c.Battle, p.Fix("durationSec")) });
+    }
+
+    /// <summary>집중 사격 (R-76): durationSec 동안 원거리 소부대가 닿으면 대상 군단부터 쏘고, 그 군단에 +pp.</summary>
+    internal sealed class FocusFireEffect : ISkillEffect
+    {
+        public string Type => "focusFire";
+        public void Apply(SkillCast c, SkillPart p)
+        {
+            if (c.TargetCorps == null) return;
+            c.Caster.AddStatus(new StatusEffect
+            {
+                Id = StatusIds.FocusFire,
+                SourceCorpsId = c.TargetCorps.Id,
+                TargetCorpsPp = p.FixOr("pp", Fix.Zero),
+                TicksLeft = SkillRules.Ticks(c.Battle, p.Fix("durationSec")),
+            });
         }
     }
 

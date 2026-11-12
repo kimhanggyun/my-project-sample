@@ -28,7 +28,7 @@ namespace Game.Battle.Model.Systems
                 corps.MovedThisTick = false;
                 if (!corps.InBattle) continue;
                 Vec? dest = Destination(ctx, corps, out bool chasing);
-                if (dest == null || ShouldStop(corps)) continue;
+                if (dest == null || ShouldStop(corps) || Immobile(corps)) continue;
 
                 Cell goal = Cell.Of(dest.Value);
                 Cell here = Cell.Of(corps.Anchor);
@@ -60,6 +60,14 @@ namespace Game.Battle.Model.Systems
                 corps.MovedThisTick = !before.Equals(corps.Anchor);
             }
             foreach (var corps in ctx.Corps) PlaceUnits(ctx, corps);
+        }
+
+        /// <summary>철벽 등 움직이지 않는 상태 (R-76). 퇴각은 막지 않는다.</summary>
+        private static bool Immobile(CorpsState corps)
+        {
+            if (corps.Status == CorpsStatus.Retreating) return false;
+            foreach (var st in corps.Statuses) if (st.Immobile) return true;
+            return false;
         }
 
         /// <summary>강행·퇴각은 멈추지 않는다. 근접 소부대가 있으면 접전에 들면, 원거리만 남은 군단은 사거리에 들면 멈춘다.</summary>
@@ -231,6 +239,7 @@ namespace Game.Battle.Model.Systems
         private readonly List<DamageModifier> _mods = new List<DamageModifier>();
         private readonly AttackContext _attack = new AttackContext();
         private readonly List<CorpsState> _contacts = new List<CorpsState>();
+        private readonly List<CorpsState> _focus = new List<CorpsState>();
 
         public CombatSystem(IReadOnlyList<IDamageModifierSource> sources) { _sources = sources; }
 
@@ -258,7 +267,17 @@ namespace Game.Battle.Model.Systems
                 {
                     if (!u.Alive || u.Confused) continue;
                     Fix reach = u.Troop.AttackRange + c.ContactRadius;
-                    if (!Nearest(ctx, a, u.Position, reach, null, u.Troop.HasTag(Tags.Ranged), out var dc, out var v, u))
+                    // 집중 사격 (R-76): 원거리 소부대는 닿으면 정한 적 군단부터
+                    var focus = u.Troop.HasTag(Tags.Ranged) ? a.FindStatus(StatusIds.FocusFire) : null;
+                    CorpsState dc = null;
+                    SubUnitState v = null;
+                    bool found = false;
+                    if (focus != null)
+                    {
+                        var ft = ctx.FindCorps(focus.SourceCorpsId);
+                        if (ft != null && ft.InBattle) { _focus.Clear(); _focus.Add(ft); found = Nearest(ctx, a, u.Position, reach, _focus, true, out dc, out v); }
+                    }
+                    if (!found && !Nearest(ctx, a, u.Position, reach, null, u.Troop.HasTag(Tags.Ranged), out dc, out v, u))
                     {
                         if (!u.Troop.HasTag(Tags.Melee) || _contacts.Count == 0) continue;
                         Nearest(ctx, a, u.Position, null, _contacts, false, out dc, out v);
@@ -447,6 +466,7 @@ namespace Game.Battle.Model.Systems
                     loss = loss * TagEffects.MoraleLossMultiplier(c, corps); // 정예 등 (R-58)
                     loss = loss * TraitEffects.MoraleLossMultiplier(ctx, corps); // 군기·불굴 등 특성 (R-67)
                     loss = loss * FormationStatEffects.MoraleLossMultiplier(ctx, corps); // 진형 응집력 (R-72)
+                    foreach (var st in corps.Statuses) if (st.MoraleLossPct != Fix.Zero) loss = loss * Fix.Max(Fix.Zero, Fix.Hundred + st.MoraleLossPct) / Fix.Hundred; // 철벽 (R-76)
                     m -= loss;
                 }
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;
