@@ -37,6 +37,8 @@ namespace Game.Campaign
         public int PracticeCount { get; set; }
         /// <summary>본 처음 안내 id (R-62). 세이브에 남아 서버·다른 기기에서도 다시 나오지 않는다.</summary>
         public List<string> SeenGuides { get; set; } = new List<string>();
+        /// <summary>전체 난이도 설정 (ai.json settingShift의 id, R-75). 없으면 보통.</summary>
+        public string Difficulty { get; set; } = "normal";
         /// <summary>배너 광고 제거 (R-64): 영구 여부, 기간제 끝나는 시각 (unix 초, 0 = 없음).</summary>
         public bool AdFreeForever { get; set; }
         public long AdFreeUntilUnixSeconds { get; set; }

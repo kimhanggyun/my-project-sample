@@ -275,7 +275,7 @@ namespace Game.Flow
                     Role = e.Role,
                     Controller = Controllers.Ai,
                     AiStance = e.Ai,
-                    AiDifficulty = e.Difficulty,
+                    AiDifficulty = _defs.Ai.Shift(e.Difficulty, state.Difficulty), // 전체 난이도 설정 (R-75)
                     General = GeneralSnapshot.From(gd),
                     Formation = e.Formation,
                     Supply = e.Supply,

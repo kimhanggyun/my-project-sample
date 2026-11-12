@@ -81,6 +81,19 @@ namespace Game.Unity.Screens
                 }
             }
 
+            // 전체 난이도 (ai.md 7장, R-75): 스텝 난이도에서 한 칸 쉽게·어렵게. 세이브에 남아 서버도 같은 난이도로 확인한다
+            var difficulty = Ui.Card(body, "Difficulty");
+            Ui.Label(difficulty, T("ui.settings.difficulty"));
+            var drow = Ui.Row(difficulty, "Levels", 90, 8);
+            string current = Ctx.State.Difficulty ?? "normal";
+            foreach (var id in Ctx.Defs.Ai.SettingShift.Keys)
+            {
+                string pick = id;
+                Ui.Button(drow, T("ui.difficulty." + id), () => { Ctx.Do(Game.Flow.PlayerActionRunner.SetDifficulty(pick)); App.Show(new SettingsScreen()); },
+                    90, id == current ? Palette.ButtonActive : (Color?)null, 28);
+            }
+            Ui.Label(difficulty, T("ui.settings.difficultyNote." + current), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+
             var services = Ui.Card(body, "Services");
             Ui.Label(services, T("ui.settings.services"));
             foreach (var kv in Ctx.ServiceChoices) Ui.Label(services, kv.Key + ": " + kv.Value, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
