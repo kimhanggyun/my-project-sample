@@ -50,6 +50,8 @@ namespace Game.Battle.Model.Commands
         public const string DelegateFlag = "delegate";
         /// <summary>예약 고치기 (battle.md 4.3.5, R-70): Mode "remove" = Index번 예약 취소, "move" = Index번 예약의 지점을 (X, Y)로.</summary>
         public const string EditQueue = "editQueue";
+        /// <summary>전투 중 일기토의 플레이어 쪽 선택 기록 (R-71). Mode = 행동 id를 쉼표로 이은 것 (모자란 라운드는 AI).</summary>
+        public const string DuelChoices = "duelChoices";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -90,7 +92,8 @@ namespace Game.Battle.Model.Commands
             .Register(new ChangeFormationHandler())
             .Register(new Skills.UseSkillHandler())
             .Register(new DelegateHandler())
-            .Register(new EditQueueHandler());
+            .Register(new EditQueueHandler())
+            .Register(new Contests.DuelChoicesHandler());
     }
 
     internal sealed class EditQueueHandler : ICommandHandler

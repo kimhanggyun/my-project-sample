@@ -59,7 +59,9 @@ namespace Game.Battle.Model.Skills
             .Register(new FireAllowedByWeather())
             .Register(new OnConcealingTerrain())
             .Register(new NotEngaged())
-            .Register(new CasterHasTag());
+            .Register(new CasterHasTag())
+            .Register(new Contests.ChallengeEffect())
+            .Register(new Contests.TargetCanDuel());
     }
 
     /// <summary>전조가 끝나면 나타날 효과.</summary>

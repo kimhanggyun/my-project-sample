@@ -74,6 +74,9 @@ namespace Game.Flow
 
     public sealed class ResumedBattle
     {
+        /// <summary>지금 돌고 있는 전투를 화면만 다시 열 때 (전투 중 일기토 화면에서 돌아올 때).</summary>
+        public static ResumedBattle Of(SortiePlan plan, BattleSimulation sim) => new ResumedBattle { Plan = plan, Simulation = sim };
+
         public SortiePlan Plan { get; internal set; }
         /// <summary>멈춘 틱까지 돌려 둔 전투. 이어서 Step하면 된다.</summary>
         public BattleSimulation Simulation { get; internal set; }

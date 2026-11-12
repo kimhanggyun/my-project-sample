@@ -28,7 +28,9 @@ namespace Game.Unity.Screens
 
         private readonly SortiePlan _plan;
         private readonly int _index;
-        private ContestPlay _play;
+        private IContestPlay _play;
+        /// <summary>전투 중 일기토 (R-71): 끝나면 부를 것 (전투로 돌아감). 전투 직전 대결이면 null.</summary>
+        private readonly Action _onDone;
         private Phase _phase;
         private float _left;
         private string _pending;
@@ -53,10 +55,12 @@ namespace Game.Unity.Screens
         private sealed class Tween { public float Start, Duration; public Action<float> Step; public Action Done; }
 
         public ContestScreen(SortiePlan plan, int index) { _plan = plan; _index = index; }
+        /// <summary>전투 중 일기토: 한 판을 마치면 onDone (선택 기록을 전투에 넣고 돌아간다).</summary>
+        public ContestScreen(IContestPlay play, Action onDone) { _play = play; _onDone = onDone; }
 
         public override void Build()
         {
-            _play = new ContestPlay(_plan.Setup, _index);
+            if (_play == null) _play = new ContestPlay(_plan.Setup, _index);
             _debate = _play.Def.Id == "debate";
             Ui.Column(Root, 10, 20);
             Ui.Size(Ui.Label(Root, T("ui.contest." + _play.Def.Id), 52, TextAnchor.MiddleCenter), 70);
@@ -74,7 +78,7 @@ namespace Game.Unity.Screens
 
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             _autoButton = Ui.Button(row, T("ui.contest.auto"), () => { _play.AutoFinish(); ShowOver(); });
-            _nextButton = Ui.Button(row, T("ui.contest.next"), Next, color: Palette.ButtonActive);
+            _nextButton = Ui.Button(row, T(_onDone != null ? "ui.duel.backToBattle" : "ui.contest.next"), Next, color: Palette.ButtonActive);
             BeginChoosing();
         }
 
@@ -85,7 +89,7 @@ namespace Game.Unity.Screens
             var hud = Ui.Row(Root, "Hud", 170, 10);
             var left = Ui.Card(hud, "A", 12, 4);
             Ui.Size(left, flexibleWidth: 1);
-            _nameA = Ui.Label(left, Ui.Colored(Ctx.GeneralName(GeneralOf(_play.Setup.CorpsA)), Palette.Ally), 30);
+            _nameA = Ui.Label(left, Ui.Colored(Ctx.GeneralName(_play.GeneralA), Palette.Ally), 30);
             _hpA = Gauge(left, Palette.Good, 30, false);
             _chA = Gauge(left, new Color(0.98f, 0.8f, 0.25f), 16, false);
             _valuesA = Ui.Label(left, "", 22, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -100,7 +104,7 @@ namespace Game.Unity.Screens
 
             var right = Ui.Card(hud, "B", 12, 4);
             Ui.Size(right, flexibleWidth: 1);
-            _nameB = Ui.Label(right, Ui.Colored(Ctx.GeneralName(GeneralOf(_play.Setup.CorpsB)), Palette.Enemy), 30, TextAnchor.MiddleRight);
+            _nameB = Ui.Label(right, Ui.Colored(Ctx.GeneralName(_play.GeneralB), Palette.Enemy), 30, TextAnchor.MiddleRight);
             _hpB = Gauge(right, Palette.Good, 30, true);
             _chB = Gauge(right, new Color(0.98f, 0.8f, 0.25f), 16, true);
             _valuesB = Ui.Label(right, "", 22, TextAnchor.MiddleRight, Palette.TextDim);
@@ -417,7 +421,7 @@ namespace Game.Unity.Screens
         {
             var before = _play.Rounds();
             bool timeout = _pending == null;
-            if (timeout || !_play.Choose(_pending)) _play.ChooseRandom(_plan.Setup.Seed);
+            if (timeout || !_play.Choose(_pending)) _play.ChooseRandom(_play.Seed);
             var rounds = _play.Rounds();
             _phase = Phase.Reveal;
             _left = RevealSeconds;
@@ -478,6 +482,7 @@ namespace Game.Unity.Screens
         private void Next()
         {
             if (!_play.IsOver) return;
+            if (_onDone != null) { _onDone(); return; }
             if (_index + 1 < _plan.Setup.Contests.Count) App.Show(new ContestScreen(_plan, _index + 1));
             else App.Show(new BattleScreen(_plan));
         }
@@ -504,10 +509,5 @@ namespace Game.Unity.Screens
 
         private string ActionName(string id) => T(_play.Def.Action(id).NameKey);
 
-        private string GeneralOf(string corpsId)
-        {
-            foreach (var c in _plan.Setup.Corps) if (c.Id == corpsId) return c.General?.Id;
-            return null;
-        }
     }
 }

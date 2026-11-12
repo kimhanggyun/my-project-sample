@@ -113,7 +113,11 @@ namespace Game.Unity.Screens
 
         public BattleScreen(SortiePlan plan) { _plan = plan; }
         /// <param name="autoFinish">true면 모든 아군 군단을 위임하고 끝까지 돌린다 ([자동으로 끝내기]).</param>
-        public BattleScreen(ResumedBattle resumed, bool autoFinish = false) { _plan = resumed.Plan; _resumedSim = resumed.Simulation; _autoFinish = autoFinish; }
+        /// <param name="startPaused">이어 할 때 멈춘 채로 시작 (일기토 화면에서 돌아올 때는 false).</param>
+        public BattleScreen(ResumedBattle resumed, bool autoFinish = false, bool startPaused = true) { _plan = resumed.Plan; _resumedSim = resumed.Simulation; _autoFinish = autoFinish; _startPaused = startPaused; }
+        private readonly bool _startPaused = true;
+        // 전투 중 일기토 (R-71): 내가 건 일기토를 상대가 받으면 대결 화면을 연다
+        private Game.Battle.Model.Contests.DuelState _duelToPlay;
         public BattleScreen(ReplayPlayback playback) { _playback = playback; }
 
         // 녹화 재생 보기 바꾸기 (replay.md 3장): 같은 전투를 이어서, 시점(아군·적군)·안개만 바꿔 다시 그린다
@@ -148,7 +152,7 @@ namespace Game.Unity.Screens
                 Ctx.Save();
                 Ctx.SuspendBattle(_plan, _sim);
             }
-            if (_resumedSim != null && !_autoFinish) _paused = true; // 이어 할 때는 멈춘 채로 시작
+            if (_resumedSim != null && !_autoFinish && _startPaused) _paused = true; // 이어 할 때는 멈춘 채로 시작
             var ctx = _sim.Context;
             _ctl = new BattleControl(_sim, _viewTeam ?? StoryFlow.PlayerTeam) { RevealAll = _revealAll, ConfirmPointSkills = true }; // 지점 스킬은 범위를 보고 확인
             _ctl.Refresh();
@@ -351,6 +355,7 @@ namespace Game.Unity.Screens
             if (steps > 0 || _dirty) Refresh();
             UpdateFieldView();
             if (_sim.IsOver) { Finish(); return; }
+            if (_duelToPlay != null) { OpenDuel(); return; }
             if (!IsReplay && (_suspendTimer += deltaTime) >= SuspendEverySeconds)
             {
                 _suspendTimer = 0f;
@@ -675,6 +680,26 @@ namespace Game.Unity.Screens
             _dirty = true;
         }
 
+        /// <summary>
+        /// 전투 중 일기토 화면 (R-71): 전투는 멈춘 채, 대결을 마치면 선택 기록을 명령으로 넣고 같은 전투로 돌아온다.
+        /// 기한 안에 넣으므로 결과는 화면이 보여 준 그대로다 (기록·리플레이·서버 검증도 같은 명령).
+        /// </summary>
+        private void OpenDuel()
+        {
+            var duel = _duelToPlay;
+            _duelToPlay = null;
+            if (duel.Result != null) return;
+            var sim = _sim;
+            var plan = _plan;
+            Suspend();
+            var play = new BattleDuelPlay(sim, duel);
+            App.Show(new ContestScreen(play, () =>
+            {
+                sim.Issue(play.Command());
+                App.Show(new BattleScreen(ResumedBattle.Of(plan, sim), startPaused: false));
+            }));
+        }
+
         private void ToggleMiniMap()
         {
             _miniMap.SetVisible(!_miniMap.Visible);
@@ -756,6 +781,8 @@ namespace Game.Unity.Screens
                     _promptText.text = T("ui.cmd.coordinatePrompt", GeneralOf(corps));
                     _prompt.gameObject.SetActive(true);
                 }
+                if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelStarted && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
+                    _duelToPlay = Game.Battle.Model.Contests.InBattleDuels.PendingFor(_sim.Context, corps.Id);
                 if (e.Kind == EventKinds.SkillUsed && corps != null && _ctl.Sees(corps))
                     _field.Effects.SkillUsed(_field.ToWorld(corps.Anchor), corps.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
                 if (e.Kind == EventKinds.Dialogue) { Add(string.IsNullOrEmpty(who) ? T(e.Data) : who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; } // 말한 군단이 없으면(지문) 이름 없이

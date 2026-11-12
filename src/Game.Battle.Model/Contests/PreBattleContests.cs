@@ -37,7 +37,7 @@ namespace Game.Battle.Model.Contests
             return results;
         }
 
-        private static void Apply(BattleContext ctx, ContestDef def, ContestResult r, CorpsState ca, CorpsState cb, Dictionary<string, string> injuries)
+        internal static void Apply(BattleContext ctx, ContestDef def, ContestResult r, CorpsState ca, CorpsState cb, Dictionary<string, string> injuries)
         {
             bool injuryOn = ctx.IsEnabled(GeneralInjuryFlag);
             if (!def.BattleEffects.TryGetValue(r.End, out var fx)) fx = new JObject();

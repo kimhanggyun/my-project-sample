@@ -301,7 +301,7 @@ namespace Game.Battle.Model.Systems
             var c = ctx.Combat;
             foreach (var e in ctx.Corps)
             {
-                if (e.Team == a.Team || !e.InBattle || !ctx.IsVisibleTo(a.Team, e)) continue;
+                if (e.Team == a.Team || !e.InBattle || !ctx.IsVisibleTo(a.Team, e) || a.DuelWith == e.Id) continue; // 일기토 상대와는 싸우지 않는다 (R-71)
                 bool touch = false;
                 foreach (var u in a.Units)
                 {
@@ -327,7 +327,7 @@ namespace Game.Battle.Model.Systems
             Fix best = Fix.Zero;
             foreach (var e in ctx.Corps)
             {
-                if (e.Team == self.Team || !e.InBattle || !ctx.IsVisibleTo(self.Team, e)) continue;
+                if (e.Team == self.Team || !e.InBattle || !ctx.IsVisibleTo(self.Team, e) || self.DuelWith == e.Id) continue;
                 if (only != null && !only.Contains(e)) continue;
                 foreach (var v in e.Units)
                 {
