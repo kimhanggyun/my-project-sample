@@ -160,12 +160,30 @@ namespace Game.Data.Defs
         public Fix CounterFormationChance { get; internal set; }
         /// <summary>안 보이는 숨는 지형을 간파로 살피는가.</summary>
         public bool Scouting { get; internal set; }
+        /// <summary>사령관 협공 (R-75): 앞선 군단이 뒤처진 같은 편을 기다렸다 함께 치고, 붙으면 같은 편이 싸우는 적을 함께 친다.</summary>
+        public bool Coordinate { get; internal set; }
     }
 
     /// <summary>AI 수치 (ai.json).</summary>
     public sealed class AiRules
     {
         public IReadOnlyDictionary<string, AiDifficultyDef> Difficulties { get; internal set; }
+        /// <summary>난이도 차례 (쉬움 → 어려움). 전체 난이도 설정이 스텝 난이도를 이 차례에서 옮긴다 (R-75).</summary>
+        public IReadOnlyList<string> DifficultyOrder { get; internal set; } = new List<string>();
+        /// <summary>전체 난이도 설정 id → 옮길 칸 수.</summary>
+        public IReadOnlyDictionary<string, int> SettingShift { get; internal set; } = new Dictionary<string, int>();
+        /// <summary>협공: 같은 편보다 이만큼(칸) 넘게 앞서면 기다린다.</summary>
+        public Fix CoordinateGapCells { get; internal set; }
+
+        /// <summary>스텝 난이도에 전체 난이도 설정을 더한다 (차례 안에서, 끝을 넘지 않게). 설정이 없거나 모르면 그대로.</summary>
+        public string Shift(string stepDifficulty, string setting)
+        {
+            if (setting == null || !SettingShift.TryGetValue(setting, out int by) || by == 0) return stepDifficulty;
+            int i = -1;
+            for (int k = 0; k < DifficultyOrder.Count; k++) if (DifficultyOrder[k] == stepDifficulty) { i = k; break; }
+            if (i < 0) return stepDifficulty;
+            return DifficultyOrder[System.Math.Max(0, System.Math.Min(DifficultyOrder.Count - 1, i + by))];
+        }
         public Fix RallyMoraleDrop { get; internal set; }
         public Fix RevealSearchCells { get; internal set; }
         public IReadOnlyDictionary<string, int> ContestBaseWeights { get; internal set; }
@@ -193,6 +211,13 @@ namespace Game.Data.Defs
             return DelegationLevels[DelegationLevels.Count - 1].difficulty;
         }
 
+        private static Dictionary<string, int> ReadShift(JObject o)
+        {
+            var map = new Dictionary<string, int>();
+            if (o["settingShift"] is JObject sh) foreach (var p in sh.Properties()) if (!p.Name.StartsWith("_")) map[p.Name] = p.Value.Value<int>();
+            return map;
+        }
+
         internal static AiRules From(JObject o)
         {
             const string c = "ai";
@@ -208,6 +233,7 @@ namespace Game.Data.Defs
                     SkillUseChance = JsonUtil.RequireFix(d, "skillUseChance", ctx),
                     CounterFormationChance = JsonUtil.RequireFix(d, "counterFormationChance", ctx),
                     Scouting = d.Value<bool?>("scouting") ?? false,
+                    Coordinate = d.Value<bool?>("coordinate") ?? false,
                 };
             }
             var sk = JsonUtil.RequireObject(o, "skills", c);
@@ -228,6 +254,9 @@ namespace Game.Data.Defs
             levels.Sort((a, b) => b.Item1.CompareTo(a.Item1));
             return new AiRules
             {
+                DifficultyOrder = JsonUtil.StringList(o, "difficultyOrder"),
+                SettingShift = ReadShift(o),
+                CoordinateGapCells = JsonUtil.FixOr(o, "coordinateGapCells", Fix.FromInt(4), c),
                 DelegationStats = JsonUtil.StringList(del, "stats"),
                 DelegationLevels = levels,
                 DelegationStance = JsonUtil.RequireString(del, "stance", c + ".delegation"),

@@ -59,6 +59,12 @@ namespace Game.Flow
                 new Game.Foundation.Time.ManualTimeProvider(DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, a.DoneAtUnixSeconds))));
             Register(new Handler(ActionKinds.PrisonerRecruit, (s, a) =>
                 a.GeneralId != null && Captivity(a).TryRecruit(s, a.GeneralId, new Game.Foundation.Random.SeededRandom(a.Seed)) != Game.Campaign.Captivity.RecruitOutcome.NotAllowed));
+            Register(new Handler(ActionKinds.SetDifficulty, (s, a) =>
+            {
+                if (a.Situation == null || !defs.Ai.SettingShift.ContainsKey(a.Situation) || s.Difficulty == a.Situation) return false;
+                s.Difficulty = a.Situation;
+                return true;
+            }));
             Register(new Handler(ActionKinds.PrisonerRelease, (s, a) =>
             {
                 if (a.GeneralId == null || s.FindPrisoner(a.GeneralId) == null) return false;
@@ -149,6 +155,7 @@ namespace Game.Flow
         public static PlayerAction CreateUnit(string troopType) => new PlayerAction { Kind = ActionKinds.UnitCreate, TroopType = troopType };
         public static PlayerAction RecruitPrisoner(string generalId, ulong seed) => new PlayerAction { Kind = ActionKinds.PrisonerRecruit, GeneralId = generalId, Seed = seed };
         public static PlayerAction ReleasePrisoner(string generalId) => new PlayerAction { Kind = ActionKinds.PrisonerRelease, GeneralId = generalId };
+        public static PlayerAction SetDifficulty(string id) => new PlayerAction { Kind = ActionKinds.SetDifficulty, Situation = id };
         public static PlayerAction Purchase(string productId, string receipt) => new PlayerAction { Kind = ActionKinds.StorePurchase, ProductId = productId, Receipt = receipt };
         public static PlayerAction SeeGuide(string guideId) => new PlayerAction { Kind = ActionKinds.GuideSeen, GuideId = guideId };
         public static PlayerAction ResetGuides() => new PlayerAction { Kind = ActionKinds.GuideReset };

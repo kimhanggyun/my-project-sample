@@ -524,6 +524,8 @@ namespace Game.Online
         public const string PrisonerRecruit = "prisoner.recruit";
         /// <summary>잡은 적 장수 해방 (GeneralId, R-66): 해방 보상.</summary>
         public const string PrisonerRelease = "prisoner.release";
+        /// <summary>전체 난이도 설정 (R-75). Situation = 설정 id.</summary>
+        public const string SetDifficulty = "settings.difficulty";
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>

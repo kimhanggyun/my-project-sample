@@ -1,5 +1,17 @@
 {
   "_comment": "AI 수치 (docs/design/content/ai.md). 난이도는 판단의 질만 바꾼다 (능력치를 몰래 올리지 않음). 수치는 예시.",
+  "difficultyOrder": [
+    "easy",
+    "normal",
+    "hard"
+  ],
+  "settingShift": {
+    "_comment": "전체 난이도 설정(설정 화면) → 스텝 난이도를 이 차례에서 옮길 칸 수 (ai.md 7장, R-75)",
+    "easy": -1,
+    "normal": 0,
+    "hard": 1
+  },
+  "coordinateGapCells": 4,
   "difficulties": {
     "easy": {
       "thinkIntervalMultiplier": 2,
@@ -12,6 +24,13 @@
       "skillUseChance": 0.8,
       "counterFormationChance": 0.5,
       "scouting": true
+    },
+    "hard": {
+      "thinkIntervalMultiplier": 1,
+      "skillUseChance": 1,
+      "counterFormationChance": 0.9,
+      "scouting": true,
+      "coordinate": true
     }
   },
   "skills": {
