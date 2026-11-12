@@ -32,14 +32,23 @@ namespace Game.Unity.Battle3D
         private static readonly Color HitColor = new Color(1f, 0.95f, 0.85f);
 
         private readonly BattleControl _ctl;
+        private readonly Light _sun;
+        private readonly Camera _camera;
+        private string _atmosphereKey;
         private readonly GameObject _root;
         private readonly FieldTexture _texture;
         private readonly long _troopsPerSoldier;
         private readonly float _depth;
         private readonly Mesh _cube;
         private readonly List<Object> _owned = new List<Object>();
-        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4;
-        private static readonly Color[] SoldierColors = { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor };
+        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4, AllyShaken = 5, EnemyShaken = 6, HiddenTone = 7;
+        // 흔들리는 군단(사기 바닥 가까이)은 바랜 팀 색, 숨은 아군(복병 준비·은신)은 어두운 색 (D18)
+        private static readonly Color[] SoldierColors = { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor,
+            new Color(0.55f, 0.62f, 0.80f), new Color(0.78f, 0.55f, 0.52f), new Color(0.22f, 0.28f, 0.22f) };
+        // 버프·디버프 테두리 (D18): 군단 발밑 원, 버프 = 금색, 디버프(혼란·도발) = 보라
+        private readonly Dictionary<CorpsState, LineRenderer> _statusRings = new Dictionary<CorpsState, LineRenderer>();
+        private static readonly Color BuffColor = new Color(1f, 0.82f, 0.30f);
+        private static readonly Color DebuffColor = new Color(0.70f, 0.40f, 0.95f);
         private readonly ArtCatalog _art;
         /// <summary>(병종, 색) → 병사 묶음. 모델이 없는 병종은 색별 상자 묶음을 같이 쓴다.</summary>
         private readonly Dictionary<(string troop, int color), InstanceBatch> _soldierBatches = new Dictionary<(string, int), InstanceBatch>();
@@ -115,6 +124,8 @@ namespace Game.Unity.Battle3D
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
             light.intensity = 1.1f;
+            _sun = light;
+            _camera = cam;
 
             // 바닥
             _texture = new FieldTexture(ctx, ctl.Team) { RevealAll = ctl.RevealAll };
@@ -450,6 +461,38 @@ namespace Game.Unity.Battle3D
                 }
             }
 
+            ApplyAtmosphere(ctx);
+
+            // 버프·디버프 테두리 (D18)
+            foreach (var c in ctx.Corps)
+            {
+                bool buff = false, debuff = false;
+                foreach (var st in c.Statuses)
+                {
+                    if (st.AttackPp > Fix.Zero || st.DefensePp > Fix.Zero || st.TargetCorpsPp > Fix.Zero) buff = true;
+                    if (st.Id == StatusIds.Taunted || st.AttackPp < Fix.Zero) debuff = true;
+                }
+                foreach (var u in c.Units) if (u.Alive && u.Confused) { debuff = true; break; }
+                bool show = c.InBattle && _ctl.Sees(c) && (buff || debuff);
+                if (!_statusRings.TryGetValue(c, out var line))
+                {
+                    if (!show) continue;
+                    line = _statusRings[c] = Line("Status " + c.Id, BuffColor, 0.1f, true);
+                    line.positionCount = 32;
+                }
+                line.gameObject.SetActive(show);
+                if (!show) continue;
+                line.sharedMaterial = LineMaterial(debuff ? DebuffColor : BuffColor);
+                var center = ToWorld(c.Anchor);
+                const float r = 2.4f;
+                for (int i = 0; i < 32; i++)
+                {
+                    float a = i * Mathf.PI * 2f / 32;
+                    float x = center.x + Mathf.Cos(a) * r, z = center.z + Mathf.Sin(a) * r;
+                    line.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.06f, z));
+                }
+            }
+
             foreach (var (state, ringLine, pillar) in _objects)
             {
                 var mat = state.Owner == null ? _objNone : state.Owner == _ctl.Team ? _objAlly : _objEnemy;
@@ -475,6 +518,43 @@ namespace Game.Unity.Battle3D
                     line.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.14f, z));
                 }
             }
+        }
+
+        /// <summary>
+        /// 시간대·날씨 빛 (D19): 낮 = 흰 햇빛, 저녁 = 주황 낮은 해, 밤 = 푸르고 어둡게. 비 = 어둡게 + 옅은 안개, 안개 = 짙은 안개,
+        /// 무더위 = 노란 기운, 혹한 = 푸른 기운. 바뀔 때만 다시 정한다 (이벤트로 날씨가 바뀌면 따라간다).
+        /// </summary>
+        private void ApplyAtmosphere(BattleContext ctx)
+        {
+            var env = ctx.Environment;
+            string weather = env.EffectiveWeather.Id ?? "clear", time = env.EffectiveTime.Id ?? "day";
+            string key = weather + "|" + time;
+            if (key == _atmosphereKey) return;
+            _atmosphereKey = key;
+            Color sun = Color.white, sky = new Color(0.08f, 0.09f, 0.10f), ambient = new Color(0.55f, 0.55f, 0.58f);
+            float intensity = 1.1f, pitch = 55f;
+            if (time == "dusk") { sun = new Color(1f, 0.72f, 0.45f); intensity = 0.8f; pitch = 18f; sky = new Color(0.20f, 0.12f, 0.10f); ambient = new Color(0.45f, 0.36f, 0.32f); }
+            if (time == "night") { sun = new Color(0.55f, 0.65f, 0.95f); intensity = 0.35f; pitch = 40f; sky = new Color(0.02f, 0.03f, 0.06f); ambient = new Color(0.16f, 0.18f, 0.26f); }
+            bool fog = false;
+            Color fogColor = sky;
+            float density = 0f;
+            switch (weather)
+            {
+                case "rain": intensity *= 0.75f; ambient *= 0.85f; fog = true; density = 0.012f; fogColor = new Color(0.35f, 0.38f, 0.42f); break;
+                case "fog": fog = true; density = 0.035f; fogColor = new Color(0.62f, 0.64f, 0.66f); break;
+                case "heat": sun = Color.Lerp(sun, new Color(1f, 0.85f, 0.55f), 0.5f); ambient = Color.Lerp(ambient, new Color(0.65f, 0.55f, 0.40f), 0.4f); break;
+                case "cold": sun = Color.Lerp(sun, new Color(0.75f, 0.85f, 1f), 0.5f); ambient = Color.Lerp(ambient, new Color(0.50f, 0.58f, 0.70f), 0.4f); break;
+                case "gale": intensity *= 0.9f; break;
+            }
+            _sun.color = sun;
+            _sun.intensity = intensity;
+            _sun.transform.rotation = Quaternion.Euler(pitch, -30f, 0f);
+            _camera.backgroundColor = fog ? fogColor : sky;
+            RenderSettings.ambientLight = ambient;
+            RenderSettings.fog = fog;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = fogColor;
+            RenderSettings.fogDensity = density;
         }
 
         private bool Place(Transform t, Vec at, float scale)
@@ -513,6 +593,11 @@ namespace Game.Unity.Battle3D
             {
                 if (!c.InBattle || !_ctl.Sees(c)) continue;
                 int teamColor = c == _ctl.Selected ? Selected : c.Team == _ctl.Team ? Ally : Enemy;
+                // 몸 상태 (D18): 사기가 퇴각 기준 + 15 밑이면 바랜 색·떨림, 숨은 아군은 어둡고 성기게
+                bool shaken = c.Temperament != null && c.Morale <= c.Temperament.RetreatMorale + Fix.FromInt(15);
+                bool hidden = c.Team == _ctl.Team && (c.Hidden || c.HasStatus(StatusIds.AmbushSetup));
+                if (c != _ctl.Selected && shaken) teamColor = c.Team == _ctl.Team ? AllyShaken : EnemyShaken;
+                if (hidden) teamColor = HiddenTone;
                 var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
                 var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
                 foreach (var u in c.Units)
@@ -561,6 +646,9 @@ namespace Game.Unity.Battle3D
                         float phase = i * 1.7f + u.GetHashCode() % 7;
                         p += lunge * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
                         float bob = walking ? Mathf.Abs(Mathf.Sin(clock * 12f + phase)) * 0.06f : 0f;
+                        if (hidden && i % 2 == 1) continue; // 숨은 군단: 반만 그려 흐릿하게
+                        if (u.Confused) p += new Vector3(Mathf.Sin(clock * 23f + phase) * 0.07f, 0f, Mathf.Cos(clock * 19f + phase * 1.3f) * 0.07f); // 혼란: 갈팡질팡
+                        else if (shaken) p += new Vector3(Mathf.Sin(clock * 31f + phase) * 0.025f, 0f, 0f); // 사기 바닥: 떨림
                         // 맞고 있는 군단: 몇 명씩 번갈아 깜빡인다
                         bool flash = c.LostThisTick > 0 && (i + _flashFrame / 3) % 6 == 0;
                         p.y = GroundHeight(p.x, p.z) + bob + (flash && !isCube ? 0.08f : 0f);
@@ -587,6 +675,7 @@ namespace Game.Unity.Battle3D
 
         public void Destroy()
         {
+            RenderSettings.fog = false; // 날씨 안개는 전장에서만
             Object.Destroy(_root);
             _texture.Destroy();
             _art.Destroy();
@@ -631,6 +720,12 @@ namespace Game.Unity.Battle3D
             Part(flag, cylinder, pole, new Vector3(0f, 0.9f, 0f), new Vector3(0.06f, 0.9f, 0.06f));
             Part(flag, _cube, cloth, new Vector3(0.35f, 1.55f, 0f), new Vector3(0.7f, 0.45f, 0.04f));
             return flag;
+        }
+
+        private Material LineMaterial(Color color)
+        {
+            if (!_lineMats.TryGetValue(color, out var mat)) _lineMats[color] = mat = Own(NewMaterial(color));
+            return mat;
         }
 
         private LineRenderer Line(string name, Color color, float width, bool loop)
