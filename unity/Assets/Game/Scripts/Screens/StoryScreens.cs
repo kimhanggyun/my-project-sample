@@ -11,6 +11,16 @@ namespace Game.Unity.Screens
     /// <summary>스토리 탭: 스텝 목록 (차례 해금) + 포로가 있는 수용소의 구출 전투.</summary>
     public sealed class StoryTabView : ITabView
     {
+        /// <summary>목록 한 줄: 갇힌 장수 수와 가장 짧은 남은 기한 (E23).</summary>
+        private static string RescueLine(Game.Unity.Boot.GameContext ctx, string camp)
+        {
+            var held = RescueInfo.Held(ctx, camp);
+            if (held.Count == 0) return ctx.T("ui.rescue.none");
+            long soonest = long.MaxValue;
+            foreach (var g in held) soonest = System.Math.Min(soonest, g.RescueDeadlineUnixSeconds);
+            return ctx.T("ui.rescue.listLine", held.Count, RescueInfo.Left(ctx, soonest));
+        }
+
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
@@ -38,9 +48,28 @@ namespace Game.Unity.Screens
                              : unlocked ? ctx.T("ui.story.open")
                              : Ui.Colored(ctx.T("ui.story.locked"), Palette.TextDim);
                 string label = (s.rescue ? "[" + ctx.T("ui.story.rescue") + "] " : "") + ctx.T(step.NameKey) + "   " + state;
+                if (s.rescue && step.RescueCamp != null) label += "\n" + Ui.Colored(RescueLine(ctx, step.RescueCamp), Palette.Bad); // 갇힌 장수·남은 기한 (E23)
                 var b = Ui.Button(list, label, () => app.Show(new StepScreen(s.id)), 112);
                 Ui.SetEnabled(b, unlocked);
             }
+        }
+    }
+
+    /// <summary>구출 (E23): 수용소에 갇힌 우리 장수와 가장 짧은 남은 기한.</summary>
+    internal static class RescueInfo
+    {
+        public static List<Game.Campaign.Roster.GeneralState> Held(Game.Unity.Boot.GameContext ctx, string camp)
+        {
+            var list = new List<Game.Campaign.Roster.GeneralState>();
+            foreach (var g in ctx.State.Generals)
+                if (g.Status == Game.Campaign.Roster.GeneralStatus.Captured && g.CampId == camp) list.Add(g);
+            return list;
+        }
+
+        public static string Left(Game.Unity.Boot.GameContext ctx, long deadline)
+        {
+            long left = System.Math.Max(0, deadline - ctx.Clock.UtcNow.ToUnixTimeSeconds());
+            return ctx.T("ui.rescue.time", left / 3600, left % 3600 / 60);
         }
     }
 
@@ -60,6 +89,20 @@ namespace Game.Unity.Screens
 
             var body = Ui.ScrollList(Root, "Info", 12, 8);
             Ui.Size(body.parent.parent, flexibleHeight: 1);
+
+            // 구출 전투 (E23): 갇힌 장수마다 남은 기한, 승리 조건(수용소 점령)
+            if (step.RescueCamp != null)
+            {
+                var rescue = Ui.Card(body, "Rescue");
+                Ui.Label(rescue, T("ui.rescue.header", T("camp." + step.RescueCamp)));
+                var held = RescueInfo.Held(Ctx, step.RescueCamp);
+                if (held.Count == 0) Ui.Label(rescue, T("ui.rescue.none"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+                foreach (var g in held)
+                    Ui.Label(rescue, T("ui.rescue.held", Ui.Colored(Ctx.GeneralName(g.GeneralId), Palette.Ally), RescueInfo.Left(Ctx, g.RescueDeadlineUnixSeconds)), Ui.FontSmall);
+                foreach (var o in step.Objects)
+                    if (o.Type == "zone" && o.Team == "player")
+                        Ui.Label(rescue, T("ui.rescue.goal", o.Seconds.FloorToLong()), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
+            }
 
             var info = Ui.Card(body, "Conditions");
             Ui.Label(info, T("ui.step.battleType", T("battleType." + step.BattleType)));

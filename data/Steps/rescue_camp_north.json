@@ -8,7 +8,8 @@
   "rescueCamp": "camp_north",
   "defeatConditions": [
     "annihilation",
-    "commander"
+    "commander",
+    "zone"
   ],
   "enemy": [
     {
@@ -43,5 +44,16 @@
       ]
     }
   ],
-  "rewards": {}
+  "rewards": {},
+  "objects": [
+    {
+      "id": "camp_north",
+      "type": "zone",
+      "x": 12,
+      "y": 5,
+      "radius": 3,
+      "team": "player",
+      "seconds": 20
+    }
+  ]
 }
