@@ -71,7 +71,8 @@
         "moveSpeedPct": 25,
         "flankDefensePp": -15,
         "frontDefensePp": -5,
-        "rangedPp": -10
+        "rangedPp": -10,
+        "frontWidthPct": -40
       }
     },
     {
@@ -108,7 +109,8 @@
       "stats": {
         "rangedPp": 10,
         "frontDefensePp": -5,
-        "flankDefensePp": -5
+        "flankDefensePp": -5,
+        "frontWidthPct": 50
       }
     },
     {
@@ -145,7 +147,8 @@
       "stats": {
         "areaDamageTakenPct": -40,
         "moraleLossPct": 15,
-        "frontDefensePp": -5
+        "frontDefensePp": -5,
+        "frontWidthPct": 20
       }
     },
     {
@@ -183,7 +186,8 @@
         "breakthroughPp": 8,
         "moraleLossPct": -10,
         "flankDefensePp": -5,
-        "envelopPp": -5
+        "envelopPp": -5,
+        "frontWidthPct": -10
       }
     },
     {
@@ -219,7 +223,8 @@
       },
       "stats": {
         "envelopPp": 10,
-        "frontDefensePp": -5
+        "frontDefensePp": -5,
+        "frontWidthPct": 30
       }
     },
     {
@@ -258,7 +263,8 @@
         "moveSpeedPct": 10,
         "flankDefensePp": -10,
         "rearDefensePp": -10,
-        "moraleLossPct": 10
+        "moraleLossPct": 10,
+        "frontWidthPct": -20
       }
     },
     {
@@ -297,7 +303,8 @@
         "rearDefensePp": 20,
         "breakthroughPp": -8,
         "moveSpeedPct": -25,
-        "moraleLossPct": -10
+        "moraleLossPct": -10,
+        "frontWidthPct": -20
       }
     },
     {
@@ -334,7 +341,8 @@
       "stats": {
         "rangedPp": 8,
         "envelopPp": 5,
-        "frontDefensePp": -5
+        "frontDefensePp": -5,
+        "frontWidthPct": 10
       }
     },
     {
@@ -370,7 +378,8 @@
       },
       "stats": {
         "breakthroughPp": 5,
-        "moraleLossPct": -5
+        "moraleLossPct": -5,
+        "frontWidthPct": 10
       }
     }
   ],

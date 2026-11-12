@@ -20,6 +20,7 @@
       "default": true
     },
     "formationStats": { "default": true },
+    "frontLine": { "default": true },
     "flankBonus": {
       "default": true
     },

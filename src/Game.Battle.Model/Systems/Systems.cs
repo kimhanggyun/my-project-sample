@@ -272,7 +272,8 @@ namespace Game.Battle.Model.Systems
                     if (variance > 0)
                         _mods.Add(new DamageModifier("variance", Fix.FromInt(ctx.Random.NextInt(-variance, variance + 1))));
 
-                    Fix baseDamage = Fix.FromInt(u.Troops) * c.BaseDamagePerTroopPerSecond * c.TickSeconds;
+                    bool rangedShot = u.Troop.HasTag(Tags.Ranged) && !_contacts.Contains(dc); // 접전이 아니면 머리 위로 쏜다
+                    Fix baseDamage = FrontLine.Attackers(ctx, a, u, rangedShot) * c.BaseDamagePerTroopPerSecond * c.TickSeconds; // 전열 (R-73)
                     var result = calculator.Calculate(baseDamage, _mods);
                     v.PendingLoss += result.Final;
                     u.AttackTarget = v;
@@ -286,12 +287,12 @@ namespace Game.Battle.Model.Systems
                 foreach (var u in corps.Units)
                 {
                     if (!u.Alive) { u.PendingLoss = Fix.Zero; continue; }
-                    long lost = u.PendingLoss.FloorToLong();
-                    if (lost <= 0) continue;
+                    long lost = System.Math.Max(0, u.PendingLoss.FloorToLong());
                     if (lost > u.Troops) lost = u.Troops;
                     u.Troops -= lost;
                     u.PendingLoss = u.Troops == 0 ? Fix.Zero : u.PendingLoss - Fix.FromInt(lost);
                     corps.LostThisTick += lost;
+                    FrontLine.AfterLosses(ctx, corps, u, lost); // 앞줄에서 빼고 뒷줄이 채운다
                 }
         }
 

@@ -82,6 +82,8 @@ namespace Game.Battle.Model.Simulation
         public long Troops { get; internal set; }
         /// <summary>아직 정수 병력으로 떨어지지 않은 누적 피해.</summary>
         public Fix PendingLoss { get; internal set; }
+        /// <summary>앞줄에서 싸울 준비가 된 병력 (R-73 전열). 음수면 아직 정하지 않음 (첫 틱에 한도까지).</summary>
+        public Fix FrontTroops { get; internal set; } = Fix.FromInt(-1);
         public Vec Position { get; internal set; }
         /// <summary>혼란 남은 틱. 혼란 중에는 공격하지 않는다.</summary>
         public long ConfusedTicks { get; internal set; }

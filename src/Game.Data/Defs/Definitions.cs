@@ -88,6 +88,8 @@ namespace Game.Data.Defs
         public Fix AreaDamageTakenPct { get; internal set; }
         /// <summary>손실로 떨어지는 사기 % (응집력: 음수 = 덜 흔들림).</summary>
         public Fix MoraleLossPct { get; internal set; }
+        /// <summary>정면 폭 %: 앞줄에서 함께 싸우는 근접 병력 한도에 더한다 (R-73).</summary>
+        public Fix FrontWidthPct { get; internal set; }
 
         public static FormationStats From(Newtonsoft.Json.Linq.JObject o, string context)
         {
@@ -102,6 +104,7 @@ namespace Game.Data.Defs
             s.MoveSpeedPct = JsonUtil.FixOr(o, "moveSpeedPct", Fix.Zero, context);
             s.AreaDamageTakenPct = JsonUtil.FixOr(o, "areaDamageTakenPct", Fix.Zero, context);
             s.MoraleLossPct = JsonUtil.FixOr(o, "moraleLossPct", Fix.Zero, context);
+            s.FrontWidthPct = JsonUtil.FixOr(o, "frontWidthPct", Fix.Zero, context);
             return s;
         }
     }

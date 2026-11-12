@@ -34,7 +34,7 @@
 
 모두 가산 보정(%p)으로 피해 계산·이동에 들어간다.
 
-- 구현 (2026-11-12, R-72, 스위치 `formationStats`): `formations.json`의 `stats` — 돌파력 `breakthroughPp`, 포위력 `envelopPp`, 원거리 효율 `rangedPp`, 정면·측면·후방 방어 `frontDefensePp`·`flankDefensePp`·`rearDefensePp`, 이동 속도 `moveSpeedPct`, 범위 피해 `areaDamageTakenPct`, 응집력 `moraleLossPct`(손실 사기). 정면 폭은 전열·후열(C12)에서, 전환 시간은 규율(R-56)이 맡는다. 수치는 예시:
+- 구현 (2026-11-12, R-72, 스위치 `formationStats`): `formations.json`의 `stats` — 돌파력 `breakthroughPp`, 포위력 `envelopPp`, 원거리 효율 `rangedPp`, 정면·측면·후방 방어 `frontDefensePp`·`flankDefensePp`·`rearDefensePp`, 이동 속도 `moveSpeedPct`, 범위 피해 `areaDamageTakenPct`, 응집력 `moraleLossPct`(손실 사기). 정면 폭 `frontWidthPct`는 전열 한도에 곱한다 (R-73, battle.md 2.4.1), 전환 시간은 규율(R-56)이 맡는다. 수치는 예시:
 
 | 진형 | 수치 (예) |
 |---|---|

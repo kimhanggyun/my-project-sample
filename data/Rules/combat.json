@@ -117,6 +117,11 @@
     "maxChangeSeconds": 6,
     "reformingDamageTakenPp": 10
   },
+  "frontLine": {
+    "_comment": "전열 (battle.md 2.4.1, R-73): 근접 소부대가 앞줄에서 함께 싸우는 병력 = troopsPerUnit × (100 + 진형 정면 폭 %)/100. 잃으면 앞줄에서 빠지고 뒷줄이 1초에 한도의 refillPctPerSecond%씩 채운다. 수치는 예시",
+    "troopsPerUnit": 4000,
+    "refillPctPerSecond": 25
+  },
   "valor": {
     "_comment": "용맹 (battle.md 2.6, R-56): 무력 위주 + 통솔 일부. 용맹 50이면 기본값, 높을수록 병력 손실로 떨어지는 사기가 적다. 수치는 예시",
     "mightWeight": 0.8,
