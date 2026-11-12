@@ -21,6 +21,7 @@
     },
     "formationStats": { "default": true },
     "frontLine": { "default": true },
+    "unitAutonomy": { "default": true },
     "flankBonus": {
       "default": true
     },

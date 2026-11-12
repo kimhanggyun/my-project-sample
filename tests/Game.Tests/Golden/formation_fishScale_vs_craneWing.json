@@ -7,25 +7,25 @@
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "bcfcfad2f3daf74d",
+  "stateHash": "3418ce9041f2e791",
   "corps": [
     {
       "id": "A",
       "team": "teamA",
       "status": "Active",
       "startTroops": 6000,
-      "remainingTroops": 5386,
-      "losses": 614,
+      "remainingTroops": 5366,
+      "losses": 634,
       "startSupply": 1000000,
-      "remainingSupply": 950648,
-      "finalMorale": "49.8062",
+      "remainingSupply": 950688,
+      "finalMorale": "48.9581",
       "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 550
+          "remaining": 531
         },
         {
           "slot": "center",
@@ -37,7 +37,7 @@
           "slot": "leftWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 911
+          "remaining": 910
         },
         {
           "slot": "rightWing",
@@ -64,11 +64,11 @@
       "team": "teamB",
       "status": "Retreated",
       "startTroops": 6000,
-      "remainingTroops": 4599,
-      "losses": 1401,
+      "remainingTroops": 4532,
+      "losses": 1468,
       "startSupply": 1000000,
-      "remainingSupply": 954228,
-      "finalMorale": "28.5778",
+      "remainingSupply": 954361,
+      "finalMorale": "25.5039",
       "skillPointsLeft": "50",
       "units": [
         {
@@ -81,7 +81,7 @@
           "slot": "center",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 1000
+          "remaining": 998
         },
         {
           "slot": "leftWing",
@@ -99,13 +99,13 @@
           "slot": "leftGuard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 1000
+          "remaining": 976
         },
         {
           "slot": "rightGuard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 1000
+          "remaining": 959
         }
       ]
     }

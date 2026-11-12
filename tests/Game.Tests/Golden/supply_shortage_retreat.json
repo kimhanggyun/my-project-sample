@@ -7,18 +7,18 @@
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "7694951befdac008",
+  "stateHash": "10f94d2be093c023",
   "corps": [
     {
       "id": "A",
       "team": "teamA",
       "status": "Retreated",
       "startTroops": 6000,
-      "remainingTroops": 5571,
-      "losses": 429,
+      "remainingTroops": 5528,
+      "losses": 472,
       "startSupply": 2000,
       "remainingSupply": 0,
-      "finalMorale": "11.4783",
+      "finalMorale": "9.5309",
       "skillPointsLeft": "50",
       "units": [
         {
@@ -49,13 +49,13 @@
           "slot": "leftGuard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 1000
+          "remaining": 972
         },
         {
           "slot": "rightGuard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 1000
+          "remaining": 985
         }
       ]
     },
@@ -64,18 +64,18 @@
       "team": "teamB",
       "status": "Active",
       "startTroops": 6000,
-      "remainingTroops": 5640,
-      "losses": 360,
+      "remainingTroops": 5616,
+      "losses": 384,
       "startSupply": 1000000,
-      "remainingSupply": 968268,
-      "finalMorale": "55.2768",
+      "remainingSupply": 968313,
+      "finalMorale": "54.4582",
       "skillPointsLeft": "50",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 640
+          "remaining": 616
         },
         {
           "slot": "center",

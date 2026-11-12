@@ -204,10 +204,12 @@ namespace Game.Battle.Model.Systems
             Vec fwd = corps.Facing, right = fwd.RightOf();
             Fix maxX = Fix.FromInt(ctx.Field.Width) - Fix.FromRaw(1);
             Fix maxY = Fix.FromInt(ctx.Field.Height) - Fix.FromRaw(1);
+            bool auto = UnitAutonomy.On(ctx);
             foreach (var u in corps.Units)
             {
-                var off = corps.Formation.Slots[u.Slot];
+                var off = corps.Formation.Slots[auto ? UnitAutonomy.SlotOf(corps, u) : u.Slot]; // 빈 선봉 메우기 (R-74)
                 Vec p = corps.Anchor + right * off.X + fwd * off.Y;
+                if (auto) p = UnitAutonomy.Pursue(ctx, u, p); // 퇴각하는 적 추격
                 p = new Vec(Fix.Clamp(p.X, Fix.Zero, maxX), Fix.Clamp(p.Y, Fix.Zero, maxY));
                 if (!ctx.Field.CanEnter(Cell.Of(p), u.Troop)) p = corps.Anchor;
                 u.Position = p;
@@ -256,7 +258,7 @@ namespace Game.Battle.Model.Systems
                 {
                     if (!u.Alive || u.Confused) continue;
                     Fix reach = u.Troop.AttackRange + c.ContactRadius;
-                    if (!Nearest(ctx, a, u.Position, reach, null, u.Troop.HasTag(Tags.Ranged), out var dc, out var v))
+                    if (!Nearest(ctx, a, u.Position, reach, null, u.Troop.HasTag(Tags.Ranged), out var dc, out var v, u))
                     {
                         if (!u.Troop.HasTag(Tags.Melee) || _contacts.Count == 0) continue;
                         Nearest(ctx, a, u.Position, null, _contacts, false, out dc, out v);
@@ -322,11 +324,12 @@ namespace Game.Battle.Model.Systems
         /// 가장 가까운 적 소부대. reach가 있으면 그 거리 안 (원거리면 대상 방향의 바람·날씨 사거리 보정을 더함),
         /// only가 있으면 그 군단들 중에서.
         /// </summary>
-        private static bool Nearest(BattleContext ctx, CorpsState self, Vec from, Fix? reach, List<CorpsState> only, bool ranged, out CorpsState corps, out SubUnitState unit)
+        private static bool Nearest(BattleContext ctx, CorpsState self, Vec from, Fix? reach, List<CorpsState> only, bool ranged, out CorpsState corps, out SubUnitState unit, SubUnitState chooser = null)
         {
             corps = null;
             unit = null;
             Fix best = Fix.Zero;
+            bool judge = chooser != null && UnitAutonomy.On(ctx); // 유리한 상대 고르기 (R-74)
             foreach (var e in ctx.Corps)
             {
                 if (e.Team == self.Team || !e.InBattle || !ctx.IsVisibleTo(self.Team, e) || self.DuelWith == e.Id) continue;
@@ -341,7 +344,12 @@ namespace Game.Battle.Model.Systems
                         if (ranged) r = Fix.Max(Fix.Zero, r + ctx.Environment.RangedRangeDelta(from, v.Position));
                         if (d > r * r) continue;
                     }
-                    if (unit == null || d < best) { best = d; corps = e; unit = v; }
+                    if (judge)
+                    {
+                        Fix sc = UnitAutonomy.Score(ctx, chooser, v, d);
+                        if (unit == null || sc > best) { best = sc; corps = e; unit = v; }
+                    }
+                    else if (unit == null || d < best) { best = d; corps = e; unit = v; }
                 }
             }
             return unit != null;
