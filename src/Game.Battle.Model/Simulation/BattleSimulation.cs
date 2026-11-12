@@ -83,6 +83,7 @@ namespace Game.Battle.Model.Simulation
             var corps = Context.FindCorps(command.CorpsId);
             if (corps == null || corps.Setup.Controller != Controllers.Player || corps.Status != CorpsStatus.Active) return false;
             if (corps.HasStatus(StatusIds.Taunted)) return false; // 도발당한 동안은 명령을 받지 않는다
+            if (corps.DuelWith != null && command.Kind != Commands.CommandKinds.DuelChoices) return false; // 일기토 중 (R-71)
             if (!_ext.Commands.TryGet(command.Kind, out var handler)) return false;
             bool ok = command.Queued && handler is Commands.IQueueCheck q ? q.CanQueue(Context, corps, command) : handler.IsValid(Context, corps, command);
             if (!ok) return false;
@@ -103,6 +104,7 @@ namespace Game.Battle.Model.Simulation
             {
                 var corps = ctx.FindCorps(cmd.CorpsId);
                 if (corps.Status != CorpsStatus.Active || corps.HasStatus(StatusIds.Taunted)) continue;
+                if (corps.DuelWith != null && cmd.Kind != Commands.CommandKinds.DuelChoices) continue;
                 if (!_ext.Commands.TryGet(cmd.Kind, out var h)) continue;
                 // 예약: 지금 명령이 진행 중이면 뒤에 넣는다 (지금이 대기면 바로). 넣을 때의 검사는 IQueueCheck가 있으면 그것 (R-69)
                 if (cmd.Queued && !Commands.OrderQueue.IsIdle(corps))
@@ -122,11 +124,12 @@ namespace Game.Battle.Model.Simulation
                 }
             }
             _pending.Clear();
+            Contests.InBattleDuels.Step(ctx); // 기한이 지난 일기토는 AI로 끝낸다
             Commands.CoordinationSystem.Step(ctx);
 
             foreach (var corps in ctx.Corps)
             {
-                if (corps.Status != CorpsStatus.Active || !corps.AiInCharge || corps.HasStatus(StatusIds.Taunted)) continue;
+                if (corps.Status != CorpsStatus.Active || !corps.AiInCharge || corps.HasStatus(StatusIds.Taunted) || corps.DuelWith != null) continue;
                 long every = (long)ctx.Combat.AiThinkEveryTicks * ctx.Defs.Ai.Difficulties[corps.AiDifficulty].ThinkIntervalMultiplier;
                 if (ctx.Tick % every != 0) continue;
                 _ext.Ai.Get(corps.AiStance).Think(ctx, corps);

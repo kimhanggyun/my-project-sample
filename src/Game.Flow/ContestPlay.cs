@@ -11,7 +11,25 @@ namespace Game.Flow
     /// k번째까지의 라운드는 앞의 k개 선택에만 달렸으므로 (기록이 남아 있으면 난수를 쓰지 않는다) 다시 계산해도 앞 라운드는 그대로이고,
     /// 마지막 기록이 그대로 전투에 들어가 리플레이와 같은 결과가 나온다 (R-29).
     /// </summary>
-    public sealed class ContestPlay
+    /// <summary>대결 화면이 쓰는 한 판 (전투 직전 대결 <see cref="ContestPlay"/>, 전투 중 일기토 <see cref="BattleDuelPlay"/>). A = 플레이어 쪽.</summary>
+    public interface IContestPlay
+    {
+        ContestDef Def { get; }
+        string GeneralA { get; }
+        string GeneralB { get; }
+        /// <summary>시간 안에 못 골랐을 때 무작위의 시드.</summary>
+        ulong Seed { get; }
+        IReadOnlyList<string> Choices { get; }
+        bool IsOver { get; }
+        ContestResult Result { get; }
+        List<ContestRound> Rounds();
+        List<string> Available();
+        bool Choose(string actionId);
+        string ChooseRandom(ulong seed);
+        void AutoFinish();
+    }
+
+    public sealed class ContestPlay : IContestPlay
     {
         private readonly BattleSetup _setup;
         private readonly int _index;
@@ -30,6 +48,15 @@ namespace Game.Flow
 
         public ContestDef Def { get; }
         public ContestSetup Setup => _setup.Contests[_index];
+        public string GeneralA => GeneralOf(Setup.CorpsA);
+        public string GeneralB => GeneralOf(Setup.CorpsB);
+        public ulong Seed => _setup.Seed;
+
+        private string GeneralOf(string corpsId)
+        {
+            foreach (var c in _setup.Corps) if (c.Id == corpsId) return c.General?.Id;
+            return null;
+        }
         /// <summary>내가 고른 행동 (전투에 그대로 들어간다).</summary>
         public IReadOnlyList<string> Choices => Setup.ChoicesA;
         public bool IsOver { get; private set; }

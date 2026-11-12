@@ -130,6 +130,8 @@ namespace Game.Battle.Model.Simulation
     public sealed class CorpsState
     {
         public int Index { get; internal set; }
+        /// <summary>전투 중 일기토 상대 군단 (R-71). 대결 중이면 서로 싸우지 않고 명령을 받지 않는다. 없으면 null.</summary>
+        public string DuelWith { get; internal set; }
         public string Id => Setup.Id;
         public string Team => Setup.Team;
         public CorpsSetup Setup { get; internal set; }
@@ -297,6 +299,8 @@ namespace Game.Battle.Model.Simulation
         public List<CaptureRecord> Captures { get; } = new List<CaptureRecord>();
         /// <summary>장수 id → "light"/"heavy".</summary>
         public Dictionary<string, string> Injuries { get; } = new Dictionary<string, string>();
+        /// <summary>전투 중 일기토 (R-71). 끝난 것도 남긴다 (화면이 결과를 읽는다).</summary>
+        public List<Contests.DuelState> Duels { get; } = new List<Contests.DuelState>();
         /// <summary>이 전투의 논쟁에서 세뇌로 진 장수 (포로가 되면 등용 보너스).</summary>
         public HashSet<string> Brainwashed { get; } = new HashSet<string>();
         /// <summary>전투 이벤트 기록 (말풍선·연출·리플레이·숨은 보상).</summary>

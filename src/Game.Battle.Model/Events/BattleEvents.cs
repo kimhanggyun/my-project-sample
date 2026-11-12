@@ -37,6 +37,12 @@ namespace Game.Battle.Model.Events
         public const string QueuedSkipped = "queuedSkipped";
         /// <summary>지점 이동인데 길이 막혀 더 갈 수 없음 → 멈추고 다음 예약으로 (battle.md 4.3.6).</summary>
         public const string PathBlocked = "pathBlocked";
+        /// <summary>일기토 신청을 받아들임 (R-71). 군단 = 건 쪽, 값 = 받은 쪽.</summary>
+        public const string DuelStarted = "duelStarted";
+        /// <summary>일기토 신청을 거절 (그 군단 사기↓). 군단 = 거절한 쪽, 값 = 건 쪽.</summary>
+        public const string DuelRefused = "duelRefused";
+        /// <summary>전투 중 일기토가 끝남. 군단 = 건 쪽, 값 = "끝 종류:이긴 쪽 또는 물러난 쪽(A/B)".</summary>
+        public const string DuelEnded = "duelEnded";
     }
 
     internal static class EventLog

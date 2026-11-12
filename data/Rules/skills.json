@@ -256,6 +256,45 @@
           "durationSec": 8
         }
       ]
+    },
+    {
+      "id": "challenge",
+      "nameKey": "skill.challenge",
+      "category": "valor",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "might",
+          "min": 60
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "enemyCorps",
+        "range": 10
+      },
+      "conditions": [
+        {
+          "type": "targetCanDuel"
+        }
+      ],
+      "effects": [
+        {
+          "type": "challenge",
+          "contest": "duel",
+          "decideSec": 30,
+          "refuseMorale": -10,
+          "acceptChance": 0.5,
+          "accept.brave": 0.9,
+          "accept.arrogant": 1,
+          "accept.loyal": 0.6,
+          "accept.calm": 0.5,
+          "accept.cunning": 0.3,
+          "accept.cautious": 0.25,
+          "accept.timid": 0.1
+        }
+      ]
     }
   ]
 }
