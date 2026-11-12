@@ -66,6 +66,25 @@ namespace Game.Tests.Campaign
             Assert.True(StepProgress.IsUnlocked(Kit.D.StepIndex, state, "rescue_camp_north", new List<string> { "camp_north" }));
         }
 
+        [Fact(DisplayName = "E23 구출 전투: 수용소 점령 구역(아군 목표)이 승리 조건으로 출진 설정에 들어간다")]
+        public void RescueCampZone()
+        {
+            var step = StepDef.Load(Kit.Source, "rescue_camp_north");
+            Assert.Contains("zone", step.DefeatConditions);
+            var zone = Assert.Single(step.Objects);
+            Assert.Equal(("zone", "player"), (zone.Type, zone.Team));
+            var state = StartingKitService.CreateNewGame(Kit.D);
+            var held = Game.Campaign.Roster.GeneralState.Join(Kit.D.Generals["general_d"]); // 편성 밖 장수가 갇혀 있어야 열린다
+            held.Status = Game.Campaign.Roster.GeneralStatus.Captured;
+            held.CampId = "camp_north";
+            state.Generals.Add(held);
+            var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "rescue_camp_north", Seed = 1, Delegate = true });
+            Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+            var o = Assert.Single(plan.Setup.Objects);
+            Assert.Equal(StoryFlow.PlayerTeam, o.Team);
+        }
+
         [Fact(DisplayName = "탐색 기억: 새로 탐색한 칸을 합치고, 탐색한 칸은 줄지 않는다")]
         public void ExploredMerge()
         {
