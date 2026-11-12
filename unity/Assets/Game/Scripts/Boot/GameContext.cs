@@ -171,6 +171,23 @@ namespace Game.Unity.Boot
         /// <summary>개발 빌드: 화면 스타일을 골라 저장한다 (다시 시작하면 적용).</summary>
         public void SetStyleOverride(string styleId) => _saveStore.Write(Game.Unity.UI.UiStyle.OverrideKey, styleId);
 
+        // ---- 기기 설정 (E26): 세이브가 아니라 이 기기에만 (서버 검증과 무관한 값) ----
+        private const string SoundKey = "prefs.sound", SpeedKey = "prefs.battleSpeed";
+
+        /// <summary>소리 켜짐 (기본 켜짐). 켜고 끄면 전체 음량(AudioListener)에 바로 반영.</summary>
+        public bool SoundOn => !_saveStore.Exists(SoundKey) || _saveStore.Read(SoundKey) != "off";
+
+        public void SetSound(bool on)
+        {
+            _saveStore.Write(SoundKey, on ? "on" : "off");
+            UnityEngine.AudioListener.volume = on ? 1f : 0f;
+        }
+
+        /// <summary>전투 시작 배속 (1·2·4, 기본 1).</summary>
+        public int DefaultBattleSpeed => _saveStore.Exists(SpeedKey) && int.TryParse(_saveStore.Read(SpeedKey), out var v) && (v == 1 || v == 2 || v == 4) ? v : 1;
+
+        public void SetDefaultBattleSpeed(int speed) => _saveStore.Write(SpeedKey, speed.ToString());
+
         private static Dictionary<string, string> ReadServiceChoices(IDataSource config, string file)
         {
             var choices = new Dictionary<string, string>();
