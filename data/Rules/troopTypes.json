@@ -242,6 +242,44 @@
         "pursuit": 75,
         "judgment": 65
       }
+    },
+    {
+      "id": "catapult",
+      "nameKey": "troop.catapult",
+      "tier": 1,
+      "tags": [
+        "siege",
+        "ranged",
+        "area"
+      ],
+      "supplyPerDay": 2,
+      "attackRange": 18,
+      "stats": {
+        "attack": 70,
+        "defense": 20,
+        "speed": 18,
+        "pursuit": 1,
+        "judgment": 30
+      }
+    },
+    {
+      "id": "engineer",
+      "nameKey": "troop.engineer",
+      "tier": 2,
+      "parent": "infantry",
+      "tags": [
+        "infantry",
+        "melee",
+        "engineer"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 38,
+        "defense": 50,
+        "speed": 42,
+        "pursuit": 30
+      }
     }
   ]
 }

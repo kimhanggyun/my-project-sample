@@ -830,6 +830,112 @@
           "pct": 30
         }
       ]
+    },
+    {
+      "id": "palisade",
+      "nameKey": "skill.palisade",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 40
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "point",
+        "range": 3,
+        "radius": 1.5
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "engineer"
+        },
+        {
+          "type": "notEngaged"
+        }
+      ],
+      "effects": [
+        {
+          "type": "palisade",
+          "setupSec": 5,
+          "defensePp": 15,
+          "mountedPp": -30
+        }
+      ]
+    },
+    {
+      "id": "destroyBridge",
+      "nameKey": "skill.destroyBridge",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 40
+        }
+      ],
+      "cost": 25,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "point",
+        "range": 2,
+        "radius": 1
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "engineer"
+        },
+        {
+          "type": "targetTerrain",
+          "terrain": "bridge"
+        }
+      ],
+      "telegraphSec": 5,
+      "effects": [
+        {
+          "type": "destroyBridge",
+          "from": "bridge",
+          "to": "river"
+        }
+      ]
+    },
+    {
+      "id": "bombard",
+      "nameKey": "skill.bombard",
+      "category": "ranged",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 40
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "area",
+        "range": 18,
+        "radius": 2
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "siege"
+        }
+      ],
+      "telegraphSec": 2,
+      "effects": [
+        {
+          "type": "areaDamage",
+          "sourceTag": "siege",
+          "damagePerSourceTroop": 0.6
+        }
+      ]
     }
   ]
 }

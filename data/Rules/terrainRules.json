@@ -23,7 +23,10 @@
       "conceals": true,
       "flammable": true,
       "burnsTo": "burnt",
-      "burnSec": 6
+      "burnSec": 6,
+      "impassable": [
+        "siege"
+      ]
     },
     "burnt": {
       "cost": 1

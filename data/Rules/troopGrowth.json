@@ -61,6 +61,13 @@
       "training": 0.9,
       "step": "step06",
       "gold": 1800
+    },
+    {
+      "from": "infantry",
+      "to": "engineer",
+      "training": 0.4,
+      "step": "step03",
+      "gold": 500
     }
   ]
 }
