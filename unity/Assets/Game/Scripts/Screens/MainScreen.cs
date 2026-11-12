@@ -178,7 +178,8 @@ namespace Game.Unity.Screens
                 var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;
                 string id = g.GeneralId;
                 string stats = ctx.T("ui.generals.stats", Stat(ctx, g, "leadership"), Stat(ctx, g, "might"), Stat(ctx, g, "intellect"));
-                var b = Ui.Button(list, ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)) + "\n" + Ui.Colored(stats, Palette.TextDim),
+                string grade = ctx.Defs.Generals.TryGetValue(id, out var gdef) ? GradeLabel.Tag(ctx, gdef.Grade) : ""; // 등급 (E25)
+                var b = Ui.Button(list, grade + ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)) + "\n" + Ui.Colored(stats, Palette.TextDim),
                     () => app.Show(new GeneralScreen(id)), 124, Palette.Card, 32);
                 b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
             }

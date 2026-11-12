@@ -52,6 +52,7 @@ namespace Game.Unity.Boot
                     url => new Game.Unity.Online.UnityWebTransport(this, url),
                     () => new Game.Unity.Online.UnityLocationService(this),
                     this);
+                AudioListener.volume = Context.SoundOn ? 1f : 0f; // 설정의 소리 (E26)
             }
             catch (Exception e)
             {

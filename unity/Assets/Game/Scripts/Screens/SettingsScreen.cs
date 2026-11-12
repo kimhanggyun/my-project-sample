@@ -94,6 +94,27 @@ namespace Game.Unity.Screens
             }
             Ui.Label(difficulty, T("ui.settings.difficultyNote." + current), 24, TextAnchor.MiddleLeft, Palette.TextDim);
 
+            // 기기 설정 (E26): 소리, 전투 시작 배속, 안내 다시 보기, 로그인 수단
+            var device = Ui.Card(body, "Device");
+            Ui.Label(device, T("ui.settings.device"));
+            var srow = Ui.Row(device, "Sound", 90, 8);
+            Ui.Size(Ui.Label(srow, T("ui.settings.sound"), 28), flexibleWidth: 2);
+            bool sound = Ctx.SoundOn;
+            Ui.Button(srow, T(sound ? "ui.settings.on" : "ui.settings.off"), () => { Ctx.SetSound(!sound); App.Show(new SettingsScreen()); }, 90, sound ? Palette.ButtonActive : (Color?)null, 28);
+            var vrow = Ui.Row(device, "Speed", 90, 8);
+            Ui.Size(Ui.Label(vrow, T("ui.settings.battleSpeed"), 28), flexibleWidth: 2);
+            foreach (var sp in new[] { 1, 2, 4 })
+            {
+                int v = sp;
+                Ui.Button(vrow, "×" + v, () => { Ctx.SetDefaultBattleSpeed(v); App.Show(new SettingsScreen()); }, 90, Ctx.DefaultBattleSpeed == v ? Palette.ButtonActive : (Color?)null, 28);
+            }
+            Ui.Button(device, T("ui.settings.guidesAgain"), () =>
+            {
+                bool ok = Ctx.Do(Game.Flow.PlayerActionRunner.ResetGuides());
+                if (_resetNote != null) _resetNote.text = T(ok ? "ui.settings.guidesReset" : "ui.settings.guidesNone");
+            }, 90, fontSize: 28);
+            Ui.Label(device, T("ui.settings.signedInWith", T("ui.signIn.method." + (Ctx.StartupRecord?.SignInMethod ?? "guest"))), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+
             var services = Ui.Card(body, "Services");
             Ui.Label(services, T("ui.settings.services"));
             foreach (var kv in Ctx.ServiceChoices) Ui.Label(services, kv.Key + ": " + kv.Value, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);

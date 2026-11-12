@@ -152,6 +152,7 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             _sim = _resumedSim ?? _replaySim ?? new BattleSimulation(Setup);
+            if (_replaySim == null) _speedIndex = System.Math.Max(0, System.Array.IndexOf(Speeds, Ctx.DefaultBattleSpeed)); // 설정의 시작 배속 (E26)
             if (!IsReplay && _resumedSim == null)
             {
                 // 가져간 군량을 쓴 세이브를 먼저 남기고, 이어하기 기록을 남긴다 (전투 중 꺼져도 이어서)

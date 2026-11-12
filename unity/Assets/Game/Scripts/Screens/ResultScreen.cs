@@ -54,6 +54,17 @@ namespace Game.Unity.Screens
             if (quiet > 0) Ui.Label(units, T("ui.result.noLossUnits", quiet), 26, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(units, T("ui.result.supply", _report.SupplyReturned.ToString("N0"), _report.SupplyCaptured.ToString("N0")), 28);
 
+            // 부대 결속 (battle.md 2.19.1, E24): 이기면 쌓이고 지면 조금 준다
+            var cohesion = new List<string>();
+            foreach (var u in _report.Units)
+            {
+                if (u.CohesionAfter == u.CohesionBefore) continue;
+                var diff = u.CohesionAfter - u.CohesionBefore;
+                string sign = diff > Game.Foundation.Math.Fix.Zero ? Ui.Colored("+" + Num(diff), Palette.Good) : Ui.Colored("−" + Num(-diff), Palette.Bad);
+                cohesion.Add(T("ui.result.cohesionLine", Ctx.UnitLabel(u.UnitId), Num(u.CohesionBefore), Num(u.CohesionAfter), sign));
+            }
+            Section(body, "ui.result.cohesion", cohesion);
+
             var injuries = new List<string>();
             foreach (var kv in _report.Injuries) injuries.Add(Ctx.GeneralName(kv.Key) + " (" + T("ui.generals." + kv.Value) + ")");
             Section(body, "ui.result.injuries", injuries);
@@ -99,6 +110,9 @@ namespace Game.Unity.Screens
         }
 
         private static void SetLabel(Button b, string text) => b.GetComponentInChildren<Text>().text = text;
+
+        /// <summary>결속 값 표시 (소수 한 자리까지).</summary>
+        private static string Num(Game.Foundation.Math.Fix v) => v.ToDisplayDouble().ToString("0.#");
 
         private List<string> Names(List<string> generalIds)
         {
