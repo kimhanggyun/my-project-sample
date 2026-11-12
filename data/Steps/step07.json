@@ -129,5 +129,17 @@
     "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
     "winRateMin": 0.5,
     "winRateMax": 0.9
-  }
+  },
+  "objects": [
+    {
+      "id": "dam_west",
+      "type": "dam",
+      "x": 1.5,
+      "y": 15.5,
+      "radius": 2,
+      "floodX": 5,
+      "floodY": 19.5,
+      "floodRadius": 4
+    }
+  ]
 }

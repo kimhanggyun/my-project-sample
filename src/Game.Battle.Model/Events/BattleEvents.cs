@@ -71,6 +71,10 @@ namespace Game.Battle.Model.Events
         public const string PalisadeBurned = "palisadeBurned";
         /// <summary>다리를 끊음. 군단 = 끊은 쪽.</summary>
         public const string BridgeDestroyed = "bridgeDestroyed";
+        /// <summary>둑을 터뜨림 (R-84). 군단 = 쓴 쪽, 값 = 둑 id.</summary>
+        public const string DamBroken = "damBroken";
+        /// <summary>물에 휩쓸림. 군단 = 맞은 쪽, 값 = 쓴 군단.</summary>
+        public const string Flooded = "flooded";
     }
 
     internal static class EventLog

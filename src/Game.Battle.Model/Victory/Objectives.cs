@@ -11,6 +11,8 @@ namespace Game.Battle.Model.Victory
         public const string Depot = "depot";
         public const string Watchtower = "watchtower";
         public const string Zone = "zone";
+        /// <summary>둑 (R-84): 수공의 원천. 차지한 팀이 터뜨리면 Flood 원 안이 잠긴다.</summary>
+        public const string Dam = "dam";
 
         public string Id { get; set; }
         public string Type { get; set; }
@@ -23,6 +25,10 @@ namespace Game.Battle.Model.Victory
         public string Team { get; set; }
         /// <summary>점령 구역: 혼자 차지해야 하는 초.</summary>
         public Fix Seconds { get; set; }
+        /// <summary>둑: 터지면 잠기는 원 (중심·반경).</summary>
+        public Fix FloodX { get; set; }
+        public Fix FloodY { get; set; }
+        public Fix FloodRadius { get; set; }
     }
 
     /// <summary>버티기 (R-78): Team이 Seconds까지 전장에 군단을 남기면 다른 팀이 진다.</summary>
@@ -39,6 +45,8 @@ namespace Game.Battle.Model.Victory
         public string Owner { get; internal set; }
         /// <summary>점령 구역: 목표 팀이 혼자 차지한 틱 (다른 팀이 들어오거나 비우면 0으로).</summary>
         public long HeldTicks { get; internal set; }
+        /// <summary>둑: 이미 터졌다 (R-84).</summary>
+        public bool Broken { get; internal set; }
         public Vec Center => new Vec(Setup.X, Setup.Y);
     }
 

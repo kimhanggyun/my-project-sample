@@ -343,6 +343,8 @@ namespace Game.Battle.Model.Simulation
         public List<Skills.Decoy> Decoys { get; } = new List<Skills.Decoy>();
         /// <summary>목책 (R-83).</summary>
         public List<Skills.Palisade> Palisades { get; } = new List<Skills.Palisade>();
+        /// <summary>수공으로 잠긴 곳 (R-84).</summary>
+        public List<Skills.FloodWave> Floods { get; } = new List<Skills.FloodWave>();
         /// <summary>이 전투의 논쟁에서 세뇌로 진 장수 (포로가 되면 등용 보너스).</summary>
         public HashSet<string> Brainwashed { get; } = new HashSet<string>();
         /// <summary>전투 이벤트 기록 (말풍선·연출·리플레이·숨은 보상).</summary>

@@ -84,6 +84,24 @@
       "impassable": [
         "*"
       ]
+    },
+    "flood": {
+      "impassable": [
+        "mounted",
+        "siege"
+      ],
+      "cost": 4,
+      "costByTag": {
+        "light": 3
+      }
+    },
+    "mud": {
+      "cost": 2,
+      "costByTag": {
+        "mounted": 3,
+        "heavy": 3,
+        "siege": 4
+      }
     }
   }
 }

@@ -936,6 +936,40 @@
           "damagePerSourceTroop": 0.6
         }
       ]
+    },
+    {
+      "id": "floodAttack",
+      "nameKey": "skill.floodAttack",
+      "category": "intel",
+      "tier": "advanced",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 70
+        }
+      ],
+      "cost": 50,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "conditions": [
+        {
+          "type": "atOwnDam"
+        }
+      ],
+      "telegraphSec": 3,
+      "effects": [
+        {
+          "type": "floodAttack",
+          "flood": "flood",
+          "mud": "mud",
+          "floodSec": 20,
+          "mudSec": 30,
+          "lossPct": 15,
+          "confuseSec": 4
+        }
+      ]
     }
   ]
 }
