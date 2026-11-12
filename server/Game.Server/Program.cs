@@ -121,6 +121,20 @@ app.MapPost("/v1/games/{game}/hire/listings", async (string game, HttpRequest re
 });
 app.MapDelete("/v1/games/{game}/hire/listings/{listing}", (string game, string listing, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => g.Unregister(id, listing) ? Results.NoContent() : Results.NotFound()));
+// 녹화 공유 (R-81)
+app.MapPost("/v1/games/{game}/replays", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<ShareReplayRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.ShareReplay(id, p.NicknameOf(id), body);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
+app.MapGet("/v1/games/{game}/replays", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.SharedReplays(req.Query.TryGetValue("step", out var s) ? s.ToString() : null))));
+app.MapGet("/v1/games/{game}/replays/{replay}", (string game, string replay, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => { var res = g.SharedReplay(replay); return res == null ? Results.NotFound() : Json(res); }));
 app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.MailOf(id))));
 

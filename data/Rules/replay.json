@@ -1,4 +1,6 @@
 {
-  "_comment": "전투 녹화 (replay.md). 내 녹화는 기기에만 저장. 개수는 예시 (replay.md 미결: 내 녹화 저장 개수)",
-  "maxSaved": 20
+  "_comment": "전투 녹화 (replay.md). 내 녹화는 기기에만 저장. 공유(R-81)는 서버에: 목록은 스텝마다 sharedListMax개, 서버는 게임마다 sharedStoreMax개까지. 개수는 예시",
+  "maxSaved": 20,
+  "sharedListMax": 20,
+  "sharedStoreMax": 500
 }

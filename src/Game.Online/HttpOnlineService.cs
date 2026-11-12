@@ -144,6 +144,19 @@ namespace Game.Online
             _transport.Send("DELETE", OnlineRoutes.HireListing(_game, listingId), null, Token, (status, body) =>
                 done?.Invoke(status == 204 ? true : status == 404 ? false : (bool?)null));
 
+        /// <summary>200 = 올림, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void ShareReplay(ShareReplayRequest request, Action<ShareReplayResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.SharedReplays(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<ShareReplayResponse>(body) : null));
+
+        public void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.SharedReplays(_game) + "?step=" + Uri.EscapeDataString(stepId ?? ""), null, Token, (status, body) =>
+                done?.Invoke(status == 200 ? Parse<SharedReplayListResponse>(body) : null));
+
+        public void GetSharedReplay(string id, Action<SharedReplayResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.SharedReplay(_game, id), null, Token, (status, body) =>
+                done?.Invoke(status == 200 ? Parse<SharedReplayResponse>(body) : null));
+
         public void GetMail(Action<MailListResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Mail(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 

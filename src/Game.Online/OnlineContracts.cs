@@ -46,6 +46,9 @@ namespace Game.Online
         /// <summary>등록 하나 (DELETE = 해제).</summary>
         public static string HireListing(string game, string id) => HireListings(game) + "/" + Uri.EscapeDataString(id);
         /// <summary>받은 우편 (고용 보상 …). 받기는 행동 mail.claim.</summary>
+        /// <summary>공유한 녹화 (공략, replay.md 5장, R-81). GET ?step= 목록, POST 올리기.</summary>
+        public static string SharedReplays(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/replays";
+        public static string SharedReplay(string game, string id) => SharedReplays(game) + "/" + Uri.EscapeDataString(id);
         public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
         /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
         public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
@@ -460,6 +463,47 @@ namespace Game.Online
         public const string TerritoryIncome = "territoryIncome";
     }
 
+    /// <summary>공유한 녹화 하나의 요약 (목록에 보이는 것, R-81).</summary>
+    public sealed class SharedReplaySummary
+    {
+        public string Id { get; set; }
+        public string StepId { get; set; }
+        public bool Won { get; set; }
+        public long Seconds { get; set; }
+        public long PlayerStartTroops { get; set; }
+        public long PlayerLosses { get; set; }
+        /// <summary>결과 지문 (같은 사람이 같은 녹화를 다시 올리면 한 번만).</summary>
+        public string Hash { get; set; }
+        public string OwnerAccountId { get; set; }
+        public string OwnerName { get; set; }
+        public long SharedAtUnixSeconds { get; set; }
+    }
+
+    public sealed class ShareReplayRequest
+    {
+        /// <summary>녹화 기록 JSON (Game.Flow ReplayRecord).</summary>
+        public string ReplayJson { get; set; }
+    }
+
+    public sealed class ShareReplayResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary>거절 까닭: broken(읽을 수 없음) / versionChanged(지금 규칙으로 다시 돌린 결과가 다름).</summary>
+        public string Reason { get; set; }
+        public SharedReplaySummary Replay { get; set; }
+    }
+
+    public sealed class SharedReplayListResponse
+    {
+        public List<SharedReplaySummary> Items { get; set; } = new List<SharedReplaySummary>();
+    }
+
+    public sealed class SharedReplayResponse
+    {
+        public SharedReplaySummary Replay { get; set; }
+        public string ReplayJson { get; set; }
+    }
+
     public sealed class MailListResponse
     {
         public List<Mail> Mail { get; set; } = new List<Mail>();
@@ -598,6 +642,13 @@ namespace Game.Online
     public interface IOnlineService
     {
         bool IsAvailable { get; }
+
+        // ---- 녹화 공유 (R-81) ----
+        /// <summary>내 녹화를 공략으로 올린다. 서버가 지금 규칙으로 다시 돌려 같을 때만 받는다.</summary>
+        void ShareReplay(ShareReplayRequest request, Action<ShareReplayResponse> done);
+        /// <summary>그 스텝의 공유 녹화 (이긴 것·손실 적은 것 먼저).</summary>
+        void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done);
+        void GetSharedReplay(string id, Action<SharedReplayResponse> done);
         string AccountId { get; }
         void SignIn(Action<bool> done);
         void GetTime(Action<ServerTimeResponse> done);
@@ -661,6 +712,9 @@ namespace Game.Online
         public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);
         public void LeaveAlliance(Action<AllianceResponse> done) => done?.Invoke(null);
         public void ManageAlliance(AllianceManageRequest request, Action<AllianceResponse> done) => done?.Invoke(null);
+        public void ShareReplay(ShareReplayRequest request, Action<ShareReplayResponse> done) => done?.Invoke(null);
+        public void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done) => done?.Invoke(null);
+        public void GetSharedReplay(string id, Action<SharedReplayResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

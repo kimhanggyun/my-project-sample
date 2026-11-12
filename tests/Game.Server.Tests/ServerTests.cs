@@ -146,6 +146,46 @@ namespace Game.Server.Tests
             Assert.Equal(save.Revision, v.Save.Revision);
         }
 
+        [Fact(DisplayName = "R-81 녹화 공유: A가 올린 녹화(서버가 다시 돌려 확인)를 B가 스텝 목록에서 보고 받아 재생 가능, 고친 녹화는 422")]
+        public async Task ShareReplay()
+        {
+            var a = await SignedIn();
+            var b = await SignedIn();
+            var route = OnlineRoutes.SharedReplays(ServerSetup.DefaultGame);
+            var source = new FileDataSource(DataRoot);
+            var defs = DefinitionSet.Load(source, "ancientwar");
+            var flow = new StoryFlow(defs, source, new ManualTimeProvider(Clock));
+            var state = Game.Campaign.StartingKitService.CreateNewGame(defs);
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 3, Delegate = true });
+            Assert.True(plan.Ok);
+            var sim = new BattleSimulation(plan.Setup);
+            while (!sim.IsOver) sim.Step();
+            var rec = ReplayService.Capture(plan, sim.CommandLog, sim.Result, 1000);
+            string json = ReplayService.Write(rec);
+
+            var up = await a.PostAsync(route, Body(new ShareReplayRequest { ReplayJson = json }));
+            Assert.Equal(HttpStatusCode.OK, up.StatusCode);
+            var shared = (await Read<ShareReplayResponse>(up)).Replay;
+            Assert.Equal(("step01", rec.Won, rec.Hash), (shared.StepId, shared.Won, shared.Hash));
+            // 같은 녹화를 다시 올려도 하나
+            Assert.Equal(HttpStatusCode.OK, (await a.PostAsync(route, Body(new ShareReplayRequest { ReplayJson = json }))).StatusCode);
+
+            // 결과를 고친 녹화는 거절 (다시 돌린 지문이 다름)
+            var forged = ReplayService.Read(json);
+            forged.Hash = "deadbeef";
+            var bad = await a.PostAsync(route, Body(new ShareReplayRequest { ReplayJson = ReplayService.Write(forged) }));
+            Assert.Equal((HttpStatusCode)422, bad.StatusCode);
+            Assert.Equal(ReplayStatus.VersionChanged, (await Read<ShareReplayResponse>(bad)).Reason);
+            Assert.Equal((HttpStatusCode)422, (await a.PostAsync(route, Body(new ShareReplayRequest { ReplayJson = "{" }))).StatusCode);
+
+            var list = await Read<SharedReplayListResponse>(await b.GetAsync(route + "?step=step01"));
+            var item = Assert.Single(list.Items);
+            Assert.Empty((await Read<SharedReplayListResponse>(await b.GetAsync(route + "?step=step02"))).Items);
+            var got = await Read<SharedReplayResponse>(await b.GetAsync(OnlineRoutes.SharedReplay(ServerSetup.DefaultGame, item.Id)));
+            Assert.True(new ReplayService(flow).Check(ReplayService.Read(got.ReplayJson)).Ok);
+            Assert.Equal(HttpStatusCode.NotFound, (await b.GetAsync(OnlineRoutes.SharedReplay(ServerSetup.DefaultGame, "nope"))).StatusCode);
+        }
+
         [Fact(DisplayName = "R-43 고용: A가 부대 등록 → B가 목록에서 골라 고용해 전투(200) → A 우편에 보상 → A가 받으면 지갑에, 두 번은 422")]
         public async Task HireFlow()
         {

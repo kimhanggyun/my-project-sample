@@ -57,6 +57,13 @@ namespace Game.Server
         /// <summary>새 id (연합·우편 등).</summary>
         string NewKey(string prefix);
 
+        // ---- 녹화 공유 (게임별, R-81) ----
+        /// <summary>올린다 (같은 계정·같은 지문이면 바꿔 넣음). storeMax를 넘으면 오래된 것부터 지운다. Id는 저장소가 정한다.</summary>
+        SharedReplaySummary AddSharedReplay(string gameCode, SharedReplaySummary summary, string json, int storeMax);
+        List<SharedReplaySummary> SharedReplays(string gameCode);
+        /// <summary>(요약, 녹화 JSON). 없으면 (null, null).</summary>
+        (SharedReplaySummary summary, string json) GetSharedReplay(string gameCode, string id);
+
         // ---- 우편 (게임별) ----
         void AddMail(string gameCode, string accountId, Mail mail);
         List<Mail> MailOf(string gameCode, string accountId);
@@ -91,6 +98,8 @@ namespace Game.Server
             public Dictionary<string, Dictionary<string, TerritoryOwner>> Territory { get; set; } = new Dictionary<string, Dictionary<string, TerritoryOwner>>();
             /// <summary>게임 코드 → (연합 id → 연합).</summary>
             public Dictionary<string, Dictionary<string, Alliance>> Alliances { get; set; } = new Dictionary<string, Dictionary<string, Alliance>>();
+            /// <summary>게임 코드 → 공유 녹화 (올린 순서).</summary>
+            public Dictionary<string, List<SharedReplayEntry>> SharedReplays { get; set; } = new Dictionary<string, List<SharedReplayEntry>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -318,6 +327,49 @@ namespace Game.Server
                 var r = use(OwnersOf(gameCode));
                 Persist();
                 return r;
+            }
+        }
+
+        protected sealed class SharedReplayEntry
+        {
+            public SharedReplaySummary Summary { get; set; }
+            public string Json { get; set; }
+        }
+
+        private List<SharedReplayEntry> Shared(string gameCode)
+        {
+            if (!Data.SharedReplays.TryGetValue(gameCode, out var list)) Data.SharedReplays[gameCode] = list = new List<SharedReplayEntry>();
+            return list;
+        }
+
+        private static SharedReplaySummary Copy(SharedReplaySummary s) => OnlineJson.Read<SharedReplaySummary>(OnlineJson.Write(s));
+
+        public SharedReplaySummary AddSharedReplay(string gameCode, SharedReplaySummary summary, string json, int storeMax)
+        {
+            lock (_lock)
+            {
+                var list = Shared(gameCode);
+                var s = Copy(summary);
+                s.Id = "r-" + NewId(8);
+                list.RemoveAll(e => e.Summary.OwnerAccountId == s.OwnerAccountId && e.Summary.Hash == s.Hash);
+                list.Add(new SharedReplayEntry { Summary = s, Json = json });
+                if (storeMax > 0 && list.Count > storeMax) list.RemoveRange(0, list.Count - storeMax);
+                Persist();
+                return Copy(s);
+            }
+        }
+
+        public List<SharedReplaySummary> SharedReplays(string gameCode)
+        {
+            lock (_lock) return Shared(gameCode).ConvertAll(e => Copy(e.Summary));
+        }
+
+        public (SharedReplaySummary summary, string json) GetSharedReplay(string gameCode, string id)
+        {
+            lock (_lock)
+            {
+                var e = Shared(gameCode).Find(x => x.Summary.Id == id);
+                return e == null ? (null, null) : (Copy(e.Summary), e.Json);
             }
         }
 

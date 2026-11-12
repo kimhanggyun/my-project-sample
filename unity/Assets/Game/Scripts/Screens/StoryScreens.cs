@@ -122,6 +122,10 @@ namespace Game.Unity.Screens
                     + "  " + FormationName(e.Formation) + (e.Reserve ? "  (" + T("ui.corps.reserve") + ")" : ""), Ui.FontSmall);
             }
 
+            // 공략 (R-81): 다른 사람이 공유한 이 스텝 녹화
+            if (Ctx.OnlineEnabled)
+                Ui.Button(body, T("ui.shared.button"), () => App.Show(new SharedReplayScreen(_stepId)), 84, Palette.Card, 28);
+
             var rewards = Ui.Card(body, "Rewards");
             Ui.Label(rewards, T("ui.step.rewards"));
             var parts = new List<string>();
