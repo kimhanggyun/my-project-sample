@@ -164,6 +164,26 @@ namespace Game.Unity.UI
             return input;
         }
 
+        /// <summary>가로 게이지: 어두운 바탕 + 채움 (돌려주는 것은 채움, <see cref="SetGauge"/>로 비율).</summary>
+        public static RectTransform Gauge(Transform parent, Color color, float height)
+        {
+            var back = Rect(parent, "Gauge");
+            Background(back, new Color(0f, 0f, 0f, 0.5f)).raycastTarget = false;
+            Size(back, height);
+            var fill = Rect(back, "Fill");
+            fill.anchorMin = Vector2.zero;
+            fill.anchorMax = Vector2.one;
+            fill.offsetMin = fill.offsetMax = Vector2.zero;
+            Background(fill, color).raycastTarget = false;
+            return fill;
+        }
+
+        public static void SetGauge(RectTransform fill, float ratio)
+        {
+            fill.anchorMax = new Vector2(Mathf.Clamp01(ratio), 1f);
+            fill.offsetMin = fill.offsetMax = Vector2.zero;
+        }
+
         public static void SetEnabled(Button b, bool enabled)
         {
             b.interactable = enabled;
