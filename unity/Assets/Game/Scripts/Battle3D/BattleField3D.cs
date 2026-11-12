@@ -226,7 +226,8 @@ namespace Game.Unity.Battle3D
             {
                 // 모델이 없으면 코드로 만든 병종 인형 (SoldierMeshes): 1단계 병종 모양
                 string baseType = troop;
-                while (baseType != null && types.TryGetValue(baseType, out var d) && d.Parent != null) baseType = d.Parent;
+                while (baseType != null && types.TryGetValue(baseType, out var d) && d.Parent != null && !d.HasTag("engineer")) baseType = d.Parent;
+                if (types.TryGetValue(troop, out var td) && td.HasTag("engineer")) baseType = "engineer"; // 공병은 보병에서 나왔어도 따로 (R-83)
                 var mat = Own(NewMaterial(SoldierColors[color]));
                 mat.enableInstancing = true;
                 // 부위별 재질: 갑옷(팀 색) · 얼굴 · 무기 · 다리·말
@@ -598,6 +599,27 @@ namespace Game.Unity.Battle3D
                     _stratagemMarks[d] = f;
                 }
                 Place(f, d.Point, flagScale);
+            }
+            // 목책 (R-83): 둘레에 나무 말뚝. 내 것이거나 보이는 곳이면 보인다. 세우는 중이면 낮게
+            foreach (var pal in ctx.Palisades)
+            {
+                if (pal.Team != _ctl.Team && !ctx.IsPointVisibleTo(_ctl.Team, pal.Point)) continue;
+                alive.Add(pal);
+                if (!_stratagemMarks.TryGetValue(pal, out var root))
+                {
+                    root = new GameObject("Palisade " + pal.Id).transform;
+                    root.SetParent(_root.transform, false);
+                    float r = (float)pal.Radius.ToDisplayDouble();
+                    const int posts = 12;
+                    for (int i = 0; i < posts; i++)
+                    {
+                        float a = i * Mathf.PI * 2f / posts;
+                        Part(root, _cylinder, _decoyPoleMat, new Vector3(Mathf.Cos(a) * r, 0.25f, Mathf.Sin(a) * r), new Vector3(0.12f, 0.25f, 0.12f));
+                    }
+                    _stratagemMarks[pal] = root;
+                }
+                root.position = ToWorld(pal.Point);
+                root.localScale = new Vector3(1f, pal.Ready(ctx) ? 1f : 0.4f, 1f);
             }
             var gone = new List<object>();
             foreach (var kv in _stratagemMarks) if (!alive.Contains(kv.Key)) gone.Add(kv.Key);

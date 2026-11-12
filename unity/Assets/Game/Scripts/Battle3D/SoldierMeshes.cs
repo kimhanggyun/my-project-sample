@@ -36,6 +36,42 @@ namespace Game.Unity.Battle3D
             void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
                 parts[part].Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(pos, Quaternion.Euler(euler), scale) });
 
+            if (baseType == "catapult")
+            {
+                // 투석기 (R-83): 나무 틀 + 바퀴 4 + 비스듬한 팔 + 돌 바구니. 팀 색은 틀 위 천
+                part = Dark;
+                Add(cube, new Vector3(0f, 0.08f, 0f), new Vector3(0.22f, 0.05f, 0.34f));                              // 바닥 틀
+                Add(cube, new Vector3(-0.09f, 0.17f, 0f), new Vector3(0.03f, 0.16f, 0.03f));                          // 기둥
+                Add(cube, new Vector3(0.09f, 0.17f, 0f), new Vector3(0.03f, 0.16f, 0.03f));
+                Add(cube, new Vector3(0f, 0.27f, -0.04f), new Vector3(0.025f, 0.03f, 0.38f), new Vector3(-35f, 0f, 0f)); // 던지는 팔
+                for (int i = 0; i < 4; i++)
+                    Add(cylinder, new Vector3(i % 2 == 0 ? -0.13f : 0.13f, 0.05f, i < 2 ? 0.12f : -0.12f), new Vector3(0.09f, 0.015f, 0.09f), new Vector3(0f, 0f, 90f)); // 바퀴
+                part = Metal;
+                Add(sphere, new Vector3(0f, 0.39f, -0.19f), new Vector3(0.07f, 0.07f, 0.07f));                       // 돌
+                part = Team;
+                Add(cube, new Vector3(0f, 0.115f, 0.1f), new Vector3(0.2f, 0.02f, 0.12f));                            // 천 (팀 색)
+                part = Skin;
+                Add(sphere, new Vector3(0.14f, 0.2f, 0.14f), new Vector3(0.05f, 0.05f, 0.05f));                       // 곁의 병사 (머리만)
+            }
+            else BuildPerson(baseType, parts, cube, sphere, capsule, cylinder);
+            var subs0 = new CombineInstance[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var pm = new Mesh();
+                if (parts[i].Count > 0) pm.CombineMeshes(parts[i].ToArray(), true, true);
+                subs0[i] = new CombineInstance { mesh = pm, transform = Matrix4x4.identity };
+            }
+            m = new Mesh { name = "soldier_" + (baseType ?? "default") };
+            m.CombineMeshes(subs0, false, false);
+            m.RecalculateBounds();
+            return Built[baseType ?? ""] = m;
+        }
+
+        private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder)
+        {
+            int part = Team;
+            void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
+                parts[part].Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(pos, Quaternion.Euler(euler), scale) });
             bool mounted = baseType == "cavalry";
             float lift = mounted ? 0.16f : 0f;
             if (mounted)
@@ -74,6 +110,14 @@ namespace Game.Unity.Battle3D
                 case "scout":
                     Add(cube, new Vector3(0.06f, lift + 0.16f, 0.03f), new Vector3(0.015f, 0.1f, 0.015f)); // 짧은 칼
                     break;
+                case "engineer":
+                    // 공병 (R-83): 등에 진 나무 기둥 + 손에 든 도끼
+                    part = Dark;
+                    Add(cylinder, new Vector3(-0.02f, lift + 0.24f, -0.07f), new Vector3(0.02f, 0.16f, 0.02f), new Vector3(0f, 0f, 70f));
+                    part = Metal;
+                    Add(cube, new Vector3(0.07f, lift + 0.2f, 0.04f), new Vector3(0.012f, 0.12f, 0.012f));
+                    Add(cube, new Vector3(0.07f, lift + 0.26f, 0.06f), new Vector3(0.012f, 0.04f, 0.05f));
+                    break;
                 default: // 보병: 방패(팀 색) + 칼
                     part = Team;
                     Add(cube, new Vector3(-0.07f, lift + 0.18f, 0.05f), new Vector3(0.02f, 0.14f, 0.11f));
@@ -81,18 +125,6 @@ namespace Game.Unity.Battle3D
                     Add(cube, new Vector3(0.07f, lift + 0.2f, 0.04f), new Vector3(0.015f, 0.13f, 0.015f));
                     break;
             }
-            // 부위마다 하나로 합친 뒤, 부위들을 하위 메시로 합친다
-            var subs = new CombineInstance[parts.Length];
-            for (int i = 0; i < parts.Length; i++)
-            {
-                var pm = new Mesh();
-                if (parts[i].Count > 0) pm.CombineMeshes(parts[i].ToArray(), true, true);
-                subs[i] = new CombineInstance { mesh = pm, transform = Matrix4x4.identity };
-            }
-            m = new Mesh { name = "soldier_" + (baseType ?? "default") };
-            m.CombineMeshes(subs, false, false);
-            m.RecalculateBounds();
-            return Built[baseType ?? ""] = m;
         }
 
         /// <summary>장수 재질 순서: 0 = 갑옷·망토(팀 색), 1 = 얼굴, 2 = 금빛 장식·무기, 3 = 말(흰 말).</summary>

@@ -44,7 +44,7 @@ namespace Game.Tests.Campaign
             var svc = new TroopGrowthService(Kit.D);
             var s = Rich();
             var u = s.FindUnit("u01");
-            Assert.Equal(new[] { "shieldbearer" }, svc.PromotionsFor(u).Select(p => p.To));
+            Assert.Equal(new[] { "shieldbearer", "engineer" }, svc.PromotionsFor(u).Select(p => p.To)); // 보병 → 방패병 또는 공병 (R-83)
             Assert.Equal(TroopGrowthService.LowTraining, svc.CheckPromote(s, "u01", "shieldbearer"));
             u.Training = Fix.FromRaw(5000);
             Assert.Equal(TroopGrowthService.StepLocked, svc.CheckPromote(s, "u01", "shieldbearer"));
@@ -65,11 +65,11 @@ namespace Game.Tests.Campaign
             Assert.Empty(svc.PromotionsFor(u)); // 3단계가 끝
         }
 
-        [Fact(DisplayName = "R-52 3단계 정예: 2단계 4종마다 하나씩, 승급 조건은 2단계보다 높다")]
+        [Fact(DisplayName = "R-52 3단계 정예: 전투 2단계 4종마다 하나씩, 승급 조건은 2단계보다 높다 (공병은 3단계 없음)")]
         public void EliteTier()
         {
             var g = Kit.D.TroopGrowth;
-            foreach (var t2 in Kit.D.TroopTypes.Values.Where(t => t.Tier == 2))
+            foreach (var t2 in Kit.D.TroopTypes.Values.Where(t => t.Tier == 2 && !t.HasTag("engineer")))
             {
                 var up = g.Promotions.Where(p => p.From == t2.Id).ToList();
                 var p3 = Assert.Single(up);

@@ -50,7 +50,8 @@ namespace Game.Battle.Model.Ai
             .Register(new CounterIntrigueRule())
             .Register(new SupplyRaidRule())
             .Register(new SupplyDropRule())
-            .Register(new FirstAidRule());
+            .Register(new FirstAidRule())
+            .Register(new PalisadeRule());
     }
 
     /// <summary>
@@ -488,6 +489,22 @@ namespace Game.Battle.Model.Ai
             long start = 0;
             foreach (var u in c.Units) start += u.StartTroops;
             return start > 0 && c.Troops * 4 < start * 3 ? (6, new BattleCommand()) : (0, null);
+        }
+    }
+
+    /// <summary>목책 (R-83): 수비형이 아직 붙지 않았고 보이는 적이 다가오면 내 앞 2칸에.</summary>
+    internal sealed class PalisadeRule : IAiSkillRule
+    {
+        public string EffectType => "palisade";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.Setup.AiStance == AiStanceIds.Aggressive || c.Engaged || c.MeleeContact) return (0, null);
+            var e = ctx.NearestEnemy(c);
+            if (e == null) return (0, null);
+            var gap = e.Anchor - c.Anchor;
+            if (gap.Length <= Fix.Zero) return (0, null);
+            var p = ctx.ClampToField(c.Anchor + gap.Normalized() * Fix.FromInt(2));
+            return (5, new BattleCommand { X = p.X, Y = p.Y });
         }
     }
 

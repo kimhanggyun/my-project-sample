@@ -961,6 +961,9 @@ namespace Game.Unity.Screens
                 case EventKinds.CounterIntrigued:
                 case EventKinds.SupplyRaided: Sfx.Play("alert", 0.7f, 0.3f); break;
                 case EventKinds.FirstAid: Sfx.Play("cheer", 0.4f); break;
+                case EventKinds.PalisadeBuilt: Sfx.Play("drum", 0.5f); break;
+                case EventKinds.BridgeDestroyed:
+                case EventKinds.PalisadeBurned: Sfx.Play("gong", 0.6f); break;
                 case EventKinds.TrapFound:
                 case EventKinds.DecoyExposed: Sfx.Play("alert", 0.6f, 0.3f); break;
             }

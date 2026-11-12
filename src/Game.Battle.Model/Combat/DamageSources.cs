@@ -67,6 +67,7 @@ namespace Game.Battle.Model.Combat
             new ConditionSource(),
             new TraitSource(),
             new FormationStatSource(),
+            new Skills.PalisadeSource(),
         };
     }
 

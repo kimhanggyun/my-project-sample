@@ -82,7 +82,10 @@ namespace Game.Battle.Model.Skills
             .Register(new SupplyRaidEffect())
             .Register(new SupplyDropEffect())
             .Register(new FirstAidEffect())
-            .Register(new NotInMelee());
+            .Register(new NotInMelee())
+            .Register(new PalisadeEffect())
+            .Register(new DestroyBridgeEffect())
+            .Register(new TargetTerrain());
     }
 
     /// <summary>전조가 끝나면 나타날 효과.</summary>

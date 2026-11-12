@@ -146,6 +146,7 @@ namespace Game.Battle.Model.Simulation
             VisionSystem.Step(ctx);
             StealthSystem.Step(ctx);
             Skills.StratagemSystem.Step(ctx); // 함정·위장 깃발·거짓 퇴각 (R-80)
+            Skills.PalisadeSystem.Step(ctx); // 목책이 불타면 무너짐 (R-83)
             _combat.Step(ctx, _calculator);
             SupplySystem.Step(ctx);
             MoraleSystem.Step(ctx);

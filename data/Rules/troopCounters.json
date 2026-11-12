@@ -40,6 +40,16 @@
       "attacker": "ranged",
       "defender": "shield",
       "pp": -25
+    },
+    {
+      "attacker": "mounted",
+      "defender": "siege",
+      "pp": 30
+    },
+    {
+      "attacker": "light",
+      "defender": "siege",
+      "pp": 20
     }
   ]
 }

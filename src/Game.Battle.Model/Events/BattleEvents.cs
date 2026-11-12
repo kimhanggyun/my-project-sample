@@ -65,6 +65,12 @@ namespace Game.Battle.Model.Events
         public const string SupplyRaided = "supplyRaided";
         /// <summary>응급 치료. 값 = 되돌린 병력.</summary>
         public const string FirstAid = "firstAid";
+        /// <summary>목책을 세움 (R-83). 군단 = 세운 쪽.</summary>
+        public const string PalisadeBuilt = "palisadeBuilt";
+        /// <summary>목책이 불탐.</summary>
+        public const string PalisadeBurned = "palisadeBurned";
+        /// <summary>다리를 끊음. 군단 = 끊은 쪽.</summary>
+        public const string BridgeDestroyed = "bridgeDestroyed";
     }
 
     internal static class EventLog
