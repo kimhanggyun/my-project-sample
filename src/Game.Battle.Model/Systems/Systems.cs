@@ -471,6 +471,13 @@ namespace Game.Battle.Model.Systems
                 }
                 if (corps.HitFromSide) m -= c.MoraleFlankHitPerSecond * c.TickSeconds;
                 // 휴식은 싸우게 되면 깨진다 (battle.md 4.3.4)
+                // 휴식 중 기습 (R-77): 측면·배후로 맞으면 소부대마다 확률로 혼란
+                if (corps.Resting && corps.HitFromSide && ctx.IsEnabled(CommandRange.RestSurpriseFlag) && c.RestSurpriseConfusionChance > Fix.Zero)
+                {
+                    long ticks = (c.RestSurpriseConfusionSec / c.TickSeconds).CeilToLong();
+                    foreach (var u in corps.Units)
+                        if (u.Alive && ctx.Random.Chance(c.RestSurpriseConfusionChance)) Events.Confusion.Apply(ctx, u, ticks);
+                }
                 if (corps.Resting && (corps.Engaged || corps.BeingHit)) corps.Order.Mode = HoldModes.Normal;
                 if (!corps.Engaged && !corps.BeingHit && m < corps.StartMorale)
                     m = Fix.Min(corps.StartMorale, m + c.MoraleRecoverPerSecond * c.TickSeconds * (corps.Resting ? c.RestMoraleMultiplier : Fix.OneValue));

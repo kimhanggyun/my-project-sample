@@ -7,7 +7,7 @@
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "b3da33f029056c28",
+  "stateHash": "08857acd5abd49f1",
   "corps": [
     {
       "id": "A",
@@ -67,8 +67,8 @@
       "remainingTroops": 4799,
       "losses": 1201,
       "startSupply": 1000000,
-      "remainingSupply": 941765,
-      "finalMorale": "53.7422",
+      "remainingSupply": 941764,
+      "finalMorale": "53.7423",
       "skillPointsLeft": "13.12",
       "units": [
         {

@@ -49,6 +49,15 @@ namespace Game.Data.Defs
         public int OrderQueueMax { get; private set; }
         /// <summary>휴식 중 사기·책략 점수 회복 배율 (4.3.4).</summary>
         public Fix RestMoraleMultiplier { get; private set; }
+        /// <summary>수비(대기, 움직이지 않음) 중 받는 피해 %p 감소 (R-77, orders.holdDefensePp).</summary>
+        public Fix HoldDefensePp { get; private set; }
+        /// <summary>휴식 중 측면·배후로 맞으면 소부대마다 혼란 확률·초 (R-77).</summary>
+        public Fix RestSurpriseConfusionChance { get; private set; }
+        public Fix RestSurpriseConfusionSec { get; private set; }
+        /// <summary>지휘 범위 (R-77, general.commandRange): 장수(군단 중심)에서 baseCells × 통솔/50칸 안이면 장수 능력치 영향을 다 받고, fadeCells에 걸쳐 minFactor까지 줄어든다.</summary>
+        public Fix CommandRangeBaseCells { get; private set; }
+        public Fix CommandRangeFadeCells { get; private set; }
+        public Fix CommandRangeMinFactor { get; private set; }
         public Fix RestSkillPointMultiplier { get; private set; }
         /// <summary>협공 대기: 이만큼 기다리면 한 번 묻고, 응답 시간이 더 지나면 단독 공격 (4.3.4).</summary>
         public Fix CoordinateWaitSec { get; private set; }
@@ -242,6 +251,12 @@ namespace Game.Data.Defs
                 RearStandoffCells = JsonUtil.FixOr(o["advanceRoles"] as JObject ?? new JObject(), "rearStandoffCells", Fix.FromInt(8), c + ".advanceRoles"),
                 OrderQueueMax = (int)((o["orders"] as JObject)?.Value<long?>("queueMax") ?? 5),
                 RestMoraleMultiplier = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restMoraleMultiplier", Fix.FromInt(2), c + ".orders"),
+                HoldDefensePp = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "holdDefensePp", Fix.Zero, c + ".orders"),
+                RestSurpriseConfusionChance = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restSurpriseConfusionChance", Fix.Zero, c + ".orders"),
+                RestSurpriseConfusionSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restSurpriseConfusionSec", Fix.FromInt(3), c + ".orders"),
+                CommandRangeBaseCells = JsonUtil.FixOr((o["general"] as JObject)?["commandRange"] as JObject ?? new JObject(), "baseCells", Fix.Zero, c + ".general.commandRange"),
+                CommandRangeFadeCells = JsonUtil.FixOr((o["general"] as JObject)?["commandRange"] as JObject ?? new JObject(), "fadeCells", Fix.FromInt(3), c + ".general.commandRange"),
+                CommandRangeMinFactor = JsonUtil.FixOr((o["general"] as JObject)?["commandRange"] as JObject ?? new JObject(), "minFactor", Fix.FromRatio(1, 2), c + ".general.commandRange"),
                 RestSkillPointMultiplier = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "restSkillPointMultiplier", Fix.FromInt(2), c + ".orders"),
                 CoordinateWaitSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateWaitSec", Fix.FromInt(30), c + ".orders"),
                 CoordinateResponseSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateResponseSec", Fix.FromInt(10), c + ".orders"),
