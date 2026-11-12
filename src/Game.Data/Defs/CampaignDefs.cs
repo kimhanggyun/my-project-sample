@@ -300,6 +300,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<StepObjectDef> Objects { get; private set; } = new List<StepObjectDef>();
         /// <summary>버티기 (R-78): 이 팀("player"/"enemy")이 HoldOutSeconds까지 남으면 이긴다. 없으면 null.</summary>
         public string HoldOutTeam { get; private set; }
+        /// <summary>권장 장수 레벨 (출진 화면 안내, E22). 없으면 0 = 표시 안 함.</summary>
+        public int RecommendedLevel { get; private set; }
         public Fix HoldOutSeconds { get; private set; }
         public string Weather { get; private set; }
         public string TimeOfDay { get; private set; }
@@ -410,6 +412,7 @@ namespace Game.Data.Defs
                 DefeatConditions = o["defeatConditions"] != null ? JsonUtil.StringList(o, "defeatConditions") : new List<string> { "annihilation", "commander" },
                 Objects = StepObjectDef.List(o, "steps"),
                 HoldOutTeam = (o["holdOut"] as JObject)?.Value<string>("team"),
+                RecommendedLevel = o.Value<int?>("recommendedLevel") ?? 0,
                 HoldOutSeconds = o["holdOut"] is JObject ho ? JsonUtil.RequireFix(ho, "seconds", "steps.holdOut") : Fix.Zero,
                 Weather = o.Value<string>("weather") ?? "clear",
                 TimeOfDay = o.Value<string>("timeOfDay") ?? "day",
