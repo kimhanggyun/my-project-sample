@@ -13,6 +13,8 @@ namespace Game.Data.Defs
         public string LineKey { get; internal set; }
         /// <summary>있으면 이벤트 추가 값(예: 스킬 id)을 붙인 키를 먼저 찾는다 (speech.skill.fireAttack).</summary>
         public string PerDataKeyPrefix { get; internal set; }
+        /// <summary>경고 빠른 버튼 (battle.md 4.4, D20): fallBack·rest·hold·withdraw·regroup 중. 플레이어 군단에만 보인다.</summary>
+        public IReadOnlyList<string> QuickActions { get; internal set; } = new List<string>();
     }
 
     /// <summary>장수 말풍선 정의 (speech.json, battle.md 4.4).</summary>
@@ -34,6 +36,7 @@ namespace Game.Data.Defs
                     Kind = JsonUtil.RequireString(s, "kind", "speech." + p.Name),
                     LineKey = JsonUtil.RequireString(s, "lineKey", "speech." + p.Name),
                     PerDataKeyPrefix = s.Value<string>("perDataKeyPrefix"),
+                    QuickActions = JsonUtil.StringList(s, "quickActions"),
                 };
             }
             var pri = new Dictionary<string, int>();

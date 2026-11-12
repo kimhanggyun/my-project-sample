@@ -17,11 +17,19 @@
     },
     "supplyLow": {
       "kind": "warning",
-      "lineKey": "speech.supplyLow"
+      "lineKey": "speech.supplyLow",
+      "quickActions": [
+        "withdraw"
+      ]
     },
     "moraleCritical": {
       "kind": "warning",
-      "lineKey": "speech.moraleCritical"
+      "lineKey": "speech.moraleCritical",
+      "quickActions": [
+        "fallBack",
+        "rest",
+        "regroup"
+      ]
     },
     "reinforced": {
       "kind": "shout",
@@ -29,11 +37,42 @@
     },
     "fireHit": {
       "kind": "warning",
-      "lineKey": "speech.fireHit"
+      "lineKey": "speech.fireHit",
+      "quickActions": [
+        "fallBack"
+      ]
     },
     "coordinateWaiting": {
       "kind": "report",
       "lineKey": "speech.coordinateWaiting"
+    },
+    "hiddenFound": {
+      "kind": "shout",
+      "lineKey": "speech.hiddenFound"
+    },
+    "ambushed": {
+      "kind": "warning",
+      "lineKey": "speech.ambushed",
+      "quickActions": [
+        "regroup",
+        "fallBack"
+      ]
+    },
+    "pathBlocked": {
+      "kind": "warning",
+      "lineKey": "speech.pathBlocked"
+    },
+    "queuedSkipped": {
+      "kind": "warning",
+      "lineKey": "speech.queuedSkipped"
+    },
+    "duelStarted": {
+      "kind": "shout",
+      "lineKey": "speech.duelStarted"
+    },
+    "duelRefused": {
+      "kind": "shout",
+      "lineKey": "speech.duelRefused"
     }
   },
   "kindPriority": {
