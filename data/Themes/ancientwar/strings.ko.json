@@ -793,6 +793,8 @@
   "ui.rescue.time": "{0}시간 {1}분",
   "ui.rescue.listLine": "갇힌 장수 {0}명, 가장 짧은 기한 {1}",
   "ui.rescue.goal": "승리: 수용소를 {0}초 동안 차지하거나 적을 물리친다",
+  "ui.result.cohesion": "부대 결속",
+  "ui.result.cohesionLine": "{0}: {1} → {2} ({3})",
   "ui.radial.close": "닫기",
   "ui.radial.back": "뒤로",
   "ui.radial.wait": "대기",
