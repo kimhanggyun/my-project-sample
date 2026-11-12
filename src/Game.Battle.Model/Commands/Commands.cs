@@ -52,6 +52,8 @@ namespace Game.Battle.Model.Commands
         public const string EditQueue = "editQueue";
         /// <summary>전투 중 일기토의 플레이어 쪽 선택 기록 (R-71). Mode = 행동 id를 쉼표로 이은 것 (모자란 라운드는 AI).</summary>
         public const string DuelChoices = "duelChoices";
+        /// <summary>받은 일기토 신청에 답 (R-79). Mode "accept" / "refuse".</summary>
+        public const string DuelAnswer = "duelAnswer";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -93,7 +95,8 @@ namespace Game.Battle.Model.Commands
             .Register(new Skills.UseSkillHandler())
             .Register(new DelegateHandler())
             .Register(new EditQueueHandler())
-            .Register(new Contests.DuelChoicesHandler());
+            .Register(new Contests.DuelChoicesHandler())
+            .Register(new Contests.DuelAnswerHandler());
     }
 
     internal sealed class EditQueueHandler : ICommandHandler

@@ -77,7 +77,8 @@
       "temperament": "arrogant",
       "traits": [],
       "innateSkills": [
-        "warCry"
+        "warCry",
+        "challenge"
       ],
       "recruitable": true,
       "stats": {
@@ -99,7 +100,8 @@
       "traits": [],
       "innateSkills": [
         "reveal",
-        "arrowRain"
+        "arrowRain",
+        "focusFire"
       ],
       "recruitable": true,
       "stats": {
@@ -121,7 +123,8 @@
       "traits": [],
       "innateSkills": [
         "ambush",
-        "taunt"
+        "taunt",
+        "confusion"
       ],
       "recruitable": false,
       "stats": {
@@ -142,7 +145,8 @@
       "temperament": "arrogant",
       "traits": [],
       "innateSkills": [
-        "warCry"
+        "warCry",
+        "holdTheLine"
       ],
       "recruitable": true,
       "stats": {

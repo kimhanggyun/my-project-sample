@@ -266,7 +266,7 @@
       "requires": [
         {
           "stat": "might",
-          "min": 60
+          "min": 55
         }
       ],
       "cost": 15,

@@ -84,6 +84,11 @@ namespace Game.Unity.Screens
         private Button _aimConfirm;
         private Text _promptText;
         private string _promptCorps;
+        // 적이 건 일기토 (R-79): 응함/거절. 뜨는 동안 전투를 멈춘다 (기한은 전투 시간)
+        private RectTransform _duelPrompt;
+        private Text _duelPromptText;
+        private string _duelOfferCorps;
+        private bool _pausedForOffer;
         private RectTransform _panelBody;
         private bool _collapsed;
         private Text _selectedInfo;
@@ -236,6 +241,19 @@ namespace Game.Unity.Screens
             Ui.Button(pr, T("ui.cmd.attackNow"), () => { Report(_ctl.AttackNow(_promptCorps)); ClosePrompt(); }, 90, Palette.ButtonActive, 28);
             _prompt.gameObject.SetActive(false);
 
+            _duelPrompt = Ui.Rect(_fieldArea, "DuelPrompt");
+            _duelPrompt.anchorMin = new Vector2(0.05f, 0.5f);
+            _duelPrompt.anchorMax = new Vector2(0.95f, 0.5f);
+            _duelPrompt.pivot = new Vector2(0.5f, 0.5f);
+            _duelPrompt.sizeDelta = new Vector2(0f, 230f);
+            Ui.Background(_duelPrompt, new Color(0.18f, 0.08f, 0.06f, 0.94f));
+            Ui.Column(_duelPrompt, 8, 14);
+            _duelPromptText = Ui.Label(_duelPrompt, "", 30, TextAnchor.MiddleCenter);
+            var dr = Ui.Row(_duelPrompt, "Buttons", 96, 12);
+            Ui.Button(dr, T("ui.duel.refuse"), () => AnswerDuel(false), 96, fontSize: 28);
+            Ui.Button(dr, T("ui.duel.accept"), () => AnswerDuel(true), 96, Palette.ButtonActive, 30);
+            _duelPrompt.gameObject.SetActive(false);
+
             _aimBar = Ui.Rect(_fieldArea, "AimBar");
             _aimBar.anchorMin = new Vector2(0.05f, 0f);
             _aimBar.anchorMax = new Vector2(0.95f, 0f);
@@ -335,6 +353,7 @@ namespace Game.Unity.Screens
         public override void Close()
         {
             _field?.Destroy();
+            Sfx.StopAmbience();
             App.SetBackdrop(true);
         }
 
@@ -371,6 +390,7 @@ namespace Game.Unity.Screens
                 _ctl.Refresh();
                 ReadNewEvents();
             }
+            BattleSounds(deltaTime);
             _fxDelta = _paused ? 0f : deltaTime * Speeds[_speedIndex];
             if (steps > 0 || _dirty) Refresh();
             UpdateFieldView();
@@ -844,14 +864,26 @@ namespace Game.Unity.Screens
                 var e = events[_logRead];
                 string who = CorpsName(e.CorpsId);
                 var corps = e.CorpsId == null ? null : _sim.Context.FindCorps(e.CorpsId);
+                if (corps == null || _ctl.Sees(corps)) EventSound(e.Kind);
                 if (!IsReplay && e.Kind == EventKinds.CoordinateWaiting && corps != null && corps.Team == _ctl.Team && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
                 {
                     _promptCorps = corps.Id;
                     _promptText.text = T("ui.cmd.coordinatePrompt", GeneralOf(corps));
                     _prompt.gameObject.SetActive(true);
                 }
-                if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelStarted && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
-                    _duelToPlay = Game.Battle.Model.Contests.InBattleDuels.PendingFor(_sim.Context, corps.Id);
+                if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelStarted)
+                {
+                    // 건 쪽이든 받은 쪽(R-79)이든 내가 직접 지휘하는 군단이면 대결 화면
+                    var other = e.Data == null ? null : _sim.Context.FindCorps(e.Data);
+                    var mine = corps != null && _ctl.CanCommand(corps) && !corps.Delegated ? corps
+                        : other != null && _ctl.CanCommand(other) && !other.Delegated ? other : null;
+                    if (mine != null) _duelToPlay = Game.Battle.Model.Contests.InBattleDuels.PendingFor(_sim.Context, mine.Id);
+                }
+                if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelOffered && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
+                {
+                    var from = e.Data == null ? null : _sim.Context.FindCorps(e.Data);
+                    if (from != null) ShowDuelOffer(corps, from);
+                }
                 if (e.Kind == EventKinds.SkillUsed && corps != null && _ctl.Sees(corps))
                     _field.Effects.SkillUsed(_field.ToWorld(corps.Anchor), corps.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
                 if (e.Kind == EventKinds.Dialogue) { Add(string.IsNullOrEmpty(who) ? T(e.Data) : who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; } // 말한 군단이 없으면(지문) 이름 없이
@@ -871,6 +903,83 @@ namespace Game.Unity.Screens
 
         /// <summary>전황 한 줄: 전장 위 알림으로 잠깐 보여준다 (대사·말풍선은 깃발 위).</summary>
         private void Add(string line) => Notice(line);
+
+        private float _clashTimer, _arrowTimer;
+        private bool _startDrum;
+
+        /// <summary>
+        /// 전장 소리 (임시 합성음, Sfx): 시작 북, 보이는 접전 수만큼 커지는 함성, 접전마다 칼 부딪힘, 원거리 교전에 화살.
+        /// 멈추면 소음도 줄어든다. 규칙에는 영향 없음.
+        /// </summary>
+        private void BattleSounds(float deltaTime)
+        {
+            if (!_startDrum) { _startDrum = true; Sfx.Play("drum"); }
+            int melee = 0, ranged = 0;
+            if (!_paused)
+                foreach (var c in _sim.Context.Corps)
+                {
+                    if (!c.InBattle || !_ctl.Sees(c)) continue;
+                    if (c.MeleeContact) melee++;
+                    else if (c.Engaged) ranged++;
+                }
+            Sfx.Ambience(_paused ? 0f : 0.15f + 0.12f * Mathf.Min(melee, 5), deltaTime);
+            float speed = _paused ? 0f : Speeds[_speedIndex];
+            if (melee > 0 && (_clashTimer -= deltaTime * speed) <= 0f)
+            {
+                _clashTimer = UnityEngine.Random.Range(0.25f, 0.6f) / Mathf.Min(melee, 3);
+                Sfx.Play("clash", UnityEngine.Random.Range(0.25f, 0.55f));
+            }
+            if (ranged > 0 && (_arrowTimer -= deltaTime * speed) <= 0f)
+            {
+                _arrowTimer = UnityEngine.Random.Range(0.6f, 1.2f);
+                Sfx.Play("arrow", 0.4f);
+            }
+        }
+
+        /// <summary>전투 이벤트 → 효과음 (보이는 것만).</summary>
+        private static void EventSound(string kind)
+        {
+            switch (kind)
+            {
+                case EventKinds.SkillUsed: Sfx.Play("horn", 0.6f, 0.8f); break;
+                case EventKinds.RetreatStarted:
+                case EventKinds.Destroyed:
+                case EventKinds.Captured: Sfx.Play("gong", 0.7f, 0.5f); break;
+                case EventKinds.AmbushSprung:
+                case EventKinds.Ambushed: Sfx.Play("drum"); Sfx.Play("cheer", 0.6f); break;
+                case EventKinds.FireHit: Sfx.Play("fire", 0.6f, 0.8f); break;
+                case EventKinds.SupplyLow:
+                case EventKinds.MoraleCritical:
+                case EventKinds.HiddenFound:
+                case EventKinds.DuelOffered: Sfx.Play("alert", 0.7f, 0.3f); break;
+                case EventKinds.DuelStarted: Sfx.Play("duel"); break;
+                case EventKinds.DuelEnded: Sfx.Play("clash", 0.9f); break;
+            }
+        }
+
+        /// <summary>적의 일기토 신청 (R-79): 전투를 멈추고 응함/거절을 묻는다.</summary>
+        private void ShowDuelOffer(CorpsState mine, CorpsState challenger)
+        {
+            _duelOfferCorps = mine.Id;
+            _duelPromptText.text = T("ui.duel.offer", GeneralOf(challenger), GeneralOf(mine));
+            _duelPrompt.gameObject.SetActive(true);
+            if (!_paused) { _paused = true; _pausedForOffer = true; }
+            _dirty = true;
+        }
+
+        private void AnswerDuel(bool accept)
+        {
+            if (_duelOfferCorps != null) Report(_ctl.AnswerDuel(_duelOfferCorps, accept));
+            CloseDuelOffer();
+        }
+
+        private void CloseDuelOffer()
+        {
+            _duelOfferCorps = null;
+            _duelPrompt.gameObject.SetActive(false);
+            if (_pausedForOffer) { _paused = false; _pausedForOffer = false; }
+            _dirty = true;
+        }
 
         private void ClosePrompt()
         {
@@ -952,6 +1061,7 @@ namespace Game.Unity.Screens
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
             SetLabel(_queueButton, _ctl.Queueing ? T("ui.cmd.queueOn", _ctl.QueueCount, ctx.Combat.OrderQueueMax) : T("ui.cmd.queueOff", _ctl.QueueCount));
             _queueButton.targetGraphic.color = _ctl.Queueing ? Palette.ButtonActive : Palette.Button;
+            if (_duelOfferCorps != null && Game.Battle.Model.Contests.InBattleDuels.OfferTo(ctx, _duelOfferCorps) == null) CloseDuelOffer();
             if (_promptCorps != null)
             {
                 var pc = ctx.FindCorps(_promptCorps);

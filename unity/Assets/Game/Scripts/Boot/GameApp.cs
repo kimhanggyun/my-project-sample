@@ -53,6 +53,7 @@ namespace Game.Unity.Boot
                     () => new Game.Unity.Online.UnityLocationService(this),
                     this);
                 AudioListener.volume = Context.SoundOn ? 1f : 0f; // 설정의 소리 (E26)
+                Game.Unity.UI.Sfx.Init(gameObject); // 임시 합성 효과음
             }
             catch (Exception e)
             {

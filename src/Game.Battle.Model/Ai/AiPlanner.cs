@@ -32,7 +32,12 @@ namespace Game.Battle.Model.Ai
             .Register(new ArrowRainRule())
             .Register(new TauntRule())
             .Register(new RevealRule())
-            .Register(new FireAttackRule());
+            .Register(new FireAttackRule())
+            .Register(new ChallengeRule())
+            .Register(new ConfuseRule())
+            .Register(new FortifyRule())
+            .Register(new FocusFireRule())
+            .Register(new QuickFormationRule());
     }
 
     /// <summary>
@@ -212,6 +217,94 @@ namespace Game.Battle.Model.Ai
                 if (Vec.DistanceSquared(point, c.Anchor) > r * r) continue;
                 return (9, new BattleCommand { X = point.X, Y = point.Y });
             }
+            return (0, null);
+        }
+    }
+
+    // ---- 2차 스킬 판단 (R-79) ----
+
+    internal static class AiTargets
+    {
+        /// <summary>사거리 안의 보이는 적 군단 중 가장 가까운 것 (사거리 없으면 전장 전체).</summary>
+        public static CorpsState InRange(BattleContext ctx, CorpsState c, SkillDef s, System.Func<CorpsState, bool> ok = null)
+        {
+            Fix r = s.Range ?? Fix.FromInt(ctx.Field.Width + ctx.Field.Height);
+            CorpsState best = null;
+            Fix bestD = Fix.Zero;
+            foreach (var e in ctx.Corps)
+            {
+                if (e.Team == c.Team || !e.InBattle || !ctx.IsVisibleTo(c.Team, e)) continue;
+                if (ok != null && !ok(e)) continue;
+                Fix d = Vec.DistanceSquared(e.Anchor, c.Anchor);
+                if (d > r * r || (best != null && d >= bestD)) continue;
+                best = e;
+                bestD = d;
+            }
+            return best;
+        }
+    }
+
+    /// <summary>일기토 신청 (난이도 challenges만): 두 군이 맞붙은 뒤(내 군단이 접전 중), 내 장수의 대결 능력치가 상대보다 challengeEdge 이상 높을 때만 (질 싸움은 걸지 않는다).</summary>
+    internal sealed class ChallengeRule : IAiSkillRule
+    {
+        public string EffectType => "challenge";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var me = c.Setup.General;
+            if (!d.Challenges || me == null || c.DuelWith != null || !c.MeleeContact) return (0, null);
+            string contestId = s.Effects[0].Has("contest") ? s.Effects[0].String("contest") : "duel";
+            if (!ctx.Defs.Contests.TryGetValue(contestId, out var def)) return (0, null);
+            Fix mine = me.Stat(def.Stat);
+            var e = AiTargets.InRange(ctx, c, s, t => t.Setup.General != null && t.DuelWith == null
+                && mine >= t.Setup.General.Stat(def.Stat) + ctx.Defs.Ai.ChallengeEdge);
+            return e == null ? (0, null) : (7, new BattleCommand { TargetCorpsId = e.Id });
+        }
+    }
+
+    /// <summary>혼란: 접전 중인 적 군단(같은 편과 붙은)에 — 혼란은 칼이 닿아 있을 때 가장 아프다.</summary>
+    internal sealed class ConfuseRule : IAiSkillRule
+    {
+        public string EffectType => "confuse";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var e = AiTargets.InRange(ctx, c, s, t => t.MeleeContact);
+            return e == null ? (0, null) : (8, new BattleCommand { TargetCorpsId = e.Id });
+        }
+    }
+
+    /// <summary>철벽: 맞고 있고 사기가 시작보다 rallyMoraleDrop 넘게 떨어졌는데 아직 철벽이 아닐 때.</summary>
+    internal sealed class FortifyRule : IAiSkillRule
+    {
+        public string EffectType => "fortify";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d) =>
+            c.BeingHit && !c.HasStatus("fortify." + s.Id) && c.Morale <= c.StartMorale - ctx.Defs.Ai.RallyMoraleDrop ? (9, new BattleCommand()) : (0, null);
+    }
+
+    /// <summary>집중 사격: 사거리 안에서 가장 가까운 적에게 (이미 집중 중이면 안 씀).</summary>
+    internal sealed class FocusFireRule : IAiSkillRule
+    {
+        public string EffectType => "focusFire";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.HasStatus(StatusIds.FocusFire)) return (0, null);
+            var e = AiTargets.InRange(ctx, c, s);
+            return e == null ? (0, null) : (6, new BattleCommand { TargetCorpsId = e.Id });
+        }
+    }
+
+    /// <summary>진형 급변: 가장 가까운 적의 진형에 밀리고 이길 진형을 알 때 (다음 판단의 상성 대응이 바로 바뀐다).</summary>
+    internal sealed class QuickFormationRule : IAiSkillRule
+    {
+        public string EffectType => "quickFormation";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.HasStatus(StatusIds.QuickFormation) || d.CounterFormationChance <= Fix.Zero) return (0, null);
+            var e = ctx.NearestEnemy(c);
+            if (e == null) return (0, null);
+            var wins = ctx.Defs.FormationWins;
+            if (!wins.TryGetValue(e.Formation.Id, out var tw) || !tw.Contains(c.Formation.Id)) return (0, null);
+            foreach (var f in c.Setup.KnownFormations)
+                if (wins.TryGetValue(f, out var fw) && fw.Contains(e.Formation.Id)) return (5, new BattleCommand());
             return (0, null);
         }
     }

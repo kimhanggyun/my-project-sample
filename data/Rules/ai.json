@@ -30,12 +30,14 @@
       "skillUseChance": 1,
       "counterFormationChance": 0.9,
       "scouting": true,
-      "coordinate": true
+      "coordinate": true,
+      "challenges": true
     }
   },
   "skills": {
     "rallyMoraleDrop": 15,
-    "revealSearchCells": 8
+    "revealSearchCells": 8,
+    "challengeEdge": 10
   },
   "contest": {
     "baseWeights": {

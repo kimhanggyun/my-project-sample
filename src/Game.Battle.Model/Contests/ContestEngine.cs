@@ -64,6 +64,16 @@ namespace Game.Battle.Model.Contests
         /// <summary>이 라운드에 회심(큰 피해)을 맞았나 (화면 연출용, 결과 계산에는 쓰지 않는다).</summary>
         public bool CritOnA { get; internal set; }
         public bool CritOnB { get; internal set; }
+
+        /// <summary>A·B를 맞바꾼 사본 (받은 쪽 플레이어를 화면 왼쪽에 둘 때, R-79).</summary>
+        public ContestRound Mirror() => new ContestRound
+        {
+            Number = Number,
+            ActionA = ActionB, ActionB = ActionA,
+            ResourceA = ResourceB, ResourceB = ResourceA,
+            ChargeA = ChargeB, ChargeB = ChargeA,
+            CritOnA = CritOnB, CritOnB = CritOnA,
+        };
     }
 
     public sealed class ContestResult
@@ -78,6 +88,25 @@ namespace Game.Battle.Model.Contests
         public IReadOnlyList<ContestRound> Rounds { get; internal set; }
         public ContestFighter A { get; internal set; }
         public ContestFighter B { get; internal set; }
+
+        /// <summary>A·B를 맞바꾼 사본 (R-79).</summary>
+        public ContestResult Mirror()
+        {
+            var rounds = new List<ContestRound>();
+            if (Rounds != null) foreach (var r in Rounds) rounds.Add(r.Mirror());
+            return new ContestResult
+            {
+                ContestId = ContestId,
+                End = End,
+                Winner = Swap(Winner),
+                Retreater = Swap(Retreater),
+                Rounds = rounds,
+                A = B,
+                B = A,
+            };
+        }
+
+        private static string Swap(string side) => side == "A" ? "B" : side == "B" ? "A" : side;
     }
 
     /// <summary>

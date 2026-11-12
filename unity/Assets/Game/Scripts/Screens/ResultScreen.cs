@@ -28,6 +28,7 @@ namespace Game.Unity.Screens
         {
             Ui.Column(Root, 16, 32);
             Ui.Size(Ui.Label(Root, T(_plan.Step.NameKey), Ui.FontBody, TextAnchor.MiddleCenter, Palette.TextDim), 70);
+            Sfx.Play(_report.Won ? "cheer" : "gong");
             string head = _report.Won ? Ui.Colored(T("ui.result.win"), Palette.Good) : Ui.Colored(T("ui.result.lose"), Palette.Bad);
             if (_report.FirstClear) head += "  " + T("ui.result.firstClear");
             Ui.Size(Ui.Label(Root, head, Ui.FontTitle, TextAnchor.MiddleCenter), 130);
