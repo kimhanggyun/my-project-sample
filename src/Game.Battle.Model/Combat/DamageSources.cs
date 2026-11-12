@@ -77,8 +77,9 @@ namespace Game.Battle.Model.Combat
         public void Collect(AttackContext a, List<DamageModifier> into)
         {
             var c = a.Battle.Combat;
-            Fix atk = a.Attacker.Troop.Stats.Get(StatIds.Attack) + (a.AttackerCorps.Setup.General.Might - Fifty) * c.GeneralMightToAttack;
-            Fix def = a.Defender.Troop.Stats.Get(StatIds.Defense) + (a.DefenderCorps.Setup.General.Leadership - Fifty) * c.GeneralLeadershipToDefense;
+            // 지휘 범위 (R-77): 장수에게서 먼 소부대는 장수 능력치 영향을 덜 받는다
+            Fix atk = a.Attacker.Troop.Stats.Get(StatIds.Attack) + (a.AttackerCorps.Setup.General.Might - Fifty) * c.GeneralMightToAttack * CommandRange.Factor(a.Battle, a.AttackerCorps, a.Attacker);
+            Fix def = a.Defender.Troop.Stats.Get(StatIds.Defense) + (a.DefenderCorps.Setup.General.Leadership - Fifty) * c.GeneralLeadershipToDefense * CommandRange.Factor(a.Battle, a.DefenderCorps, a.Defender);
             into.Add(new DamageModifier("stats", (atk - def) * c.StatPpPerPoint));
         }
     }
@@ -211,6 +212,11 @@ namespace Game.Battle.Model.Combat
                 if (st.AttackPp != Fix.Zero) into.Add(new DamageModifier("status." + st.Id, st.AttackPp));
                 if (st.TargetCorpsPp != Fix.Zero && st.SourceCorpsId == a.DefenderCorps.Id) into.Add(new DamageModifier("status." + st.Id, st.TargetCorpsPp));
             }
+            // 수비 (R-77): 대기(보통)로 제자리에 선 군단은 덜 맞는다
+            var d = a.DefenderCorps;
+            if (a.Battle.IsEnabled(CommandRange.HoldDefenseFlag) && a.Battle.Combat.HoldDefensePp > Fix.Zero && d.Order.Kind == OrderKinds.Hold
+                && (d.Order.Mode == null || d.Order.Mode == HoldModes.Normal) && !d.MovedThisTick)
+                into.Add(new DamageModifier("holdDefense", -a.Battle.Combat.HoldDefensePp));
             foreach (var st in a.DefenderCorps.Statuses)
                 if (st.DefensePp != Fix.Zero) into.Add(new DamageModifier("status." + st.Id + ".defense", -st.DefensePp)); // 철벽 등 (R-76)
         }

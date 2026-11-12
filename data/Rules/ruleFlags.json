@@ -22,6 +22,9 @@
     "formationStats": { "default": true },
     "frontLine": { "default": true },
     "unitAutonomy": { "default": true },
+    "holdDefense": { "default": true },
+    "restSurprise": { "default": true },
+    "commandRange": { "default": true },
     "flankBonus": {
       "default": true
     },

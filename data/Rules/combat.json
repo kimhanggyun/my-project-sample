@@ -37,7 +37,13 @@
   "aiThinkEveryTicks": 10,
   "general": {
     "mightToAttack": 0.2,
-    "leadershipToDefense": 0.2
+    "leadershipToDefense": 0.2,
+    "commandRange": {
+      "_comment": "지휘 범위 (R-77): 장수(군단 중심)에서 baseCells × 통솔/50칸 안이면 장수 능력치 영향 전부, fadeCells에 걸쳐 minFactor까지 줄어든다 (예시)",
+      "baseCells": 2.5,
+      "fadeCells": 3,
+      "minFactor": 0.5
+    }
   },
   "training": {
     "_comment": "부대 훈련도(0~1)가 1일 때 공격·방어 보정 %p (troop-growth.md, R-52, 예시). 훈련도 0이면 보정 없음",
@@ -105,7 +111,10 @@
     "restSkillPointMultiplier": 2,
     "coordinateWaitSec": 30,
     "coordinateResponseSec": 10,
-    "fallBackCells": 8
+    "fallBackCells": 8,
+    "holdDefensePp": 10,
+    "restSurpriseConfusionChance": 0.5,
+    "restSurpriseConfusionSec": 3
   },
   "discipline": {
     "_comment": "규율 (battle.md 2.6, R-56): 통솔 위주 + 지략 일부. 규율 50이면 기본값, 높을수록 진형 전환이 빠르다. 전환 중에는 받는 피해가 늘고 이전 진형을 쓴다. 수치는 예시",
