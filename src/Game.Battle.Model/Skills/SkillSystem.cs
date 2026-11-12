@@ -71,7 +71,18 @@ namespace Game.Battle.Model.Skills
             .Register(new DecoyEffect())
             .Register(new FeignedRetreatEffect())
             .Register(new CasterAbove())
-            .Register(new CasterEngaged());
+            .Register(new CasterEngaged())
+            .Register(new ForcedMarchEffect())
+            .Register(new StealthMarchEffect())
+            .Register(new StealthCover())
+            .Register(new SpearheadEffect())
+            .Register(new DiscordEffect())
+            .Register(new RumorEffect())
+            .Register(new CounterIntrigueEffect())
+            .Register(new SupplyRaidEffect())
+            .Register(new SupplyDropEffect())
+            .Register(new FirstAidEffect())
+            .Register(new NotInMelee());
     }
 
     /// <summary>전조가 끝나면 나타날 효과.</summary>
@@ -200,9 +211,14 @@ namespace Game.Battle.Model.Skills
 
         internal static void ApplyEffects(SkillCast cast)
         {
+            // 반간 (R-82): 상대 군단을 노린 교란 계략은 반간이 한 번 막는다
+            if (cast.Skill.Category == DisruptCategory && cast.Skill.TargetType == SkillTargets.EnemyCorps
+                && CounterIntrigue.Blocks(cast.Battle, cast.Caster, cast.TargetCorps)) return;
             var reg = cast.Battle.SkillRegistry;
             foreach (var e in cast.Skill.Effects) reg.Effect(e.Type).Apply(cast, e);
         }
+
+        public const string DisruptCategory = "disrupt";
 
         internal static long Ticks(BattleContext ctx, Fix seconds) => (seconds / ctx.Combat.TickSeconds).CeilToLong();
     }
@@ -264,6 +280,16 @@ namespace Game.Battle.Model.Skills
                     continue;
                 }
                 if (!c.Hidden) continue;
+                if (c.HasStatus(StatusIds.StealthMarch))
+                {
+                    // 은밀 행군 (R-82): 가림막(숲·밤·안개)을 벗어나거나 싸우면 풀린다
+                    if (!StealthMarchEffect.Cover(ctx, c) || c.MeleeContact || c.Engaged || c.BeingHit)
+                    {
+                        c.RemoveStatus(StatusIds.StealthMarch);
+                        Expose(c);
+                    }
+                    continue;
+                }
                 if (c.MovedThisTick) { Expose(c); continue; }
                 if (EnemiesInReach(ctx, c).Count > 0) Spring(ctx, c);
             }
@@ -373,7 +399,9 @@ namespace Game.Battle.Model.Skills
                 {
                     if (--c.Statuses[i].TicksLeft > 0) continue;
                     bool rout = c.Statuses[i].Id == StatusIds.Routing;
+                    var endMorale = c.Statuses[i].EndMorale; // 강행군 피로 (R-82)
                     c.Statuses.RemoveAt(i);
+                    if (endMorale != Fix.Zero && c.InBattle) c.Morale = Fix.Clamp(c.Morale + endMorale, Fix.Zero, Fix.Hundred);
                     if (rout && c.Status == CorpsStatus.Active) Systems.RetreatSystem.BeginRetreat(ctx, c);
                 }
                 foreach (var u in c.Units) if (u.ConfusedTicks > 0) u.ConfusedTicks--;

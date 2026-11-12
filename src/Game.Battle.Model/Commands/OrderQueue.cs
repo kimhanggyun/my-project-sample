@@ -53,6 +53,7 @@ namespace Game.Battle.Model.Commands
                 foreach (var corps in ctx.Corps)
                 {
                     if (corps.Team != team || corps.Status != CorpsStatus.Active) continue;
+                    if (corps.HasStatus(StatusIds.Discord) && !corps.Coordinating) continue; // 이간당한 군단은 기다려 주지 않는다 (R-82)
                     bool queued = false;
                     foreach (var q in corps.Queue) if (q.Kind == CommandKinds.Hold && q.Mode == HoldModes.Coordinate) { queued = true; break; }
                     if (corps.Coordinating) { pending++; ready++; }

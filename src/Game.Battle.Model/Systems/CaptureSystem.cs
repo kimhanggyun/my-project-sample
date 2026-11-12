@@ -31,7 +31,10 @@ namespace Game.Battle.Model.Systems
                     continue;
                 }
                 // 근위병 등 (R-58): 장수를 지키는 부대가 있으면 압력이 더디게 쌓인다
-                c.CapturePressure = Fix.Min(Fix.OneValue, c.CapturePressure + k.CapturePressurePerSecond * k.CaptureCheckEverySec * TagEffects.CapturePressureMultiplier(k, c));
+                Fix risk = Fix.Zero;
+                foreach (var st in c.Statuses) risk += st.CaptureRiskPct; // 선두 돌파: 장수가 앞에 나선다 (R-82)
+                c.CapturePressure = Fix.Min(Fix.OneValue, c.CapturePressure + k.CapturePressurePerSecond * k.CaptureCheckEverySec * TagEffects.CapturePressureMultiplier(k, c)
+                    * Fix.Max(Fix.Zero, Fix.Hundred + risk) / Fix.Hundred);
                 Fix escape = Fix.Min(Fix.OneValue, c.Setup.General.Might * k.CaptureEscapePerMightPoint);
                 if (ctx.Random.Chance(escape))
                 {

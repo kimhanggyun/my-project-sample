@@ -62,6 +62,7 @@ namespace Game.Battle.Model.Ai
             foreach (var c in ctx.Corps)
             {
                 if (c == corps || c.Team != corps.Team || !c.InBattle || !c.AiInCharge || c.AiStance != AiStanceIds.Aggressive) continue;
+                if (c.HasStatus(StatusIds.Discord)) continue; // 이간당한 군단은 기다리지 않는다 (R-82)
                 if (c.Engaged || c.MeleeContact) continue;
                 Fix d = DistanceToEnemy(ctx, c);
                 if (d > farthest) farthest = d;

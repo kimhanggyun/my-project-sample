@@ -55,6 +55,16 @@ namespace Game.Battle.Model.Events
         public const string DecoyExposed = "decoyExposed";
         /// <summary>거짓 퇴각에 속아 추격하다 흐트러짐. 군단 = 속은 쪽, 값 = 거짓 퇴각한 군단.</summary>
         public const string FeignSprung = "feignSprung";
+        /// <summary>이간에 걸림 (R-82). 군단 = 걸린 쪽, 값 = 건 군단.</summary>
+        public const string Discorded = "discorded";
+        /// <summary>이간 실패. 군단 = 대상, 값 = 건 군단.</summary>
+        public const string DiscordFailed = "discordFailed";
+        /// <summary>반간이 교란을 막음. 군단 = 막은 쪽, 값 = 건 군단.</summary>
+        public const string CounterIntrigued = "counterIntrigued";
+        /// <summary>군량 습격당함. 군단 = 당한 쪽, 값 = 잃은 군량.</summary>
+        public const string SupplyRaided = "supplyRaided";
+        /// <summary>응급 치료. 값 = 되돌린 병력.</summary>
+        public const string FirstAid = "firstAid";
     }
 
     internal static class EventLog

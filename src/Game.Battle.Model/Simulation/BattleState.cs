@@ -114,6 +114,14 @@ namespace Game.Battle.Model.Simulation
         public Fix MoraleLossPct { get; internal set; }
         /// <summary>움직이지 않는다 (철벽, R-76).</summary>
         public bool Immobile { get; internal set; }
+        /// <summary>이동 속도 % (강행군, R-82).</summary>
+        public Fix MoveSpeedPct { get; internal set; }
+        /// <summary>끝날 때 사기 가감 (강행군 피로, R-82).</summary>
+        public Fix EndMorale { get; internal set; }
+        /// <summary>장수 포위 압력 % (선두 돌파, R-82).</summary>
+        public Fix CaptureRiskPct { get; internal set; }
+        /// <summary>반간에 걸린 상대에게서 깎는 책략 점수 (R-82).</summary>
+        public Fix DrainPoints { get; internal set; }
     }
 
     /// <summary>포로 기록 (전투 뒤 등용·구출 처리는 캠페인, captivity.md).</summary>
@@ -141,6 +149,12 @@ namespace Game.Battle.Model.Simulation
         public const string FocusFire = "focusFire";
         /// <summary>거짓 퇴각 중 (R-80). 끝나면 돌아서서 반격.</summary>
         public const string FeignedRetreat = "feignedRetreat";
+        /// <summary>은밀 행군 중 (R-82): 움직여도 숨어 있다.</summary>
+        public const string StealthMarch = "stealthMarch";
+        /// <summary>이간당함 (R-82): 지휘 범위·협공·시야 공유에서 빠짐.</summary>
+        public const string Discord = "discord";
+        /// <summary>반간을 걸어 둠 (R-82).</summary>
+        public const string CounterIntrigue = "counterIntrigue";
     }
 
     public sealed class CorpsState

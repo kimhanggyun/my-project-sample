@@ -186,6 +186,9 @@ namespace Game.Battle.Model.Systems
                 dist = dist * (Fix.Hundred + pp) / Fix.Hundred;
             }
             dist = dist * FormationStatEffects.MoveMultiplier(ctx, corps); // 진형 이동 속도 (R-72)
+            Fix statusPct = Fix.Zero;
+            foreach (var st in corps.Statuses) statusPct += st.MoveSpeedPct; // 강행군 (R-82)
+            if (statusPct != Fix.Zero) dist = dist * Fix.Max(Fix.FromInt(10), Fix.Hundred + statusPct) / Fix.Hundred;
             while (dist > Fix.Zero && corps.PathIndex < corps.Path.Count)
             {
                 Vec wp = corps.Path[corps.PathIndex].Center;
