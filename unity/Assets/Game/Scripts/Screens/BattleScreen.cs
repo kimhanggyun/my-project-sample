@@ -353,6 +353,7 @@ namespace Game.Unity.Screens
         public override void Close()
         {
             _field?.Destroy();
+            Sfx.StopAmbience();
             App.SetBackdrop(true);
         }
 
@@ -389,6 +390,7 @@ namespace Game.Unity.Screens
                 _ctl.Refresh();
                 ReadNewEvents();
             }
+            BattleSounds(deltaTime);
             _fxDelta = _paused ? 0f : deltaTime * Speeds[_speedIndex];
             if (steps > 0 || _dirty) Refresh();
             UpdateFieldView();
@@ -862,6 +864,7 @@ namespace Game.Unity.Screens
                 var e = events[_logRead];
                 string who = CorpsName(e.CorpsId);
                 var corps = e.CorpsId == null ? null : _sim.Context.FindCorps(e.CorpsId);
+                if (corps == null || _ctl.Sees(corps)) EventSound(e.Kind);
                 if (!IsReplay && e.Kind == EventKinds.CoordinateWaiting && corps != null && corps.Team == _ctl.Team && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
                 {
                     _promptCorps = corps.Id;
@@ -900,6 +903,59 @@ namespace Game.Unity.Screens
 
         /// <summary>전황 한 줄: 전장 위 알림으로 잠깐 보여준다 (대사·말풍선은 깃발 위).</summary>
         private void Add(string line) => Notice(line);
+
+        private float _clashTimer, _arrowTimer;
+        private bool _startDrum;
+
+        /// <summary>
+        /// 전장 소리 (임시 합성음, Sfx): 시작 북, 보이는 접전 수만큼 커지는 함성, 접전마다 칼 부딪힘, 원거리 교전에 화살.
+        /// 멈추면 소음도 줄어든다. 규칙에는 영향 없음.
+        /// </summary>
+        private void BattleSounds(float deltaTime)
+        {
+            if (!_startDrum) { _startDrum = true; Sfx.Play("drum"); }
+            int melee = 0, ranged = 0;
+            if (!_paused)
+                foreach (var c in _sim.Context.Corps)
+                {
+                    if (!c.InBattle || !_ctl.Sees(c)) continue;
+                    if (c.MeleeContact) melee++;
+                    else if (c.Engaged) ranged++;
+                }
+            Sfx.Ambience(_paused ? 0f : 0.15f + 0.12f * Mathf.Min(melee, 5), deltaTime);
+            float speed = _paused ? 0f : Speeds[_speedIndex];
+            if (melee > 0 && (_clashTimer -= deltaTime * speed) <= 0f)
+            {
+                _clashTimer = UnityEngine.Random.Range(0.25f, 0.6f) / Mathf.Min(melee, 3);
+                Sfx.Play("clash", UnityEngine.Random.Range(0.25f, 0.55f));
+            }
+            if (ranged > 0 && (_arrowTimer -= deltaTime * speed) <= 0f)
+            {
+                _arrowTimer = UnityEngine.Random.Range(0.6f, 1.2f);
+                Sfx.Play("arrow", 0.4f);
+            }
+        }
+
+        /// <summary>전투 이벤트 → 효과음 (보이는 것만).</summary>
+        private static void EventSound(string kind)
+        {
+            switch (kind)
+            {
+                case EventKinds.SkillUsed: Sfx.Play("horn", 0.6f, 0.8f); break;
+                case EventKinds.RetreatStarted:
+                case EventKinds.Destroyed:
+                case EventKinds.Captured: Sfx.Play("gong", 0.7f, 0.5f); break;
+                case EventKinds.AmbushSprung:
+                case EventKinds.Ambushed: Sfx.Play("drum"); Sfx.Play("cheer", 0.6f); break;
+                case EventKinds.FireHit: Sfx.Play("fire", 0.6f, 0.8f); break;
+                case EventKinds.SupplyLow:
+                case EventKinds.MoraleCritical:
+                case EventKinds.HiddenFound:
+                case EventKinds.DuelOffered: Sfx.Play("alert", 0.7f, 0.3f); break;
+                case EventKinds.DuelStarted: Sfx.Play("duel"); break;
+                case EventKinds.DuelEnded: Sfx.Play("clash", 0.9f); break;
+            }
+        }
 
         /// <summary>적의 일기토 신청 (R-79): 전투를 멈추고 응함/거절을 묻는다.</summary>
         private void ShowDuelOffer(CorpsState mine, CorpsState challenger)

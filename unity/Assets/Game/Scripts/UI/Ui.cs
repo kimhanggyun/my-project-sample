@@ -134,7 +134,7 @@ namespace Game.Unity.UI
             Round(img);
             var b = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
             b.targetGraphic = img;
-            if (onClick != null) b.onClick.AddListener(() => onClick());
+            if (onClick != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onClick(); });
             var label = Label(rt, text, fontSize, TextAnchor.MiddleCenter);
             Fill(label.rectTransform);
             Size(rt, height);
