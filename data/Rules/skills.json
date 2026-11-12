@@ -196,7 +196,8 @@
       },
       "effects": [
         {
-          "type": "clearConfusion"
+          "type": "clearConfusion",
+          "allyRadius": 6
         }
       ]
     },
@@ -293,6 +294,185 @@
           "accept.cunning": 0.3,
           "accept.cautious": 0.25,
           "accept.timid": 0.1
+        }
+      ]
+    },
+    {
+      "id": "confusion",
+      "nameKey": "skill.confusion",
+      "category": "disrupt",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 50
+        }
+      ],
+      "cost": 30,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "enemyCorps",
+        "range": 10
+      },
+      "effects": [
+        {
+          "type": "confuse",
+          "ratio": 0.4,
+          "durationSec": 4
+        }
+      ]
+    },
+    {
+      "id": "holdTheLine",
+      "nameKey": "skill.holdTheLine",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 50
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "fortify",
+          "durationSec": 12,
+          "defensePp": 20,
+          "moraleLossPct": -30
+        }
+      ]
+    },
+    {
+      "id": "quickFormation",
+      "nameKey": "skill.quickFormation",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 60
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "quickFormation",
+          "durationSec": 30
+        }
+      ]
+    },
+    {
+      "id": "focusFire",
+      "nameKey": "skill.focusFire",
+      "category": "ranged",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 40
+        },
+        {
+          "stat": "intellect",
+          "min": 40
+        }
+      ],
+      "requiresAny": true,
+      "cost": 15,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "enemyCorps",
+        "range": 14
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "ranged"
+        }
+      ],
+      "effects": [
+        {
+          "type": "focusFire",
+          "durationSec": 10,
+          "pp": 15
+        }
+      ]
+    },
+    {
+      "id": "fireVolley",
+      "nameKey": "skill.fireVolley",
+      "category": "fire",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 30
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "area",
+        "range": 12,
+        "radius": 1
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "ranged"
+        },
+        {
+          "type": "fireAllowedByWeather"
+        }
+      ],
+      "telegraphSec": 1,
+      "effects": [
+        {
+          "type": "ignite"
+        },
+        {
+          "type": "areaDamage",
+          "sourceTag": "ranged",
+          "damagePerSourceTroop": 0.05
+        }
+      ]
+    },
+    {
+      "id": "scoutDispatch",
+      "nameKey": "skill.scoutDispatch",
+      "category": "intel",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 20
+        }
+      ],
+      "cost": 10,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "point"
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "scout"
+        }
+      ],
+      "effects": [
+        {
+          "type": "reveal",
+          "radius": 6,
+          "detectionRadiusPerPoint": 0.05,
+          "durationSec": 12
         }
       ]
     }

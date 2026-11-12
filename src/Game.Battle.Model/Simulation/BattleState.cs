@@ -104,8 +104,16 @@ namespace Game.Battle.Model.Simulation
         public long TicksLeft { get; internal set; }
         /// <summary>이 상태가 공격에 더하는 %p (없으면 0).</summary>
         public Fix AttackPp { get; internal set; }
-        /// <summary>건 군단 (도발 등).</summary>
+        /// <summary>건 군단 (도발 등). 집중 사격이면 노리는 적 군단.</summary>
         public string SourceCorpsId { get; internal set; }
+        /// <summary>이 상태인 군단이 맞을 때 덜 맞는 %p (철벽 등, R-76).</summary>
+        public Fix DefensePp { get; internal set; }
+        /// <summary>SourceCorpsId 군단을 칠 때만 더하는 공격 %p (집중 사격, R-76).</summary>
+        public Fix TargetCorpsPp { get; internal set; }
+        /// <summary>손실 사기 %p 보정 (철벽: 음수 = 덜 흔들림, R-76).</summary>
+        public Fix MoraleLossPct { get; internal set; }
+        /// <summary>움직이지 않는다 (철벽, R-76).</summary>
+        public bool Immobile { get; internal set; }
     }
 
     /// <summary>포로 기록 (전투 뒤 등용·구출 처리는 캠페인, captivity.md).</summary>
@@ -127,6 +135,10 @@ namespace Game.Battle.Model.Simulation
         public const string Surprise = "surprise";
         /// <summary>일기토 패배: 혼란이 끝나면 퇴각.</summary>
         public const string Routing = "routing";
+        /// <summary>다음 진형 변경이 바로 (진형 급변, R-76).</summary>
+        public const string QuickFormation = "quickFormation";
+        /// <summary>원거리 소부대가 한 적 군단을 노림 (집중 사격, R-76).</summary>
+        public const string FocusFire = "focusFire";
     }
 
     public sealed class CorpsState

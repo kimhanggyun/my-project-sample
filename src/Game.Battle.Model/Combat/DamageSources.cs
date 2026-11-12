@@ -207,7 +207,12 @@ namespace Game.Battle.Model.Combat
         public void Collect(AttackContext a, List<DamageModifier> into)
         {
             foreach (var st in a.AttackerCorps.Statuses)
+            {
                 if (st.AttackPp != Fix.Zero) into.Add(new DamageModifier("status." + st.Id, st.AttackPp));
+                if (st.TargetCorpsPp != Fix.Zero && st.SourceCorpsId == a.DefenderCorps.Id) into.Add(new DamageModifier("status." + st.Id, st.TargetCorpsPp));
+            }
+            foreach (var st in a.DefenderCorps.Statuses)
+                if (st.DefensePp != Fix.Zero) into.Add(new DamageModifier("status." + st.Id + ".defense", -st.DefensePp)); // 철벽 등 (R-76)
         }
     }
 

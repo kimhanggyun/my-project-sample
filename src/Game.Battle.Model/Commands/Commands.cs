@@ -214,6 +214,9 @@ namespace Game.Battle.Model.Commands
             var g = corps.Setup.General;
             Fix seconds = ctx.IsEnabled(Combat.RuleFlagIds.Discipline) ? c.FormationChangeSecondsFor(c.Discipline(g.Leadership, g.Intellect)) : Fix.Zero;
             long ticks = (seconds / c.TickSeconds).CeilToLong();
+            // 진형 급변 (R-76): 다음 한 번은 바로
+            var quick = corps.FindStatus(StatusIds.QuickFormation);
+            if (quick != null) { corps.Statuses.Remove(quick); ticks = 0; }
             if (ticks <= 0) { corps.Formation = target; corps.PendingFormation = null; corps.ReformTicksLeft = 0; return; }
             corps.PendingFormation = target;
             corps.ReformTicksLeft = ticks;
