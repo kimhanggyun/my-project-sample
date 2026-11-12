@@ -74,6 +74,9 @@ namespace Game.Unity.Battle3D
         private readonly List<Vector3> _pathPoints = new List<Vector3>();
         private readonly List<Transform> _waypoints = new List<Transform>();
         private Mesh _cylinder;
+        // 계략 표식 (R-80): 내 함정 = 땅의 갈색 고리, 위장 깃발 = 깃발 (내 것은 흐리게, 적 것은 보이면 진짜처럼)
+        private readonly Dictionary<object, Transform> _stratagemMarks = new Dictionary<object, Transform>();
+        private Material _trapMat, _decoyOwnMat, _decoyPoleMat, _enemyFlagMat;
         private Material _waypointMat;
         /// <summary>소부대 위치: 직전 틱 → 지금 틱 (틱 사이를 부드럽게 잇는다).</summary>
         private readonly Dictionary<SubUnitState, (Vector3 prev, Vector3 cur)> _unitPos = new Dictionary<SubUnitState, (Vector3, Vector3)>();
@@ -146,6 +149,10 @@ namespace Game.Unity.Battle3D
             // 깃발 (군단마다 기수 하나)
             var allyFlag = Own(NewMaterial(AllyColor));
             var enemyFlag = Own(NewMaterial(EnemyColor));
+            _enemyFlagMat = enemyFlag;
+            _trapMat = Own(NewMaterial(new Color(0.45f, 0.3f, 0.18f)));
+            _decoyOwnMat = Own(NewMaterial(new Color(AllyColor.r, AllyColor.g, AllyColor.b, 0.45f)));
+            _decoyPoleMat = Own(NewMaterial(new Color(0.35f, 0.3f, 0.25f)));
             var poleMat = Own(NewMaterial(new Color(0.35f, 0.25f, 0.15f)));
             var lastSeenMat = Own(NewMaterial(LastSeenColor));
             foreach (var c in ctx.Corps)
@@ -405,6 +412,8 @@ namespace Game.Unity.Battle3D
                 kv.Value.gameObject.SetActive(show);
             }
 
+            RefreshStratagems(flagScale);
+
             var sel = _ctl.Selected;
             bool ring = sel != null && sel.InBattle;
             _ringLine.gameObject.SetActive(ring);
@@ -555,6 +564,48 @@ namespace Game.Unity.Battle3D
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = fogColor;
             RenderSettings.fogDensity = density;
+        }
+
+        /// <summary>함정·위장 깃발 표식을 지금 상태에 맞춘다 (없어진 것은 지운다).</summary>
+        private void RefreshStratagems(float flagScale)
+        {
+            var ctx = _ctl.Context;
+            var alive = new HashSet<object>();
+            foreach (var t in ctx.Traps)
+            {
+                if (t.Team != _ctl.Team) continue; // 상대 함정은 보이지 않는다
+                alive.Add(t);
+                if (!_stratagemMarks.TryGetValue(t, out var m))
+                {
+                    float r = (float)t.Radius.ToDisplayDouble();
+                    m = Part(_root.transform, _cylinder, _trapMat, Vector3.zero, new Vector3(r * 2f, 0.02f, r * 2f));
+                    _stratagemMarks[t] = m;
+                }
+                m.position = ToWorld(t.Point) + new Vector3(0f, 0.04f, 0f);
+                // 준비 중이면 반쯤 (설치 중)
+                float k = ctx.Tick >= t.ArmedTick ? 1f : 0.5f;
+                float rr = (float)t.Radius.ToDisplayDouble() * 2f * k;
+                m.localScale = new Vector3(rr, 0.02f, rr);
+            }
+            foreach (var d in ctx.Decoys)
+            {
+                bool mine = d.Team == _ctl.Team;
+                if (!mine && !ctx.IsPointVisibleTo(_ctl.Team, d.Point)) continue;
+                alive.Add(d);
+                if (!_stratagemMarks.TryGetValue(d, out var f))
+                {
+                    f = Flag("Decoy " + d.Id, _cylinder, _decoyPoleMat, mine ? _decoyOwnMat : _enemyFlagMat);
+                    _stratagemMarks[d] = f;
+                }
+                Place(f, d.Point, flagScale);
+            }
+            var gone = new List<object>();
+            foreach (var kv in _stratagemMarks) if (!alive.Contains(kv.Key)) gone.Add(kv.Key);
+            foreach (var g in gone)
+            {
+                if (_stratagemMarks[g] != null) Object.Destroy(_stratagemMarks[g].gameObject);
+                _stratagemMarks.Remove(g);
+            }
         }
 
         private bool Place(Transform t, Vec at, float scale)

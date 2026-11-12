@@ -130,7 +130,7 @@ namespace Game.Battle.Model.Simulation
 
             foreach (var corps in ctx.Corps)
             {
-                if (corps.Status != CorpsStatus.Active || !corps.AiInCharge || corps.HasStatus(StatusIds.Taunted) || corps.DuelWith != null) continue;
+                if (corps.Status != CorpsStatus.Active || !corps.AiInCharge || corps.HasStatus(StatusIds.Taunted) || corps.DuelWith != null || corps.Feign != null) continue;
                 long every = (long)ctx.Combat.AiThinkEveryTicks * ctx.Defs.Ai.Difficulties[corps.AiDifficulty].ThinkIntervalMultiplier;
                 if (ctx.Tick % every != 0) continue;
                 _ext.Ai.Get(corps.AiStance).Think(ctx, corps);
@@ -145,6 +145,7 @@ namespace Game.Battle.Model.Simulation
             MovementSystem.Step(ctx);
             VisionSystem.Step(ctx);
             StealthSystem.Step(ctx);
+            Skills.StratagemSystem.Step(ctx); // 함정·위장 깃발·거짓 퇴각 (R-80)
             _combat.Step(ctx, _calculator);
             SupplySystem.Step(ctx);
             MoraleSystem.Step(ctx);

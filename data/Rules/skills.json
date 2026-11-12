@@ -475,6 +475,127 @@
           "durationSec": 12
         }
       ]
+    },
+    {
+      "id": "trap",
+      "nameKey": "skill.trap",
+      "category": "intel",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 30
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "point",
+        "range": 8,
+        "radius": 1.5
+      },
+      "conditions": [
+        {
+          "type": "notEngaged"
+        }
+      ],
+      "effects": [
+        {
+          "type": "trap",
+          "setupSec": 3,
+          "lossPct": 8,
+          "confuseSec": 4
+        }
+      ]
+    },
+    {
+      "id": "rockfall",
+      "nameKey": "skill.rockfall",
+      "category": "intel",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 50
+        }
+      ],
+      "cost": 30,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "area",
+        "range": 8,
+        "radius": 1.5
+      },
+      "conditions": [
+        {
+          "type": "casterAbove"
+        }
+      ],
+      "telegraphSec": 2,
+      "effects": [
+        {
+          "type": "rockfall",
+          "lossPct": 12,
+          "confuseSec": 3
+        }
+      ]
+    },
+    {
+      "id": "decoy",
+      "nameKey": "skill.decoy",
+      "category": "intel",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 50
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "point",
+        "range": 20
+      },
+      "effects": [
+        {
+          "type": "decoy",
+          "durationSec": 40
+        }
+      ]
+    },
+    {
+      "id": "feignedRetreat",
+      "nameKey": "skill.feignedRetreat",
+      "category": "disrupt",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 50
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "conditions": [
+        {
+          "type": "casterEngaged"
+        }
+      ],
+      "effects": [
+        {
+          "type": "feignedRetreat",
+          "fallCells": 4,
+          "durationSec": 5,
+          "disorderRatio": 0.5,
+          "disorderSec": 4,
+          "counterPp": 15,
+          "counterSec": 8
+        }
+      ]
     }
   ]
 }

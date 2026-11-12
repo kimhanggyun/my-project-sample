@@ -37,7 +37,11 @@ namespace Game.Battle.Model.Ai
             .Register(new ConfuseRule())
             .Register(new FortifyRule())
             .Register(new FocusFireRule())
-            .Register(new QuickFormationRule());
+            .Register(new QuickFormationRule())
+            .Register(new TrapRule())
+            .Register(new RockfallRule())
+            .Register(new DecoyRule())
+            .Register(new FeignedRetreatRule());
     }
 
     /// <summary>
@@ -305,6 +309,66 @@ namespace Game.Battle.Model.Ai
             if (!wins.TryGetValue(e.Formation.Id, out var tw) || !tw.Contains(c.Formation.Id)) return (0, null);
             foreach (var f in c.Setup.KnownFormations)
                 if (wins.TryGetValue(f, out var fw) && fw.Contains(e.Formation.Id)) return (5, new BattleCommand());
+            return (0, null);
+        }
+    }
+
+    // ---- 계략 판단 (R-80) ----
+
+    /// <summary>함정: 아직 붙지 않았고 다가오는 적이 보이면, 적과 나 사이(사거리 안)에 놓는다.</summary>
+    internal sealed class TrapRule : IAiSkillRule
+    {
+        public string EffectType => "trap";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.Engaged || c.MeleeContact) return (0, null);
+            var e = ctx.NearestEnemy(c);
+            if (e == null) return (0, null);
+            Fix r = s.Range ?? Fix.FromInt(8);
+            Vec gap = e.Anchor - c.Anchor;
+            Fix len = gap.Length;
+            if (len <= Fix.FromInt(2) || len > r * Fix.FromInt(2)) return (0, null);
+            Fix along = Fix.Min(r, len / Fix.FromInt(2));
+            var p = c.Anchor + gap * (along / len);
+            return (5, new BattleCommand { X = p.X, Y = p.Y });
+        }
+    }
+
+    /// <summary>낙석: 내가 더 높은 곳에 있고 사거리 안 보이는 적이 아래에 있으면 그 적에게.</summary>
+    internal sealed class RockfallRule : IAiSkillRule
+    {
+        public string EffectType => "rockfall";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            int mine = ctx.Field.RuleAt(Cell.Of(c.Anchor)).Height;
+            var e = AiTargets.InRange(ctx, c, s, t => ctx.Field.RuleAt(Cell.Of(t.Anchor)).Height < mine);
+            return e == null ? (0, null) : (8, new BattleCommand { X = e.Anchor.X, Y = e.Anchor.Y });
+        }
+    }
+
+    /// <summary>위장 깃발: 수비형이 아직 적을 못 봤을 때, 내 옆 4칸에 세워 적을 끌어낸다.</summary>
+    internal sealed class DecoyRule : IAiSkillRule
+    {
+        public string EffectType => "decoy";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.Setup.AiStance == AiStanceIds.Aggressive || ctx.NearestEnemy(c) != null) return (0, null);
+            var f = ctx.Forward(c);
+            var side = new Vec(f.Y, Fix.Zero - f.X);
+            var p = ctx.ClampToField(c.Anchor + side * Fix.FromInt(4) + f * Fix.FromInt(2));
+            return (3, new BattleCommand { X = p.X, Y = p.Y });
+        }
+    }
+
+    /// <summary>거짓 퇴각: 접전 중이고 사기가 아직 버틸 만하며, 나를 치는 적이 있을 때.</summary>
+    internal sealed class FeignedRetreatRule : IAiSkillRule
+    {
+        public string EffectType => "feignedRetreat";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (!c.MeleeContact || c.Morale < c.StartMorale - ctx.Defs.Ai.RallyMoraleDrop) return (0, null);
+            foreach (var e in ctx.Corps)
+                if (e.Team != c.Team && e.InBattle && e.Order.Kind == OrderKinds.Attack && e.Order.TargetCorpsId == c.Id) return (6, new BattleCommand());
             return (0, null);
         }
     }
