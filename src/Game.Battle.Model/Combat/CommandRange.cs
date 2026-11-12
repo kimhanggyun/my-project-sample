@@ -22,6 +22,7 @@ namespace Game.Battle.Model.Combat
         {
             var c = ctx.Combat;
             if (!ctx.IsEnabled(Flag) || c.CommandRangeBaseCells <= Fix.Zero || corps.Setup.General == null) return Fix.OneValue;
+            if (corps.HasStatus(StatusIds.Discord)) return c.CommandRangeMinFactor; // 이간: 지휘가 닿지 않는다 (R-82)
             Fix range = Range(ctx, corps);
             Fix d2 = Geometry.Vec.DistanceSquared(u.Position, corps.Anchor);
             if (d2 <= range * range) return Fix.OneValue;

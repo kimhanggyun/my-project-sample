@@ -596,6 +596,240 @@
           "counterSec": 8
         }
       ]
+    },
+    {
+      "id": "forcedMarch",
+      "nameKey": "skill.forcedMarch",
+      "category": "command",
+      "tier": "basic",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 30
+        }
+      ],
+      "cost": 10,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "forcedMarch",
+          "durationSec": 15,
+          "movePct": 60,
+          "endMorale": -8
+        }
+      ]
+    },
+    {
+      "id": "stealthMarch",
+      "nameKey": "skill.stealthMarch",
+      "category": "intel",
+      "tier": "advanced",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 60
+        }
+      ],
+      "cost": 30,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "conditions": [
+        {
+          "type": "stealthCover"
+        },
+        {
+          "type": "notEngaged"
+        }
+      ],
+      "effects": [
+        {
+          "type": "stealthMarch",
+          "durationSec": 40
+        }
+      ]
+    },
+    {
+      "id": "spearhead",
+      "nameKey": "skill.spearhead",
+      "category": "valor",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "might",
+          "min": 70
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "enemyCorps",
+        "range": 8
+      },
+      "effects": [
+        {
+          "type": "spearhead",
+          "durationSec": 12,
+          "attackPp": 25,
+          "captureRiskPct": 100
+        }
+      ]
+    },
+    {
+      "id": "discord",
+      "nameKey": "skill.discord",
+      "category": "disrupt",
+      "tier": "advanced",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 70
+        }
+      ],
+      "cost": 40,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "enemyCorps",
+        "range": 12
+      },
+      "effects": [
+        {
+          "type": "discord",
+          "durationSec": 20,
+          "baseChance": 0.5,
+          "perIntellect": 0.02,
+          "minChance": 0.1,
+          "maxChance": 0.95
+        }
+      ]
+    },
+    {
+      "id": "rumor",
+      "nameKey": "skill.rumor",
+      "category": "disrupt",
+      "tier": "advanced",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 60
+        }
+      ],
+      "cost": 35,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "rumor",
+          "moralePp": -6
+        }
+      ]
+    },
+    {
+      "id": "counterIntrigue",
+      "nameKey": "skill.counterIntrigue",
+      "category": "intel",
+      "tier": "advanced",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 70
+        }
+      ],
+      "cost": 30,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "effects": [
+        {
+          "type": "counterIntrigue",
+          "durationSec": 60,
+          "drainPoints": 15
+        }
+      ]
+    },
+    {
+      "id": "supplyRaid",
+      "nameKey": "skill.supplyRaid",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 50
+        }
+      ],
+      "cost": 25,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "enemyCorps",
+        "range": 8
+      },
+      "effects": [
+        {
+          "type": "supplyRaid",
+          "pct": 25,
+          "stealPct": 50
+        }
+      ]
+    },
+    {
+      "id": "supplyDrop",
+      "nameKey": "skill.supplyDrop",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "leadership",
+          "min": 40
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "allyCorps",
+        "range": 10
+      },
+      "effects": [
+        {
+          "type": "supplyDrop",
+          "pct": 20
+        }
+      ]
+    },
+    {
+      "id": "firstAid",
+      "nameKey": "skill.firstAid",
+      "category": "command",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 40
+        }
+      ],
+      "cost": 20,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "self"
+      },
+      "conditions": [
+        {
+          "type": "notInMelee"
+        }
+      ],
+      "effects": [
+        {
+          "type": "firstAid",
+          "pct": 30
+        }
+      ]
     }
   ]
 }

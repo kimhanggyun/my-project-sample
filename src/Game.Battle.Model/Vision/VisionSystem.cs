@@ -82,7 +82,7 @@ namespace Game.Battle.Model.Vision
                 var observers = new List<(Vec pos, Fix radius)>();
                 foreach (var c in ctx.Corps)
                 {
-                    if (c.Team != v.Team || !c.InBattle) continue;
+                    if (c.Team != v.Team || !c.InBattle || c.HasStatus(StatusIds.Discord)) continue; // 이간: 그 군단의 눈은 같은 편에 보태지 않는다 (R-82)
                     foreach (var u in c.Units)
                     {
                         if (!u.Alive) continue;

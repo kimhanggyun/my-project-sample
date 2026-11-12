@@ -41,7 +41,16 @@ namespace Game.Battle.Model.Ai
             .Register(new TrapRule())
             .Register(new RockfallRule())
             .Register(new DecoyRule())
-            .Register(new FeignedRetreatRule());
+            .Register(new FeignedRetreatRule())
+            .Register(new ForcedMarchRule())
+            .Register(new StealthMarchRule())
+            .Register(new SpearheadRule())
+            .Register(new DiscordRule())
+            .Register(new RumorRule())
+            .Register(new CounterIntrigueRule())
+            .Register(new SupplyRaidRule())
+            .Register(new SupplyDropRule())
+            .Register(new FirstAidRule());
     }
 
     /// <summary>
@@ -370,6 +379,115 @@ namespace Game.Battle.Model.Ai
             foreach (var e in ctx.Corps)
                 if (e.Team != c.Team && e.InBattle && e.Order.Kind == OrderKinds.Attack && e.Order.TargetCorpsId == c.Id) return (6, new BattleCommand());
             return (0, null);
+        }
+    }
+
+    // ---- 3·4차 판단 (R-82) ----
+
+    /// <summary>강행군: 진군 중이고 보이는 적이 aiEngageCells × 1.5보다 멀 때 (빨리 붙거나 자리를 잡는다).</summary>
+    internal sealed class ForcedMarchRule : IAiSkillRule
+    {
+        public string EffectType => "forcedMarch";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.Engaged || c.MeleeContact || c.HasStatus("buff." + s.Id) || c.Order.Kind == OrderKinds.Hold) return (0, null);
+            var e = ctx.NearestEnemy(c);
+            Fix far = ctx.Combat.AiEngageCells * Fix.FromRatio(3, 2);
+            return e != null && Vec.DistanceSquared(e.Anchor, c.Anchor) <= far * far ? (0, null) : (4, new BattleCommand());
+        }
+    }
+
+    /// <summary>은밀 행군: 가림막 안에서 아직 적을 못 봤을 때.</summary>
+    internal sealed class StealthMarchRule : IAiSkillRule
+    {
+        public string EffectType => "stealthMarch";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d) =>
+            c.Hidden || ctx.NearestEnemy(c) != null ? (0, null) : (3, new BattleCommand());
+    }
+
+    /// <summary>선두 돌파: 접전 중이고 사기가 시작 이상일 때, 사거리 안 가장 가까운 적에게.</summary>
+    internal sealed class SpearheadRule : IAiSkillRule
+    {
+        public string EffectType => "spearhead";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (!c.MeleeContact || c.Morale < c.StartMorale) return (0, null);
+            var e = AiTargets.InRange(ctx, c, s);
+            return e == null ? (0, null) : (7, new BattleCommand { TargetCorpsId = e.Id });
+        }
+    }
+
+    /// <summary>이간: 사거리 안 적 장수 지략이 나보다 낮을 때 (성공률이 반을 넘음).</summary>
+    internal sealed class DiscordRule : IAiSkillRule
+    {
+        public string EffectType => "discord";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var me = c.Setup.General;
+            if (me == null) return (0, null);
+            var e = AiTargets.InRange(ctx, c, s, t => t.Setup.General != null && t.Setup.General.Intellect < me.Intellect && !t.HasStatus(StatusIds.Discord));
+            return e == null ? (0, null) : (6, new BattleCommand { TargetCorpsId = e.Id });
+        }
+    }
+
+    /// <summary>유언비어: 적 군단이 둘 이상 보일 때.</summary>
+    internal sealed class RumorRule : IAiSkillRule
+    {
+        public string EffectType => "rumor";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            int n = 0;
+            foreach (var e in ctx.Corps) if (e.Team != c.Team && e.InBattle && ctx.IsVisibleTo(c.Team, e)) n++;
+            return n >= 2 ? (5, new BattleCommand()) : (0, null);
+        }
+    }
+
+    /// <summary>반간: 적이 보이기 시작하면 미리 건다.</summary>
+    internal sealed class CounterIntrigueRule : IAiSkillRule
+    {
+        public string EffectType => "counterIntrigue";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d) =>
+            !c.HasStatus(StatusIds.CounterIntrigue) && ctx.NearestEnemy(c) != null ? (3, new BattleCommand()) : (0, null);
+    }
+
+    /// <summary>군량 습격: 사거리 안 적 중 군량이 가장 많은 쪽 (가장 가까운 것으로 대신).</summary>
+    internal sealed class SupplyRaidRule : IAiSkillRule
+    {
+        public string EffectType => "supplyRaid";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var e = AiTargets.InRange(ctx, c, s, t => t.Supply > 0);
+            return e == null ? (0, null) : (6, new BattleCommand { TargetCorpsId = e.Id });
+        }
+    }
+
+    /// <summary>군량 보급: 사거리 안 아군(나 포함) 중 군량이 가져온 양의 40% 밑인 군단.</summary>
+    internal sealed class SupplyDropRule : IAiSkillRule
+    {
+        public string EffectType => "supplyDrop";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            Fix r = s.Range ?? Fix.FromInt(10);
+            foreach (var a in ctx.Corps)
+            {
+                if (a.Team != c.Team || !a.InBattle || a.StartSupply <= 0) continue;
+                if (Vec.DistanceSquared(a.Anchor, c.Anchor) > r * r) continue;
+                if (a.Supply * 100 < a.StartSupply * 40) return (7, new BattleCommand { TargetCorpsId = a.Id });
+            }
+            return (0, null);
+        }
+    }
+
+    /// <summary>응급 치료: 칼이 맞닿아 있지 않고 병력이 처음의 75% 밑일 때.</summary>
+    internal sealed class FirstAidRule : IAiSkillRule
+    {
+        public string EffectType => "firstAid";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.MeleeContact) return (0, null);
+            long start = 0;
+            foreach (var u in c.Units) start += u.StartTroops;
+            return start > 0 && c.Troops * 4 < start * 3 ? (6, new BattleCommand()) : (0, null);
         }
     }
 
