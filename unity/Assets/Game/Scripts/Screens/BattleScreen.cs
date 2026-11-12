@@ -722,8 +722,30 @@ namespace Game.Unity.Screens
             if (strength > Game.Foundation.Math.Fix.Zero) wind = T("ui.battle.wind", WindArrow(env.WindDirection), T("ui.battle.windLevel." + System.Math.Min(3, strength.CeilToLong())));
             string weather = env.EffectiveWeather.Id != null && Ctx.Defs.Strings.ContainsKey("weather." + env.EffectiveWeather.Id) ? T("weather." + env.EffectiveWeather.Id) : "";
             string time = env.EffectiveTime.Id != null && Ctx.Defs.Strings.ContainsKey("timeOfDay." + env.EffectiveTime.Id) ? T("timeOfDay." + env.EffectiveTime.Id) : "";
-            _envText.text = string.Join("  ", new[] { wind, weather, time }.Where(x => x.Length > 0));
+            _envText.text = string.Join("  ", new[] { ObjectiveText(), wind, weather, time }.Where(x => x.Length > 0));
             SetLabel(_mapButton, T(_miniMap.Visible ? "ui.battle.mapHide" : "ui.battle.mapShow"));
+        }
+
+        /// <summary>목표 (R-78): 버티기 남은 시간, 점령 구역 진행 (아군 목표면 아군 색, 적 목표면 적 색).</summary>
+        private string ObjectiveText()
+        {
+            var ctx = _sim.Context;
+            var parts = new List<string>();
+            var h = ctx.Setup.HoldOut;
+            if (h != null && ctx.Setup.DefeatConditions.Contains(Game.Battle.Model.Victory.VictoryConditionIds.HoldOut))
+            {
+                long left = System.Math.Max(0, (h.Seconds - ctx.Combat.TickSeconds * ctx.Tick).CeilToLong());
+                parts.Add(Ui.Colored(T(h.Team == _ctl.Team ? "ui.objective.holdOut" : "ui.objective.enemyHoldOut", left / 60, (left % 60).ToString("00")), h.Team == _ctl.Team ? Palette.Ally : Palette.Enemy));
+            }
+            if (ctx.Setup.DefeatConditions.Contains(Game.Battle.Model.Victory.VictoryConditionIds.Zone))
+                foreach (var o in ctx.Objects)
+                {
+                    if (o.Setup.Type != Game.Battle.Model.Victory.MapObjectSetup.Zone) continue;
+                    long held = (ctx.Combat.TickSeconds * o.HeldTicks).FloorToLong();
+                    bool mine = o.Setup.Team == _ctl.Team;
+                    parts.Add(Ui.Colored(T(mine ? "ui.objective.zone" : "ui.objective.enemyZone", held, o.Setup.Seconds.FloorToLong()), mine ? Palette.Ally : Palette.Enemy));
+                }
+            return string.Join("  ", parts);
         }
 
         /// <summary>바람이 불어 가는 방향을 지금 카메라 화면 기준 8방향 화살표로.</summary>

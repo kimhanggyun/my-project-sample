@@ -111,6 +111,8 @@ namespace Game.Flow
             MaxMinutes = s.MaxMinutes,
             DefeatConditions = s.DefeatConditions,
             Corps = s.Corps,
+            Objects = s.Objects,
+            HoldOut = s.HoldOut,
             InitialExplored = s.InitialExplored,
             Contests = s.Contests,
             Wind = s.Wind,

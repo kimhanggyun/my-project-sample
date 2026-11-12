@@ -1141,6 +1141,13 @@
 
 ## 6. 데이터 구성
 
+> **승리 조건·맵 오브젝트 구현 (2026-11-12, R-78)**: 스텝 JSON
+> - `"defeatConditions"`에 `"supplyOut"`(군량 소진), `"holdOut"`(버티기), `"zone"`(구역 점령)을 더할 수 있다 (기본 `annihilation`, `commander`).
+> - `"holdOut": { "team": "player", "seconds": 300 }` — 그 팀이 5분 버티면 이긴다.
+> - `"objects": [{ "id": "z1", "type": "zone", "x": 20, "y": 15, "radius": 3, "team": "enemy", "seconds": 30 }, { "id": "d1", "type": "depot", "x": 8, "y": 30, "radius": 3, "value": 2000 }, { "id": "t1", "type": "watchtower", "x": 25, "y": 20, "radius": 2, "value": 18 }]`
+> - 전장에 테두리·기둥으로 보이고 차지한 팀 색, 상단 바에 버티기 남은 시간·점령 진행. 지금 스토리 스텝에는 넣지 않았다 (콘텐츠 추가 보류, 스텝을 만들 때 고른다).
+
+
 ```
 Data/
 ├─ Master/                 공통 기본값

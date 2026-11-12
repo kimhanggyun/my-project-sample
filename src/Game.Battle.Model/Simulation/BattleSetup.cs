@@ -23,6 +23,10 @@ namespace Game.Battle.Model.Simulation
         /// <summary>패배 조건 id 목록 (<see cref="Victory.VictoryConditionIds"/>). 하나라도 만족하면 그 팀 패배.</summary>
         public List<string> DefeatConditions { get; set; } = new List<string> { Victory.VictoryConditionIds.Annihilation, Victory.VictoryConditionIds.Commander };
         public List<CorpsSetup> Corps { get; set; } = new List<CorpsSetup>();
+        /// <summary>맵 오브젝트·점령 구역 (R-78).</summary>
+        public List<Victory.MapObjectSetup> Objects { get; set; } = new List<Victory.MapObjectSetup>();
+        /// <summary>버티기 목표 (R-78, 조건 holdOut과 함께). 없으면 null.</summary>
+        public Victory.HoldOutSetup HoldOut { get; set; }
         /// <summary>
         /// 팀 → 이미 탐색한 칸 (같은 스텝 재도전 시 탐색 기억, 스위치 fogMemory). 칸 순서는 y × 폭 + x. 없으면 모두 미탐색.
         /// </summary>

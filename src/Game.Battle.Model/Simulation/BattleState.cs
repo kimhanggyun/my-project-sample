@@ -305,6 +305,8 @@ namespace Game.Battle.Model.Simulation
         /// <summary>팀 → 시야 (전장 안개).</summary>
         public Dictionary<string, Vision.TeamVision> Vision { get; } = new Dictionary<string, Vision.TeamVision>();
         public List<Vision.RevealZone> Reveals { get; } = new List<Vision.RevealZone>();
+        /// <summary>맵 오브젝트·점령 구역의 지금 상태 (R-78).</summary>
+        public List<Victory.MapObjectState> Objects { get; } = new List<Victory.MapObjectState>();
         /// <summary>전조 중인 스킬 효과 (정해진 틱에 나타난다).</summary>
         public List<Skills.ScheduledEffect> Scheduled { get; } = new List<Skills.ScheduledEffect>();
         /// <summary>바람·날씨·시간대·불.</summary>
