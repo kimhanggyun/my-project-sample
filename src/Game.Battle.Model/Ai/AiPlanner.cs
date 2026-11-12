@@ -51,7 +51,8 @@ namespace Game.Battle.Model.Ai
             .Register(new SupplyRaidRule())
             .Register(new SupplyDropRule())
             .Register(new FirstAidRule())
-            .Register(new PalisadeRule());
+            .Register(new PalisadeRule())
+            .Register(new FloodRule());
     }
 
     /// <summary>
@@ -505,6 +506,27 @@ namespace Game.Battle.Model.Ai
             if (gap.Length <= Fix.Zero) return (0, null);
             var p = ctx.ClampToField(c.Anchor + gap.Normalized() * Fix.FromInt(2));
             return (5, new BattleCommand { X = p.X, Y = p.Y });
+        }
+    }
+
+    /// <summary>수공 (R-84): 내가 차지한 둑에 서 있고, 잠길 곳에 적 소부대가 아군보다 많을 때.</summary>
+    internal sealed class FloodRule : IAiSkillRule
+    {
+        public string EffectType => "floodAttack";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var dam = Floods.DamAt(ctx, c);
+            if (dam == null) return (0, null);
+            var center = new Vec(dam.Setup.FloodX, dam.Setup.FloodY);
+            Fix r2 = dam.Setup.FloodRadius * dam.Setup.FloodRadius;
+            int enemy = 0, own = 0;
+            foreach (var k in ctx.Corps)
+            {
+                if (!k.InBattle) continue;
+                foreach (var u in k.Units)
+                    if (u.Alive && Vec.DistanceSquared(u.Position, center) <= r2) { if (k.Team == c.Team) own++; else enemy++; }
+            }
+            return enemy > 0 && enemy > own ? (9, new BattleCommand()) : (0, null);
         }
     }
 

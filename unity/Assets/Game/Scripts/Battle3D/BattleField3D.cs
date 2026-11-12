@@ -188,7 +188,9 @@ namespace Game.Unity.Battle3D
                 }
                 // 기둥 높이로 종류 구분: 망루 높게, 보급소 낮고 넓게, 점령 구역 깃대
                 var size = o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Watchtower ? new Vector3(0.6f, 2.2f, 0.6f)
-                    : o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Depot ? new Vector3(1.2f, 0.4f, 1.2f) : new Vector3(0.2f, 1.6f, 0.2f);
+                    : o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Depot ? new Vector3(1.2f, 0.4f, 1.2f)
+                    : o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Dam ? new Vector3(2.4f, 0.5f, 0.6f) // 둑: 넓고 낮은 둑방
+                    : new Vector3(0.2f, 1.6f, 0.2f);
                 var pillar = Part(_root.transform, cylinder, _objNone, center + new Vector3(0f, size.y, 0f), size);
                 _objects.Add((o, ring, pillar.GetComponent<MeshRenderer>()));
             }

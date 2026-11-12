@@ -147,6 +147,7 @@ namespace Game.Battle.Model.Simulation
             StealthSystem.Step(ctx);
             Skills.StratagemSystem.Step(ctx); // 함정·위장 깃발·거짓 퇴각 (R-80)
             Skills.PalisadeSystem.Step(ctx); // 목책이 불타면 무너짐 (R-83)
+            Skills.Floods.Step(ctx); // 물 → 진흙 → 마름 (R-84)
             _combat.Step(ctx, _calculator);
             SupplySystem.Step(ctx);
             MoraleSystem.Step(ctx);
@@ -368,8 +369,9 @@ namespace Game.Battle.Model.Simulation
                 if (!ext.Victory.Contains(id)) Fail($"없는 패배 조건 '{id}'.");
             foreach (var o in s.Objects ?? new List<Victory.MapObjectSetup>())
             {
-                if (o.Type != Victory.MapObjectSetup.Depot && o.Type != Victory.MapObjectSetup.Watchtower && o.Type != Victory.MapObjectSetup.Zone) Fail($"없는 맵 오브젝트 종류 '{o.Type}'.");
+                if (o.Type != Victory.MapObjectSetup.Depot && o.Type != Victory.MapObjectSetup.Watchtower && o.Type != Victory.MapObjectSetup.Zone && o.Type != Victory.MapObjectSetup.Dam) Fail($"없는 맵 오브젝트 종류 '{o.Type}'.");
                 if (o.Type == Victory.MapObjectSetup.Zone && (o.Team == null || o.Seconds <= Fix.Zero)) Fail($"점령 구역 '{o.Id}': 팀과 초가 필요합니다.");
+                if (o.Type == Victory.MapObjectSetup.Dam && o.FloodRadius <= Fix.Zero) Fail($"둑 '{o.Id}': 잠기는 곳(floodRadius)이 필요합니다.");
             }
             if (s.DefeatConditions.Contains(Victory.VictoryConditionIds.HoldOut) && s.HoldOut == null) Fail("패배 조건 holdOut에는 HoldOut 설정이 필요합니다.");
             foreach (var c in s.Corps)

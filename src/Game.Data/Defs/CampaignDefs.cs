@@ -217,6 +217,10 @@ namespace Game.Data.Defs
         public Fix Value { get; internal set; }
         public string Team { get; internal set; }
         public Fix Seconds { get; internal set; }
+        /// <summary>둑(dam): 터지면 잠기는 곳 (중심·반경, R-84).</summary>
+        public Fix FloodX { get; internal set; }
+        public Fix FloodY { get; internal set; }
+        public Fix FloodRadius { get; internal set; }
 
         internal static List<StepObjectDef> List(JObject o, string c)
         {
@@ -233,6 +237,9 @@ namespace Game.Data.Defs
                     Value = JsonUtil.FixOr(x, "value", Fix.Zero, c + ".objects"),
                     Team = x.Value<string>("team"),
                     Seconds = JsonUtil.FixOr(x, "seconds", Fix.Zero, c + ".objects"),
+                    FloodX = JsonUtil.FixOr(x, "floodX", Fix.Zero, c + ".objects"),
+                    FloodY = JsonUtil.FixOr(x, "floodY", Fix.Zero, c + ".objects"),
+                    FloodRadius = JsonUtil.FixOr(x, "floodRadius", Fix.Zero, c + ".objects"),
                 });
             return list;
         }

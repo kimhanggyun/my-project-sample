@@ -216,6 +216,7 @@ namespace Game.Flow
                 {
                     Id = ob.Id, Type = ob.Type, X = ob.X, Y = ob.Y, Radius = ob.Radius, Value = ob.Value,
                     Team = ob.Team == null ? null : StepTeam(ob.Team), Seconds = ob.Seconds,
+                    FloodX = ob.FloodX, FloodY = ob.FloodY, FloodRadius = ob.FloodRadius,
                 });
 
             // 아군: 편성에서 (부상병은 부대에 따로 있으므로 병력만), 군량은 하루 소비 비율로 나눔

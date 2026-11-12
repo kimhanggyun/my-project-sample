@@ -68,6 +68,16 @@
       "polearm": 0,
       "ranged": 5,
       "mounted": 5
+    },
+    "flood": {
+      "infantry": -15,
+      "polearm": -15,
+      "ranged": -20,
+      "light": -5
+    },
+    "mud": {
+      "mounted": -15,
+      "heavy": -10
     }
   }
 }
