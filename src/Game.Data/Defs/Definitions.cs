@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Game.Data.Json;
 using Game.Foundation.Math;
 
 namespace Game.Data.Defs
@@ -62,6 +63,47 @@ namespace Game.Data.Defs
         public string Tier { get; internal set; }
         /// <summary>칸 id → 장수 기준 위치.</summary>
         public IReadOnlyDictionary<string, SlotOffset> Slots { get; internal set; }
+        /// <summary>진형 특성치 (formations.md 2장, R-72). 없으면 모두 0.</summary>
+        public FormationStats Stats { get; internal set; } = new FormationStats();
+    }
+
+    /// <summary>
+    /// 진형 특성치 (formations.md 2장, R-72): 모두 가산 보정. 공격 쪽 %p는 이 진형이 칠 때, 방어 쪽 %p는 이 진형이 맞을 때 (양수 = 덜 맞음).
+    /// </summary>
+    public sealed class FormationStats
+    {
+        /// <summary>정면으로 칠 때 공격 %p (돌파력).</summary>
+        public Fix BreakthroughPp { get; internal set; }
+        /// <summary>측면·배후로 칠 때 공격 %p (포위력).</summary>
+        public Fix EnvelopPp { get; internal set; }
+        /// <summary>원거리 소부대가 칠 때 공격 %p (원거리 효율).</summary>
+        public Fix RangedPp { get; internal set; }
+        /// <summary>정면에서 맞을 때 덜 맞는 %p (얇은 진형은 음수).</summary>
+        public Fix FrontDefensePp { get; internal set; }
+        public Fix FlankDefensePp { get; internal set; }
+        public Fix RearDefensePp { get; internal set; }
+        /// <summary>이동 속도 %.</summary>
+        public Fix MoveSpeedPct { get; internal set; }
+        /// <summary>범위 피해(화살비·화계 등)로 받는 피해 % (음수 = 덜 받음).</summary>
+        public Fix AreaDamageTakenPct { get; internal set; }
+        /// <summary>손실로 떨어지는 사기 % (응집력: 음수 = 덜 흔들림).</summary>
+        public Fix MoraleLossPct { get; internal set; }
+
+        public static FormationStats From(Newtonsoft.Json.Linq.JObject o, string context)
+        {
+            var s = new FormationStats();
+            if (o == null) return s;
+            s.BreakthroughPp = JsonUtil.FixOr(o, "breakthroughPp", Fix.Zero, context);
+            s.EnvelopPp = JsonUtil.FixOr(o, "envelopPp", Fix.Zero, context);
+            s.RangedPp = JsonUtil.FixOr(o, "rangedPp", Fix.Zero, context);
+            s.FrontDefensePp = JsonUtil.FixOr(o, "frontDefensePp", Fix.Zero, context);
+            s.FlankDefensePp = JsonUtil.FixOr(o, "flankDefensePp", Fix.Zero, context);
+            s.RearDefensePp = JsonUtil.FixOr(o, "rearDefensePp", Fix.Zero, context);
+            s.MoveSpeedPct = JsonUtil.FixOr(o, "moveSpeedPct", Fix.Zero, context);
+            s.AreaDamageTakenPct = JsonUtil.FixOr(o, "areaDamageTakenPct", Fix.Zero, context);
+            s.MoraleLossPct = JsonUtil.FixOr(o, "moraleLossPct", Fix.Zero, context);
+            return s;
+        }
     }
 
     public sealed class GeneralDef

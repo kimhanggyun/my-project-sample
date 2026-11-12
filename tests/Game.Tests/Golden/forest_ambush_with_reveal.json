@@ -1,31 +1,31 @@
 {
   "winner": "teamA",
   "endReason": "defeat",
-  "ticks": 780,
-  "elapsedSeconds": "78",
+  "ticks": 798,
+  "elapsedSeconds": "79.8",
   "commands": 3,
   "contests": [],
   "injuries": {},
   "captures": [],
-  "stateHash": "98a518e9b8411404",
+  "stateHash": "fe2ddd044b69049d",
   "corps": [
     {
       "id": "A",
       "team": "teamA",
       "status": "Active",
       "startTroops": 6000,
-      "remainingTroops": 5390,
-      "losses": 610,
+      "remainingTroops": 5357,
+      "losses": 643,
       "startSupply": 1000000,
-      "remainingSupply": 947633,
-      "finalMorale": "47.8134",
-      "skillPointsLeft": "45.22",
+      "remainingSupply": 946566,
+      "finalMorale": "48.5983",
+      "skillPointsLeft": "45.68",
       "units": [
         {
           "slot": "vanguard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 504
+          "remaining": 478
         },
         {
           "slot": "center",
@@ -37,7 +37,7 @@
           "slot": "leftWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 886
+          "remaining": 879
         },
         {
           "slot": "rightWing",
@@ -64,12 +64,12 @@
       "team": "teamB",
       "status": "Retreated",
       "startTroops": 6000,
-      "remainingTroops": 5131,
-      "losses": 869,
+      "remainingTroops": 5082,
+      "losses": 918,
       "startSupply": 1000000,
-      "remainingSupply": 948492,
-      "finalMorale": "25.9707",
-      "skillPointsLeft": "48.86",
+      "remainingSupply": 947503,
+      "finalMorale": "26.1411",
+      "skillPointsLeft": "48.96",
       "units": [
         {
           "slot": "vanguard",
@@ -93,13 +93,13 @@
           "slot": "rightWing",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 180
+          "remaining": 130
         },
         {
           "slot": "leftGuard",
           "troopType": "infantry",
           "start": 1000,
-          "remaining": 968
+          "remaining": 969
         },
         {
           "slot": "rightGuard",

@@ -423,7 +423,7 @@ namespace Game.Battle.Model.Skills
             Fix each = total / targets.Count;
             foreach (var (e, v) in targets)
             {
-                v.PendingLoss += each;
+                v.PendingLoss += each * Combat.FormationStatEffects.AreaDamageMultiplier(c.Battle, e); // 산개 등 (R-72)
                 e.BeingHit = true;
                 if (e.Hidden) StealthSystem.Expose(e);
             }

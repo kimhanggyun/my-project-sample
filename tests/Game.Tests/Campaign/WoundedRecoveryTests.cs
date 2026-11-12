@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Game.Battle.Model.Simulation;
 using Game.Campaign;
@@ -57,6 +58,29 @@ namespace Game.Tests.Campaign
             Assert.Equal(0, CasualtyService.RecoverDue(u, 1000 + 30 * 60));
             Assert.Equal(80, CasualtyService.RecoverDue(u, 1000 + 50 * 60));
             Assert.Equal(880, u.Troops);
+        }
+
+        [Fact(DisplayName = "R-61 보충: 한도 안에서 가장 적은 부대부터 고르게 채운다 (앞줄 칸이 비지 않는다)")]
+        public void RefillLevelsLowestFirst()
+        {
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            var comp = s.Compositions[0];
+            var units = comp.Slots.Values.Select(id => s.FindUnit(id)).ToList();
+            foreach (var u in units) u.Troops = 0; // 모두 잃음
+            var svc = new TroopService(Kit.D);
+            var plan = svc.RefillPlan(s).Where(p => units.Any(u => u.UnitId == p.Key)).ToDictionary(p => p.Key, p => p.Value);
+            Assert.Equal(units.Count, plan.Count);
+            long min = plan.Values.Min(), max = plan.Values.Max();
+            Assert.True(max - min <= 1, $"고르지 않음: {min}~{max}");
+            var vanguard = s.FindUnit(comp.Slots["vanguard"]);
+            Assert.Equal(max, plan[vanguard.UnitId]); // 남는 한 명은 앞줄부터
+
+            // 한 부대만 많이 남아 있으면 나머지를 먼저 채운다
+            foreach (var u in units) u.Troops = 100;
+            var big = units.First(u => u != vanguard);
+            big.Troops = 4000;
+            var plan2 = svc.RefillPlan(s).Where(p => units.Any(u => u.UnitId == p.Key)).ToDictionary(p => p.Key, p => p.Value);
+            Assert.True(plan2.GetValueOrDefault(vanguard.UnitId) > plan2.GetValueOrDefault(big.UnitId));
         }
 
         [Fact]

@@ -31,12 +31,14 @@ namespace Game.Tests.Campaign
         public void JoinOnFirstClear()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var s = StartingKitService.CreateNewGame(Kit.D);
-            s.ClearedSteps.Add("step01");
-            s.ClearedSteps.Add("step02");
+            CampaignState s = null;
             BattleReport report = null;
-            for (ulong seed = 1; seed < 30 && !s.ClearedSteps.Contains("step03"); seed++)
+            for (ulong seed = 1; seed < 30 && (s == null || !s.ClearedSteps.Contains("step03")); seed++)
             {
+                // 판마다 새 상태 (진 판의 손실이 다음 판에 남지 않게)
+                s = StartingKitService.CreateNewGame(Kit.D);
+                s.ClearedSteps.Add("step01");
+                s.ClearedSteps.Add("step02");
                 var plan = flow.Prepare(s, new SortieRequest { StepId = "step03", Seed = seed, Delegate = true });
                 Assert.True(plan.Ok, string.Join(";", plan.Errors));
                 flow.Confirm(s, plan);
