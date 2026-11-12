@@ -26,7 +26,8 @@ namespace Game.Unity.Screens
             var books = new SkillBookService(Ctx.Defs);
             var g = Ctx.State.FindGeneral(_generalId);
             Ui.Column(Root, 12, 24);
-            Ui.Size(Ui.Label(Root, T("ui.generals.line", Ctx.GeneralName(_generalId), g.Level, T("ui.generals." + g.Status)), Ui.FontBody), 80);
+            string grade = Ctx.Defs.Generals.TryGetValue(_generalId, out var gdef) ? GradeLabel.Tag(Ctx, gdef.Grade) : ""; // 등급 (E25)
+            Ui.Size(Ui.Label(Root, grade + T("ui.generals.line", Ctx.GeneralName(_generalId), g.Level, T("ui.generals." + g.Status)), Ui.FontBody), 80);
             Ui.Size(Ui.Label(Root, T("resource.gold") + " " + Ctx.Resource(ResourceIds.Gold).ToString("N0"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim), 48);
             _notice = Ui.Label(Root, "", 28, TextAnchor.MiddleLeft, Palette.Text);
             Ui.Size(_notice, 44);
