@@ -32,6 +32,9 @@ namespace Game.Unity.Battle3D
         private static readonly Color HitColor = new Color(1f, 0.95f, 0.85f);
 
         private readonly BattleControl _ctl;
+        private readonly Light _sun;
+        private readonly Camera _camera;
+        private string _atmosphereKey;
         private readonly GameObject _root;
         private readonly FieldTexture _texture;
         private readonly long _troopsPerSoldier;
@@ -121,6 +124,8 @@ namespace Game.Unity.Battle3D
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
             light.intensity = 1.1f;
+            _sun = light;
+            _camera = cam;
 
             // 바닥
             _texture = new FieldTexture(ctx, ctl.Team) { RevealAll = ctl.RevealAll };
@@ -456,6 +461,8 @@ namespace Game.Unity.Battle3D
                 }
             }
 
+            ApplyAtmosphere(ctx);
+
             // 버프·디버프 테두리 (D18)
             foreach (var c in ctx.Corps)
             {
@@ -511,6 +518,43 @@ namespace Game.Unity.Battle3D
                     line.SetPosition(i, new Vector3(x, GroundHeight(x, z) + 0.14f, z));
                 }
             }
+        }
+
+        /// <summary>
+        /// 시간대·날씨 빛 (D19): 낮 = 흰 햇빛, 저녁 = 주황 낮은 해, 밤 = 푸르고 어둡게. 비 = 어둡게 + 옅은 안개, 안개 = 짙은 안개,
+        /// 무더위 = 노란 기운, 혹한 = 푸른 기운. 바뀔 때만 다시 정한다 (이벤트로 날씨가 바뀌면 따라간다).
+        /// </summary>
+        private void ApplyAtmosphere(BattleContext ctx)
+        {
+            var env = ctx.Environment;
+            string weather = env.EffectiveWeather.Id ?? "clear", time = env.EffectiveTime.Id ?? "day";
+            string key = weather + "|" + time;
+            if (key == _atmosphereKey) return;
+            _atmosphereKey = key;
+            Color sun = Color.white, sky = new Color(0.08f, 0.09f, 0.10f), ambient = new Color(0.55f, 0.55f, 0.58f);
+            float intensity = 1.1f, pitch = 55f;
+            if (time == "dusk") { sun = new Color(1f, 0.72f, 0.45f); intensity = 0.8f; pitch = 18f; sky = new Color(0.20f, 0.12f, 0.10f); ambient = new Color(0.45f, 0.36f, 0.32f); }
+            if (time == "night") { sun = new Color(0.55f, 0.65f, 0.95f); intensity = 0.35f; pitch = 40f; sky = new Color(0.02f, 0.03f, 0.06f); ambient = new Color(0.16f, 0.18f, 0.26f); }
+            bool fog = false;
+            Color fogColor = sky;
+            float density = 0f;
+            switch (weather)
+            {
+                case "rain": intensity *= 0.75f; ambient *= 0.85f; fog = true; density = 0.012f; fogColor = new Color(0.35f, 0.38f, 0.42f); break;
+                case "fog": fog = true; density = 0.035f; fogColor = new Color(0.62f, 0.64f, 0.66f); break;
+                case "heat": sun = Color.Lerp(sun, new Color(1f, 0.85f, 0.55f), 0.5f); ambient = Color.Lerp(ambient, new Color(0.65f, 0.55f, 0.40f), 0.4f); break;
+                case "cold": sun = Color.Lerp(sun, new Color(0.75f, 0.85f, 1f), 0.5f); ambient = Color.Lerp(ambient, new Color(0.50f, 0.58f, 0.70f), 0.4f); break;
+                case "gale": intensity *= 0.9f; break;
+            }
+            _sun.color = sun;
+            _sun.intensity = intensity;
+            _sun.transform.rotation = Quaternion.Euler(pitch, -30f, 0f);
+            _camera.backgroundColor = fog ? fogColor : sky;
+            RenderSettings.ambientLight = ambient;
+            RenderSettings.fog = fog;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = fogColor;
+            RenderSettings.fogDensity = density;
         }
 
         private bool Place(Transform t, Vec at, float scale)
@@ -631,6 +675,7 @@ namespace Game.Unity.Battle3D
 
         public void Destroy()
         {
+            RenderSettings.fog = false; // 날씨 안개는 전장에서만
             Object.Destroy(_root);
             _texture.Destroy();
             _art.Destroy();
