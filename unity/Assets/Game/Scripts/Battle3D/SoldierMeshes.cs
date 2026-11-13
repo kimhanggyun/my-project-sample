@@ -53,6 +53,19 @@ namespace Game.Unity.Battle3D
                 part = Skin;
                 Add(sphere, new Vector3(0.14f, 0.2f, 0.14f), new Vector3(0.05f, 0.05f, 0.05f));                       // 곁의 병사 (머리만)
             }
+            else if (baseType == "warship")
+            {
+                // 배 (R-85): 갈색 선체 + 돛대 + 팀 색 돛, 갑판 위 병사 둘 (머리). 수군 2단계도 모두 이 모양
+                part = Dark;
+                Add(cube, new Vector3(0f, 0.05f, 0f), new Vector3(0.18f, 0.08f, 0.42f));                       // 선체
+                Add(cube, new Vector3(0f, 0.07f, 0.22f), new Vector3(0.1f, 0.06f, 0.08f), new Vector3(0f, 45f, 0f)); // 뱃머리
+                Add(cylinder, new Vector3(0f, 0.3f, 0f), new Vector3(0.02f, 0.22f, 0.02f));                   // 돛대
+                part = Team;
+                Add(cube, new Vector3(0f, 0.32f, 0.02f), new Vector3(0.2f, 0.2f, 0.01f));                     // 돛 (팀 색)
+                part = Skin;
+                Add(sphere, new Vector3(-0.05f, 0.13f, -0.1f), new Vector3(0.05f, 0.05f, 0.05f));
+                Add(sphere, new Vector3(0.05f, 0.13f, 0.12f), new Vector3(0.05f, 0.05f, 0.05f));
+            }
             else BuildPerson(baseType, parts, cube, sphere, capsule, cylinder);
             var subs0 = new CombineInstance[parts.Length];
             for (int i = 0; i < parts.Length; i++)

@@ -127,6 +127,7 @@ namespace Game.Flow
             Wind = s.Wind,
             Weather = s.Weather,
             TimeOfDay = s.TimeOfDay,
+            BattleType = s.BattleType,
             Changes = s.Changes,
             Events = s.Events,
         };

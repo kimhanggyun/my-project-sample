@@ -65,11 +65,11 @@ namespace Game.Tests.Campaign
             Assert.Empty(svc.PromotionsFor(u)); // 3단계가 끝
         }
 
-        [Fact(DisplayName = "R-52 3단계 정예: 전투 2단계 4종마다 하나씩, 승급 조건은 2단계보다 높다 (공병은 3단계 없음)")]
+        [Fact(DisplayName = "R-52 3단계 정예: 전투 2단계 4종마다 하나씩, 승급 조건은 2단계보다 높다 (공병·수군은 3단계 없음)")]
         public void EliteTier()
         {
             var g = Kit.D.TroopGrowth;
-            foreach (var t2 in Kit.D.TroopTypes.Values.Where(t => t.Tier == 2 && !t.HasTag("engineer")))
+            foreach (var t2 in Kit.D.TroopTypes.Values.Where(t => t.Tier == 2 && !t.HasTag("engineer") && !t.HasTag("naval")))
             {
                 var up = g.Promotions.Where(p => p.From == t2.Id).ToList();
                 var p3 = Assert.Single(up);

@@ -154,6 +154,7 @@ namespace Game.Battle.Model.Combat
             else if (wins.TryGetValue(def.Id, out var l) && l.Contains(att.Id)) sign = -1;
             if (sign == 0) return;
             Fix pp = att.Group == "core" && def.Group == "core" ? a.Battle.Combat.FormationCorePp : a.Battle.Combat.FormationSituationalPp;
+            pp = pp * a.Battle.Combat.FormationScale(a.Battle.Setup.BattleType); // 수상전 난전 (R-85)
             into.Add(new DamageModifier("formationCounter", sign > 0 ? pp : -pp, RuleFlagIds.FormationCounters));
         }
     }

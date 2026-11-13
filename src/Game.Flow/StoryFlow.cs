@@ -142,6 +142,8 @@ namespace Game.Flow
             setup.Flags = _defs.ResolveFlags(step.RuleOverrides);
         }
 
+        public const string NavalBattleType = "naval";
+
         public StoryFlow(DefinitionSet defs, IDataSource source, ITimeProvider time)
         {
             _defs = defs;
@@ -162,8 +164,17 @@ namespace Game.Flow
             Captivity.ReleaseExpired(state);
         }
 
-        public bool IsUnlocked(CampaignState state, string stepId) =>
-            StepProgress.IsUnlocked(_defs.StepIndex, state, stepId, Captivity.CampsWithCaptives(state));
+        public bool IsUnlocked(CampaignState state, string stepId)
+        {
+            // 훈련 전투 (R-85): 그 태그의 부대가 있으면 열린다 (스토리 순서 밖, 반복 가능)
+            if (_defs.StepIndex.Drills.TryGetValue(stepId, out var tag))
+            {
+                foreach (var u in state.Units)
+                    if (_defs.TroopTypes.TryGetValue(u.TroopType, out var t) && t.HasTag(tag)) return true;
+                return false;
+            }
+            return StepProgress.IsUnlocked(_defs.StepIndex, state, stepId, Captivity.CampsWithCaptives(state));
+        }
 
         /// <summary>출진 준비: 상태는 바꾸지 않는다. 문제(편성·군량·해금)는 Errors로 돌려준다.</summary>
         /// <summary>스텝 데이터의 팀 이름("player"/"enemy") → 전투 팀 id.</summary>
@@ -208,6 +219,7 @@ namespace Game.Flow
                 HoldOut = step.HoldOutTeam == null ? null : new Game.Battle.Model.Victory.HoldOutSetup { Team = StepTeam(step.HoldOutTeam), Seconds = step.HoldOutSeconds },
                 Weather = step.Weather,
                 TimeOfDay = step.TimeOfDay,
+                BattleType = step.BattleType,
                 Wind = new WindSetup { Direction = step.WindDirection, Strength = step.WindStrength },
             };
             setup.InitialExplored[PlayerTeam] = StepProgress.Explored(state, step.Id, map.Width * map.Height);
@@ -318,6 +330,19 @@ namespace Game.Flow
                 setup.Events.Add(es);
             }
 
+            // 수상전 (R-85): 배(naval)만 물에 뜬다 → 수군이 아닌 부대가 있으면 출진 불가
+            if (step.BattleType == NavalBattleType)
+                foreach (var c in setup.Corps)
+                {
+                    if (c.Team != PlayerTeam) continue;
+                    foreach (var u in c.Units)
+                        if (!_defs.TroopTypes[u.TroopType].HasTag(TerrainRuleDef.NavalTag))
+                        {
+                            plan.Errors.Add($"수상전에는 수군 부대만 나갈 수 있습니다 ({_defs.TroopTypes[u.TroopType].Id}). 편성 탭에서 [수상전] 편성을 만드세요.");
+                            goto naval_done;
+                        }
+                }
+            naval_done:
             PlanContests(step, setup, request);
             plan.Setup = setup;
             return plan;

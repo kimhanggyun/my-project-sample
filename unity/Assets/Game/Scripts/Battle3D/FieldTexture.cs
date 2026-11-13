@@ -29,6 +29,7 @@ namespace Game.Unity.Battle3D
             { "marsh", new Color32(85, 105, 80, 255) },
             { "building", new Color32(150, 120, 110, 255) },
             { "flood", new Color32(70, 120, 190, 255) },   // 수공으로 잠김 (R-84)
+            { "water", new Color32(45, 85, 150, 255) },    // 호수·바다 (수상전, R-85)
             { "mud", new Color32(105, 90, 60, 255) },      // 물이 빠진 진흙
         };
         private static readonly Color32 Unknown = new Color32(128, 128, 128, 255);

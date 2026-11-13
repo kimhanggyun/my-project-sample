@@ -58,7 +58,7 @@ namespace Game.Battle.Model.Combat
     {
         public void Collect(AttackContext a, List<DamageModifier> into)
         {
-            var pp = FormationStatEffects.DamagePp(a);
+            var pp = FormationStatEffects.DamagePp(a) * a.Battle.Combat.FormationScale(a.Battle.Setup.BattleType); // 수상전 난전 (R-85)
             if (pp != Fix.Zero) into.Add(new DamageModifier("formationStats", pp, FormationStatEffects.Flag));
         }
     }

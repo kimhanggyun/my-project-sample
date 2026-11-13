@@ -39,6 +39,8 @@ namespace Game.Battle.Model.Simulation
         public string Weather { get; set; } = "clear";
         /// <summary>시간대 id (conditions.json timeOfDay). 기본 낮.</summary>
         public string TimeOfDay { get; set; } = "day";
+        /// <summary>전장 유형 (field·siege·naval, R-85). 수상전은 진형 효과가 줄어든다 (combat.json battleTypes).</summary>
+        public string BattleType { get; set; } = "field";
         /// <summary>전투 중 바람·날씨가 바뀌는 이벤트 (틱 순서).</summary>
         public List<EnvironmentChange> Changes { get; set; } = new List<EnvironmentChange>();
         /// <summary>스텝 연출: 조건 → 행동 (대사, 증원, AI 성향 바꾸기).</summary>
