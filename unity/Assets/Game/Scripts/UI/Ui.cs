@@ -20,6 +20,17 @@ namespace Game.Unity.UI
         public static Color Good = new Color(0.55f, 0.90f, 0.55f);
         public static Color Bad = new Color(1.00f, 0.45f, 0.40f);
         public static Color Overlay = new Color(0f, 0f, 0f, 0.6f);
+        /// <summary>전장 위에 뜨는 알림·물음 판과 그 글자 (밝은 스타일에서도 전장 위에서 읽히게).</summary>
+        public static Color PromptBack = new Color(0.1f, 0.1f, 0.12f, 0.9f);
+        public static Color PromptText = new Color(0.93f, 0.93f, 0.90f);
+        /// <summary>지우기·해산·나가기 같은 되돌리기 어려운 버튼.</summary>
+        public static Color Danger = new Color(0.45f, 0.22f, 0.20f);
+        /// <summary>낙관(도장) 붉은색: 자원 표식·제목 도장.</summary>
+        public static Color Seal = new Color(0.72f, 0.2f, 0.16f);
+        /// <summary>바탕이 밝은 스타일인가 (글자·작은 색을 짙게 골라야 한다).</summary>
+        public static bool IsLight => UiArt.Luma(Background) > 0.5f;
+        /// <summary>그 바탕 위에서 읽히는 글자 색 (밝은 판이면 먹색, 어두운 판이면 종이색).</summary>
+        public static Color TextOn(Color back) => UiArt.Luma(back) > 0.55f ? (IsLight ? Text : new Color(0.12f, 0.11f, 0.1f)) : (IsLight ? PromptText : Text);
     }
 
     /// <summary>
@@ -34,7 +45,18 @@ namespace Game.Unity.UI
 
         private static Font _font;
         /// <summary>내장 폰트. 한글은 OS 글꼴로 대체되어 보인다 (정식 글꼴은 화면 디자인 단계에서).</summary>
-        public static Font Font => _font != null ? _font : (_font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
+        public static Font Font => _font != null ? _font : (_font = Resources.Load<Font>("Fonts/body") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
+        private static Font _titleFont;
+        private static bool _titleLooked;
+        /// <summary>제목 글꼴 (Resources/Fonts/title, 예: 본명조). 없으면 본문 글꼴.</summary>
+        public static Font TitleFont
+        {
+            get
+            {
+                if (!_titleLooked) { _titleLooked = true; _titleFont = Resources.Load<Font>("Fonts/title"); }
+                return _titleFont != null ? _titleFont : Font;
+            }
+        }
 
         public static RectTransform Rect(Transform parent, string name)
         {
@@ -53,6 +75,23 @@ namespace Game.Unity.UI
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
             return rt;
+        }
+
+        /// <summary>전장(3D) 위 글자: 어두운 테두리를 둘러 어느 바탕에서도 읽히게.</summary>
+        public static Text Outlined(Text t)
+        {
+            var o = t.gameObject.AddComponent<Outline>();
+            o.effectColor = new Color(0.05f, 0.04f, 0.03f, 0.85f);
+            o.effectDistance = new Vector2(2f, -2f);
+            return t;
+        }
+
+        /// <summary>판 색을 바꾸고 그 위 글자 색도 맞춘다 (선택 표시처럼 색이 바뀌는 버튼).</summary>
+        public static void Recolor(UnityEngine.UI.Button b, Color color)
+        {
+            if (b.targetGraphic != null) b.targetGraphic.color = color;
+            var t = b.GetComponentInChildren<Text>();
+            if (t != null && !t.text.Contains("<color")) t.color = Palette.TextOn(color);
         }
 
         public static Image Background(RectTransform rt, Color color)
@@ -115,7 +154,7 @@ namespace Game.Unity.UI
         {
             var rt = Rect(parent, "Label");
             var t = rt.gameObject.AddComponent<Text>();
-            t.font = Font;
+            t.font = size >= FontTitle - 8 ? TitleFont : Font; // 큰 제목은 제목 글꼴 (본명조 등, 넣으면)
             t.fontSize = Mathf.RoundToInt(size * UiStyle.FontScale);
             t.alignment = align;
             t.color = color ?? Palette.Text;
@@ -135,8 +174,10 @@ namespace Game.Unity.UI
             var b = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
             b.targetGraphic = img;
             if (onClick != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onClick(); });
-            var label = Label(rt, text, fontSize, TextAnchor.MiddleCenter);
+            var label = Label(rt, text, fontSize, TextAnchor.MiddleCenter, Palette.TextOn(img.color));
             Fill(label.rectTransform);
+            label.rectTransform.offsetMin = new Vector2(8, 4);
+            label.rectTransform.offsetMax = new Vector2(-8, -4);
             Size(rt, height);
             return b;
         }
@@ -168,7 +209,7 @@ namespace Game.Unity.UI
         public static RectTransform Gauge(Transform parent, Color color, float height)
         {
             var back = Rect(parent, "Gauge");
-            Background(back, new Color(0f, 0f, 0f, 0.5f)).raycastTarget = false;
+            Background(back, Palette.IsLight ? new Color(0.17f, 0.15f, 0.12f, 0.25f) : new Color(0f, 0f, 0f, 0.5f)).raycastTarget = false;
             Size(back, height);
             var fill = Rect(back, "Fill");
             fill.anchorMin = Vector2.zero;
@@ -187,7 +228,7 @@ namespace Game.Unity.UI
         public static void SetEnabled(Button b, bool enabled)
         {
             b.interactable = enabled;
-            if (b.targetGraphic != null) b.targetGraphic.color = enabled ? Palette.Button : Palette.ButtonDisabled;
+            Recolor(b, enabled ? Palette.Button : Palette.ButtonDisabled);
         }
 
         /// <summary>세로 스크롤 목록. 돌려주는 content 아래에 줄을 넣는다.</summary>

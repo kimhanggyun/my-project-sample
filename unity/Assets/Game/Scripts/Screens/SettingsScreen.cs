@@ -120,7 +120,7 @@ namespace Game.Unity.Screens
             foreach (var kv in Ctx.ServiceChoices) Ui.Label(services, kv.Key + ": " + kv.Value, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
 
             var reset = Ui.Card(body, "Reset");
-            Ui.Button(reset, T("ui.settings.reset"), OnReset, color: new Color(0.45f, 0.22f, 0.20f));
+            Ui.Button(reset, T("ui.settings.reset"), OnReset, color: Palette.Danger);
             _resetNote = Ui.Label(reset, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
 
             Ui.Button(Root, T("ui.common.back"), () => App.ShowMain());

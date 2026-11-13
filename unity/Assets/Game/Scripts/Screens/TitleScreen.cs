@@ -1,5 +1,6 @@
 using Game.Unity.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.Unity.Screens
 {
@@ -9,8 +10,28 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             Ui.Column(Root, 40, 80).childAlignment = TextAnchor.MiddleCenter;
-            Ui.Size(Ui.Label(Root, "", Ui.FontBody), 500);
-            Ui.Size(Ui.Label(Root, T("ui.title.name"), Ui.FontTitle, TextAnchor.MiddleCenter), 160);
+            Ui.Size(Ui.Label(Root, "", Ui.FontBody), 460);
+            // 제목: 먹 붓 획 위에 글자, 오른쪽 아래에 낙관 (art-direction.md 3장)
+            var titleBox = Ui.Rect(Root, "TitleBox");
+            Ui.Size(titleBox, 220);
+            var stroke = Ui.Rect(titleBox, "Brush");
+            stroke.anchorMin = new Vector2(0.02f, 0.08f);
+            stroke.anchorMax = new Vector2(0.98f, 0.92f);
+            stroke.offsetMin = stroke.offsetMax = Vector2.zero;
+            var strokeImg = Ui.Background(stroke, Palette.IsLight ? new Color(0.17f, 0.15f, 0.12f, 0.92f) : new Color(0.9f, 0.86f, 0.78f, 0.12f));
+            strokeImg.sprite = UiArt.Brush;
+            strokeImg.raycastTarget = false;
+            var title = Ui.Label(titleBox, T("ui.title.name"), Ui.FontTitle + 8, TextAnchor.MiddleCenter, Palette.IsLight ? new Color(0.97f, 0.94f, 0.87f) : Palette.Text);
+            Ui.Fill(title.rectTransform);
+            var stamp = Ui.Rect(titleBox, "Seal");
+            stamp.anchorMin = stamp.anchorMax = new Vector2(0.86f, 0.06f);
+            stamp.sizeDelta = new Vector2(92f, 92f);
+            var stampImg = Ui.Background(stamp, Palette.Seal);
+            stampImg.sprite = UiArt.Seal;
+            stampImg.raycastTarget = false;
+            var stampText = Ui.Label(stamp, T("ui.title.seal"), 40, TextAnchor.MiddleCenter, new Color(0.98f, 0.94f, 0.86f));
+            stampText.font = Ui.TitleFont;
+            Ui.Fill(stampText.rectTransform);
             Ui.Size(Ui.Label(Root, T("ui.title.tapToStart"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 80);
             var status = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ui.Size(status, 220);

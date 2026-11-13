@@ -422,7 +422,7 @@ namespace Game.Unity.Screens
             if (_phase != Phase.Choosing) return;
             _pending = action;
             foreach (var kv in _actionButtons)
-                kv.Value.targetGraphic.color = kv.Key == action ? Palette.Good : _play.Def.Action(kv.Key).RequiresFullCharge ? Palette.ButtonActive : Palette.Button;
+                Ui.Recolor(kv.Value, kv.Key == action ? Palette.Good : _play.Def.Action(kv.Key).RequiresFullCharge ? Palette.ButtonActive : Palette.Button);
             _detail.text = T("ui.contest.chosen", ActionName(action));
         }
 

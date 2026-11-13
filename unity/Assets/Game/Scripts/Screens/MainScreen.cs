@@ -62,7 +62,16 @@ namespace Game.Unity.Screens
             // 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1), 상점·설정 버튼
             foreach (var id in new[] { ResourceIds.Supply, ResourceIds.Gold, ResourceIds.Gem })
             {
-                Ui.Size(Ui.Label(top, T("resource." + id) + " " + Ctx.Resource(id).ToString("N0"), 26, TextAnchor.MiddleRight), flexibleWidth: 2);
+                // 자원 표식: 낙관(붉은 도장)에 한 글자 (糧·錢·玉, 문구 데이터) + 수량
+                var seal = Ui.Rect(top, "Seal");
+                var sealImg = Ui.Background(seal, Palette.Seal);
+                sealImg.sprite = UiArt.Seal;
+                sealImg.raycastTarget = false;
+                Ui.Size(seal, 52, 52).flexibleWidth = 0;
+                var glyph = Ui.Label(seal, T("ui.top.seal." + id), 30, TextAnchor.MiddleCenter, new Color(0.98f, 0.94f, 0.86f));
+                glyph.font = Ui.TitleFont; // 한자는 제목 글꼴(본명조)에 있다
+                Ui.Fill(glyph.rectTransform);
+                Ui.Size(Ui.Label(top, Ctx.Resource(id).ToString("N0"), 26, TextAnchor.MiddleLeft), flexibleWidth: 2);
                 Ui.Size(Ui.Button(top, "+", () => App.ShowMain("shop"), 64, Palette.ButtonActive, 30), width: 56);
             }
             Ui.Size(Ui.Button(top, T("ui.top.shop"), () => App.ShowMain("shop"), 80, fontSize: 26), width: 110);
@@ -109,7 +118,7 @@ namespace Game.Unity.Screens
             dot.pivot = new Vector2(1f, 1f);
             dot.sizeDelta = new Vector2(22f, 22f);
             dot.anchoredPosition = new Vector2(-6f, -6f);
-            var img = Ui.Background(dot, new Color(0.92f, 0.22f, 0.18f));
+            var img = Ui.Background(dot, Palette.Seal);
             img.sprite = UiShapes.Circle;
             img.raycastTarget = false;
             var le = dot.gameObject.AddComponent<LayoutElement>();
@@ -119,7 +128,7 @@ namespace Game.Unity.Screens
         private void Select(MainTabEntry tab)
         {
             Ui.Clear(_content);
-            foreach (var kv in _tabButtons) kv.Value.targetGraphic.color = kv.Key == tab.Id ? Palette.ButtonActive : Palette.Button;
+            foreach (var kv in _tabButtons) Ui.Recolor(kv.Value, kv.Key == tab.Id ? Palette.ButtonActive : Palette.Button);
             var root = Ui.Panel(_content, tab.Id);
             ITabView view = tab.Status == MainTabEntry.Active && Views.TryGetValue(tab.Id, out var make) ? make() : new ComingSoonTabView(tab);
             view.Build(App, root);

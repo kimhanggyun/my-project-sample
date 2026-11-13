@@ -18,6 +18,10 @@ namespace Game.Unity.UI
         public static string Current { get; private set; } = "basic";
         public static float CornerRadius { get; private set; }
         public static float FontScale { get; private set; } = 1f;
+        /// <summary>한지 바탕 (UiArt.Paper 타일).</summary>
+        public static bool Paper { get; private set; }
+        /// <summary>버튼·카드에 먹선 테두리 (UiArt.Frame).</summary>
+        public static bool InkBorder { get; private set; }
         /// <summary>(id, 이름 키) 차례대로.</summary>
         public static List<KeyValuePair<string, string>> Available { get; } = new List<KeyValuePair<string, string>>();
 
@@ -37,6 +41,8 @@ namespace Game.Unity.UI
             Current = id;
             CornerRadius = Mathf.Max(0f, s.Value<float?>("cornerRadius") ?? 0f);
             FontScale = Mathf.Clamp(s.Value<float?>("fontScale") ?? 1f, 0.5f, 2f);
+            Paper = s.Value<bool?>("paper") ?? false;
+            InkBorder = s.Value<bool?>("inkBorder") ?? false;
             if (s["colors"] is JObject c)
             {
                 Palette.Background = Read(c, "background", Palette.Background);
@@ -52,6 +58,10 @@ namespace Game.Unity.UI
                 Palette.Good = Read(c, "good", Palette.Good);
                 Palette.Bad = Read(c, "bad", Palette.Bad);
                 Palette.Overlay = Read(c, "overlay", Palette.Overlay);
+                Palette.PromptBack = Read(c, "promptBack", Palette.PromptBack);
+                Palette.PromptText = Read(c, "promptText", Palette.PromptText);
+                Palette.Danger = Read(c, "danger", Palette.Danger);
+                Palette.Seal = Read(c, "seal", Palette.Seal);
             }
         }
 
@@ -61,6 +71,7 @@ namespace Game.Unity.UI
         /// <summary>둥근 모서리 판 (9-slice). 둥글기가 0이면 null (그냥 사각형).</summary>
         public static Sprite Rounded()
         {
+            if (InkBorder) return UiArt.Frame(Mathf.Max(6f, CornerRadius));
             if (CornerRadius <= 0f) return null;
             if (_rounded != null && Mathf.Approximately(_roundedRadius, CornerRadius)) return _rounded;
             int r = Mathf.CeilToInt(CornerRadius);

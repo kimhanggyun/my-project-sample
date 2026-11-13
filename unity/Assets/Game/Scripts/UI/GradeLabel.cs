@@ -7,6 +7,12 @@ namespace Game.Unity.UI
     {
         public static Color ColorOf(string grade)
         {
+            var c = Base(grade);
+            return Palette.IsLight ? new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f) : c; // 한지 바탕에서는 짙게
+        }
+
+        private static Color Base(string grade)
+        {
             switch (grade)
             {
                 case "advanced": return new Color(0.45f, 0.80f, 0.45f);
