@@ -248,6 +248,14 @@ namespace Game.Unity.Battle3D
         private InstanceBatch GeneralBatch(bool commander, int color)
         {
             if (_generalBatches.TryGetValue((commander, color), out var b)) return b;
+            // 아트 목록의 장수 모델 (general.commander → general.default), 없으면 코드로 만든 인형
+            string key = commander && _art.TryGet("general.commander", out ArtModel cm) ? "general.commander" : "general.default";
+            if (_art.TryGet(key, out ArtModel gm))
+            {
+                b = new InstanceBatch(gm.Mesh, _art.Tinted(gm, SoldierColors[color], _art.TintOf(key)), gm.Local);
+                _allSoldierBatches.Add(b);
+                return _generalBatches[(commander, color)] = b;
+            }
             var team = Own(NewMaterial(SoldierColors[color]));
             team.enableInstancing = true;
             b = new InstanceBatch(SoldierMeshes.General(commander),

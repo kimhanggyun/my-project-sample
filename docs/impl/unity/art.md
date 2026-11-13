@@ -43,6 +43,26 @@
 | `rock_a`, `rock_b` | Nature Kit `rock_largeA`, `rock_tallA` |
 | `grass`, `bush`, `reed` | Nature Kit 풀·덤불 |
 | `house` | Town/Castle Kit 집 |
+| `soldier_catapult` | 투석기 (공성 병기 하나, 바퀴 달린 나무 틀) |
+| `soldier_engineer` | 공병 (도끼·삽 든 사람). 없으면 보병 모델 |
+| `ship` | 배 (작은 돛배). 수군 4종(전투선·누선·충각선·쾌속선)이 모두 이것 |
+| `general` | 장수 (말 탄 장수, 부대원보다 크게 보이게 `height` 0.8). 없으면 코드로 만든 장수 인형 |
+| `general_commander` | 총대장 (등에 깃발 등). 없으면 `general` |
+
+### 2.2 넣을 수 있는 모든 자리 (2026-11-13, 원격 정리)
+
+> 파일만 넣으면 코드 수정 없이 바뀐다. 없으면 지금처럼 코드로 만든 임시 그림·소리.
+
+| 자리 | 경로 (`unity/Assets/Game/Resources/` 아래) | 형식·조건 |
+|---|---|---|
+| 병사 (병종별) | `Art/Models/soldier*.fbx` (위 표) | 메시 하나, 삼각형 500 이하, 앞이 +Z(아니면 `yaw`) |
+| 장수 | `Art/Models/general.fbx`, `general_commander.fbx` | 메시 하나, 삼각형 2,000 이하 |
+| 배·투석기 | `Art/Models/ship.fbx`, `soldier_catapult.fbx` | 메시 하나 |
+| 지형 소품 | `Art/Models/tree_a` … (위 표) | 메시 하나 |
+| 장수 초상 | `Art/portraits/<장수 id>.png` | 정사각형 512px, Sprite (2D and UI). 장수 id 목록: `data/Themes/ancientwar/generals.json` |
+| 화면 장식 | `Ui/paper.png`(한지 바탕, 이어 붙일 수 있게), `Ui/frame.png`(버튼·카드 테두리, 9-slice 경계 설정), `Ui/brush.png`(가로 붓 획), `Ui/seal.png`(낙관 네모), `Ui/enso.png`(초상 고리) | Sprite. 흰색·회색으로 그리면 코드가 색을 입힌다 |
+| 효과음 | `Audio/<id>.wav` (ogg도 됨) | id: `click` `drum` `duel` `clash` `arrow` `horn` `gong` `fire` `cheer` `alert` `battle`(반복 전장 소음, 2~4초) |
+| 글꼴 | `Fonts/title.otf`, `Fonts/body.ttf` | 이미 들어 있음 (본명조·Pretendard, OFL). 바꾸려면 같은 이름으로 |
 
 ### 2.1 장수 초상 (전투 정보 패널)
 
