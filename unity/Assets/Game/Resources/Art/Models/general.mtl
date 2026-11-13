@@ -1,0 +1,4 @@
+newmtl mini_colormap
+Kd 1 1 1
+map_Kd Textures/mini_colormap.png
+

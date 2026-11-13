@@ -80,9 +80,39 @@
 
 > 데스크탑 Claude가 에셋을 넣을 때마다 한 줄 추가한다 ([collab.md](../../collab.md) 6장). 이미지·모델은 LFS라 원격 Claude는 내용을 못 볼 수 있으니 **생김새**를 글로 적는다.
 
-| 경로 (`unity/Assets/` 아래) | 출처 URL | 라이선스 | 크기 | 생김새·용도 |
-|---|---|---|---|---|
-| (아직 없음) | | | | |
+**2026-11-13 1차 (Kenney, 모두 CC0)** — 경로는 `Game/Resources/` 아래. 모델은 **OBJ**(FBX 아님): Kenney FBX 캐릭터는 뼈대(SkinnedMesh)라 `ArtCatalog`(MeshFilter만 읽음)가 못 쓰고, 여러 조각이라 첫 조각만 쓰이므로 OBJ 조각들을 **한 메시로 합쳤다**(무기도 손 위치에 붙여 합침). 각 `.obj` 옆에 같은 이름 `.mtl`, 텍스처는 `Art/Models/Textures/`. 모두 앞이 +Z로 가정 — 뒤를 보면 `catalog.json` `yaw: 180`.
+
+| 경로 | 출처 | 삼각형 | 생김새·용도 |
+|---|---|---|---|
+| `Art/Models/soldier_infantry.obj` | [Blocky Characters](https://kenney.nl/assets/blocky-characters) `character-m` + [Mini Characters](https://kenney.nl/assets/mini-characters) `weapon-sword`·`shield-rectangle` | 500 | 마인크래프트풍 네모 사람(초록 웃옷·갈색 끈), 오른손 칼, 왼팔 앞 네모 방패. 보병 |
+| `Art/Models/soldier_spearman.obj` | Blocky `character-a` + Mini `weapon-spear` | 188 | 네모 사람(맨살·수염), 오른손에 키보다 조금 짧은 창을 세워 듦. 창병 |
+| `Art/Models/soldier_archer.obj` | Blocky `character-f` + Mini `weapon-bow` | 232 | 네모 사람(짙은 초록 옷), 왼손에 활. 궁병 |
+| `Art/Models/soldier_scout.obj` | Blocky `character-r` + Mini `weapon-sword`(작게) | 232 | 검은 옷·복면(닌자풍) 네모 사람, 짧은 칼. 정찰병 |
+| `Art/Models/soldier_engineer.obj` | Blocky `character-k` + [Pirate Kit](https://kenney.nl/assets/pirate-kit) `tool-shovel` | 408 | 붉은 웃옷 네모 사람, 오른손에 삽. 공병 |
+| (기병·기본 병사 없음) | — | — | **일부러 비움**: `soldier_cavalry`·`soldier`가 없으면 코드로 만든 말 탄 인형을 그대로 쓴다 (네모 사람은 말이 없어 기병이 사람으로 보이게 됨) |
+| `Art/Models/general.obj` | Mini `character-knight` + `weapon-sword` | 940 | 둥근 꼬마 기사(투구·갑옷, 회색·파랑 계열), 오른손 칼. 걸어 있는 모습(말 없음). 장수 |
+| `Art/Models/general_commander.obj` | 위 기사 + [Castle Kit](https://kenney.nl/assets/castle-kit) `flag-pennant` | 1,176 | 장수와 같고 등 뒤에 삼각 깃발 깃대. 총대장 |
+| `Art/Models/soldier_catapult.obj` | Castle Kit `siege-catapult` | 1,492 | 나무 바퀴 4개 달린 투석기, 던지는 팔 위로 |
+| `Art/Models/ship.obj` | Pirate Kit `ship-small` | 2,384 | 돛대 하나·흰 돛의 작은 범선(서양 해적선풍). 길이가 Z축. 수군 4종 공통 |
+| `Art/Models/tree_a.obj` | [Nature Kit](https://kenney.nl/assets/nature-kit) `tree_default` | 114 | 갈색 줄기 + 초록 둥근 각진 잎 덩어리 |
+| `Art/Models/tree_b.obj` | Nature Kit `tree_pineRoundA` | 204 | 층진 둥근 소나무 |
+| `Art/Models/tree_burnt.obj` | Nature Kit `stump_oldTall` | 120 | 키 큰 오래된 그루터기 (탄 숲 대용) |
+| `Art/Models/rock_a.obj` | Nature Kit `rock_largeA` | 80 | 낮고 넓은 회색 바위 |
+| `Art/Models/rock_b.obj` | Nature Kit `rock_tallA` | 136 | 키 큰 회색 바위 |
+| `Art/Models/grass.obj` | Nature Kit `grass_large` | 224 | 초록 풀 포기 |
+| `Art/Models/bush.obj` | Nature Kit `plant_bush` | 32 | 둥근 초록 덤불 |
+| `Art/Models/reed.obj` | Nature Kit `crops_wheatStageB` | 360 | 노란 밀 줄기 다발 (갈대 대용) |
+| `Art/Models/Textures/*.png` | 위 팩들의 텍스처 (`blocky_*`, `mini_colormap`, `castle_colormap`, `pirate_colormap`) | — | 색 팔레트 그림. Nature Kit 모델은 텍스처 없이 재질 색 |
+| (`house` 없음) | — | — | 받은 팩에 맞는 집이 없어 비움 (다음에 Fantasy Town Kit) |
+| `Audio/click.ogg` | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `click_001` | — | 짧은 딸깍 |
+| `Audio/clash.ogg` | [Impact Sounds](https://kenney.nl/assets/impact-sounds) `impactMetal_medium_000` | — | 쇠 부딪히는 소리 |
+| `Audio/gong.ogg` | Impact Sounds `impactBell_heavy_000` | — | 무거운 종 소리 (징 대용) |
+| `Audio/drum.ogg` | Impact Sounds `impactSoft_heavy_000` | — | 둔탁한 쿵 (북 대용) |
+| `Audio/alert.ogg` | Interface Sounds `error_001` | — | 짧은 경고음 |
+| (`arrow` `horn` `fire` `cheer` `duel` `battle` 없음) | — | — | 받은 팩에 맞는 소리가 없어 코드 합성 그대로 |
+
+- 라이선스: 모두 CC0 (출처 표시 불필요, 개인·교육·상업 이용 가능). `Art/Models/License.txt`에 정리.
+- [RPG Audio](https://kenney.nl/assets/rpg-audio)도 받았지만 이번에는 쓰지 않았다 (책·문·가죽 소리 위주).
 
 ## 효과음 (임시, 2026-11-12)
 

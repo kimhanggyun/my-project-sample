@@ -1,0 +1,13 @@
+Models and textures in this folder are made from Kenney asset packs
+(Blocky Characters, Mini Characters, Castle Kit, Pirate Kit, Nature Kit),
+created/distributed by Kenney (www.kenney.nl).
+
+License: Creative Commons Zero, CC0
+http://creativecommons.org/publicdomain/zero/1.0/
+
+The packs' own License.txt: "You can use this content for personal,
+educational, and commercial purposes." Crediting 'Kenney' or
+'www.kenney.nl' is welcome but not a requirement.
+
+Parts were merged into single-mesh OBJ files for this project
+(see docs/impl/unity/art.md "받은 에셋 목록").

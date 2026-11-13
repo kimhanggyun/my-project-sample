@@ -1,0 +1,4 @@
+newmtl pirate_colormap
+Kd 1 1 1
+map_Kd Textures/pirate_colormap.png
+
