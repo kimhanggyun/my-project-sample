@@ -190,12 +190,16 @@ namespace Game.Data.Defs
         public IReadOnlyList<string> Order { get; private set; }
         /// <summary>수용소 id → 구출 전투 스텝 id.</summary>
         public IReadOnlyDictionary<string, string> RescueSteps { get; private set; }
+        /// <summary>훈련 전투 (R-85): 스텝 id → 열리는 데 필요한 병종 태그 (그 태그의 부대가 있으면). 스토리 순서 밖, 반복 가능.</summary>
+        public IReadOnlyDictionary<string, string> Drills { get; private set; } = new Dictionary<string, string>();
 
         public static StepIndexDef From(JObject o)
         {
             var rescue = new Dictionary<string, string>();
             if (o["rescue"] is JObject r) foreach (var p in r.Properties()) rescue[p.Name] = p.Value.Value<string>();
-            return new StepIndexDef { Order = JsonUtil.StringList(o, "order"), RescueSteps = rescue };
+            var drills = new Dictionary<string, string>();
+            if (o["drills"] is JObject d) foreach (var p in d.Properties()) drills[p.Name] = p.Value.Value<string>();
+            return new StepIndexDef { Order = JsonUtil.StringList(o, "order"), RescueSteps = rescue, Drills = drills };
         }
     }
 

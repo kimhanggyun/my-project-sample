@@ -155,5 +155,11 @@
       ],
       "sideDamageTakenPp": 10
     }
+  },
+  "battleTypes": {
+    "_comment": "전장 유형별 규칙 (R-85, battle.md 10장). formationPct = 진형 상성·특성치 효과 비율 %. 수상전은 배다리 위 난전이라 대형이 흐트러진다 (예시)",
+    "naval": {
+      "formationPct": 50
+    }
   }
 }

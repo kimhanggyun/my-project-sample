@@ -60,7 +60,8 @@
       "cost": 1,
       "impassable": [
         "*"
-      ]
+      ],
+      "water": true
     },
     "ford": {
       "cost": 2.0,
@@ -102,6 +103,10 @@
         "heavy": 3,
         "siege": 4
       }
+    },
+    "water": {
+      "water": true,
+      "cost": 1
     }
   }
 }

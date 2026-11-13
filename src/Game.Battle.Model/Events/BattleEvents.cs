@@ -75,6 +75,10 @@ namespace Game.Battle.Model.Events
         public const string DamBroken = "damBroken";
         /// <summary>물에 휩쓸림. 군단 = 맞은 쪽, 값 = 쓴 군단.</summary>
         public const string Flooded = "flooded";
+        /// <summary>화선에 맞음 (R-85). 군단 = 맞은 쪽, 값 = 보낸 군단.</summary>
+        public const string FireShipHit = "fireShipHit";
+        /// <summary>충각에 들이받힘. 군단 = 받힌 쪽, 값 = 들이받은 군단.</summary>
+        public const string Rammed = "rammed";
     }
 
     internal static class EventLog

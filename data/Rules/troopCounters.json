@@ -50,6 +50,11 @@
       "attacker": "light",
       "defender": "siege",
       "pp": 20
+    },
+    {
+      "attacker": "ram",
+      "defender": "naval",
+      "pp": 15
     }
   ]
 }

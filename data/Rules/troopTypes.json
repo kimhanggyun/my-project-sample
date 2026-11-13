@@ -280,6 +280,80 @@
         "speed": 42,
         "pursuit": 30
       }
+    },
+    {
+      "id": "warship",
+      "nameKey": "troop.warship",
+      "tier": 1,
+      "tags": [
+        "naval",
+        "melee"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 52,
+        "defense": 55,
+        "speed": 45,
+        "vision": 65
+      }
+    },
+    {
+      "id": "towerShip",
+      "nameKey": "troop.towerShip",
+      "tier": 2,
+      "parent": "warship",
+      "tags": [
+        "naval",
+        "ranged"
+      ],
+      "supplyPerDay": 2,
+      "attackRange": 10,
+      "stats": {
+        "attack": 55,
+        "defense": 50,
+        "speed": 32,
+        "vision": 75
+      }
+    },
+    {
+      "id": "ramShip",
+      "nameKey": "troop.ramShip",
+      "tier": 2,
+      "parent": "warship",
+      "tags": [
+        "naval",
+        "melee",
+        "ram",
+        "heavy"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 66,
+        "defense": 60,
+        "speed": 42
+      }
+    },
+    {
+      "id": "fastBoat",
+      "nameKey": "troop.fastBoat",
+      "tier": 2,
+      "parent": "warship",
+      "tags": [
+        "naval",
+        "melee",
+        "light"
+      ],
+      "supplyPerDay": 1,
+      "attackRange": 1,
+      "stats": {
+        "attack": 45,
+        "defense": 40,
+        "speed": 75,
+        "vision": 80,
+        "pursuit": 80
+      }
     }
   ]
 }

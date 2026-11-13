@@ -16,5 +16,9 @@
   ],
   "rescue": {
     "camp_north": "rescue_camp_north"
+  },
+  "drills": {
+    "_comment": "훈련 전투 (R-85): 그 병종 태그의 부대가 있으면 열린다. 스토리 순서 밖, 반복 가능",
+    "naval_drill": "naval"
   }
 }

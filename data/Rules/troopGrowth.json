@@ -68,6 +68,27 @@
       "training": 0.4,
       "step": "step03",
       "gold": 500
+    },
+    {
+      "from": "warship",
+      "to": "towerShip",
+      "training": 0.5,
+      "step": "step07",
+      "gold": 500
+    },
+    {
+      "from": "warship",
+      "to": "ramShip",
+      "training": 0.5,
+      "step": "step07",
+      "gold": 500
+    },
+    {
+      "from": "warship",
+      "to": "fastBoat",
+      "training": 0.5,
+      "step": "step07",
+      "gold": 450
     }
   ]
 }

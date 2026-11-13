@@ -71,6 +71,8 @@ namespace Game.Data.Defs
         public Fix HeightPpPerLevel { get; private set; }
         public Fix FormationCorePp { get; private set; }
         public Fix FormationSituationalPp { get; private set; }
+        /// <summary>전장 유형 → 진형 효과(상성·특성치) 비율 % (R-85, 수상전 난전 50). 없으면 100.</summary>
+        public IReadOnlyDictionary<string, Fix> BattleTypeFormationPct { get; private set; } = new Dictionary<string, Fix>();
         public Fix MoraleStart { get; private set; }
         public Fix MoraleLeadershipFactor { get; private set; }
         public Fix MoraleLossPerPercentTroops { get; private set; }
@@ -220,6 +222,19 @@ namespace Game.Data.Defs
             return Fix.Clamp(m, MinValorMoraleLossMultiplier, MaxValorMoraleLossMultiplier);
         }
 
+        private static IReadOnlyDictionary<string, Fix> ReadBattleTypes(JObject o, string c)
+        {
+            var d = new Dictionary<string, Fix>();
+            if (o["battleTypes"] is JObject bt)
+                foreach (var p in bt.Properties())
+                    if (p.Value is JObject v) d[p.Name] = JsonUtil.FixOr(v, "formationPct", Fix.Hundred, c + ".battleTypes." + p.Name);
+            return d;
+        }
+
+        /// <summary>그 전장 유형의 진형 효과 비율 (없으면 1).</summary>
+        public Fix FormationScale(string battleType) =>
+            battleType != null && BattleTypeFormationPct.TryGetValue(battleType, out var pct) ? pct / Fix.Hundred : Fix.OneValue;
+
         public static CombatRules From(JObject o)
         {
             const string c = "combat";
@@ -270,6 +285,7 @@ namespace Game.Data.Defs
                 HeightPpPerLevel = JsonUtil.RequireFix(height, "ppPerLevel", c + ".height"),
                 FormationCorePp = JsonUtil.RequireFix(fc, "corePp", c + ".formationCounter"),
                 FormationSituationalPp = JsonUtil.RequireFix(fc, "situationalPp", c + ".formationCounter"),
+                BattleTypeFormationPct = ReadBattleTypes(o, c),
                 MoraleStart = JsonUtil.RequireFix(morale, "start", c + ".morale"),
                 MoraleLeadershipFactor = JsonUtil.RequireFix(morale, "leadershipFactor", c + ".morale"),
                 MoraleLossPerPercentTroops = JsonUtil.RequireFix(morale, "lossPerPercentTroops", c + ".morale"),
@@ -370,8 +386,15 @@ namespace Game.Data.Defs
             }
         }
 
+        /// <summary>물 (R-85): 수군(naval)만 다니고, 수군은 물이 아닌 곳에 못 간다.</summary>
+        public bool Water { get; internal set; }
+        public const string NavalTag = "naval";
+
         public bool Blocks(TroopTypeDef troop)
         {
+            bool naval = troop.HasTag(NavalTag);
+            if (Water) return !naval;
+            if (naval) return true;
             foreach (var t in Impassable)
                 if (t == AllTags || troop.HasTag(t)) return true;
             return false;

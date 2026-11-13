@@ -962,6 +962,8 @@ namespace Game.Unity.Screens
                 case EventKinds.SupplyRaided: Sfx.Play("alert", 0.7f, 0.3f); break;
                 case EventKinds.FirstAid: Sfx.Play("cheer", 0.4f); break;
                 case EventKinds.PalisadeBuilt: Sfx.Play("drum", 0.5f); break;
+                case EventKinds.FireShipHit: Sfx.Play("fire", 0.9f); Sfx.Play("cheer", 0.5f); break;
+                case EventKinds.Rammed: Sfx.Play("drum"); Sfx.Play("clash", 0.9f); break;
                 case EventKinds.DamBroken: Sfx.Play("drum"); Sfx.Play("arrow", 1f); Sfx.Play("cheer", 0.7f); break;
                 case EventKinds.BridgeDestroyed:
                 case EventKinds.PalisadeBurned: Sfx.Play("gong", 0.6f); break;

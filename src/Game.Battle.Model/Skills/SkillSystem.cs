@@ -87,7 +87,9 @@ namespace Game.Battle.Model.Skills
             .Register(new DestroyBridgeEffect())
             .Register(new TargetTerrain())
             .Register(new FloodAttackEffect())
-            .Register(new AtOwnDam());
+            .Register(new AtOwnDam())
+            .Register(new FireShipEffect())
+            .Register(new RammingEffect());
     }
 
     /// <summary>전조가 끝나면 나타날 효과.</summary>

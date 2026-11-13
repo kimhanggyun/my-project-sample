@@ -970,6 +970,74 @@
           "confuseSec": 4
         }
       ]
+    },
+    {
+      "id": "fireShip",
+      "nameKey": "skill.fireShip",
+      "category": "fire",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "intellect",
+          "min": 50
+        }
+      ],
+      "cost": 30,
+      "usesPerBattle": 1,
+      "target": {
+        "type": "area",
+        "range": 10,
+        "radius": 2
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "naval"
+        }
+      ],
+      "telegraphSec": 2,
+      "effects": [
+        {
+          "type": "fireShip",
+          "sacrificePct": 15,
+          "damagePerTroop": 2,
+          "confuseSec": 4,
+          "moralePp": -8
+        }
+      ]
+    },
+    {
+      "id": "ramming",
+      "nameKey": "skill.ramming",
+      "category": "valor",
+      "tier": "intermediate",
+      "requires": [
+        {
+          "stat": "might",
+          "min": 50
+        }
+      ],
+      "cost": 15,
+      "usesPerBattle": 2,
+      "target": {
+        "type": "enemyCorps",
+        "range": 8
+      },
+      "conditions": [
+        {
+          "type": "casterHasTag",
+          "tag": "ram"
+        }
+      ],
+      "effects": [
+        {
+          "type": "ramming",
+          "durationSec": 6,
+          "attackPp": 40,
+          "confuseRatio": 0.3,
+          "confuseSec": 3
+        }
+      ]
     }
   ]
 }

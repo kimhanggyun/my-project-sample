@@ -514,7 +514,9 @@ namespace Game.Battle.Model.Systems
                     bool broken = ctx.IsEnabled(RuleFlagIds.Morale) && corps.Morale <= corps.Temperament.RetreatMorale;
                     if (fewTroops || broken) BeginRetreat(ctx, corps);
                 }
-                if (corps.Status == CorpsStatus.Retreating && AtEdge(ctx, corps))
+                // 가장자리로 갈 길이 아예 없으면 (예: 배인데 가장자리가 뭍, R-85) 그 자리에서 전장을 떠난 것으로
+                bool noWayOut = corps.Order.Kind == OrderKinds.Retreat && corps.PathGoal != null && corps.Path.Count == 0;
+                if (corps.Status == CorpsStatus.Retreating && (AtEdge(ctx, corps) || noWayOut))
                 {
                     corps.Status = CorpsStatus.Retreated;
                     corps.ClearPath();

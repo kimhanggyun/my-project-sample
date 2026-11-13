@@ -1,0 +1,164 @@
+{
+  "id": "naval_drill",
+  "nameKey": "step.naval_drill.name",
+  "battleType": "naval",
+  "map": "lake_naval",
+  "maxCorps": 3,
+  "maxMinutes": 10,
+  "defeatConditions": [
+    "annihilation",
+    "commander"
+  ],
+  "weather": "clear",
+  "timeOfDay": "day",
+  "contests": {
+    "duel": false,
+    "debate": false
+  },
+  "enemy": [
+    {
+      "id": "enemy_naval_01",
+      "general": "enemy_general_03",
+      "role": "commander",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "warship",
+          "troops": 2390
+        },
+        {
+          "slot": "center",
+          "troopType": "warship",
+          "troops": 2390
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "warship",
+          "troops": 1910
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "warship",
+          "troops": 1910
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "warship",
+          "troops": 1430
+        }
+      ]
+    },
+    {
+      "id": "enemy_naval_02",
+      "general": "enemy_general_04",
+      "role": "vanguard",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "warship",
+          "troops": 1910
+        },
+        {
+          "slot": "center",
+          "troopType": "warship",
+          "troops": 1910
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "warship",
+          "troops": 1430
+        }
+      ]
+    },
+    {
+      "id": "enemy_naval_03",
+      "general": "enemy_general_01",
+      "role": "vanguard",
+      "formation": "square",
+      "ai": "aggressive",
+      "difficulty": "normal",
+      "supplyMinutes": 10,
+      "units": [
+        {
+          "slot": "vanguard",
+          "troopType": "warship",
+          "troops": 1910
+        },
+        {
+          "slot": "center",
+          "troopType": "warship",
+          "troops": 1910
+        },
+        {
+          "slot": "leftWing",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "rightWing",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "leftGuard",
+          "troopType": "warship",
+          "troops": 1430
+        },
+        {
+          "slot": "rightGuard",
+          "troopType": "warship",
+          "troops": 1430
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "unlockFormations": [],
+    "unlockSkills": [],
+    "gold": 150,
+    "supply": 50000,
+    "exp": 150
+  },
+  "events": [
+    {
+      "id": "start",
+      "trigger": {
+        "type": "start"
+      },
+      "actions": [
+        {
+          "type": "dialogue",
+          "key": "dialogue.naval_drill.start"
+        }
+      ]
+    }
+  ]
+}

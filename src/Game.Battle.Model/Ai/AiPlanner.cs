@@ -52,7 +52,9 @@ namespace Game.Battle.Model.Ai
             .Register(new SupplyDropRule())
             .Register(new FirstAidRule())
             .Register(new PalisadeRule())
-            .Register(new FloodRule());
+            .Register(new FloodRule())
+            .Register(new FireShipRule())
+            .Register(new RammingRule());
     }
 
     /// <summary>
@@ -527,6 +529,29 @@ namespace Game.Battle.Model.Ai
                     if (u.Alive && Vec.DistanceSquared(u.Position, center) <= r2) { if (k.Team == c.Team) own++; else enemy++; }
             }
             return enemy > 0 && enemy > own ? (9, new BattleCommand()) : (0, null);
+        }
+    }
+
+    /// <summary>화선 (R-85): 사거리 안 보이는 적이 내 병력의 절반 이상일 때 그 군단 중심에.</summary>
+    internal sealed class FireShipRule : IAiSkillRule
+    {
+        public string EffectType => "fireShip";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            var e = AiTargets.InRange(ctx, c, s, t => t.Troops * 2 >= c.Troops);
+            return e == null ? (0, null) : (7, new BattleCommand { X = e.Anchor.X, Y = e.Anchor.Y });
+        }
+    }
+
+    /// <summary>충각 돌격 (R-85): 사거리 안 가장 가까운 적에게.</summary>
+    internal sealed class RammingRule : IAiSkillRule
+    {
+        public string EffectType => "ramming";
+        public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
+        {
+            if (c.HasStatus("buff." + s.Id)) return (0, null);
+            var e = AiTargets.InRange(ctx, c, s);
+            return e == null ? (0, null) : (7, new BattleCommand { TargetCorpsId = e.Id });
         }
     }
 

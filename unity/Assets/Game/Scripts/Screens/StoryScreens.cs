@@ -36,6 +36,15 @@ namespace Game.Unity.Screens
             foreach (var id in ctx.Defs.StepIndex.Order) steps.Add((id, false));
             foreach (var kv in ctx.Defs.StepIndex.RescueSteps)
                 if (ctx.Flow.IsUnlocked(ctx.State, kv.Value)) steps.Add((kv.Value, true));
+            // 훈련 전투 (R-85): 그 병종이 있으면 맨 위 줄에 버튼 (반복 가능)
+            foreach (var kv in ctx.Defs.StepIndex.Drills)
+            {
+                if (!ctx.Flow.IsUnlocked(ctx.State, kv.Key)) continue;
+                string drillId = kv.Key;
+                string name;
+                try { name = ctx.T(StepDef.Load(ctx.Data, drillId).NameKey); } catch (System.Exception) { name = drillId; }
+                Ui.Button(extras, name, () => app.Show(new StepScreen(drillId)), 100, Palette.Card, 28);
+            }
 
             foreach (var s in steps)
             {

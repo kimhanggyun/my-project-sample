@@ -196,6 +196,7 @@ namespace Game.Data.Defs
                     Height = (int)(t.Value<long?>("height") ?? 0),
                     Conceals = t.Value<bool?>("conceals") ?? false,
                     Flammable = t.Value<bool?>("flammable") ?? false,
+                    Water = t.Value<bool?>("water") ?? false,
                     BurnsTo = t.Value<string>("burnsTo"),
                     BurnSec = JsonUtil.FixOr(t, "burnSec", Fix.Zero, ctx),
                 };
