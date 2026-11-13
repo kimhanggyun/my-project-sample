@@ -103,7 +103,7 @@
 | secret_step03_fire_three | step03 아군 불로 적 3군단 이상 | 화계 쓴 장수: 특성 화염의 달인 | 직접 지휘 |
 | secret_step04_iron_wall | step04 손실 5% 이하로 이김 | 지휘 장수: 스킬 재정비 | 3판 |
 | secret_step05_dusk_charge | step05(저물녘) 궁병 없이 이김 | 지휘 장수: 특성 야습 | 기본 편성 0판 (궁병을 빼야 함) |
-| secret_step06_unbroken | step06 손실 10% 이하로 이김 | 지휘 장수: 특성 불굴 | 3판 |
+| secret_step06_unbroken | step06 손실 17% 이하로 이김 (2026-11-13 마주침 일기토 뒤 10% → 17%, R-89) | 지휘 장수: 특성 불굴 | 3판 |
 
 - 이름은 `secret.<id>`, 힌트는 `hint.<id>`, 특성 이름은 `trait.<id>` (문구 데이터). 테스트가 모두 있는지 본다.
 - "드물다"의 기준(지금): 위임 출진 60판 중 1~10판 (`StepSecretRare`).

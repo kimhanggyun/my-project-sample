@@ -19,9 +19,17 @@
       "statInfluenceMaxPct": 20,
       "lightInjuryAtOrBelow": 30,
       "trigger": {
+        "_when": "언제 (R-89): encounter = 장수 군단끼리 전투 중 처음 마주칠 때(encounterCells 안에서 보이면, 쌍마다 한 번 판정, 군단마다 한 번만, 한 전투에 maxPerBattle번까지). pairs: commanders = 양쪽 총대장끼리만 (전투 직전 대결과 같은 짝), any = 장수 군단 아무끼리. 플레이어 군단이면 offerSec 동안 응함/거절을 묻는다 (답이 없으면 응함). sortie = 전투 직전 대장끼리",
+        "when": "encounter",
         "maxStatDifference": 3,
         "chance": 0.8,
-        "refuseTemperaments": []
+        "refuseTemperaments": [],
+        "encounterCells": 8,
+        "offerSec": 10,
+        "decideSec": 30,
+        "refuseMorale": -5,
+        "maxPerBattle": 1,
+        "pairs": "commanders"
       },
       "actions": [
         {

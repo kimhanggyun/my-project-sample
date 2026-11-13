@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Game.Battle.Model.Commands;
+using Game.Battle.Model.Geometry;
 using Game.Battle.Model.Simulation;
 using Game.Battle.Model.Skills;
 using Game.Data.Defs;
@@ -49,6 +50,7 @@ namespace Game.Battle.Model.Contests
         /// <summary>틱마다: 기한이 지났거나 한쪽이 전장을 떠난 대결을 끝낸다.</summary>
         internal static void Step(BattleContext ctx)
         {
+            Encounters(ctx);
             // 답이 없는 신청 (R-79): 기한이 지나면 받는 장수의 성향 확률로. 한쪽이 전장을 떠나면 없던 일로
             for (int i = ctx.DuelOffers.Count - 1; i >= 0; i--)
             {
@@ -66,6 +68,71 @@ namespace Game.Battle.Model.Contests
                 if (ctx.Tick >= d.DeadlineTick) Resolve(ctx, d, null, true);
             }
         }
+
+        /// <summary>
+        /// 마주침 대결 (R-89): 짝(pairs, 기본 = 양쪽 총대장)인 장수 두 편 군단이 처음 서로 마주치면 (한쪽 팀이 상대를 보고, 거리 encounterCells 안) 그 쌍을 한 번 판정한다.
+        /// 판정은 전투 직전 대결과 같은 규칙 (능력치 차이 maxStatDifference 이내, chance 확률, 거부 성향이면 없음).
+        /// 한 전투에 maxPerBattle번까지. 일어나면 플레이어 쪽이 받는 쪽(B): 직접 지휘 중이면 신청(duelOffered)으로 묻고 (답이 없으면 응함), 아니면 바로 시작. 군단마다 한 번만.
+        /// </summary>
+        private static void Encounters(BattleContext ctx)
+        {
+            var ids = ctx.Setup.EncounterContests;
+            if (ids == null || ids.Count == 0) return;
+            foreach (var id in ids)
+            {
+                if (!ctx.Defs.Contests.TryGetValue(id, out var def) || !ctx.IsEnabled(def.Flag)) continue;
+                ctx.EncounterCount.TryGetValue(id, out int count);
+                if (count >= def.EncounterMaxPerBattle) continue;
+                Fix reach2 = def.EncounterCells * def.EncounterCells;
+                bool commandersOnly = def.EncounterPairs != "any";
+                foreach (var x in ctx.Corps)
+                {
+                    if (!Ready(ctx, x) || (commandersOnly && x.Setup.Role != CorpsRoles.Commander)) continue;
+                    foreach (var y in ctx.Corps)
+                    {
+                        if (y.Index <= x.Index || y.Team == x.Team || !Ready(ctx, y) || (commandersOnly && y.Setup.Role != CorpsRoles.Commander)) continue;
+                        if (Vec.DistanceSquared(x.Anchor, y.Anchor) > reach2) continue;
+                        if (!ctx.IsVisibleTo(x.Team, y) && !ctx.IsVisibleTo(y.Team, x)) continue;
+                        if (!ctx.EncounterChecked.Add(id + "|" + x.Id + "|" + y.Id)) continue;
+                        var gx = x.Setup.General; var gy = y.Setup.General;
+                        if (!ContestTrigger.Occurs(def, gx.Stat(def.Stat), gy.Stat(def.Stat), gx.Temperament, gy.Temperament, ctx.Random)) continue;
+                        // 받는 쪽 = 플레이어가 지휘하는 쪽 (둘 다거나 둘 다 아니면 번호가 큰 쪽)
+                        bool xPlayer = x.Setup.Controller == Controllers.Player;
+                        var a = xPlayer ? y : x;
+                        var b = xPlayer ? x : y;
+                        ctx.EncounterCount[id] = ++count;
+                        ctx.EncounterDone.Add(a.Id);
+                        ctx.EncounterDone.Add(b.Id);
+                        var offer = new DuelOffer
+                        {
+                            ContestId = id,
+                            CorpsA = a.Id,
+                            CorpsB = b.Id,
+                            AcceptChance = Fix.OneValue,
+                            RefuseMorale = def.EncounterRefuseMorale,
+                            DecideTicks = SkillRules.Ticks(ctx, def.EncounterDecideSec),
+                            DeadlineTick = ctx.Tick + SkillRules.Ticks(ctx, def.EncounterOfferSec),
+                        };
+                        Events.EventLog.Add(ctx, Events.EventKinds.DuelEncounter, b.Id, a.Id);
+                        if (b.Setup.Controller == Controllers.Player && !b.Delegated)
+                        {
+                            ctx.DuelOffers.Add(offer);
+                            Events.EventLog.Add(ctx, Events.EventKinds.DuelOffered, b.Id, a.Id);
+                        }
+                        else
+                        {
+                            offer.DecideTicks = 0; // 고를 사람이 없으면 바로 AI로 끝낸다 (출진 때 대결처럼, 군단을 세워 두지 않음)
+                            Decide(ctx, offer, true);
+                        }
+                        break; // x는 이제 끝났다
+                    }
+                    if (count >= def.EncounterMaxPerBattle) break;
+                }
+            }
+        }
+
+        private static bool Ready(BattleContext ctx, CorpsState c) =>
+            c.InBattle && c.Setup.General != null && c.DuelWith == null && !ctx.EncounterDone.Contains(c.Id) && !HasOffer(ctx, c.Id);
 
         /// <summary>대기 중인 대결 (그 군단이 끼어 있는).</summary>
         public static DuelState PendingFor(BattleContext ctx, string corpsId)

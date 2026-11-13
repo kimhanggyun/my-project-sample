@@ -33,6 +33,19 @@ namespace Game.Data.Defs
         public Fix TriggerMaxStatDifference { get; internal set; }
         public Fix TriggerChance { get; internal set; }
         public IReadOnlyList<string> RefuseTemperaments { get; internal set; }
+        /// <summary>언제 일어나나 (R-89): "sortie" = 전투 직전 대장끼리 (기본), "encounter" = 장수 군단이 전투 중 처음 서로 마주칠 때.</summary>
+        public string TriggerWhen { get; internal set; } = WhenSortie;
+        public const string WhenSortie = "sortie";
+        public const string WhenEncounter = "encounter";
+        /// <summary>마주침 대결: 마주쳤다고 보는 거리(칸), 플레이어가 답할 시간, 행동을 고를 시간, 거절하면 거절한 군단 사기 변화.</summary>
+        public Fix EncounterCells { get; internal set; }
+        public Fix EncounterOfferSec { get; internal set; }
+        public Fix EncounterDecideSec { get; internal set; }
+        public Fix EncounterRefuseMorale { get; internal set; }
+        /// <summary>한 전투에 마주침 대결이 일어나는 최대 횟수.</summary>
+        public int EncounterMaxPerBattle { get; internal set; }
+        /// <summary>마주침 대결 짝: "commanders" = 양쪽 총대장끼리만 (기본), "any" = 장수 군단 아무끼리.</summary>
+        public string EncounterPairs { get; internal set; }
         /// <summary>행동 id (화면 순서).</summary>
         public IReadOnlyList<ContestActionDef> Actions { get; internal set; }
         public IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyList<SkillPart>>> Outcomes { get; internal set; }
@@ -134,6 +147,13 @@ namespace Game.Data.Defs
                 TriggerMaxStatDifference = JsonUtil.RequireFix(trig, "maxStatDifference", c + ".trigger"),
                 TriggerChance = JsonUtil.RequireFix(trig, "chance", c + ".trigger"),
                 RefuseTemperaments = JsonUtil.StringList(trig, "refuseTemperaments"),
+                TriggerWhen = trig.Value<string>("when") ?? ContestDef.WhenSortie,
+                EncounterCells = JsonUtil.FixOr(trig, "encounterCells", Fix.FromInt(8), c + ".trigger"),
+                EncounterOfferSec = JsonUtil.FixOr(trig, "offerSec", Fix.FromInt(10), c + ".trigger"),
+                EncounterDecideSec = JsonUtil.FixOr(trig, "decideSec", Fix.FromInt(30), c + ".trigger"),
+                EncounterRefuseMorale = JsonUtil.FixOr(trig, "refuseMorale", Fix.Zero, c + ".trigger"),
+                EncounterMaxPerBattle = (int)(trig.Value<long?>("maxPerBattle") ?? 1),
+                EncounterPairs = trig.Value<string>("pairs") ?? "commanders",
                 Actions = actions,
                 Outcomes = outcomes,
                 BattleEffects = effects,

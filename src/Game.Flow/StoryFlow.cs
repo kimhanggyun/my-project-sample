@@ -609,11 +609,12 @@ namespace Game.Flow
                 if (c.Team == PlayerTeam && mine == null) mine = c;
                 if (c.Team == EnemyTeam && theirs == null) theirs = c;
             }
-            if (mine == null || theirs == null) return;
             var rng = new SeededRandom(unchecked(request.Seed ^ 0x5DEECE66DUL));
             foreach (var (id, allowed) in new[] { ("duel", step.DuelAllowed), ("debate", step.DebateAllowed) })
             {
                 if (!allowed || !_defs.Contests.TryGetValue(id, out var def) || !setup.Flags.IsEnabled(def.Flag)) continue;
+                if (def.TriggerWhen == ContestDef.WhenEncounter) { setup.EncounterContests.Add(id); continue; } // 전투 중 마주칠 때 (R-89)
+                if (mine == null || theirs == null) continue;
                 if (!ContestTrigger.Occurs(def, mine.General.Stat(def.Stat), theirs.General.Stat(def.Stat), mine.General.Temperament, theirs.General.Temperament, rng)) continue;
                 request.ContestChoices.TryGetValue(id, out var choices);
                 setup.Contests.Add(new ContestSetup { ContestId = id, CorpsA = mine.Id, CorpsB = theirs.Id, ChoicesA = choices });

@@ -337,6 +337,10 @@ namespace Game.Battle.Model.Simulation
         public List<Contests.DuelState> Duels { get; } = new List<Contests.DuelState>();
         /// <summary>플레이어 군단이 받고 아직 답하지 않은 일기토 신청 (R-79).</summary>
         public List<Contests.DuelOffer> DuelOffers { get; } = new List<Contests.DuelOffer>();
+        /// <summary>마주침 대결 (R-89): 판정한 쌍 "대결|A|B", 이미 마주침 대결을 한(신청 받은) 군단.</summary>
+        internal HashSet<string> EncounterChecked { get; } = new HashSet<string>(System.StringComparer.Ordinal);
+        internal HashSet<string> EncounterDone { get; } = new HashSet<string>(System.StringComparer.Ordinal);
+        internal Dictionary<string, int> EncounterCount { get; } = new Dictionary<string, int>(System.StringComparer.Ordinal);
         /// <summary>숨겨 둔 함정 (R-80). 놓은 팀만 본다.</summary>
         public List<Skills.FieldTrap> Traps { get; } = new List<Skills.FieldTrap>();
         /// <summary>위장 깃발 (R-80).</summary>
