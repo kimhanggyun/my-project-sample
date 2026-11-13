@@ -32,6 +32,8 @@ namespace Game.Unity.Battle3D
             public string PoseFrom;
             /// <summary>그 안에서 고를 동작 이름 (일부만 맞아도 됨, 기본 "idle").</summary>
             public string PoseClip = "idle";
+            /// <summary>탈것(mount.*)에 탄 사람을 올리는 높이 (칸 단위, R-90). 없으면 코드 기본값.</summary>
+            public float? RiderY;
         }
 
         /// <param name="fallbackMaterial">모델 재질의 셰이더를 쓸 수 없을 때 대신할 기본 재질 (색 지정).</param>
@@ -54,6 +56,7 @@ namespace Game.Unity.Battle3D
                         Jitter = o.Value<float?>("jitter") ?? 0.15f,
                         PoseFrom = o.Value<string>("poseFrom"),
                         PoseClip = o.Value<string>("poseClip") ?? "idle",
+                        RiderY = o.Value<float?>("riderY"),
                     };
                     if (o["model"] is JValue one) e.Models.Add(one.Value<string>());
                     if (o["models"] is JArray many) foreach (var m in many) e.Models.Add(m.Value<string>());
@@ -88,6 +91,9 @@ namespace Game.Unity.Battle3D
         }
 
         /// <summary>모델의 팀 색 섞는 비율 (0 = 원래 색, 1 = 팀 색).</summary>
+        /// <summary>탈것에 탄 사람 높이 (아트 목록 riderY, 없으면 fallback).</summary>
+        public float RiderYOf(string key, float fallback) => key != null && _entries.TryGetValue(key, out var e) && e.RiderY.HasValue ? e.RiderY.Value : fallback;
+
         public float TintOf(string key) => key != null && _entries.TryGetValue(key, out var e) ? e.Tint : 0.6f;
 
         private ArtModel Load(string path, Entry e)

@@ -51,7 +51,7 @@ namespace Game.Unity.Screens
             var ctx = app.Context;
             var list = Ui.ScrollList(root, "List");
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.sample.note"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.sample.note"));
             var error = Ui.Label(list, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
             bool siege = false;
             foreach (var m in SampleBattles.Catalog(ctx.Defs, ctx.Flow))

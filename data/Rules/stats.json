@@ -77,5 +77,10 @@
       "max": 100,
       "default": 50
     }
-  ]
+  ],
+  "mounts": {
+    "_comment": "장수가 타는 것 (R-90, 보기만: 전장 3D·일기토 화면). 장수 정의의 mount가 있으면 그것, 없으면 지력 ≥ 무력 + palanquinIntellectOverMight 이면 가마(palanquin), 아니면 말(horse). 전투 규칙에는 영향 없음.",
+    "kinds": ["horse", "palanquin"],
+    "palanquinIntellectOverMight": 10
+  }
 }

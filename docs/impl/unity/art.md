@@ -15,7 +15,7 @@
 - **모델 파일이 없으면 코드로 만든 병종 인형**(`Battle3D/SoldierMeshes`, 2026-11-11: 머리·몸통 + 보병 방패·칼 / 창병 긴 창 / 궁병 활·화살통 / 기병 말·창 / 정찰병 짧은 칼, 부위별 색: 갑옷·투구·방패 = 팀 색, 얼굴 = 살색, 무기 = 쇠색, 다리·말 = 갈색 — 하위 메시 4개 + 재질 4개)으로 그린다. 진짜 스킨(텍스처·모델)은 아직 없다: 무료 CC0 모델을 넣거나(2장), 수묵 아트 단계에서 바꾼다. 소품은 없음. 모델을 하나씩 넣으면 그 병종부터 바뀐다.
 - **장수** (2026-11-11, 부대원과 구별): 군단마다 진형 한가운데 조금 뒤에 장수 인형 (`SoldierMeshes.General`) — 부대원보다 약 1.8배, 흰 말, 금빛 투구·깃털·어깨·칼, 팀 색 망토. **총대장**은 등에 군기(금 깃대 + 팀 색 깃발)를 하나 더. 군단 깃발은 그대로. 모델 키는 나중에 `general.default` 등으로 바꿀 수 있게 한다.
 - **쓰러진 병사** (2026-11-11): 병력이 줄어 화면 병사가 빠지면 그 자리에 어두운 납작한 상자가 전투 끝까지 남는다 (최대 4,000개). 부대가 전멸하면 남은 병사 모두.
-- **화면 병사 예산** `balance.json` `display.soldierBudget` = 900 (2026-11-11, 300에서 올림: 손실이 눈에 보이게. 부대 하나 약 50명).
+- **화면 병사 예산** `balance.json` `display.soldierBudget` = 2000 (2026-11-13, 900에서 올림: 대군 느낌. 부대 하나 약 110명, 병사 간격 0.32 → 0.24칸. 실제 병력 규칙은 그대로).
 - 그리기는 모두 GPU 인스턴싱(`InstanceBatch`, 1023개씩). 규칙 계산과 무관 (보이기 전용).
 
 | 키 | 쓰는 곳 | 비고 |
@@ -60,8 +60,11 @@
 |---|---|---|
 | 병사 (병종별) | `Art/Models/soldier*.fbx` (위 표) | 메시 하나, 삼각형 500 이하, 앞이 +Z(아니면 `yaw`) |
 | 장수 | `Art/Models/general.fbx`, `general_commander.fbx` | 메시 하나, 삼각형 2,000 이하 |
+| 탈것 (R-90) | 목록 키 `mount.horse`·`mount.palanquin` (말·가마만, 메는 사람 포함) | 원점 발밑, 앞이 +Z. `riderY` = 탄 장수 모델을 올릴 높이(칸). 없으면 코드로 만든 말·가마 |
+| 탄 장수 통째 (R-90) | 목록 키 `general.horse`·`general.palanquin`·`general.commander.horse`·`general.commander.palanquin` | 있으면 이것만 그린다 (탈것 + 장수 모델 조합보다 먼저) |
 | 배·투석기 | `Art/Models/ship.fbx`, `soldier_catapult.fbx` | 메시 하나 |
 | 지형 소품 | `Art/Models/tree_a` … (위 표) | 메시 하나 |
+| 자원·능력치 아이콘 | `Ui/icons/<id>.png` — id: `supply`(군량) `gold`(돈) `gem`(옥) `leadership`(통솔) `might`(무력) `intellect`(지력) | 정사각형 128px, Sprite. 없으면 낙관에 한 글자 (糧·錢·玉·統·武·智) |
 | 장수 초상 | `Art/portraits/<장수 id>.png` | 정사각형 512px, Sprite (2D and UI). 장수 id 목록: `data/Themes/ancientwar/generals.json` |
 | 화면 장식 | `Ui/paper.png`(한지 바탕, 이어 붙일 수 있게), `Ui/frame.png`(버튼·카드 테두리, 9-slice 경계 설정), `Ui/brush.png`(가로 붓 획), `Ui/seal.png`(낙관 네모), `Ui/enso.png`(초상 고리) | Sprite. 흰색·회색으로 그리면 코드가 색을 입힌다 |
 | 효과음 | `Audio/<id>.wav` (ogg도 됨) | id: `click` `drum` `duel` `clash` `arrow` `horn` `gong` `fire` `cheer` `alert` `battle`(반복 전장 소음, 2~4초) |

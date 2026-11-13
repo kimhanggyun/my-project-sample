@@ -19,7 +19,7 @@ namespace Game.Unity.Screens
             var svc = new TroopGrowthService(ctx.Defs);
             var list = Ui.ScrollList(root, "Units", 10, 16);
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.troops.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.troops.note"));
             Ui.Label(list, ctx.T("resource.gold") + " " + ctx.Resource(Game.Economy.ResourceIds.Gold).ToString("N0"), Ui.FontSmall);
             if (_notice != null) { Ui.Label(list, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good); _notice = null; }
             foreach (var u in ctx.State.Units)

@@ -17,7 +17,7 @@ namespace Game.Unity.Battle3D
     /// </summary>
     public sealed class BattleField3D
     {
-        private const float SoldierSpacing = 0.32f;
+        private const float SoldierSpacing = 0.24f; // 2026-11-13: 병사 예산 900 → 2000에 맞춰 촘촘히 (대군 느낌, 부대 덩어리 크기는 비슷)
         /// <summary>지형 높이 1단계의 월드 높이.</summary>
         private const float HeightScale = 0.8f;
         private const int RangeSegments = 48;
@@ -243,28 +243,47 @@ namespace Game.Unity.Battle3D
             return _soldierBatches[(troop, color)] = b;
         }
 
-        /// <summary>장수 묶음: (총대장 여부, 색) → 인형 (SoldierMeshes.General).</summary>
-        private readonly Dictionary<(bool commander, int color), InstanceBatch> _generalBatches = new Dictionary<(bool, int), InstanceBatch>();
-        private InstanceBatch GeneralBatch(bool commander, int color)
+        /// <summary>
+        /// 장수 묶음 (R-90 탈것): (총대장 여부, 색, 탈것) → 그릴 묶음들.
+        /// 1) 아트 목록 "general.commander.&lt;탈것&gt;" / "general.&lt;탈것&gt;" (탄 모습 통째) → 그것만.
+        /// 2) 아트 장수 모델(general.commander → general.default)이 있으면 탈것(아트 "mount.&lt;탈것&gt;", 없으면 코드 탈것) 위에 riderY만큼 올려 태운다.
+        /// 3) 둘 다 없으면 코드로 만든 탄 인형 통째.
+        /// </summary>
+        private readonly Dictionary<(bool commander, int color, string mount), InstanceBatch[]> _generalBatches = new Dictionary<(bool, int, string), InstanceBatch[]>();
+        private InstanceBatch[] GeneralBatches(bool commander, int color, string mount)
         {
-            if (_generalBatches.TryGetValue((commander, color), out var b)) return b;
-            // 아트 목록의 장수 모델 (general.commander → general.default), 없으면 코드로 만든 인형
-            string key = commander && _art.TryGet("general.commander", out ArtModel cm) ? "general.commander" : "general.default";
-            if (_art.TryGet(key, out ArtModel gm))
+            if (_generalBatches.TryGetValue((commander, color, mount), out var bs)) return bs;
+            var list = new List<InstanceBatch>();
+            Material MountBody() => mount == Game.Data.Defs.MountRules.Palanquin
+                ? PartMaterial(6, SoldierMeshes.PalanquinWoodColor) : PartMaterial(5, SoldierMeshes.GeneralHorseColor);
+            Material TeamMat()
             {
-                b = new InstanceBatch(gm.Mesh, _art.Tinted(gm, SoldierColors[color], _art.TintOf(key)), gm.Local);
-                _allSoldierBatches.Add(b);
-                return _generalBatches[(commander, color)] = b;
+                var t = Own(NewMaterial(SoldierColors[color]));
+                t.enableInstancing = true;
+                return t;
             }
-            var team = Own(NewMaterial(SoldierColors[color]));
-            team.enableInstancing = true;
-            b = new InstanceBatch(SoldierMeshes.General(commander),
-                new[] { team, PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(4, SoldierMeshes.GoldColor), PartMaterial(5, SoldierMeshes.GeneralHorseColor) }, Matrix4x4.identity);
-            _allSoldierBatches.Add(b);
-            return _generalBatches[(commander, color)] = b;
+            string whole = commander && _art.TryGet("general.commander." + mount, out ArtModel _) ? "general.commander." + mount : "general." + mount;
+            string riderKey = commander && _art.TryGet("general.commander", out ArtModel _) ? "general.commander" : "general.default";
+            if (_art.TryGet(whole, out ArtModel wm))
+                list.Add(new InstanceBatch(wm.Mesh, _art.Tinted(wm, SoldierColors[color], _art.TintOf(whole)), wm.Local));
+            else if (_art.TryGet(riderKey, out ArtModel gm))
+            {
+                float riderY = _art.RiderYOf("mount." + mount, SoldierMeshes.RiderLift(mount));
+                list.Add(new InstanceBatch(gm.Mesh, _art.Tinted(gm, SoldierColors[color], _art.TintOf(riderKey)), Matrix4x4.Translate(new Vector3(0f, riderY, 0f)) * gm.Local));
+                if (_art.TryGet("mount." + mount, out ArtModel mm))
+                    list.Add(new InstanceBatch(mm.Mesh, _art.Tinted(mm, SoldierColors[color], _art.TintOf("mount." + mount)), mm.Local));
+                else
+                    list.Add(new InstanceBatch(SoldierMeshes.General(commander, mount, rider: false),
+                        new[] { TeamMat(), PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(4, SoldierMeshes.GoldColor), MountBody() }, Matrix4x4.identity));
+            }
+            else
+                list.Add(new InstanceBatch(SoldierMeshes.General(commander, mount),
+                    new[] { TeamMat(), PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(4, SoldierMeshes.GoldColor), MountBody() }, Matrix4x4.identity));
+            _allSoldierBatches.AddRange(list);
+            return _generalBatches[(commander, color, mount)] = list.ToArray();
         }
 
-        private readonly Material[] _partMaterials = new Material[6];
+        private readonly Material[] _partMaterials = new Material[8];
         private Material PartMaterial(int i, Color c)
         {
             if (_partMaterials[i] != null) return _partMaterials[i];
@@ -772,7 +791,9 @@ namespace Game.Unity.Battle3D
                 {
                     var gp = sum / alive + rot * new Vector3(0f, 0f, -0.9f);
                     gp.y = GroundHeight(gp.x, gp.z);
-                    GeneralBatch(c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander, teamColor).Add(gp, rot);
+                    var gs = c.Setup.General;
+                    string mount = gs == null ? Game.Data.Defs.MountRules.Horse : ctx.Defs.Mounts.Resolve(ctx.Defs, gs.Id, gs.Might, gs.Intellect);
+                    foreach (var gb in GeneralBatches(c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander, teamColor, mount)) gb.Add(gp, rot);
                 }
             }
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);

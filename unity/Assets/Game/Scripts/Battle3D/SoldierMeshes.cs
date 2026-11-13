@@ -140,17 +140,27 @@ namespace Game.Unity.Battle3D
             }
         }
 
-        /// <summary>장수 재질 순서: 0 = 갑옷·망토(팀 색), 1 = 얼굴, 2 = 금빛 장식·무기, 3 = 말(흰 말).</summary>
+        /// <summary>장수 재질 순서: 0 = 갑옷·망토(팀 색), 1 = 얼굴, 2 = 금빛 장식·무기, 3 = 탈것 몸 (말 = 흰 말, 가마 = 나무).</summary>
         public static readonly Color GoldColor = new Color(0.95f, 0.76f, 0.26f);
         public static readonly Color GeneralHorseColor = new Color(0.9f, 0.88f, 0.84f);
+        public static readonly Color PalanquinWoodColor = new Color(0.45f, 0.28f, 0.16f);
+
+        /// <summary>탈것 위에 탄 사람의 엉덩이 높이 (장수 크기 배율 적용 전, 칸 단위). 아트 장수 모델을 올릴 때도 쓴다.</summary>
+        public static float RiderLift(string mount) => (mount == Game.Data.Defs.MountRules.Palanquin ? 0.13f : 0.17f) * GeneralScale;
+
+        /// <summary>장수 인형 크기 (부대원 대비).</summary>
+        public const float GeneralScale = 1.8f;
 
         /// <summary>
-        /// 장수 인형 (부대원과 구별, 2026-11-11): 부대원보다 크게(약 1.8배), 흰 말을 타고, 금빛 투구·깃털·어깨 장식, 팀 색 망토, 금빛 칼.
+        /// 장수 인형 (부대원과 구별, 2026-11-11): 부대원보다 크게(약 1.8배), 금빛 투구·깃털·어깨 장식, 팀 색 망토, 금빛 칼.
+        /// 탈것 (R-90): 말(흰 말) 또는 가마(나무 가마 + 팀 색 지붕, 메는 사람 넷). 가마에 탄 책사는 칼 대신 깃털 부채.
         /// 총대장(commander)은 등에 군기(깃대 + 팀 색 깃발)를 하나 더 단다. 원점은 발밑.
+        /// rider = false면 탈것만 (아트 장수 모델을 그 위에 올릴 때).
         /// </summary>
-        public static Mesh General(bool commander)
+        public static Mesh General(bool commander, string mount = null, bool rider = true)
         {
-            string key = commander ? "#commander" : "#general";
+            bool palanquin = mount == Game.Data.Defs.MountRules.Palanquin;
+            string key = (commander ? "#commander" : "#general") + (palanquin ? "_palanquin" : "_horse") + (rider ? "" : "_mountOnly");
             if (Built.TryGetValue(key, out var m) && m != null) return m;
             var parts = new List<CombineInstance>[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
             var cube = Builtin("Cube");
@@ -158,34 +168,70 @@ namespace Game.Unity.Battle3D
             var capsule = Builtin("Capsule");
             var cylinder = Builtin("Cylinder");
             int part = Dark;
-            const float k = 1.8f; // 부대원 대비 크기
+            const float k = GeneralScale;
             void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
                 parts[part].Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(pos * k, Quaternion.Euler(euler), scale * k) });
 
-            // 흰 말
-            Add(cube, new Vector3(0f, 0.14f, 0f), new Vector3(0.13f, 0.12f, 0.32f));
-            Add(cube, new Vector3(0f, 0.24f, 0.18f), new Vector3(0.075f, 0.13f, 0.085f), new Vector3(-30f, 0f, 0f));
-            for (int i = 0; i < 4; i++)
-                Add(cube, new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.045f, i < 2 ? 0.12f : -0.12f), new Vector3(0.032f, 0.09f, 0.032f));
-            float lift = 0.17f;
-            // 갑옷·망토 (팀 색)
-            part = Team;
-            Add(capsule, new Vector3(0f, lift + 0.17f, 0f), new Vector3(0.12f, 0.12f, 0.1f));
-            Add(cube, new Vector3(0f, lift + 0.15f, -0.07f), new Vector3(0.15f, 0.22f, 0.015f), new Vector3(12f, 0f, 0f)); // 망토
-            Add(cube, new Vector3(0f, 0.2f, 0f), new Vector3(0.14f, 0.03f, 0.2f)); // 말 안장 덮개
-            // 얼굴
-            part = Skin;
-            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.085f, 0.085f, 0.085f));
-            // 금빛: 투구·깃털·어깨·칼
-            part = Metal;
-            Add(cube, new Vector3(0f, lift + 0.38f, 0f), new Vector3(0.105f, 0.04f, 0.105f));
-            Add(cube, new Vector3(0f, lift + 0.45f, -0.01f), new Vector3(0.018f, 0.1f, 0.04f));        // 깃털
-            Add(sphere, new Vector3(-0.07f, lift + 0.24f, 0f), new Vector3(0.05f, 0.04f, 0.06f));       // 어깨
-            Add(sphere, new Vector3(0.07f, lift + 0.24f, 0f), new Vector3(0.05f, 0.04f, 0.06f));
-            Add(cube, new Vector3(0.08f, lift + 0.26f, 0.05f), new Vector3(0.016f, 0.2f, 0.02f), new Vector3(25f, 0f, 0f)); // 칼
+            float lift;
+            if (palanquin)
+            {
+                // 가마: 나무 상자 + 앞뒤로 긴 멜대 두 개, 메는 사람 넷 (팀 색 옷), 팀 색 지붕
+                Add(cube, new Vector3(0f, 0.17f, 0f), new Vector3(0.16f, 0.06f, 0.2f));                 // 바닥
+                Add(cube, new Vector3(-0.075f, 0.24f, 0f), new Vector3(0.012f, 0.1f, 0.2f));            // 옆 난간
+                Add(cube, new Vector3(0.075f, 0.24f, 0f), new Vector3(0.012f, 0.1f, 0.2f));
+                Add(cube, new Vector3(0f, 0.24f, -0.095f), new Vector3(0.16f, 0.1f, 0.012f));           // 등받이
+                for (int i = 0; i < 4; i++)
+                    Add(cylinder, new Vector3(i % 2 == 0 ? -0.075f : 0.075f, 0.36f, i < 2 ? 0.09f : -0.09f), new Vector3(0.012f, 0.1f, 0.012f)); // 지붕 기둥
+                Add(cube, new Vector3(-0.1f, 0.16f, 0f), new Vector3(0.016f, 0.016f, 0.52f));           // 멜대
+                Add(cube, new Vector3(0.1f, 0.16f, 0f), new Vector3(0.016f, 0.016f, 0.52f));
+                part = Team;
+                Add(cube, new Vector3(0f, 0.465f, 0f), new Vector3(0.2f, 0.025f, 0.24f));               // 지붕
+                Add(cube, new Vector3(0f, 0.495f, 0f), new Vector3(0.12f, 0.035f, 0.15f));
+                for (int i = 0; i < 4; i++) // 메는 사람
+                {
+                    var at = new Vector3(i % 2 == 0 ? -0.1f : 0.1f, 0f, i < 2 ? 0.22f : -0.22f);
+                    part = Team;
+                    Add(capsule, at + new Vector3(0f, 0.09f, 0f), new Vector3(0.05f, 0.06f, 0.04f));
+                    part = Skin;
+                    Add(sphere, at + new Vector3(0f, 0.16f, 0f), new Vector3(0.035f, 0.035f, 0.035f));
+                }
+                part = Metal;
+                Add(sphere, new Vector3(0f, 0.53f, 0f), new Vector3(0.03f, 0.03f, 0.03f));             // 지붕 꼭지
+                lift = 0.13f;
+            }
+            else
+            {
+                // 흰 말
+                Add(cube, new Vector3(0f, 0.14f, 0f), new Vector3(0.13f, 0.12f, 0.32f));
+                Add(cube, new Vector3(0f, 0.24f, 0.18f), new Vector3(0.075f, 0.13f, 0.085f), new Vector3(-30f, 0f, 0f));
+                for (int i = 0; i < 4; i++)
+                    Add(cube, new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.045f, i < 2 ? 0.12f : -0.12f), new Vector3(0.032f, 0.09f, 0.032f));
+                part = Team;
+                Add(cube, new Vector3(0f, 0.2f, 0f), new Vector3(0.14f, 0.03f, 0.2f)); // 말 안장 덮개
+                lift = 0.17f;
+            }
+            if (rider)
+            {
+                // 갑옷·망토 (팀 색)
+                part = Team;
+                Add(capsule, new Vector3(0f, lift + 0.17f, 0f), new Vector3(0.12f, 0.12f, 0.1f));
+                Add(cube, new Vector3(0f, lift + 0.15f, -0.07f), new Vector3(0.15f, 0.22f, 0.015f), new Vector3(12f, 0f, 0f)); // 망토
+                // 얼굴
+                part = Skin;
+                Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.085f, 0.085f, 0.085f));
+                // 금빛: 투구·깃털·어깨·칼 (가마의 책사는 관과 깃털 부채)
+                part = Metal;
+                Add(cube, new Vector3(0f, lift + 0.38f, 0f), new Vector3(0.105f, 0.04f, 0.105f));
+                Add(cube, new Vector3(0f, lift + 0.45f, -0.01f), new Vector3(0.018f, 0.1f, 0.04f));        // 깃털·관
+                Add(sphere, new Vector3(-0.07f, lift + 0.24f, 0f), new Vector3(0.05f, 0.04f, 0.06f));       // 어깨
+                Add(sphere, new Vector3(0.07f, lift + 0.24f, 0f), new Vector3(0.05f, 0.04f, 0.06f));
+                if (palanquin) Add(cube, new Vector3(0.08f, lift + 0.3f, 0.05f), new Vector3(0.07f, 0.09f, 0.01f), new Vector3(0f, 0f, 15f)); // 부채
+                else Add(cube, new Vector3(0.08f, lift + 0.26f, 0.05f), new Vector3(0.016f, 0.2f, 0.02f), new Vector3(25f, 0f, 0f)); // 칼
+            }
             if (commander)
             {
                 // 총대장 군기: 등 뒤 깃대(금) + 깃발(팀 색)
+                part = Metal;
                 Add(cylinder, new Vector3(-0.05f, lift + 0.42f, -0.08f), new Vector3(0.01f, 0.2f, 0.01f));
                 part = Team;
                 Add(cube, new Vector3(-0.05f - 0.06f, lift + 0.56f, -0.08f), new Vector3(0.12f, 0.08f, 0.01f));
@@ -197,7 +243,7 @@ namespace Game.Unity.Battle3D
                 if (parts[i].Count > 0) pm.CombineMeshes(parts[i].ToArray(), true, true);
                 subs[i] = new CombineInstance { mesh = pm, transform = Matrix4x4.identity };
             }
-            m = new Mesh { name = commander ? "general_commander" : "general" };
+            m = new Mesh { name = key.TrimStart('#') };
             m.CombineMeshes(subs, false, false);
             m.RecalculateBounds();
             return Built[key] = m;

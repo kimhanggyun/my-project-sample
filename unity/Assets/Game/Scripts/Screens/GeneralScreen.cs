@@ -36,10 +36,8 @@ namespace Game.Unity.Screens
             Ui.Size(list.parent.parent, flexibleHeight: 1);
 
             var stats = Ui.Card(list, "Stats");
-            var parts = new List<string>();
-            foreach (var id in MainStats)
-                if (Ctx.Defs.Stats.TryGetValue(id, out var sd)) parts.Add(T(sd.NameKey) + " " + CorpsValidator.EffectiveStat(Ctx.Defs, g, id).FloorToLong());
-            Ui.Label(stats, string.Join("   ", parts));
+            long Eff(string id) => CorpsValidator.EffectiveStat(Ctx.Defs, g, id).FloorToLong();
+            Icons.Stats(Ctx, stats, Eff(MainStats[0]), Eff(MainStats[1]), Eff(MainStats[2]), 48, 32);
 
             // 성향·특성 (traits.md, R-67): 특성은 전투에 실제 효과가 있다
             var traits = Ui.Card(list, "Traits");

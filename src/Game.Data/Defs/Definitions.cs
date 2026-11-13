@@ -119,6 +119,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<string> InnateSkills { get; internal set; }
         public bool Recruitable { get; internal set; }
         public StatBlock Stats { get; internal set; }
+        /// <summary>타는 것을 정해 둔 경우 (horse·palanquin, R-90). 없으면 능력치로 정한다 (<see cref="MountRules"/>).</summary>
+        public string Mount { get; internal set; }
         /// <summary>성장률: 레벨업 1번에 오르는 능력치 (무작위 없음).</summary>
         public IReadOnlyDictionary<string, Fix> GrowthRates { get; internal set; }
     }
@@ -178,6 +180,36 @@ namespace Game.Data.Defs
         {
             foreach (var s in All) if (s == id) return true;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 장수가 타는 것 (R-90, 보기만): 장수 정의의 mount, 없으면 지력 ≥ 무력 + palanquinIntellectOverMight 이면 가마, 아니면 말.
+    /// 능력치는 지금 능력치(성장·부상 반영)를 넘긴다.
+    /// </summary>
+    public sealed class MountRules
+    {
+        public const string Horse = "horse";
+        public const string Palanquin = "palanquin";
+
+        public IReadOnlyList<string> Kinds { get; internal set; } = new[] { Horse, Palanquin };
+        public Fix PalanquinIntellectOverMight { get; internal set; } = Fix.FromInt(10);
+
+        public string Resolve(string fixedMount, Fix might, Fix intellect) =>
+            !string.IsNullOrEmpty(fixedMount) ? fixedMount : intellect >= might + PalanquinIntellectOverMight ? Palanquin : Horse;
+
+        /// <summary>장수 id로 (정의의 mount 우선).</summary>
+        public string Resolve(DefinitionSet defs, string generalId, Fix might, Fix intellect) =>
+            Resolve(generalId != null && defs.Generals.TryGetValue(generalId, out var g) ? g.Mount : null, might, intellect);
+
+        public static MountRules From(Newtonsoft.Json.Linq.JObject o)
+        {
+            var r = new MountRules();
+            if (o == null) return r;
+            var kinds = Game.Data.Json.JsonUtil.StringList(o, "kinds");
+            if (kinds.Count > 0) r.Kinds = kinds;
+            r.PalanquinIntellectOverMight = Game.Data.Json.JsonUtil.FixOr(o, "palanquinIntellectOverMight", r.PalanquinIntellectOverMight, "stats.mounts");
+            return r;
         }
     }
 }

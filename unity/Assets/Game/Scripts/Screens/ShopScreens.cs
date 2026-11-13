@@ -20,7 +20,7 @@ namespace Game.Unity.Screens
             var ctx = app.Context;
             var list = Ui.ScrollList(root, "List", 12, 16);
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.shop.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.shop.note"));
             long now = ctx.Time.UtcNow.ToUnixTimeSeconds();
             if (PurchaseService.AdFree(ctx.State, now))
                 Ui.Label(list, ctx.State.AdFreeForever ? ctx.T("ui.shop.adFreeForever")

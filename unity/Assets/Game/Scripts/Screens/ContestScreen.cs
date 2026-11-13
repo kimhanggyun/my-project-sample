@@ -183,8 +183,8 @@ namespace Game.Unity.Screens
             ground.anchorMax = new Vector2(1f, 0.2f);
             ground.offsetMin = ground.offsetMax = Vector2.zero;
             Ui.Background(ground, new Color(0.35f, 0.3f, 0.22f, 0.5f));
-            _a = MakePuppet(0.27f, Palette.Ally, +1f);
-            _b = MakePuppet(0.73f, Palette.Enemy, -1f);
+            _a = MakePuppet(0.27f, Palette.Ally, +1f, MountOf(_play.GeneralA));
+            _b = MakePuppet(0.73f, Palette.Enemy, -1f, MountOf(_play.GeneralB));
             _banner = Ui.Label(_stage, "", 64, TextAnchor.MiddleCenter);
             var br = _banner.rectTransform;
             br.anchorMin = new Vector2(0f, 0.62f);
@@ -210,7 +210,49 @@ namespace Game.Unity.Screens
             return rt;
         }
 
-        private Puppet MakePuppet(float anchorX, Color team, float dir)
+        /// <summary>일기토면 장수가 타는 것 (R-90: 지금 능력치 기준, 정의의 mount 우선). 논쟁은 걸어서 (null).</summary>
+        private string MountOf(string generalId)
+        {
+            if (_debate || generalId == null) return null;
+            var g = Ctx.State.FindGeneral(generalId);
+            Game.Foundation.Math.Fix Stat(string id) => g != null ? Game.Campaign.Roster.CorpsValidator.EffectiveStat(Ctx.Defs, g, id)
+                : Ctx.Defs.Generals.TryGetValue(generalId, out var d) ? d.Stats.Get(id) : Game.Foundation.Math.Fix.Zero;
+            return Ctx.Defs.Mounts.Resolve(Ctx.Defs, generalId, Stat("might"), Stat("intellect"));
+        }
+
+        /// <summary>탈것 그림 (R-90, 임시 도형): 말 = 흰 말, 가마 = 나무 가마 + 지붕 + 메는 사람 둘. 탄 사람이 앉는 높이를 돌려준다.</summary>
+        private static float MountParts(RectTransform root, string mount, Color team)
+        {
+            if (mount == null) return 0f;
+            var circle = UiShapes.Circle;
+            if (mount == Game.Data.Defs.MountRules.Palanquin)
+            {
+                var wood = new Color(0.45f, 0.28f, 0.16f);
+                foreach (float x in new[] { -125f, 125f }) // 메는 사람
+                {
+                    Part(root, "BearerLeg", new Vector2(x, 30f), new Vector2(22f, 60f), new Color(0.22f, 0.2f, 0.18f));
+                    Part(root, "Bearer", new Vector2(x, 82f), new Vector2(40f, 56f), Darker(team, 0.8f));
+                    Part(root, "BearerHead", new Vector2(x, 128f), new Vector2(34f, 34f), new Color(0.93f, 0.8f, 0.66f), circle);
+                }
+                Part(root, "Pole", new Vector2(0f, 104f), new Vector2(300f, 10f), wood);
+                Part(root, "Box", new Vector2(0f, 120f), new Vector2(150f, 70f), wood);
+                return 90f;
+            }
+            var horse = new Color(0.9f, 0.88f, 0.84f);
+            var hoof = new Color(0.55f, 0.5f, 0.45f);
+            foreach (float x in new[] { -70f, -48f, 48f, 70f })
+                Part(root, "HorseLeg", new Vector2(x, 34f), new Vector2(18f, 68f), x < 0 ? Darker(horse, 0.9f) : horse);
+            foreach (float x in new[] { -70f, -48f, 48f, 70f })
+                Part(root, "Hoof", new Vector2(x, 4f), new Vector2(20f, 10f), hoof);
+            Part(root, "Tail", new Vector2(-104f, 92f), new Vector2(18f, 60f), Darker(horse, 0.8f)).localRotation = Quaternion.Euler(0f, 0f, -25f);
+            Part(root, "HorseBody", new Vector2(0f, 92f), new Vector2(190f, 64f), horse);
+            Part(root, "Neck", new Vector2(86f, 128f), new Vector2(38f, 76f), horse).localRotation = Quaternion.Euler(0f, 0f, -28f);
+            Part(root, "HorseHead", new Vector2(116f, 156f), new Vector2(62f, 36f), horse).localRotation = Quaternion.Euler(0f, 0f, -20f);
+            Part(root, "Saddle", new Vector2(0f, 122f), new Vector2(90f, 16f), team);
+            return 72f;
+        }
+
+        private Puppet MakePuppet(float anchorX, Color team, float dir, string mount = null)
         {
             var root = Ui.Rect(_stage, "Fighter");
             root.anchorMin = root.anchorMax = new Vector2(anchorX, 0.14f);
@@ -220,27 +262,35 @@ namespace Game.Unity.Screens
             var circle = UiShapes.Circle;
             var p = new Puppet { Root = root, Dir = dir, Team = team };
             Part(root, "Shadow", new Vector2(0f, 6f), new Vector2(170f, 34f), new Color(0f, 0f, 0f, 0.35f), circle);
-            p.Aura = Part(root, "Aura", new Vector2(0f, 160f), new Vector2(300f, 300f), new Color(1f, 1f, 1f, 0f), circle);
+            p.Aura = Part(root, "Aura", new Vector2(0f, 160f + (mount == null ? 0f : 60f)), new Vector2(300f, 300f), new Color(1f, 1f, 1f, 0f), circle);
             p.AuraImage = p.Aura.GetComponent<Image>();
             var leg = new Color(0.22f, 0.2f, 0.18f);
-            Part(root, "LegL", new Vector2(-24f, 48f), new Vector2(26f, 92f), leg);
-            Part(root, "LegR", new Vector2(24f, 48f), new Vector2(26f, 92f), leg);
-            p.Body = Part(root, "Body", new Vector2(0f, 150f), new Vector2(100f, 120f), team).GetComponent<Image>();
-            Part(root, "Belt", new Vector2(0f, 102f), new Vector2(104f, 14f), new Color(0.3f, 0.22f, 0.12f));
+            float up = MountParts(root, mount, team); // 탄 사람은 그만큼 위로 (다리는 짧게 걸침)
+            if (mount != null) root.sizeDelta = new Vector2(320f, 330f + up);
+            if (mount == null)
+            {
+                Part(root, "LegL", new Vector2(-24f, 48f), new Vector2(26f, 92f), leg);
+                Part(root, "LegR", new Vector2(24f, 48f), new Vector2(26f, 92f), leg);
+            }
+            else Part(root, "LegSide", new Vector2(10f, up + 60f), new Vector2(26f, 56f), leg);
+            p.Body = Part(root, "Body", new Vector2(0f, up + 150f), new Vector2(100f, 120f), team).GetComponent<Image>();
+            Part(root, "Belt", new Vector2(0f, up + 102f), new Vector2(104f, 14f), new Color(0.3f, 0.22f, 0.12f));
             // 무기: 일기토는 칼(긴 막대), 논쟁은 부채(짧은 판). 손 위치에서 돈다.
             p.WeaponRest = _debate ? -20f : -35f;
-            p.Weapon = Part(root, "Weapon", new Vector2(56f, 150f), _debate ? new Vector2(46f, 70f) : new Vector2(14f, 170f),
+            p.Weapon = Part(root, "Weapon", new Vector2(56f, up + 150f), _debate ? new Vector2(46f, 70f) : new Vector2(14f, 170f),
                 _debate ? new Color(0.92f, 0.86f, 0.7f) : new Color(0.75f, 0.77f, 0.8f), null, new Vector2(0.5f, 0f));
             p.Weapon.localRotation = Quaternion.Euler(0f, 0f, p.WeaponRest);
-            Part(root, "Head", new Vector2(0f, 250f), new Vector2(76f, 76f), new Color(0.93f, 0.8f, 0.66f), circle);
-            Part(root, "Helmet", new Vector2(0f, 284f), new Vector2(84f, 26f), Darker(team, 0.75f));
+            Part(root, "Head", new Vector2(0f, up + 250f), new Vector2(76f, 76f), new Color(0.93f, 0.8f, 0.66f), circle);
+            Part(root, "Helmet", new Vector2(0f, up + 284f), new Vector2(84f, 26f), Darker(team, 0.75f));
+            if (mount == Game.Data.Defs.MountRules.Palanquin) // 가마 지붕은 탄 사람 위
+                Part(root, "Roof", new Vector2(0f, up + 330f), new Vector2(200f, 26f), Darker(team, 0.7f));
             // 말풍선 (뒤집히지 않게 무대에 따로)
             p.Bubble = Ui.Label(_stage, "", 32, TextAnchor.MiddleCenter);
             var bub = p.Bubble.rectTransform;
             bub.anchorMin = bub.anchorMax = new Vector2(anchorX, 0.14f);
             bub.pivot = new Vector2(0.5f, 0f);
             bub.sizeDelta = new Vector2(300f, 60f);
-            bub.anchoredPosition = new Vector2(0f, 340f);
+            bub.anchoredPosition = new Vector2(0f, 340f + up + (mount == Game.Data.Defs.MountRules.Palanquin ? 30f : 0f));
             return p;
         }
 
