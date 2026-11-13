@@ -35,23 +35,24 @@ namespace Game.Unity.Battle3D
         /// <summary>수묵 스타일 지형 색 (art-direction.md 2장: 부드러운 먹빛 담채). 한지 스타일(UiStyle.Paper)일 때.</summary>
         private static readonly Dictionary<string, Color32> InkColors = new Dictionary<string, Color32>
         {
-            { "plain", new Color32(201, 195, 163, 255) },
-            { "grass", new Color32(181, 186, 146, 255) },
-            { "road", new Color32(214, 201, 168, 255) },
-            { "forest", new Color32(94, 110, 85, 255) },
-            { "burnt", new Color32(90, 82, 74, 255) },
-            { "hill", new Color32(169, 162, 126, 255) },
-            { "mountain", new Color32(124, 118, 108, 255) },
-            { "cliff", new Color32(94, 89, 83, 255) },
-            { "pass", new Color32(189, 176, 148, 255) },
-            { "river", new Color32(111, 138, 160, 255) },
-            { "ford", new Color32(144, 165, 178, 255) },
-            { "bridge", new Color32(138, 110, 80, 255) },
-            { "marsh", new Color32(142, 148, 120, 255) },
-            { "building", new Color32(156, 140, 124, 255) },
-            { "flood", new Color32(120, 150, 175, 255) },
-            { "mud", new Color32(140, 122, 92, 255) },
-            { "water", new Color32(95, 126, 151, 255) },
+            // 2026-11-13: 보랏빛 회색 → KayKit 나무·바위와 어울리는 연두·흙색 (데스크탑 리뷰)
+            { "plain", new Color32(138, 184, 98, 255) },
+            { "grass", new Color32(118, 176, 86, 255) },
+            { "road", new Color32(204, 176, 124, 255) },
+            { "forest", new Color32(92, 148, 74, 255) },
+            { "burnt", new Color32(96, 84, 72, 255) },
+            { "hill", new Color32(164, 176, 100, 255) },
+            { "mountain", new Color32(150, 140, 124, 255) },
+            { "cliff", new Color32(120, 112, 102, 255) },
+            { "pass", new Color32(186, 164, 120, 255) },
+            { "river", new Color32(92, 156, 204, 255) },
+            { "ford", new Color32(128, 182, 214, 255) },
+            { "bridge", new Color32(158, 116, 74, 255) },
+            { "marsh", new Color32(116, 146, 100, 255) },
+            { "building", new Color32(176, 154, 130, 255) },
+            { "flood", new Color32(104, 164, 214, 255) },
+            { "mud", new Color32(138, 108, 76, 255) },
+            { "water", new Color32(84, 146, 200, 255) },
         };
         /// <summary>수묵: 안 가 본 곳은 빈 한지, 가 봤지만 지금 안 보이는 곳은 옅은 먹빛 (검은 안개 대신).</summary>
         private static readonly Color32 PaperFog = new Color32(232, 223, 203, 255);
