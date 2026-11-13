@@ -5,3 +5,4 @@
 
 - 2026-11-13 [데스크탑] desktop/collab-rules — 두 Claude 협업 규칙, PR 양식, 작업일지, 받은 에셋 목록 표 추가 (PR #124)
 - 2026-11-13 [데스크탑] desktop/captures-latest — 캡처 공유 규칙(collab.md 7장), 최신 캡처 18장(540px JPG, LFS 밖)과 화면 리뷰
+- 2026-11-13 [원격] claude/kind-bohr-365c76 — 에셋 자리 정리: 투석기·공병·배·장수 모델 키, art.md 2.2 넣을 수 있는 모든 자리 표 (PR #126)
