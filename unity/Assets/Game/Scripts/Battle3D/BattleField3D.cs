@@ -392,6 +392,26 @@ namespace Game.Unity.Battle3D
 
         public void LookAt(CorpsState c) { if (c != null) Rig.LookAt(ToWorld(c.Anchor)); }
 
+        /// <summary>여러 군단이 한 화면에 들어오게: 가운데를 보고, 가장 먼 둘의 거리만큼 물러선다 (전투 시작 때 아군 전체).</summary>
+        public void Frame(IEnumerable<CorpsState> corps)
+        {
+            var min = new Vector3(float.MaxValue, 0f, float.MaxValue);
+            var max = new Vector3(float.MinValue, 0f, float.MinValue);
+            int n = 0;
+            foreach (var c in corps)
+            {
+                if (c == null || !c.InBattle) continue;
+                var p = ToWorld(c.Anchor);
+                min = Vector3.Min(min, p);
+                max = Vector3.Max(max, p);
+                n++;
+            }
+            if (n == 0) return;
+            float spread = Mathf.Max(max.x - min.x, max.z - min.z);
+            Rig.SetDistance(Mathf.Max(Rig.Distance, spread * 1.6f + 10f)); // 세로 화면이라 가로 폭이 좁다: 넉넉히
+            Rig.LookAt((min + max) / 2f);
+        }
+
         /// <summary>틱이 지난 뒤: 안개·지형 텍스처, 깃발·표식 위치.</summary>
         public void Refresh()
         {

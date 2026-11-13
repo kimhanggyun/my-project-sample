@@ -43,6 +43,13 @@ namespace Game.Unity.Battle3D
             Apply();
         }
 
+        /// <summary>거리를 정해서 (최소~최대 안으로).</summary>
+        public void SetDistance(float distance)
+        {
+            Distance = Mathf.Clamp(distance, MinDistance, MaxDistance);
+            Apply();
+        }
+
         /// <param name="factor">1보다 크면 가까이.</param>
         public void Zoom(float factor)
         {
