@@ -810,7 +810,7 @@
   "ui.event.decoyExposed": "위장 깃발이 들통났다.",
   "ui.event.feignSprung": "{0}: 거짓 퇴각에 속아 대오가 흐트러졌다!",
   "ui.event.duelOffered": "{0}: 적장이 일기토를 걸어 왔다!",
-  "ui.duel.offer": "{0}이(가) {1}에게 일기토를 걸어 왔습니다!\n거절하면 군의 사기가 떨어집니다.",
+  "ui.duel.offer": "{0}이(가) {1}에게 일기토를 걸어 왔습니다!\n거절하면 사기가 떨어지고 잠시 공격이 약해집니다.",
   "ui.duel.accept": "응한다",
   "ui.duel.refuse": "거절한다",
   "ui.event.duelEnded": "{0}: 일기토가 끝났다.",
@@ -1048,11 +1048,15 @@
   "terrain.flood": "물에 잠김",
   "terrain.water": "물 (호수·바다)",
   "terrain.mud": "진흙",
-  "ui.event.duelEncounter": "{0}: 적 대장과 마주쳤다! 일기토의 기운이 감돈다.",
+  "ui.event.duelEncounter": "{0}: 적 대장과 마주쳤다!",
   "ui.icon.supply": "糧",
   "ui.icon.gold": "錢",
   "ui.icon.gem": "玉",
   "ui.icon.leadership": "統",
   "ui.icon.might": "武",
-  "ui.icon.intellect": "智"
+  "ui.icon.intellect": "智",
+  "ui.duel.chance": "{0}이(가) 적장 {1}와(과) 마주쳤습니다!\n일기토를 신청할까요? (상대가 거절하면 상대 군의 사기가 떨어집니다)",
+  "ui.duel.pass": "넘어가기",
+  "ui.duel.challenge": "일기토 신청",
+  "ui.event.duelChancePassed": "{0}: 일기토를 걸지 않고 넘어갔다."
 }

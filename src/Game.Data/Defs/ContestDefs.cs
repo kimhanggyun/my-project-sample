@@ -41,7 +41,23 @@ namespace Game.Data.Defs
         public Fix EncounterCells { get; internal set; }
         public Fix EncounterOfferSec { get; internal set; }
         public Fix EncounterDecideSec { get; internal set; }
-        public Fix EncounterRefuseMorale { get; internal set; }
+        /// <summary>마주침 때 같은 무력이면 거는 쪽: 이 순서에서 앞선 성향 (R-91).</summary>
+        public IReadOnlyList<string> BoldOrder { get; internal set; }
+        /// <summary>신청을 받은 장수가 응할 확률: 성향 → 확률, 없으면 AcceptDefault (R-91).</summary>
+        public IReadOnlyDictionary<string, Fix> AcceptByTemperament { get; internal set; }
+        public Fix AcceptDefault { get; internal set; }
+        /// <summary>거절 벌칙 (R-91): 거절한 군단 사기, 공격 %p와 그 시간, 같은 편 다른 군단 사기.</summary>
+        public Fix RefuseMorale { get; internal set; }
+        public Fix RefuseAttackPp { get; internal set; }
+        public Fix RefuseSec { get; internal set; }
+        public Fix RefuseAllyMorale { get; internal set; }
+
+        /// <summary>그 성향의 장수가 신청에 응할 확률 (거부 성향이면 0).</summary>
+        public Fix AcceptChance(string temperament)
+        {
+            foreach (var t in RefuseTemperaments) if (t == temperament) return Fix.Zero;
+            return temperament != null && AcceptByTemperament.TryGetValue(temperament, out var v) ? v : AcceptDefault;
+        }
         /// <summary>한 전투에 마주침 대결이 일어나는 최대 횟수.</summary>
         public int EncounterMaxPerBattle { get; internal set; }
         /// <summary>마주침 대결 짝: "commanders" = 양쪽 총대장끼리만 (기본), "any" = 장수 군단 아무끼리.</summary>
@@ -51,6 +67,15 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyList<SkillPart>>> Outcomes { get; internal set; }
         /// <summary>결과 종류(win, fall, retreat, draw) → 전투 영향 값.</summary>
         public IReadOnlyDictionary<string, JObject> BattleEffects { get; internal set; }
+
+        private static Dictionary<string, Fix> AcceptTable(JObject o, string c)
+        {
+            var d = new Dictionary<string, Fix>();
+            if (o == null) return d;
+            foreach (var p in o.Properties())
+                if (p.Name != "default" && !p.Name.StartsWith("_")) d[p.Name] = JsonUtil.ToFix(p.Value, c + ".accept." + p.Name);
+            return d;
+        }
 
         /// <summary>기운(charge)이 이만큼일 때 고를 수 있는 행동 id (필살은 기운이 가득 찼을 때만).</summary>
         public List<string> AvailableFor(Fix charge)
@@ -151,7 +176,13 @@ namespace Game.Data.Defs
                 EncounterCells = JsonUtil.FixOr(trig, "encounterCells", Fix.FromInt(8), c + ".trigger"),
                 EncounterOfferSec = JsonUtil.FixOr(trig, "offerSec", Fix.FromInt(10), c + ".trigger"),
                 EncounterDecideSec = JsonUtil.FixOr(trig, "decideSec", Fix.FromInt(30), c + ".trigger"),
-                EncounterRefuseMorale = JsonUtil.FixOr(trig, "refuseMorale", Fix.Zero, c + ".trigger"),
+                BoldOrder = JsonUtil.StringList(trig, "boldOrder"),
+                AcceptByTemperament = AcceptTable(o["accept"] as JObject, c),
+                AcceptDefault = o["accept"] is JObject ac ? JsonUtil.FixOr(ac, "default", Fix.FromDecimal(0.5m), c + ".accept") : Fix.FromDecimal(0.5m),
+                RefuseMorale = o["refuse"] is JObject r1 ? JsonUtil.FixOr(r1, "morale", Fix.Zero, c + ".refuse") : Fix.Zero,
+                RefuseAttackPp = o["refuse"] is JObject r2 ? JsonUtil.FixOr(r2, "attackPp", Fix.Zero, c + ".refuse") : Fix.Zero,
+                RefuseSec = o["refuse"] is JObject r3 ? JsonUtil.FixOr(r3, "sec", Fix.Zero, c + ".refuse") : Fix.Zero,
+                RefuseAllyMorale = o["refuse"] is JObject r4 ? JsonUtil.FixOr(r4, "allyMorale", Fix.Zero, c + ".refuse") : Fix.Zero,
                 EncounterMaxPerBattle = (int)(trig.Value<long?>("maxPerBattle") ?? 1),
                 EncounterPairs = trig.Value<string>("pairs") ?? "commanders",
                 Actions = actions,

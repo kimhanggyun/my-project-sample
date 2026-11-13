@@ -101,7 +101,7 @@
 | secret_rain_no_archers | 비 오는 날 궁병 없이 이김 | 지휘 장수: 특성 빗속 행군 | 비 스텝이 아직 없음 |
 | secret_duel_fall | 일기토로 적장을 쓰러뜨림 | 이긴 장수: 특성 일기당천 | 가끔 |
 | secret_step03_fire_three | step03 아군 불로 적 3군단 이상 | 화계 쓴 장수: 특성 화염의 달인 | 직접 지휘 |
-| secret_step04_iron_wall | step04 손실 5% 이하로 이김 | 지휘 장수: 스킬 재정비 | 3판 |
+| secret_step04_iron_wall | step04 손실 8.5% 이하로 이김 (2026-11-13 일기토 신청·응답 뒤 5% → 8.5%, R-91) | 지휘 장수: 스킬 재정비 | 3판 |
 | secret_step05_dusk_charge | step05(저물녘) 궁병 없이 이김 | 지휘 장수: 특성 야습 | 기본 편성 0판 (궁병을 빼야 함) |
 | secret_step06_unbroken | step06 손실 17% 이하로 이김 (2026-11-13 마주침 일기토 뒤 10% → 17%, R-89) | 지휘 장수: 특성 불굴 | 3판 |
 

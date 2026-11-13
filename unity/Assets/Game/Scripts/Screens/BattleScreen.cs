@@ -86,6 +86,9 @@ namespace Game.Unity.Screens
         private string _promptCorps;
         // 적이 건 일기토 (R-79): 응함/거절. 뜨는 동안 전투를 멈춘다 (기한은 전투 시간)
         private RectTransform _duelPrompt;
+        private Text _duelNoText, _duelYesText;
+        /// <summary>true면 지금 창은 마주침 일기토 기회 (R-91: 신청할까?), false면 받은 신청 (응할까?).</summary>
+        private bool _duelPromptIsChance;
         private Text _duelPromptText;
         private string _duelOfferCorps;
         private bool _pausedForOffer;
@@ -257,8 +260,8 @@ namespace Game.Unity.Screens
             Ui.Column(_duelPrompt, 8, 14);
             _duelPromptText = Ui.Label(_duelPrompt, "", 30, TextAnchor.MiddleCenter, Palette.PromptText);
             var dr = Ui.Row(_duelPrompt, "Buttons", 96, 12);
-            Ui.Button(dr, T("ui.duel.refuse"), () => AnswerDuel(false), 96, fontSize: 28);
-            Ui.Button(dr, T("ui.duel.accept"), () => AnswerDuel(true), 96, Palette.ButtonActive, 30);
+            _duelNoText = Ui.Button(dr, T("ui.duel.refuse"), () => AnswerDuel(false), 96, fontSize: 28).GetComponentInChildren<Text>();
+            _duelYesText = Ui.Button(dr, T("ui.duel.accept"), () => AnswerDuel(true), 96, Palette.ButtonActive, 30).GetComponentInChildren<Text>();
             _duelPrompt.gameObject.SetActive(false);
 
             _aimBar = Ui.Rect(_fieldArea, "AimBar");
@@ -890,6 +893,11 @@ namespace Game.Unity.Screens
                         : other != null && _ctl.CanCommand(other) && !other.Delegated ? other : null;
                     if (mine != null) _duelToPlay = Game.Battle.Model.Contests.InBattleDuels.PendingFor(_sim.Context, mine.Id);
                 }
+                if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelChance && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
+                {
+                    var target = e.Data == null ? null : _sim.Context.FindCorps(e.Data);
+                    if (target != null) ShowDuelChance(corps, target);
+                }
                 if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelOffered && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
                 {
                     var from = e.Data == null ? null : _sim.Context.FindCorps(e.Data);
@@ -963,6 +971,7 @@ namespace Game.Unity.Screens
                 case EventKinds.MoraleCritical:
                 case EventKinds.HiddenFound:
                 case EventKinds.DuelOffered: Sfx.Play("alert", 0.7f, 0.3f); break;
+                case EventKinds.DuelChance: Sfx.Play("alert", 0.7f, 0.3f); break;
                 case EventKinds.DuelStarted: Sfx.Play("duel"); break;
                 case EventKinds.DuelEnded: Sfx.Play("clash", 0.9f); break;
                 case EventKinds.TrapSprung:
@@ -984,9 +993,25 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>적의 일기토 신청 (R-79): 전투를 멈추고 응함/거절을 묻는다.</summary>
+        /// <summary>마주침 일기토 기회 (R-91): 내 군단이 거는 쪽. [넘어가기]/[일기토 신청].</summary>
+        private void ShowDuelChance(CorpsState mine, CorpsState target)
+        {
+            _duelOfferCorps = mine.Id;
+            _duelPromptIsChance = true;
+            _duelPromptText.text = T("ui.duel.chance", GeneralOf(mine), GeneralOf(target));
+            _duelNoText.text = T("ui.duel.pass");
+            _duelYesText.text = T("ui.duel.challenge");
+            _duelPrompt.gameObject.SetActive(true);
+            if (!_paused) { _paused = true; _pausedForOffer = true; }
+            _dirty = true;
+        }
+
         private void ShowDuelOffer(CorpsState mine, CorpsState challenger)
         {
             _duelOfferCorps = mine.Id;
+            _duelPromptIsChance = false;
+            _duelNoText.text = T("ui.duel.refuse");
+            _duelYesText.text = T("ui.duel.accept");
             _duelPromptText.text = T("ui.duel.offer", GeneralOf(challenger), GeneralOf(mine));
             _duelPrompt.gameObject.SetActive(true);
             if (!_paused) { _paused = true; _pausedForOffer = true; }
@@ -995,7 +1020,7 @@ namespace Game.Unity.Screens
 
         private void AnswerDuel(bool accept)
         {
-            if (_duelOfferCorps != null) Report(_ctl.AnswerDuel(_duelOfferCorps, accept));
+            if (_duelOfferCorps != null) Report(_duelPromptIsChance ? _ctl.AnswerDuelChance(_duelOfferCorps, accept) : _ctl.AnswerDuel(_duelOfferCorps, accept));
             CloseDuelOffer();
         }
 
@@ -1087,7 +1112,9 @@ namespace Game.Unity.Screens
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
             SetLabel(_queueButton, _ctl.Queueing ? T("ui.cmd.queueOn", _ctl.QueueCount, ctx.Combat.OrderQueueMax) : T("ui.cmd.queueOff", _ctl.QueueCount));
             Ui.Recolor(_queueButton, _ctl.Queueing ? Palette.ButtonActive : Palette.Button);
-            if (_duelOfferCorps != null && Game.Battle.Model.Contests.InBattleDuels.OfferTo(ctx, _duelOfferCorps) == null) CloseDuelOffer();
+            if (_duelOfferCorps != null && (_duelPromptIsChance
+                    ? Game.Battle.Model.Contests.InBattleDuels.ChanceFor(ctx, _duelOfferCorps) == null
+                    : Game.Battle.Model.Contests.InBattleDuels.OfferTo(ctx, _duelOfferCorps) == null)) CloseDuelOffer();
             if (_promptCorps != null)
             {
                 var pc = ctx.FindCorps(_promptCorps);

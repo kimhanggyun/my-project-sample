@@ -19,7 +19,7 @@
       "statInfluenceMaxPct": 20,
       "lightInjuryAtOrBelow": 30,
       "trigger": {
-        "_when": "언제 (R-89): encounter = 장수 군단끼리 전투 중 처음 마주칠 때(encounterCells 안에서 보이면, 쌍마다 한 번 판정, 군단마다 한 번만, 한 전투에 maxPerBattle번까지). pairs: commanders = 양쪽 총대장끼리만 (전투 직전 대결과 같은 짝), any = 장수 군단 아무끼리. 플레이어 군단이면 offerSec 동안 응함/거절을 묻는다 (답이 없으면 응함). sortie = 전투 직전 대장끼리",
+        "_when": "언제 (R-89·R-91): encounter = 장수 군단끼리 전투 중 처음 마주칠 때(encounterCells 안에서 보이면, 쌍마다 한 번 판정, 군단마다 한 번만, 한 전투에 maxPerBattle번까지) 일기토 '기회'가 생긴다. 무력이 높은 쪽(같으면 boldOrder에서 앞선 성향)이 거는 쪽. 거는 쪽이 직접 지휘하는 플레이어 군단이면 offerSec 동안 [신청]/[넘어가기]를 묻고(답이 없으면 넘어감), AI(위임 포함)는 신청한다. pairs: commanders = 양쪽 총대장끼리만, any = 장수 군단 아무끼리. sortie = 전투 직전 대장끼리",
         "when": "encounter",
         "maxStatDifference": 3,
         "chance": 0.8,
@@ -27,9 +27,27 @@
         "encounterCells": 8,
         "offerSec": 10,
         "decideSec": 30,
-        "refuseMorale": -5,
         "maxPerBattle": 1,
-        "pairs": "commanders"
+        "pairs": "commanders",
+        "boldOrder": ["arrogant", "brave", "loyal", "calm", "cunning", "cautious", "timid"]
+      },
+      "_accept": "신청을 받은 장수가 응할 확률 (R-91): 성향별, 없으면 default. 직접 지휘하는 플레이어 군단은 직접 고르고, offerSec 안에 답이 없거나 위임 중이면 이 확률로. 거부 성향(trigger.refuseTemperaments)은 늘 거절",
+      "accept": {
+        "default": 0.5,
+        "brave": 0.9,
+        "arrogant": 1,
+        "loyal": 0.6,
+        "calm": 0.5,
+        "cunning": 0.3,
+        "cautious": 0.25,
+        "timid": 0.1
+      },
+      "_refuse": "거절 벌칙 (R-91): 거절한 군단 사기 morale, sec초 동안 공격 attackPp(%p), 같은 편 다른 군단 사기 allyMorale",
+      "refuse": {
+        "morale": -10,
+        "attackPp": -10,
+        "sec": 10,
+        "allyMorale": -3
       },
       "actions": [
         {

@@ -28,32 +28,32 @@
         {
           "slot": "vanguard",
           "troopType": "cavalry",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "center",
           "troopType": "cavalry",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "rightGuard",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3760
         }
       ],
       "role": "commander"
@@ -69,32 +69,32 @@
         {
           "slot": "vanguard",
           "troopType": "archer",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "leftWing",
           "troopType": "archer",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "rightWing",
           "troopType": "infantry",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "leftGuard",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 5000
+          "troops": 3760
         }
       ]
     },
@@ -109,22 +109,22 @@
         {
           "slot": "vanguard",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "center",
           "troopType": "spearman",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "leftWing",
           "troopType": "infantry",
-          "troops": 5000
+          "troops": 3760
         },
         {
           "slot": "rightWing",
           "troopType": "archer",
-          "troops": 5000
+          "troops": 3760
         }
       ],
       "reserve": true

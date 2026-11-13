@@ -34,6 +34,10 @@ namespace Game.Data.Defs
         /// <summary>true면 요구 중 하나만 맞아도 된다 (예: 도발 = 지략 30 또는 무력 50).</summary>
         public bool RequiresAny { get; internal set; }
         public Fix Cost { get; internal set; }
+        /// <summary>모든 장수가 배우지 않아도 가진다 (R-91, 일기토 신청). 스킬북으로 팔지 않는다.</summary>
+        public bool ForAll { get; internal set; }
+        /// <summary>쓴 뒤 다시 쓸 수 있을 때까지 (초, 0 = 없음).</summary>
+        public Fix CooldownSec { get; internal set; }
         public int UsesPerBattle { get; internal set; }
         /// <summary>"self", "enemyCorps", "allyCorps", "point", "area".</summary>
         public string TargetType { get; internal set; }
@@ -74,6 +78,8 @@ namespace Game.Data.Defs
                 Requires = req,
                 RequiresAny = o.Value<bool?>("requiresAny") ?? false,
                 Cost = JsonUtil.RequireFix(o, "cost", c),
+                ForAll = o.Value<bool?>("forAll") ?? false,
+                CooldownSec = JsonUtil.FixOr(o, "cooldownSec", Fix.Zero, c),
                 UsesPerBattle = (int)JsonUtil.RequireLong(o, "usesPerBattle", c),
                 TargetType = JsonUtil.RequireString(target, "type", c + ".target"),
                 Range = target.TryGetValue("range", out var rt) ? JsonUtil.ToFix(rt, c + ".target.range") : (Fix?)null,

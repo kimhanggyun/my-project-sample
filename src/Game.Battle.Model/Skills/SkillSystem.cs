@@ -124,12 +124,18 @@ namespace Game.Battle.Model.Skills
             return SkillRules.MakeCast(ctx, corps, skill, cmd) != null && corps.SkillPoints.UsesLeft(skill.Id) >= 1;
         }
 
+        /// <summary>쿨타임 (R-91): 쓴 뒤 cooldownSec이 지나야 다시.</summary>
+        internal static void StartCooldown(BattleContext ctx, CorpsState corps, SkillDef skill)
+        {
+            if (skill.CooldownSec > Fix.Zero) corps.SkillReadyTick[skill.Id] = ctx.Tick + SkillRules.Ticks(ctx, skill.CooldownSec);
+        }
+
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             if (cmd.SkillId == null || !ctx.Defs.Skills.TryGetValue(cmd.SkillId, out var skill)) return false;
             if (!corps.KnowsSkill(skill.Id) || !SkillRules.RequirementsMet(corps, skill)) return false;
             var cast = SkillRules.MakeCast(ctx, corps, skill, cmd);
-            if (cast == null) return false;
+            if (cast == null || !corps.SkillReady(skill.Id, ctx.Tick)) return false;
             return corps.SkillPoints.CanUse(skill.Id, Combat.TraitEffects.SkillCost(ctx, corps, skill.Id, skill.Cost), SkillRules.ConditionsMet(cast));
         }
 
@@ -138,6 +144,7 @@ namespace Game.Battle.Model.Skills
             var skill = ctx.Defs.Skills[cmd.SkillId];
             var cast = SkillRules.MakeCast(ctx, corps, skill, cmd);
             if (!corps.SkillPoints.TryConsume(skill.Id, Combat.TraitEffects.SkillCost(ctx, corps, skill.Id, skill.Cost), SkillRules.ConditionsMet(cast))) return;
+            StartCooldown(ctx, corps, skill);
             if (SkillRules.InRange(cast))
             {
                 SkillRules.Cast(cast);

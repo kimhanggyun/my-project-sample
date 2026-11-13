@@ -127,8 +127,9 @@ namespace Game.Flow
         }
 
         /// <summary>기본 스킬 + 배운 스킬.</summary>
+        /// <summary>안다: 배웠거나, 타고났거나, 모든 장수가 가진 스킬(forAll, R-91 — 스킬북으로 팔지 않는다).</summary>
         public bool Knows(GeneralState g, string skillId) =>
-            g.LearnedSkills.Contains(skillId) || (_defs.Generals.TryGetValue(g.GeneralId, out var d) && Contains(d.InnateSkills, skillId));
+            g.LearnedSkills.Contains(skillId) || (_defs.Skills.TryGetValue(skillId, out var sk) && sk.ForAll) || (_defs.Generals.TryGetValue(g.GeneralId, out var d) && Contains(d.InnateSkills, skillId));
 
         private bool MeetsStats(GeneralState g, SkillDef skill)
         {

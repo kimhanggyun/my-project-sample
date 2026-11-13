@@ -54,6 +54,8 @@ namespace Game.Battle.Model.Commands
         public const string DuelChoices = "duelChoices";
         /// <summary>받은 일기토 신청에 답 (R-79). Mode "accept" / "refuse".</summary>
         public const string DuelAnswer = "duelAnswer";
+        /// <summary>마주침 일기토 기회에 답 (R-91): Mode = challenge / pass.</summary>
+        public const string DuelChance = "duelChance";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -96,7 +98,8 @@ namespace Game.Battle.Model.Commands
             .Register(new DelegateHandler())
             .Register(new EditQueueHandler())
             .Register(new Contests.DuelChoicesHandler())
-            .Register(new Contests.DuelAnswerHandler());
+            .Register(new Contests.DuelAnswerHandler())
+            .Register(new Contests.DuelChanceHandler());
     }
 
     internal sealed class EditQueueHandler : ICommandHandler
