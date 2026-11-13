@@ -5,27 +5,32 @@
       "model": "Art/Models/soldier",
       "height": 0.42,
       "yaw": 0,
-      "tint": 0.6
+      "tint": 0.8
     },
     "soldier.infantry": {
       "model": "Art/Models/soldier_infantry",
-      "height": 0.42
+      "height": 0.42,
+      "tint": 0.8
     },
     "soldier.spearman": {
       "model": "Art/Models/soldier_spearman",
-      "height": 0.42
+      "height": 0.42,
+      "tint": 0.8
     },
     "soldier.archer": {
       "model": "Art/Models/soldier_archer",
-      "height": 0.42
+      "height": 0.42,
+      "tint": 0.8
     },
     "soldier.cavalry": {
       "model": "Art/Models/soldier_cavalry",
-      "height": 0.5
+      "height": 0.5,
+      "tint": 0.8
     },
     "soldier.scout": {
       "model": "Art/Models/soldier_scout",
-      "height": 0.45
+      "height": 0.45,
+      "tint": 0.8
     },
     "soldier.catapult": {
       "model": "Art/Models/soldier_catapult",
@@ -33,7 +38,8 @@
     },
     "soldier.engineer": {
       "model": "Art/Models/soldier_engineer",
-      "height": 0.42
+      "height": 0.42,
+      "tint": 0.8
     },
     "soldier.warship": {
       "model": "Art/Models/ship",

@@ -576,9 +576,9 @@ namespace Game.Unity.Battle3D
             if (key == _atmosphereKey) return;
             _atmosphereKey = key;
             bool ink = Game.Unity.UI.UiStyle.Paper; // 수묵 스타일: 전장 밖·하늘도 한지색
-            Color sun = Color.white, sky = ink ? new Color(0.91f, 0.87f, 0.80f) : new Color(0.08f, 0.09f, 0.10f), ambient = ink ? new Color(0.62f, 0.60f, 0.56f) : new Color(0.55f, 0.55f, 0.58f);
+            Color sun = Color.white, sky = ink ? new Color(0.91f, 0.87f, 0.80f) : new Color(0.08f, 0.09f, 0.10f), ambient = ink ? new Color(0.66f, 0.66f, 0.62f) : new Color(0.55f, 0.55f, 0.58f);
             float intensity = 1.1f, pitch = 55f;
-            if (time == "dusk") { sun = new Color(1f, 0.72f, 0.45f); intensity = 0.8f; pitch = 18f; sky = ink ? new Color(0.80f, 0.68f, 0.58f) : new Color(0.20f, 0.12f, 0.10f); ambient = new Color(0.45f, 0.36f, 0.32f); }
+            if (time == "dusk") { sun = new Color(1f, 0.72f, 0.45f); intensity = 0.8f; pitch = 18f; sky = ink ? new Color(0.80f, 0.68f, 0.58f) : new Color(0.20f, 0.12f, 0.10f); ambient = ink ? new Color(0.58f, 0.54f, 0.48f) : new Color(0.45f, 0.36f, 0.32f); } // 수묵: 저녁에도 땅이 보랏빛으로 죽지 않게
             if (time == "night") { sun = new Color(0.55f, 0.65f, 0.95f); intensity = 0.35f; pitch = 40f; sky = ink ? new Color(0.30f, 0.31f, 0.36f) : new Color(0.02f, 0.03f, 0.06f); ambient = new Color(0.16f, 0.18f, 0.26f); }
             bool fog = false;
             Color fogColor = sky;

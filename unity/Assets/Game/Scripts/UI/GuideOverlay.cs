@@ -13,8 +13,12 @@ namespace Game.Unity.UI
     public static class GuideOverlay
     {
         /// <returns>안내를 띄웠으면 true. 닫힐 때 onClosed를 부른다.</returns>
+        /// <summary>켜 두면 안내를 띄우지 않는다 (캡처 도구가 전투 진행 화면을 찍을 때). 세이브의 "본 안내"는 바뀌지 않는다.</summary>
+        public static bool Suppressed { get; set; }
+
         public static bool Show(GameApp app, RectTransform root, string place, System.Action onClosed = null, string lastButtonKey = "ui.guide.close")
         {
+            if (Suppressed) return false;
             var ctx = app.Context;
             GuideDef guide = new GuideService(ctx.Defs).Next(ctx.State, place);
             if (guide == null) return false;

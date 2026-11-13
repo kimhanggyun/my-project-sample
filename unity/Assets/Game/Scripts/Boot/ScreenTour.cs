@@ -55,8 +55,11 @@ namespace Game.Unity.Boot
             {
                 if (plan.Setup.Contests.Count > 0) yield return Shot("16_contest", () => new ContestScreen(plan, 0), 0f);
                 yield return Shot("17_dialogue", () => new DialogueScreen(plan, "dialogue." + plan.Step.Id + ".start"), 0f);
+                // 안내 팝업을 띄우지 않고 (전투가 멈추지 않게) 시작·진행 중을 찍는다. 세이브의 "본 안내"는 그대로
+                Game.Unity.UI.GuideOverlay.Suppressed = true;
                 yield return Shot("18_battle_start", () => new BattleScreen(plan), 0.5f);
-                yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더
+                yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더 (진행 중)
+                Game.Unity.UI.GuideOverlay.Suppressed = false;
                 Ctx.ClearSuspendedBattle();
 
                 // 결과: 세이브 사본에 반영한 보고서로
