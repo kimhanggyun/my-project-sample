@@ -63,3 +63,6 @@
 # 글꼴은 LFS 밖에 (작고 거의 안 바뀜, 클라우드 작업 환경에서 LFS 올리기가 막혀 있음 — 2026-11-13)
 unity/Assets/Game/Resources/Fonts/*.ttf -filter -diff -merge binary
 unity/Assets/Game/Resources/Fonts/*.otf -filter -diff -merge binary
+
+# 작업일지: 두 브랜치가 동시에 한 줄씩 추가해도 둘 다 남긴다 (docs/collab.md 5장)
+docs/worklog.md merge=union

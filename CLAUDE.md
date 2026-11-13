@@ -9,6 +9,7 @@
 - `docs/dev-rules.md` — **개발 규칙 (반드시 지킬 것)**
 - `docs/design/verification.md` — 규칙별 정답 예시
 - `docs/impl/core.md` — 규칙 핵심 코드 구조
+- `docs/collab.md` — **원격 Claude·데스크탑 Claude 협업 규칙** (역할, 브랜치, PR 인계 메시지, 에셋). 최근 작업은 `docs/worklog.md`
 
 ## 테스트
 - `dotnet test GameCore.sln` (규칙 R은 `data/` 현재 값, 수치 N은 `tests/Game.Tests/Fixtures/balance.example.json`)
