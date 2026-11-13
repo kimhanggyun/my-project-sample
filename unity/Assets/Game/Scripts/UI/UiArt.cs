@@ -179,6 +179,37 @@ namespace Game.Unity.UI
             }
         }
 
+        private static Sprite _enso;
+
+        /// <summary>원상(enso): 붓으로 한 번에 그린 고리. 굵기가 돌며 바뀌고 끝이 조금 비어 있다 (초상 테두리).</summary>
+        public static Sprite Enso
+        {
+            get
+            {
+                if (_enso != null) return _enso;
+                var loaded = FromResources("enso");
+                if (loaded != null) return _enso = loaded;
+                const int n = 192;
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                var px = new Color32[n * n];
+                float c = (n - 1) / 2f, r = n * 0.40f;
+                for (int y = 0; y < n; y++)
+                    for (int x = 0; x < n; x++)
+                    {
+                        float dx = x - c, dy = y - c;
+                        float d = Mathf.Sqrt(dx * dx + dy * dy);
+                        float ang = Mathf.Atan2(dy, dx); // -π..π
+                        float t = (ang + Mathf.PI) / (2f * Mathf.PI); // 0..1 (붓이 지나는 차례)
+                        float width = Mathf.Lerp(14f, 5f, t) * (t > 0.93f ? Mathf.Clamp01((1f - t) / 0.07f) : 1f); // 처음 굵고 끝은 가늘다가 비어 간다
+                        float a = Mathf.Clamp01(width / 2f - Mathf.Abs(d - r) + 0.5f);
+                        px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * a));
+                    }
+                tex.SetPixels32(px);
+                tex.Apply();
+                return _enso = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
+            }
+        }
+
         /// <summary>밝기 (0~1, 사람 눈 기준).</summary>
         public static float Luma(Color c) => 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
     }

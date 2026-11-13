@@ -22,8 +22,12 @@ namespace Game.Unity.Battle3D
         private const float HeightScale = 0.8f;
         private const int RangeSegments = 48;
         private static readonly Vector3 SoldierScale = new Vector3(0.18f, 0.36f, 0.18f);
-        private static readonly Color AllyColor = new Color(0.30f, 0.50f, 0.95f);
-        private static readonly Color EnemyColor = new Color(0.90f, 0.30f, 0.25f);
+        /// <summary>정적 색은 처음 쓸 때 정한다 (화면 스타일을 읽은 뒤). 명시적 정적 생성자가 있어야 초기화 시점이 보장된다.</summary>
+        static BattleField3D() { }
+
+        // 진영 색 (art-direction.md 2장: 아군 쪽빛, 적군 붉은색 — 수묵 스타일이면 먹을 섞은 짙은 색)
+        private static readonly Color AllyColor = Game.Unity.UI.UiStyle.Paper ? new Color(0.20f, 0.36f, 0.62f) : new Color(0.30f, 0.50f, 0.95f);
+        private static readonly Color EnemyColor = Game.Unity.UI.UiStyle.Paper ? new Color(0.70f, 0.20f, 0.16f) : new Color(0.90f, 0.30f, 0.25f);
         private static readonly Color SelectedColor = new Color(1f, 0.85f, 0.25f);
         private static readonly Color ConfusedColor = new Color(0.6f, 0.6f, 0.6f);
         private static readonly Color LastSeenColor = new Color(0.55f, 0.35f, 0.35f);
@@ -113,7 +117,7 @@ namespace Game.Unity.Battle3D
             camGo.transform.SetParent(_root.transform, false);
             var cam = camGo.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.08f, 0.09f, 0.10f);
+            cam.backgroundColor = Game.Unity.UI.UiStyle.Paper ? new Color(0.91f, 0.87f, 0.80f) : new Color(0.08f, 0.09f, 0.10f);
             cam.depth = 1;
             cam.cullingMask = ~(1 << 5); // UI 층 제외
             cam.nearClipPlane = 0.3f;
@@ -563,10 +567,11 @@ namespace Game.Unity.Battle3D
             string key = weather + "|" + time;
             if (key == _atmosphereKey) return;
             _atmosphereKey = key;
-            Color sun = Color.white, sky = new Color(0.08f, 0.09f, 0.10f), ambient = new Color(0.55f, 0.55f, 0.58f);
+            bool ink = Game.Unity.UI.UiStyle.Paper; // 수묵 스타일: 전장 밖·하늘도 한지색
+            Color sun = Color.white, sky = ink ? new Color(0.91f, 0.87f, 0.80f) : new Color(0.08f, 0.09f, 0.10f), ambient = ink ? new Color(0.62f, 0.60f, 0.56f) : new Color(0.55f, 0.55f, 0.58f);
             float intensity = 1.1f, pitch = 55f;
-            if (time == "dusk") { sun = new Color(1f, 0.72f, 0.45f); intensity = 0.8f; pitch = 18f; sky = new Color(0.20f, 0.12f, 0.10f); ambient = new Color(0.45f, 0.36f, 0.32f); }
-            if (time == "night") { sun = new Color(0.55f, 0.65f, 0.95f); intensity = 0.35f; pitch = 40f; sky = new Color(0.02f, 0.03f, 0.06f); ambient = new Color(0.16f, 0.18f, 0.26f); }
+            if (time == "dusk") { sun = new Color(1f, 0.72f, 0.45f); intensity = 0.8f; pitch = 18f; sky = ink ? new Color(0.80f, 0.68f, 0.58f) : new Color(0.20f, 0.12f, 0.10f); ambient = new Color(0.45f, 0.36f, 0.32f); }
+            if (time == "night") { sun = new Color(0.55f, 0.65f, 0.95f); intensity = 0.35f; pitch = 40f; sky = ink ? new Color(0.30f, 0.31f, 0.36f) : new Color(0.02f, 0.03f, 0.06f); ambient = new Color(0.16f, 0.18f, 0.26f); }
             bool fog = false;
             Color fogColor = sky;
             float density = 0f;

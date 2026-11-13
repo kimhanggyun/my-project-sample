@@ -32,6 +32,30 @@ namespace Game.Unity.Battle3D
             { "water", new Color32(45, 85, 150, 255) },    // 호수·바다 (수상전, R-85)
             { "mud", new Color32(105, 90, 60, 255) },      // 물이 빠진 진흙
         };
+        /// <summary>수묵 스타일 지형 색 (art-direction.md 2장: 부드러운 먹빛 담채). 한지 스타일(UiStyle.Paper)일 때.</summary>
+        private static readonly Dictionary<string, Color32> InkColors = new Dictionary<string, Color32>
+        {
+            { "plain", new Color32(201, 195, 163, 255) },
+            { "grass", new Color32(181, 186, 146, 255) },
+            { "road", new Color32(214, 201, 168, 255) },
+            { "forest", new Color32(94, 110, 85, 255) },
+            { "burnt", new Color32(90, 82, 74, 255) },
+            { "hill", new Color32(169, 162, 126, 255) },
+            { "mountain", new Color32(124, 118, 108, 255) },
+            { "cliff", new Color32(94, 89, 83, 255) },
+            { "pass", new Color32(189, 176, 148, 255) },
+            { "river", new Color32(111, 138, 160, 255) },
+            { "ford", new Color32(144, 165, 178, 255) },
+            { "bridge", new Color32(138, 110, 80, 255) },
+            { "marsh", new Color32(142, 148, 120, 255) },
+            { "building", new Color32(156, 140, 124, 255) },
+            { "flood", new Color32(120, 150, 175, 255) },
+            { "mud", new Color32(140, 122, 92, 255) },
+            { "water", new Color32(95, 126, 151, 255) },
+        };
+        /// <summary>수묵: 안 가 본 곳은 빈 한지, 가 봤지만 지금 안 보이는 곳은 옅은 먹빛 (검은 안개 대신).</summary>
+        private static readonly Color32 PaperFog = new Color32(232, 223, 203, 255);
+        private const float InkExploredMix = 0.5f, InkHiddenMix = 0.9f;
         private static readonly Color32 Unknown = new Color32(128, 128, 128, 255);
         private static readonly Color32 FireColor = new Color32(230, 110, 30, 255);
         private const float ExploredShade = 0.55f;
@@ -65,8 +89,15 @@ namespace Game.Unity.Battle3D
                 for (int x = 0; x < w; x++)
                 {
                     int i = y * w + x;
-                    Color32 c = TerrainColors.TryGetValue(field.TerrainAt(new Cell(x, y)), out var tc) ? tc : Unknown;
+                    var colors = Game.Unity.UI.UiStyle.Paper ? InkColors : TerrainColors;
+                    Color32 c = colors.TryGetValue(field.TerrainAt(new Cell(x, y)), out var tc) ? tc : Unknown;
                     if (_ctx.Environment != null && _ctx.Environment.Burning.ContainsKey(i)) c = FireColor;
+                    if (Game.Unity.UI.UiStyle.Paper)
+                    {
+                        float mix = !fog || vision.VisibleCells[i] ? 0f : vision.ExploredCells[i] ? InkExploredMix : InkHiddenMix;
+                        _pixels[(h - 1 - y) * w + x] = Color32.Lerp(c, PaperFog, mix);
+                        continue;
+                    }
                     float shade = !fog || vision.VisibleCells[i] ? 1f : vision.ExploredCells[i] ? ExploredShade : HiddenShade;
                     _pixels[(h - 1 - y) * w + x] = new Color32((byte)(c.r * shade), (byte)(c.g * shade), (byte)(c.b * shade), 255);
                 }
