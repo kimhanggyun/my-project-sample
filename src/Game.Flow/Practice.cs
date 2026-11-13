@@ -207,3 +207,56 @@ namespace Game.Flow
         }
     }
 }
+
+namespace Game.Flow
+{
+    /// <summary>
+    /// 연습 대결을 전투 대결 화면(ContestScreen)으로 보여 주는 어댑터 (R-59): 장수가 마주 서서 라운드마다 움직인다.
+    /// 선택은 그대로 <see cref="PracticeMatch"/>에 들어가고, 끝나면 같은 시드·선택을 행동으로 반영한다 (서버도 같은 규칙).
+    /// </summary>
+    public sealed class PracticeContestPlay : IContestPlay
+    {
+        private readonly PracticeMatch _match;
+        private readonly Game.Data.Defs.DefinitionSet _defs;
+
+        public PracticeContestPlay(Game.Data.Defs.DefinitionSet defs, PracticeMatch match)
+        {
+            _defs = defs;
+            _match = match;
+        }
+
+        public PracticeMatch Match => _match;
+        public Game.Data.Defs.ContestDef Def => _match.Session.Def;
+        public string GeneralA => _match.GeneralId;
+        /// <summary>연습 상대 id (장수가 아니다, 이름은 practice.json nameKey).</summary>
+        public string GeneralB => _match.OpponentId;
+        public ulong Seed => _match.Seed;
+        public IReadOnlyList<string> Choices => _match.Choices;
+        public bool IsOver => _match.IsOver;
+        public Game.Battle.Model.Contests.ContestResult Result => _match.Session.Result;
+        public List<Game.Battle.Model.Contests.ContestRound> Rounds() => new List<Game.Battle.Model.Contests.ContestRound>(_match.Session.Rounds);
+        public List<string> Available() => IsOver ? new List<string>() : _match.Session.Available(_match.Session.A);
+        public bool Choose(string actionId) => _match.Play(actionId);
+
+        public string ChooseRandom(ulong seed)
+        {
+            var options = Available();
+            if (options.Count == 0) return null;
+            var rng = new Game.Foundation.Random.SeededRandom(unchecked(seed + (ulong)_match.Choices.Count * 0x9E3779B97F4A7C15UL));
+            string pick = options[rng.NextInt(0, options.Count)];
+            return Choose(pick) ? pick : null;
+        }
+
+        /// <summary>남은 라운드를 내 쪽도 AI가 (연습 기록에는 고른 행동으로 남는다).</summary>
+        public void AutoFinish()
+        {
+            var ai = new Game.Battle.Model.Contests.AiContestChooser(_defs.Ai, new Game.Foundation.Random.SeededRandom(_match.Seed ^ 0xA5A5A5A5UL));
+            var s = _match.Session;
+            for (int guard = 0; guard < 100 && !s.IsOver; guard++)
+            {
+                string a = ai.Choose(s, s.A, s.B);
+                if (!_match.Play(a) && !s.IsOver) ChooseRandom(_match.Seed);
+            }
+        }
+    }
+}

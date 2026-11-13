@@ -48,6 +48,26 @@ namespace Game.Tests.Campaign
             Assert.Equal(Game.Flow.SaveJson.Write(s), Game.Flow.SaveJson.Write(copy));
         }
 
+        [Fact(DisplayName = "R-59 대결 화면용 연습 (PracticeContestPlay): 몇 라운드 고르고 나머지 자동으로 끝내도 그 선택으로 행동이 반영된다")]
+        public void ContestScreenAdapter()
+        {
+            var svc = new PracticeService(Kit.D);
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            var m = svc.Start(s, "general_a", "duel", "p_veteran", 11, Now);
+            var play = new PracticeContestPlay(Kit.D, m);
+            Assert.Equal(("general_a", "p_veteran"), (play.GeneralA, play.GeneralB));
+            Assert.True(play.Choose(play.Available()[0]));
+            Assert.Single(play.Rounds());
+            Assert.NotNull(play.ChooseRandom(3));
+            play.AutoFinish();
+            Assert.True(play.IsOver);
+            Assert.NotNull(play.Result);
+            Assert.Equal(play.Rounds().Count, play.Choices.Count);
+            var o = svc.Apply(s, m.ToAction(Now));
+            Assert.NotNull(o);
+            Assert.Equal(play.Result.Winner, o.Result.Winner);
+        }
+
         private static PlayerAction ReplayJsonCopy(PlayerAction a) => OnlineJson.Read<PlayerAction>(OnlineJson.Write(a));
 
         [Fact(DisplayName = "R-59 조작된 선택(그 라운드에 못 고르는 행동·모자람·남음)이나 없는 상대·장수는 반영하지 않는다")]

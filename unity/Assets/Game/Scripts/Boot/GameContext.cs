@@ -480,8 +480,12 @@ namespace Game.Unity.Boot
 
         public string T(string key, params object[] args) => string.Format(T(key), args);
 
-        public string GeneralName(string generalId) =>
-            generalId != null && Defs.Generals.TryGetValue(generalId, out var g) ? T(g.NameKey) : generalId ?? "?";
+        public string GeneralName(string generalId)
+        {
+            if (generalId != null && Defs.Generals.TryGetValue(generalId, out var g)) return T(g.NameKey);
+            var opp = generalId == null ? null : Defs.Practice?.Opponent(generalId); // 연습 상대 (대결 연습)
+            return opp != null ? T(opp.NameKey) : generalId ?? "?";
+        }
 
         public long Resource(string id) => new Wallet(State.Wallet).Get(id);
 

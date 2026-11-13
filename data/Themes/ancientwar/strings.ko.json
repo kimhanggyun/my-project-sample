@@ -757,6 +757,7 @@
   "ui.practice.fightHeader": "{0} 연습 (내 {1} {2})",
   "ui.practice.opponent": "{0}  ({1})",
   "ui.practice.cannot": "지금은 연습할 수 없습니다.",
+  "ui.practice.finish": "결과 보기",
   "ui.practice.vs": "{0} · {1} 대 {2}",
   "ui.practice.status": "{0} 나 {1} / 상대 {2}   {3} 나 {4} / 상대 {5}",
   "ui.practice.notSaved": "결과를 반영하지 못했습니다.",
