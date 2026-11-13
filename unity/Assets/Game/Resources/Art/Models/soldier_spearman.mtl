@@ -1,0 +1,8 @@
+newmtl blocky_a
+Kd 1 1 1
+map_Kd Textures/blocky_a.png
+
+newmtl mini_colormap
+Kd 1 1 1
+map_Kd Textures/mini_colormap.png
+
