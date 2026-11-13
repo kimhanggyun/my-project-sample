@@ -58,6 +58,16 @@ namespace Game.Unity.Screens
         /// <summary>전투 중 일기토: 한 판을 마치면 onDone (선택 기록을 전투에 넣고 돌아간다).</summary>
         public ContestScreen(IContestPlay play, Action onDone) { _play = play; _onDone = onDone; }
 
+        /// <summary>대결 연습 (R-59): 끝 버튼 문구를 바꾸고, 전투 영향 문구는 숨긴다.</summary>
+        public ContestScreen(IContestPlay play, Action onDone, string doneLabelKey, bool showBattleEffect) : this(play, onDone)
+        {
+            _doneLabelKey = doneLabelKey;
+            _showBattleEffect = showBattleEffect;
+        }
+
+        private readonly string _doneLabelKey;
+        private readonly bool _showBattleEffect = true;
+
         public override void Build()
         {
             if (_play == null) _play = new ContestPlay(_plan.Setup, _index);
@@ -78,7 +88,7 @@ namespace Game.Unity.Screens
 
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             _autoButton = Ui.Button(row, T("ui.contest.auto"), () => { _play.AutoFinish(); ShowOver(); });
-            _nextButton = Ui.Button(row, T(_onDone != null ? "ui.duel.backToBattle" : "ui.contest.next"), Next, color: Palette.ButtonActive);
+            _nextButton = Ui.Button(row, T(_doneLabelKey ?? (_onDone != null ? "ui.duel.backToBattle" : "ui.contest.next")), Next, color: Palette.ButtonActive);
             BeginChoosing();
         }
 
@@ -462,7 +472,7 @@ namespace Game.Unity.Screens
             _count.text = "";
             var r = _play.Result;
             _banner.text = ResultText(r);
-            _effect.text = EffectText(r);
+            _effect.text = _showBattleEffect ? EffectText(r) : "";
             // 쓰러진 쪽은 넘어지고, 물러난 쪽은 무대 밖으로
             if (r.End == ContestEnds.Fall && r.Winner != null)
             {

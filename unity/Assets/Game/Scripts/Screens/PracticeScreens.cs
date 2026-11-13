@@ -72,90 +72,66 @@ namespace Game.Unity.Screens
                 {
                     string oid = o.Id, c = cid;
                     string check = svc.Check(ctx.State, g.GeneralId, cid, oid, now);
-                    var b = Ui.Button(card, ctx.T("ui.practice.opponent", ctx.T(o.NameKey), o.Stat.FloorToLong()), () => app.Show(new PracticeScreen(g.GeneralId, c, oid)), 80, fontSize: 28);
+                    var b = Ui.Button(card, ctx.T("ui.practice.opponent", ctx.T(o.NameKey), o.Stat.FloorToLong()), () => PracticeScreen.Start(app, g.GeneralId, c, oid), 80, fontSize: 28);
                     Ui.SetEnabled(b, check == PracticeService.Ok);
                 }
             }
         }
     }
 
-    /// <summary>연습 대결 한 판: 라운드마다 행동 고르기 → 끝나면 결과를 행동으로 반영 (서버도 같은 규칙).</summary>
+    /// <summary>
+    /// 연습 대결 (R-59): 전투 대결과 같은 화면(ContestScreen)에서 장수가 마주 서서 싸운다.
+    /// 끝나면 같은 시드·선택을 행동으로 반영하고 (서버도 같은 규칙) 결과·보상 화면을 보여 준다.
+    /// </summary>
     public sealed class PracticeScreen : GameScreen
     {
-        private readonly string _generalId, _contestId, _opponentId;
-        private PracticeMatch _match;
-        private PracticeOutcome _outcome;
-        private Text _status, _log, _result;
-        private RectTransform _actions;
+        private readonly PracticeOutcome _outcome;
+        private readonly bool _saved;
+        private readonly string _generalId, _contestId;
 
-        public PracticeScreen(string generalId, string contestId, string opponentId) { _generalId = generalId; _contestId = contestId; _opponentId = opponentId; }
+        private PracticeScreen(string generalId, string contestId, PracticeOutcome outcome, bool saved)
+        {
+            _generalId = generalId;
+            _contestId = contestId;
+            _outcome = outcome;
+            _saved = saved;
+        }
+
+        public static void Start(GameApp app, string generalId, string contestId, string opponentId)
+        {
+            var ctx = app.Context;
+            var svc = new PracticeService(ctx.Defs);
+            var match = svc.Start(ctx.State, generalId, contestId, opponentId, ctx.NewSeed(), ctx.Clock.UtcNow.ToUnixTimeSeconds());
+            if (match == null) { app.Show(new PracticeScreen(generalId, contestId, null, false)); return; }
+            var play = new PracticeContestPlay(ctx.Defs, match);
+            app.Show(new ContestScreen(play, () =>
+            {
+                var action = match.ToAction(ctx.Clock.UtcNow.ToUnixTimeSeconds());
+                var copy = SaveJson.Read(SaveJson.Write(ctx.State));
+                var outcome = svc.Apply(copy, action); // 화면 표시용 미리보기
+                bool saved = outcome != null && ctx.Do(action);
+                app.Show(new PracticeScreen(generalId, contestId, outcome, saved));
+            }, "ui.practice.finish", false));
+        }
 
         public override void Build()
         {
-            var svc = new PracticeService(Ctx.Defs);
-            _match = svc.Start(Ctx.State, _generalId, _contestId, _opponentId, Ctx.NewSeed(), Ctx.Clock.UtcNow.ToUnixTimeSeconds());
-            Ui.Column(Root, 12, 32);
-            if (_match == null) { Ui.Label(Root, T("ui.practice.cannot"), Ui.FontBody, TextAnchor.MiddleCenter); Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("practice")); return; }
-            var opp = Ctx.Defs.Practice.Opponent(_opponentId);
-            Ui.Size(Ui.Label(Root, T("ui.practice.vs", T("ui.contest." + _contestId), Ctx.GeneralName(_generalId), T(opp.NameKey)), Ui.FontBody, TextAnchor.MiddleCenter), 90);
-            _status = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleCenter);
-            var logCard = Ui.Card(Root, "Log");
-            Ui.Size(logCard, flexibleHeight: 1);
-            _log = Ui.Label(logCard, "", 28, TextAnchor.UpperLeft);
-            _result = Ui.Label(Root, "", Ui.FontBody, TextAnchor.MiddleCenter);
-            _actions = Ui.Rect(Root, "Actions");
-            var grid = _actions.gameObject.AddComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(330, 100);
-            grid.spacing = new Vector2(12, 12);
-            Ui.Size(_actions, 230);
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("practice"), 100, Palette.Card);
-            Refresh();
-        }
-
-        private void Pick(string a)
-        {
-            if (_match.IsOver || !_match.Play(a)) return;
-            if (_match.IsOver)
-            {
-                // 끝: 같은 시드·선택을 행동으로 반영 (세이브·서버)
-                var action = _match.ToAction(Ctx.Clock.UtcNow.ToUnixTimeSeconds());
-                var copy = SaveJson.Read(SaveJson.Write(Ctx.State));
-                _outcome = new PracticeService(Ctx.Defs).Apply(copy, action); // 화면 표시용 미리보기
-                if (_outcome != null && !Ctx.Do(action)) _outcome = null;
-            }
-            Refresh();
-        }
-
-        private void Refresh()
-        {
-            var s = _match.Session;
-            var def = s.Def;
-            _status.text = T("ui.practice.status", T(def.ResourceKey), s.A.Resource.FloorToLong(), s.B.Resource.FloorToLong(), T(def.ChargeKey), s.A.Charge.FloorToLong(), s.B.Charge.FloorToLong());
-            var sb = new StringBuilder();
-            if (s.Round == 0) sb.AppendLine(T("ui.contest.start"));
-            foreach (var r in s.Rounds) sb.AppendLine(T("ui.contest.roundLine", r.Number, ActionName(r.ActionA), ActionName(r.ActionB)));
-            _log.text = sb.ToString();
-            Ui.Clear(_actions);
-            if (!_match.IsOver)
-                foreach (var id in s.Available(s.A))
-                {
-                    string a = id;
-                    Ui.Button(_actions, ActionName(a), () => Pick(a), 100, def.Action(a).RequiresFullCharge ? Palette.ButtonActive : (Color?)null, 32);
-                }
-            _result.text = _match.IsOver ? ResultText() : "";
+            Ui.Column(Root, 16, 32);
+            Ui.Size(Ui.Label(Root, T("ui.contest." + _contestId) + " · " + Ctx.GeneralName(_generalId), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
+            var card = Ui.Card(Root, "Result");
+            Ui.Label(card, _outcome == null ? T("ui.practice.cannot") : !_saved ? Ui.Colored(T("ui.practice.notSaved"), Palette.Bad) : ResultText(), Ui.FontBody, TextAnchor.MiddleCenter);
+            Ui.Size(Ui.Rect(Root, "Space"), flexibleHeight: 1);
+            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("practice"), 100, Palette.ButtonActive);
         }
 
         private string ResultText()
         {
-            if (_outcome == null) return Ui.Colored(T("ui.practice.notSaved"), Palette.Bad);
             var sb = new StringBuilder(T("ui.practice.outcome." + _outcome.Outcome));
             sb.Append("  ").Append(T("ui.practice.exp", _outcome.Exp));
-            if (_outcome.Level != null && _outcome.Level.LevelsGained > 0) sb.Append("  ").Append(T("ui.practice.levelUp", _outcome.Level.Level));
+            if (_outcome.Level != null && _outcome.Level.LevelsGained > 0) sb.Append("\n").Append(T("ui.practice.levelUp", _outcome.Level.Level));
             foreach (var r in _outcome.Rewards)
                 sb.Append("\n").Append(T("ui.practice.reward", r.Stat != null ? (Ctx.Defs.Stats.TryGetValue(r.Stat, out var sd) ? T(sd.NameKey) : r.Stat) + " +" + r.Add.FloorToLong() : T("trait." + r.Trait)));
             return sb.ToString();
         }
-
-        private string ActionName(string id) => T(_match.Session.Def.Action(id).NameKey);
     }
 }
