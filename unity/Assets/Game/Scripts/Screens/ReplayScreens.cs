@@ -19,7 +19,7 @@ namespace Game.Unity.Screens
             Ui.Column(Root, 12, 32);
             Ui.Size(Ui.Label(Root, T("ui.replay.title"), Ui.FontTitle), 110);
             Ui.Label(Root, T("ui.replay.count", Ctx.Replays.Items.Count, Ctx.ReplayRules.MaxSaved), Ui.FontSmall);
-            Ui.Label(Root, T("ui.replay.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(Root, T("ui.replay.note"));
             if (_message != null) Ui.Label(Root, _message, 26, TextAnchor.MiddleLeft, Palette.Good);
 
             var list = Ui.ScrollList(Root, "Replays", 8, 8);
@@ -79,7 +79,7 @@ namespace Game.Unity.Screens
             string stepName;
             try { stepName = T(Ctx.Flow.LoadStep(_stepId).NameKey); } catch (Exception) { stepName = _stepId; }
             Ui.Size(Ui.Label(Root, T("ui.shared.title", stepName), Ui.FontTitle), 110);
-            Ui.Label(Root, T("ui.shared.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(Root, T("ui.shared.note"));
             if (_message != null) Ui.Label(Root, _message, 26, TextAnchor.MiddleLeft, Palette.Bad);
             var list = Ui.ScrollList(Root, "Shared", 8, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);

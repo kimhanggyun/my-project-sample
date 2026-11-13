@@ -49,7 +49,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(Root, T("ui.codex.title"), Ui.FontTitle), 110);
             int found = SecretText.FoundCount(Ctx, out int total);
             Ui.Label(Root, T("ui.codex.count", found, total), Ui.FontSmall);
-            Ui.Label(Root, T("ui.codex.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(Root, T("ui.codex.note"));
 
             var list = Ui.ScrollList(Root, "Codex", 8, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);

@@ -38,7 +38,7 @@ namespace Game.Unity.Screens
             Ui.Button(tools, ctx.T("ui.hire.register"), () => app.Show(new HireRegisterScreen(_kind)), 88, fontSize: 28);
             Ui.Button(tools, ctx.T("ui.hire.mail"), () => app.Show(new MailScreen()), 88, fontSize: 28);
             Ui.Button(tools, ctx.T("ui.hire.refresh"), () => app.ShowMain("hiring"), 88, fontSize: 28);
-            Ui.Label(root, ctx.T("ui.hire.note"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.hire.note"));
 
             var list = Ui.ScrollList(root, "Listings", 10, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);
@@ -111,7 +111,7 @@ namespace Game.Unity.Screens
         {
             Ui.Column(Root, 12, 32);
             Ui.Size(Ui.Label(Root, T("ui.hire.registerTitle"), Ui.FontTitle), 110);
-            Ui.Label(Root, T("ui.hire.registerNote"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(Root, T("ui.hire.registerNote"));
             var list = Ui.ScrollList(Root, "Choices", 10, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);
             if (_kind == HireKinds.General)

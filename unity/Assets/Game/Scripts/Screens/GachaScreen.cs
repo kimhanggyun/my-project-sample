@@ -23,7 +23,7 @@ namespace Game.Unity.Screens
             var svc = new GachaService(Ctx.Defs);
             Ui.Column(Root, 12, 32);
             Ui.Size(Ui.Label(Root, T(b.NameKey), Ui.FontTitle), 110);
-            Ui.Label(Root, T("ui.gacha.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(Root, T("ui.gacha.note"));
             Ui.Label(Root, T("ui.gacha.balance", T("resource." + b.Currency), Ctx.Resource(b.Currency).ToString("N0")), Ui.FontSmall);
             Ctx.State.GachaPity.TryGetValue(b.Id, out int since);
             if (b.TenGuarantee != null && b.PityGrade != null)

@@ -36,7 +36,7 @@ namespace Game.Unity.Screens
                 Ui.Label(root, ctx.T("ui.territory.off"), Ui.FontBody, TextAnchor.MiddleCenter, Palette.TextDim);
                 return;
             }
-            Ui.Label(root, ctx.T("ui.territory.note"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.territory.note"));
             var status = Ui.Label(root, "", Ui.FontSmall);
             if (Notice != null) { Ui.Label(root, Notice, 26, TextAnchor.MiddleLeft, Palette.Good); Notice = null; }
             if (ctx.OnlineEnabled)
@@ -153,7 +153,7 @@ namespace Game.Unity.Screens
         {
             Ui.Column(Root, 12, 32);
             Ui.Size(Ui.Label(Root, T("ui.alliance.title"), Ui.FontTitle), 110);
-            Ui.Label(Root, T("ui.alliance.note"), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(Root, T("ui.alliance.note"));
             if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             var list = Ui.ScrollList(Root, "Alliances", 10, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);

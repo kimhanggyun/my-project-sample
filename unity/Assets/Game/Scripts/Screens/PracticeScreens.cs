@@ -24,7 +24,7 @@ namespace Game.Unity.Screens
             var svc = new PracticeService(ctx.Defs);
             var list = Ui.ScrollList(root, "Practice", 10, 16);
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.practice.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.practice.note"));
             int limit = ctx.Defs.Practice.DailyLimit;
             long now = ctx.Clock.UtcNow.ToUnixTimeSeconds();
             Ui.Label(list, limit > 0 ? ctx.T("ui.practice.today", PracticeService.TodayCount(ctx.State, now), limit) : ctx.T("ui.practice.noLimit"), Ui.FontSmall);

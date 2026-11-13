@@ -25,7 +25,7 @@ namespace Game.Unity.Screens
             var svc = new CaptivityService(ctx.Defs, ctx.Defs.ResolveFlags(), ctx.Time);
             var list = Ui.ScrollList(root, "List", 12, 16);
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.prisoner.note"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.prisoner.note"));
             if (_lastResult != null) { Ui.Label(list, _lastResult, Ui.FontBody, TextAnchor.MiddleCenter); _lastResult = null; }
             if (ctx.State.Prisoners.Count == 0) { Ui.Label(list, ctx.T("ui.prisoner.none"), Ui.FontBody, TextAnchor.MiddleCenter, Palette.TextDim); return; }
 
@@ -39,7 +39,7 @@ namespace Game.Unity.Screens
                 if (!ctx.Defs.Generals.TryGetValue(id, out var def)) continue;
                 var card = Ui.Card(list, id, 16, 6);
                 Ui.Label(card, Ui.Colored(ctx.GeneralName(id), Palette.Enemy) + "   " + ctx.T("ui.prisoner.temperament", ctx.T("temperament." + def.Temperament)), 32);
-                Ui.Label(card, ctx.T("ui.generals.stats", def.Stats.Get("leadership").FloorToLong(), def.Stats.Get("might").FloorToLong(), def.Stats.Get("intellect").FloorToLong()), 26, TextAnchor.MiddleLeft, Palette.TextDim);
+                Icons.Stats(ctx, card, def.Stats.Get("leadership").FloorToLong(), def.Stats.Get("might").FloorToLong(), def.Stats.Get("intellect").FloorToLong(), 34, 24);
 
                 bool recruitable = def.Recruitable;
                 bool can = svc.CanAttemptRecruit(ctx.State, id);

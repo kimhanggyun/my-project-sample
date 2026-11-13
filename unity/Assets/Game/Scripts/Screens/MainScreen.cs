@@ -68,15 +68,8 @@ namespace Game.Unity.Screens
             // 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1), 상점·설정 버튼
             foreach (var id in new[] { ResourceIds.Supply, ResourceIds.Gold, ResourceIds.Gem })
             {
-                // 자원 표식: 낙관(붉은 도장)에 한 글자 (糧·錢·玉, 문구 데이터) + 수량
-                var seal = Ui.Rect(top, "Seal");
-                var sealImg = Ui.Background(seal, Palette.Seal);
-                sealImg.sprite = UiArt.Seal;
-                sealImg.raycastTarget = false;
-                Ui.Size(seal, 52, 52).flexibleWidth = 0;
-                var glyph = Ui.Label(seal, T("ui.top.seal." + id), 30, TextAnchor.MiddleCenter, new Color(0.98f, 0.94f, 0.86f));
-                glyph.font = Ui.TitleFont; // 한자는 제목 글꼴(본명조)에 있다
-                Ui.Fill(glyph.rectTransform);
+                // 자원 아이콘 (그림이 없으면 낙관에 한 글자: 糧·錢·玉)
+                Icons.Make(Ctx, top, id, 52);
                 Ui.Size(Ui.Label(top, Ctx.Resource(id).ToString("N0"), 26, TextAnchor.MiddleLeft), flexibleWidth: 2);
                 Ui.Size(Ui.Button(top, "+", () => App.ShowMain("shop"), 64, Palette.ButtonActive, 30), width: 56);
             }
@@ -198,17 +191,20 @@ namespace Game.Unity.Screens
             var ctx = app.Context;
             var list = Ui.ScrollList(root, "List");
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Label(list, ctx.T("ui.tab.generalNote"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            InfoButton.Add(root, ctx.T("ui.tab.generalNote"));
             if (ctx.Defs.Gacha.Banners.Count > 0) Ui.Button(list, ctx.T("ui.gacha.button"), () => app.Show(new GachaScreen()), 100, Palette.ButtonActive);
             foreach (var g in ctx.State.Generals)
             {
                 var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;
                 string id = g.GeneralId;
-                string stats = ctx.T("ui.generals.stats", Stat(ctx, g, "leadership"), Stat(ctx, g, "might"), Stat(ctx, g, "intellect"));
                 string grade = ctx.Defs.Generals.TryGetValue(id, out var gdef) ? GradeLabel.Tag(ctx, gdef.Grade) : ""; // 등급 (E25)
-                var b = Ui.Button(list, grade + ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)) + "\n" + Ui.Colored(stats, Palette.TextDim),
-                    () => app.Show(new GeneralScreen(id)), 124, Palette.Card, 32);
-                b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
+                // 카드 전체가 버튼: 이름 줄 + 능력치 아이콘 줄 (統·武·智)
+                var card = Ui.Card(list, id, 18, 6);
+                var cardButton = card.gameObject.AddComponent<Button>();
+                cardButton.targetGraphic = card.GetComponent<Image>();
+                cardButton.onClick.AddListener(() => app.Show(new GeneralScreen(id)));
+                Ui.Label(card, grade + ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)), 32);
+                Icons.Stats(ctx, card, Stat(ctx, g, "leadership"), Stat(ctx, g, "might"), Stat(ctx, g, "intellect"), 38, 26);
             }
         }
     }

@@ -22,6 +22,8 @@ namespace Game.Data.Defs
         /// <summary>지형 id → 병종 태그 → 전투 보정(%p).</summary>
         public IReadOnlyDictionary<string, IReadOnlyDictionary<string, Fix>> TerrainCombat { get; private set; }
         public IReadOnlyDictionary<string, GeneralDef> Generals { get; private set; }
+        /// <summary>장수가 타는 것 (stats.json mounts, R-90).</summary>
+        public MountRules Mounts { get; private set; } = new MountRules();
         public IReadOnlyDictionary<string, ProductDef> Products { get; private set; }
         public StartingKitDef StartingKit { get; private set; }
         public IReadOnlyDictionary<string, string> Strings { get; private set; }
@@ -78,7 +80,9 @@ namespace Game.Data.Defs
             JObject Read(string path) => JsonUtil.ParseObject(source.ReadText(path));
 
             var stats = new Dictionary<string, StatDefinition>();
-            foreach (JObject s in RequireArray(Read(RulesDir + "stats.json"), "stats", "stats.json"))
+            var statsDoc = Read(RulesDir + "stats.json");
+            set.Mounts = MountRules.From(statsDoc["mounts"] as JObject);
+            foreach (JObject s in RequireArray(statsDoc, "stats", "stats.json"))
             {
                 var def = new StatDefinition
                 {
@@ -271,7 +275,10 @@ namespace Game.Data.Defs
                     Recruitable = g.Value<bool?>("recruitable") ?? true,
                     Stats = ReadStatBlock(g["stats"] as JObject, stats, "generals." + id),
                     GrowthRates = ReadRates(g["growthRates"] as JObject, stats, "generals." + id),
+                    Mount = g.Value<string>("mount"),
                 };
+                if (def.Mount != null && !((System.Collections.Generic.ICollection<string>)new List<string>(set.Mounts.Kinds)).Contains(def.Mount))
+                    throw new DataException("generals." + id + ".mount: 모르는 탈것 '" + def.Mount + "' (stats.json mounts.kinds).");
                 AddUnique(generals, id, def, "generals.json");
             }
             set.Generals = generals;
