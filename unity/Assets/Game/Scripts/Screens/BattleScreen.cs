@@ -339,7 +339,9 @@ namespace Game.Unity.Screens
             }
 
             if (_resumedSim != null || _replaySim != null) _logRead = _sim.Context.Log.Count; // 이어 볼 때 지난 알림은 다시 띄우지 않는다
-            _field.LookAt(_ctl.Selected ?? FirstOfViewTeam()); // 적군 시점이면 고른 군단이 없어 그 팀 첫 군단으로
+            // 처음엔 아군 전체가 한 화면에 (가장자리 군단이 잘리지 않게). 이어 하기·적 시점은 고른 군단·그 팀 첫 군단
+            if (_resumedSim == null && _replaySim == null) _field.Frame(_ctl.OwnCorps());
+            else _field.LookAt(_ctl.Selected ?? FirstOfViewTeam());
             ReadNewEvents();
             Refresh();
             // 처음 안내 (R-62): 직접 지휘할 때만, 읽는 동안 멈춘다

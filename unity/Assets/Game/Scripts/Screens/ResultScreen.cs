@@ -32,7 +32,7 @@ namespace Game.Unity.Screens
             string head = _report.Won ? Ui.Colored(T("ui.result.win"), Palette.Good) : Ui.Colored(T("ui.result.lose"), Palette.Bad);
             if (_report.FirstClear) head += "  " + T("ui.result.firstClear");
             Ui.Size(Ui.Label(Root, head, Ui.FontTitle, TextAnchor.MiddleCenter), 130);
-            string reason = T("ui.result.endReason." + _result.EndReason);
+            string reason = WhyEnded();
             Ui.Size(Ui.Label(Root, T("ui.result.time", _result.ElapsedSeconds.FloorToLong(), reason), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 56);
 
             if (_onlineOutcome != null)
@@ -129,6 +129,27 @@ namespace Game.Unity.Screens
             var card = Ui.Card(parent, headerKey);
             Ui.Label(card, T(headerKey));
             Ui.Label(card, string.Join("\n", lines), 28, TextAnchor.UpperLeft, Palette.TextDim);
+        }
+
+        /// <summary>끝난 까닭을 구체적으로: 승패 조건이면 누가 무엇으로 졌는지 (총대장 퇴각 / 모두 물러남 / 그 밖의 조건).</summary>
+        private string WhyEnded()
+        {
+            if (_result.EndReason != "defeat" || _plan?.Setup == null) return T("ui.result.endReason." + _result.EndReason);
+            string loser = _report.Won ? StoryFlow.EnemyTeam : StoryFlow.PlayerTeam;
+            string side = _report.Won ? "Enemy" : "Own";
+            bool anyIn = false;
+            Game.Battle.Model.Simulation.CorpsSetup commander = null;
+            foreach (var c in _plan.Setup.Corps)
+            {
+                if (c.Team != loser) continue;
+                if (c.Role == "commander") commander = c;
+                var r = _result.Find(c.Id);
+                if (r != null && r.Status == Game.Battle.Model.Simulation.CorpsStatus.Active) anyIn = true;
+            }
+            if (!anyIn) return T("ui.result.why.all" + side);
+            var cr = commander == null ? null : _result.Find(commander.Id);
+            if (cr != null && cr.Status != Game.Battle.Model.Simulation.CorpsStatus.Active) return T("ui.result.why.commander" + side);
+            return T("ui.result.why.other");
         }
     }
 }

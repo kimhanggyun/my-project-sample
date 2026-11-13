@@ -22,12 +22,15 @@ namespace Game.Unity.UI
             var overlay = Ui.Panel(root, "Guide", Palette.Overlay);
             overlay.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             overlay.SetAsLastSibling();
+            // 카드는 문장 길이만큼만 (가운데, 가로 88%). 빈 공간이 크게 남지 않게
             var card = Ui.Card(overlay, "Card", 32, 16);
-            card.anchorMin = new Vector2(0.06f, 0.30f);
-            card.anchorMax = new Vector2(0.94f, 0.70f);
-            card.offsetMin = card.offsetMax = Vector2.zero;
+            card.anchorMin = new Vector2(0.06f, 0.5f);
+            card.anchorMax = new Vector2(0.94f, 0.5f);
+            card.pivot = new Vector2(0.5f, 0.5f);
+            card.anchoredPosition = Vector2.zero;
+            var fit = card.gameObject.AddComponent<ContentSizeFitter>();
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var text = Ui.Label(card, "", Ui.FontBody, TextAnchor.UpperLeft);
-            Ui.Size(text, flexibleHeight: 1);
             var count = Ui.Label(card, "", Ui.FontSmall, TextAnchor.MiddleRight, Palette.TextDim);
             Ui.Size(count, 40);
             var row = Ui.Row(card, "Buttons", Ui.ButtonHeight);
