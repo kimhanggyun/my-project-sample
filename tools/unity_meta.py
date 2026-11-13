@@ -26,6 +26,19 @@ def body(prefix, rel, is_dir):
         return f"fileFormatVersion: 2\nguid: {g}\nNativeFormatImporter:\n  externalObjects: {{}}\n  mainObjectFileID: 2100000\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n"
     if os.path.basename(rel) == "package.json":
         return f"fileFormatVersion: 2\nguid: {g}\nPackageManifestImporter:\n  externalObjects: {{}}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n"
+    if ext in (".ttf", ".otf"):
+        # 글꼴: 동적 글꼴(시스템에 없는 글자는 그때 그려 넣음). 같은 폴더의 title 글꼴을 대체 글꼴로 (본문 글꼴에 없는 한자 등)
+        fallback = ""
+        folder = os.path.dirname(rel)
+        if not os.path.basename(rel).startswith("title"):
+            for cand in ("title.otf", "title.ttf"):
+                if os.path.exists(os.path.join(REPO, "unity", "Assets", folder, cand)) or os.path.exists(os.path.join(REPO, "src", folder, cand)):
+                    fallback = f"\n  - {{fileID: 12800000, guid: {guid(prefix, os.path.join(folder, cand))}, type: 3}}"
+                    break
+        return (f"fileFormatVersion: 2\nguid: {g}\nTrueTypeFontImporter:\n  externalObjects: {{}}\n  serializedVersion: 4\n  fontSize: 16\n"
+                "  forceTextureCase: -2\n  characterSpacing: 0\n  characterPadding: 1\n  includeFontData: 1\n  fontNames: []\n"
+                f"  fallbackFontReferences:{fallback if fallback else ' []'}\n  customCharacters: \n  fontRenderingMode: 0\n  ascentCalculationMode: 1\n"
+                "  useLegacyBoundsCalculation: 0\n  shouldRoundAdvanceValue: 1\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n")
     if ext in (".json", ".txt"):
         return f"fileFormatVersion: 2\nguid: {g}\nTextScriptImporter:\n  externalObjects: {{}}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n"
     return f"fileFormatVersion: 2\nguid: {g}\nDefaultImporter:\n  externalObjects: {{}}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n"

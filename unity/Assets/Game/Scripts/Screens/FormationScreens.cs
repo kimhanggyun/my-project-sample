@@ -33,7 +33,7 @@ namespace Game.Unity.Screens
                 bool saved = id == null || ctx.State.CompositionPresets.ContainsKey(id);
                 var b = Ui.Button(situations, label + (saved ? "" : " ·"), () => { ctx.SelectFormationSituation(id); app.ShowMain("formation"); }, 76, fontSize: 28);
                 Ui.Size(b, width: 200);
-                b.targetGraphic.color = id == ed.Situation ? Palette.ButtonActive : Palette.Button;
+                Ui.Recolor(b, id == ed.Situation ? Palette.ButtonActive : Palette.Button);
             }
             SituationButton(null, ctx.T("ui.formation.default"));
             foreach (var s in ctx.Defs.Campaign.FormationSituations) SituationButton(s, ctx.T("situation." + s));
@@ -66,7 +66,7 @@ namespace Game.Unity.Screens
             var revert = Ui.Button(row, ctx.T("ui.formation.revert"), () => { ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 96, fontSize: 28);
             Ui.SetEnabled(revert, ed.Changed() && ed.HasPreset);
             if (ed.Situation != null && ed.HasPreset)
-                Ui.Button(list, ctx.T("ui.formation.removePreset"), () => { if (ctx.Do(PlayerActionRunner.RemovePreset(ed.Situation))) ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 84, new Color(0.45f, 0.22f, 0.20f), 28);
+                Ui.Button(list, ctx.T("ui.formation.removePreset"), () => { if (ctx.Do(PlayerActionRunner.RemovePreset(ed.Situation))) ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 84, Palette.Danger, 28);
 
             // 병력 관리
             var troopsSvc = new TroopService(ctx.Defs);
@@ -94,7 +94,7 @@ namespace Game.Unity.Screens
                 var h2 = Ui.Button(r, ctx.T("ui.formation.healGold", HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w).ToString("N0")), () => Do(app, PlayerActionRunner.Heal(unitId, w, ResourceIds.Gold)), 72, fontSize: 22);
                 Ui.SetEnabled(h2, w > 0 && ctx.Resource(ResourceIds.Gold) >= HealCostCalculator.HealCostInGold(ctx.Defs.Balance, w));
                 // 해산: 저장된 편성(기본·상황별)과 고치는 중인 편성 어디에도 없을 때만 (R-39)
-                var d = Ui.Button(r, ctx.T("ui.formation.disband"), () => app.Show(new DisbandUnitScreen(unitId)), 72, new Color(0.45f, 0.22f, 0.20f), 22);
+                var d = Ui.Button(r, ctx.T("ui.formation.disband"), () => app.Show(new DisbandUnitScreen(unitId)), 72, Palette.Danger, 22);
                 Ui.SetEnabled(d, at < 0 && troopsSvc.CanDisband(ctx.State, unitId));
             }
         }
@@ -151,7 +151,7 @@ namespace Game.Unity.Screens
 
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             Ui.Button(row, T("ui.common.back"), () => App.ShowMain("formation"));
-            Ui.Button(row, T("ui.formation.removeCorps"), () => { ed.RemoveCorps(_index); App.ShowMain("formation"); }, color: new Color(0.45f, 0.22f, 0.20f));
+            Ui.Button(row, T("ui.formation.removeCorps"), () => { ed.RemoveCorps(_index); App.ShowMain("formation"); }, color: Palette.Danger);
         }
 
         /// <summary>누를 때마다 다음 값으로.</summary>
@@ -246,7 +246,7 @@ namespace Game.Unity.Screens
             {
                 Ctx.Do(PlayerActionRunner.DisbandUnit(_unitId));
                 App.ShowMain("formation");
-            }, color: new Color(0.45f, 0.22f, 0.20f));
+            }, color: Palette.Danger);
         }
     }
 }

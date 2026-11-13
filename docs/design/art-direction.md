@@ -25,6 +25,14 @@
 - 상반신 일러스트, **한 화풍**으로 통일 (수묵 실루엣 계열이 통일하기 쉽다).
 - 외주·AI 보조 어느 쪽이든 화풍 통일과 사용권(상업 이용)을 먼저 확인한다.
 
+## 4.5 적용 (2026-11-13)
+
+- 기본 화면 스타일을 `ink`로 (`data/Ui/styles.json` default). 한지 바탕(`paper`), 버튼·카드 먹선 테두리(`inkBorder`), 낙관 붉은색(`seal`), 전장 위 알림판(`promptBack`·`promptText`), 지우기 버튼(`danger`).
+- 질감·테두리·붓 획·낙관은 코드로 만든 임시 그림 (`Scripts/UI/UiArt.cs`). 진짜 그림은 `Resources/Ui/paper|frame|brush|seal` 스프라이트를 넣으면 그것을 쓴다.
+- 글꼴 적용: 제목 = 본명조(Noto Serif KR SemiBold, 한글·라틴·쓰는 한자만 남긴 부분 글꼴), 본문 = Pretendard Medium. 둘 다 SIL OFL (`Resources/Fonts/LICENSE-*.txt`). 본문 글꼴에 없는 한자는 제목 글꼴로 대체.
+- 상단 바 자원 표식: 낙관 안에 한 글자 (糧·錢·玉, 문구 `ui.top.seal.*`). 타이틀: 먹 붓 획 위 제목 + 낙관(戰).
+- 버튼 글자색은 판 밝기에 맞춰 자동 (먹색/종이색). 전장 위 글자(깃발 이름·알림)는 테두리를 둘러 어느 바탕에서도 읽히게.
+
 ## 5. 다음 단계
 
 1. 설정에서 `ink` 시안을 기본·임시1과 비교 → 채택하면 `default`로.

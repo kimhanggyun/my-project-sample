@@ -1,6 +1,6 @@
 {
-  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안)",
-  "default": "basic",
+  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로",
+  "default": "ink",
   "styles": {
     "basic": {
       "nameKey": "style.basic",
@@ -44,23 +44,29 @@
     },
     "ink": {
       "nameKey": "style.ink",
-      "cornerRadius": 10,
+      "cornerRadius": 12,
       "fontScale": 0.95,
       "colors": {
-        "background": "#E9E1CF",
-        "bar": "#D6CAB2",
-        "card": "#F4EEE0",
-        "button": "#D2C3A6",
-        "buttonActive": "#C45A44",
-        "buttonDisabled": "#DCD5C7",
-        "text": "#2B2620",
-        "textDim": "#6E665A",
-        "ally": "#2F5D8A",
-        "enemy": "#A8322A",
-        "good": "#3E7A3A",
-        "bad": "#B03A2E",
-        "overlay": "#2B2620AA"
-      }
+        "background": "#E8DFCB",
+        "bar": "#D8CCB0",
+        "card": "#F2EBDA",
+        "button": "#E2D5B8",
+        "buttonActive": "#C9563F",
+        "buttonDisabled": "#D6CFC0",
+        "text": "#2A2520",
+        "textDim": "#6B6256",
+        "ally": "#2D5A88",
+        "enemy": "#A3302A",
+        "good": "#3B7536",
+        "bad": "#A8372B",
+        "overlay": "#2A252099",
+        "promptBack": "#2A2520E6",
+        "promptText": "#F3ECDC",
+        "danger": "#9E3A2E",
+        "seal": "#B3382B"
+      },
+      "paper": true,
+      "inkBorder": true
     }
   }
 }

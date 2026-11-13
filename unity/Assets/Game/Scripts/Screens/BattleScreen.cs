@@ -216,7 +216,9 @@ namespace Game.Unity.Screens
             gestures.Zoomed += f => { _field.Rig.Zoom(f); _dirty = true; };
             foreach (var c in ctx.Corps)
             {
-                var label = Ui.Label(_fieldArea, GeneralOf(c), 24, TextAnchor.LowerCenter, c.Team == _ctl.Team ? Palette.Ally : Palette.Enemy);
+                var teamCol = c.Team == _ctl.Team ? Palette.Ally : Palette.Enemy;
+                var label = Ui.Label(_fieldArea, GeneralOf(c), 24, TextAnchor.LowerCenter, Palette.IsLight ? Color.Lerp(teamCol, Color.white, 0.55f) : teamCol); // 전장 위라 밝게
+                Ui.Outlined(label);
                 label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 label.rectTransform.pivot = new Vector2(0.5f, 0f);
                 label.rectTransform.sizeDelta = new Vector2(240, 32);
@@ -233,9 +235,9 @@ namespace Game.Unity.Screens
             _prompt.pivot = new Vector2(0.5f, 0f);
             _prompt.sizeDelta = new Vector2(0f, 190f);
             _prompt.anchoredPosition = new Vector2(0f, 16f);
-            Ui.Background(_prompt, new Color(0.1f, 0.1f, 0.12f, 0.9f));
+            Ui.Background(_prompt, Palette.PromptBack);
             Ui.Column(_prompt, 8, 12);
-            _promptText = Ui.Label(_prompt, "", 28, TextAnchor.MiddleCenter);
+            _promptText = Ui.Label(_prompt, "", 28, TextAnchor.MiddleCenter, Palette.PromptText);
             var pr = Ui.Row(_prompt, "Buttons", 90, 10);
             Ui.Button(pr, T("ui.cmd.keepWaiting"), () => { Report(_ctl.KeepCoordinating(_promptCorps)); ClosePrompt(); }, 90, fontSize: 28);
             Ui.Button(pr, T("ui.cmd.attackNow"), () => { Report(_ctl.AttackNow(_promptCorps)); ClosePrompt(); }, 90, Palette.ButtonActive, 28);
@@ -246,9 +248,9 @@ namespace Game.Unity.Screens
             _duelPrompt.anchorMax = new Vector2(0.95f, 0.5f);
             _duelPrompt.pivot = new Vector2(0.5f, 0.5f);
             _duelPrompt.sizeDelta = new Vector2(0f, 230f);
-            Ui.Background(_duelPrompt, new Color(0.18f, 0.08f, 0.06f, 0.94f));
+            Ui.Background(_duelPrompt, Color.Lerp(Palette.PromptBack, Palette.Seal, 0.35f));
             Ui.Column(_duelPrompt, 8, 14);
-            _duelPromptText = Ui.Label(_duelPrompt, "", 30, TextAnchor.MiddleCenter);
+            _duelPromptText = Ui.Label(_duelPrompt, "", 30, TextAnchor.MiddleCenter, Palette.PromptText);
             var dr = Ui.Row(_duelPrompt, "Buttons", 96, 12);
             Ui.Button(dr, T("ui.duel.refuse"), () => AnswerDuel(false), 96, fontSize: 28);
             Ui.Button(dr, T("ui.duel.accept"), () => AnswerDuel(true), 96, Palette.ButtonActive, 30);
@@ -260,14 +262,15 @@ namespace Game.Unity.Screens
             _aimBar.pivot = new Vector2(0.5f, 0f);
             _aimBar.sizeDelta = new Vector2(0f, 170f);
             _aimBar.anchoredPosition = new Vector2(0f, 16f);
-            Ui.Background(_aimBar, new Color(0.1f, 0.1f, 0.12f, 0.9f));
+            Ui.Background(_aimBar, Palette.PromptBack);
             Ui.Column(_aimBar, 8, 10);
-            _aimText = Ui.Label(_aimBar, "", 26, TextAnchor.MiddleCenter);
+            _aimText = Ui.Label(_aimBar, "", 26, TextAnchor.MiddleCenter, Palette.PromptText);
             var ar = Ui.Row(_aimBar, "Buttons", 84, 10);
             _aimConfirm = Ui.Button(ar, T("ui.aim.confirm"), () => { Notice(_ctl.ConfirmAim() ? T("ui.cmd.done.skill") : T("ui.cmd.rejected")); _dirty = true; }, 84, Palette.ButtonActive, 28);
             Ui.Button(ar, T("ui.aim.cancel"), () => { _ctl.CancelTargeting(); Notice(T("ui.cmd.cancelled")); _dirty = true; }, 84, fontSize: 28);
             _aimBar.gameObject.SetActive(false);
-            _notice = Ui.Label(_fieldArea, "", 28, TextAnchor.UpperCenter, Palette.Text);
+            _notice = Ui.Label(_fieldArea, "", 28, TextAnchor.UpperCenter, Palette.PromptText);
+            Ui.Outlined(_notice);
             _notice.rectTransform.anchorMin = new Vector2(0f, 1f);
             _notice.rectTransform.anchorMax = new Vector2(1f, 1f);
             _notice.rectTransform.pivot = new Vector2(0.5f, 1f);
@@ -280,9 +283,9 @@ namespace Game.Unity.Screens
             _quickBar.pivot = new Vector2(0.5f, 1f);
             _quickBar.sizeDelta = new Vector2(0f, 150f);
             _quickBar.anchoredPosition = new Vector2(0f, -60f);
-            Ui.Background(_quickBar, new Color(0.30f, 0.12f, 0.08f, 0.9f));
+            Ui.Background(_quickBar, Color.Lerp(Palette.PromptBack, Palette.Seal, 0.3f));
             Ui.Column(_quickBar, 6, 10);
-            _quickText = Ui.Label(_quickBar, "", 26, TextAnchor.MiddleCenter);
+            _quickText = Ui.Label(_quickBar, "", 26, TextAnchor.MiddleCenter, Palette.PromptText);
             _quickButtons = Ui.Row(_quickBar, "Buttons", 76, 8);
             _quickBar.gameObject.SetActive(false);
 
@@ -1071,13 +1074,13 @@ namespace Game.Unity.Screens
             {
                 string line = GeneralOf(corps) + "\n" + corps.Troops.ToString("N0") + (corps.Delegated ? " " + T("ui.battle.delegated") : "");
                 text.text = corps.InBattle ? line : Ui.Colored(line + "\n" + T("ui.corps." + StatusKey(corps.Status)), Palette.TextDim);
-                button.targetGraphic.color = corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled;
+                Ui.Recolor(button, corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled);
             }
 
             RefreshAimBar();
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
             SetLabel(_queueButton, _ctl.Queueing ? T("ui.cmd.queueOn", _ctl.QueueCount, ctx.Combat.OrderQueueMax) : T("ui.cmd.queueOff", _ctl.QueueCount));
-            _queueButton.targetGraphic.color = _ctl.Queueing ? Palette.ButtonActive : Palette.Button;
+            Ui.Recolor(_queueButton, _ctl.Queueing ? Palette.ButtonActive : Palette.Button);
             if (_duelOfferCorps != null && Game.Battle.Model.Contests.InBattleDuels.OfferTo(ctx, _duelOfferCorps) == null) CloseDuelOffer();
             if (_promptCorps != null)
             {
@@ -1140,7 +1143,7 @@ namespace Game.Unity.Screens
                 string label = T(s.NameKey) + " " + s.Cost.FloorToLong() + "·" + s.UsesLeft;
                 var b = Ui.Button(_skillRow, label, () => PressSkill(id), RowHeight, fontSize: 24);
                 Ui.SetEnabled(b, s.Affordable);
-                if (_ctl.TargetingSkill == id) b.targetGraphic.color = Palette.ButtonActive;
+                if (_ctl.TargetingSkill == id) Ui.Recolor(b, Palette.ButtonActive);
             }
         }
 

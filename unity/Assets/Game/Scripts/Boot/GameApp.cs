@@ -42,7 +42,11 @@ namespace Game.Unity.Boot
                 var store = new FileSaveStore(Application.persistentDataPath);
                 // 화면 스타일 (UI 1단계 임시): 개발 빌드는 설정에서 고른 것, 아니면 데이터의 기본
                 UiStyle.Apply(GameDataPaths.Data(), Debug.isDebugBuild && store.Exists(UiStyle.OverrideKey) ? store.Read(UiStyle.OverrideKey) : null);
-                if (_backdrop != null) _backdrop.color = Palette.Background;
+                if (_backdrop != null)
+                {
+                    _backdrop.color = Palette.Background;
+                    if (UiStyle.Paper) { _backdrop.sprite = UiArt.Paper; _backdrop.type = Image.Type.Tiled; } // 한지 바탕
+                }
                 Context = GameContext.Create(
                     GameDataPaths.Data(),
                     GameDataPaths.Config(),

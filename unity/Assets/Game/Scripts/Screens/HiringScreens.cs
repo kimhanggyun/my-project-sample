@@ -66,7 +66,7 @@ namespace Game.Unity.Screens
             if (l.Recent != null && l.Recent.Count > 0) Ui.Label(card, HireText.Recent(ctx, l), 24, TextAnchor.MiddleLeft, Palette.TextDim);
             if (!mine) return;
             string id = l.Id;
-            Ui.Button(card, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, _ => app.ShowMain("hiring")), 72, new Color(0.45f, 0.22f, 0.20f), 26);
+            Ui.Button(card, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, _ => app.ShowMain("hiring")), 72, Palette.Danger, 26);
         }
     }
 

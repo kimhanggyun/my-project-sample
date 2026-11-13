@@ -195,9 +195,9 @@ namespace Game.Unity.Screens
                         var row = Ui.Row(card, "Mem" + id, 64, 8);
                         Ui.Size(Ui.Label(row, Short(id) + (id == mine.LeaderAccountId ? "  " + T("ui.alliance.leader") : "") + (id == Ctx.AccountId ? "  " + T("ui.alliance.me") : ""), 24, TextAnchor.MiddleLeft, Palette.TextDim), flexibleWidth: 3);
                         if (leader && id != Ctx.AccountId)
-                            Ui.Size(Ui.Button(row, T("ui.alliance.kick"), () => Ctx.ManageAlliance(AllianceActions.Kick, id, r => Reopen(r)), 64, new Color(0.45f, 0.22f, 0.20f), 22), width: 200);
+                            Ui.Size(Ui.Button(row, T("ui.alliance.kick"), () => Ctx.ManageAlliance(AllianceActions.Kick, id, r => Reopen(r)), 64, Palette.Danger, 22), width: 200);
                     }
-                    Ui.Button(card, T("ui.alliance.leave"), () => Ctx.LeaveAlliance(r => Reopen(r)), 72, new Color(0.45f, 0.22f, 0.20f), 26);
+                    Ui.Button(card, T("ui.alliance.leave"), () => Ctx.LeaveAlliance(r => Reopen(r)), 72, Palette.Danger, 26);
                 }
                 else
                 {

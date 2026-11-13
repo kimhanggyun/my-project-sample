@@ -92,7 +92,7 @@ namespace Game.Unity.Screens
                     if (slot == null) continue;
                     string unitId = c.Slots.TryGetValue(slot, out var id) ? id : null;
                     var u = unitId == null ? null : ctx.State.FindUnit(unitId);
-                    Ui.Background(cell, u == null ? new Color(0.14f, 0.15f, 0.18f) : Palette.Button);
+                    Ui.Background(cell, u == null ? Palette.ButtonDisabled : Palette.Button);
                     string text = ctx.T("slot." + slot) + "\n" + (u == null ? Ui.Colored(ctx.T("ui.formation.empty"), Palette.TextDim)
                         : ctx.UnitLabel(u.UnitId) + " " + FormationTabView.TroopName(ctx, u.TroopType) + " " + u.Troops.ToString("N0"));
                     var label = Ui.Label(cell, text, 22, TextAnchor.MiddleCenter);
