@@ -45,6 +45,8 @@ namespace Game.Unity.Screens
             { "alliance", () => new ScreenTabView(() => new AllianceScreen()) },
             { "settings", () => new ScreenTabView(() => new SettingsScreen()) },
             { "master", () => new MasterTabView() },
+            { "sampleBattle", () => new SampleBattleTabView() },
+            { "map", () => new MapTabView() },
         };
 
         private readonly string _initial;
