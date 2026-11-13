@@ -54,6 +54,23 @@ namespace Game.Unity.Battle3D
             { "mud", new Color32(138, 108, 76, 255) },
             { "water", new Color32(84, 146, 200, 255) },
         };
+        /// <summary>지형 색 (지금 화면 스타일 기준, 맵 미리보기·범례용).</summary>
+        public static Color32 ColorOf(string terrain) =>
+            (Game.Unity.UI.UiStyle.Paper ? InkColors : TerrainColors).TryGetValue(terrain ?? "", out var c) ? c : Unknown;
+
+        /// <summary>맵 정의 → 칸 하나 = 픽셀 하나 텍스처 (위 줄 = y 0, 화면 위가 적 쪽).</summary>
+        public static Texture2D Preview(Game.Data.Defs.MapDef map)
+        {
+            var tex = new Texture2D(map.Width, map.Height, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            var px = new Color32[map.Width * map.Height];
+            for (int y = 0; y < map.Height; y++)
+                for (int x = 0; x < map.Width; x++)
+                    px[(map.Height - 1 - y) * map.Width + x] = ColorOf(map.TerrainAt(x, y));
+            tex.SetPixels32(px);
+            tex.Apply();
+            return tex;
+        }
+
         /// <summary>수묵: 안 가 본 곳은 빈 한지, 가 봤지만 지금 안 보이는 곳은 옅은 먹빛 (검은 안개 대신).</summary>
         private static readonly Color32 PaperFog = new Color32(232, 223, 203, 255);
         private const float InkExploredMix = 0.5f, InkHiddenMix = 0.9f;

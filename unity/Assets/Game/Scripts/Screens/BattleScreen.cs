@@ -123,6 +123,11 @@ namespace Game.Unity.Screens
         private const float SuspendEverySeconds = 5f;
 
         public BattleScreen(SortiePlan plan) { _plan = plan; }
+
+        /// <summary>샘플전투 (R-87): 세이브 사본으로 만든 계획. 저장·이어하기·결과 반영을 하지 않는다. 끝나면 샘플 결과 화면.</summary>
+        public static BattleScreen Sample(SortiePlan plan, string stepId) => new BattleScreen(plan) { _sampleStep = stepId };
+        private string _sampleStep;
+        private bool IsSample => _sampleStep != null;
         /// <param name="autoFinish">true면 모든 아군 군단을 위임하고 끝까지 돌린다 ([자동으로 끝내기]).</param>
         /// <param name="startPaused">이어 할 때 멈춘 채로 시작 (일기토 화면에서 돌아올 때는 false).</param>
         public BattleScreen(ResumedBattle resumed, bool autoFinish = false, bool startPaused = true) { _plan = resumed.Plan; _resumedSim = resumed.Simulation; _autoFinish = autoFinish; _startPaused = startPaused; }
@@ -158,7 +163,7 @@ namespace Game.Unity.Screens
         {
             _sim = _resumedSim ?? _replaySim ?? new BattleSimulation(Setup);
             if (_replaySim == null) _speedIndex = System.Math.Max(0, System.Array.IndexOf(Speeds, Ctx.DefaultBattleSpeed)); // 설정의 시작 배속 (E26)
-            if (!IsReplay && _resumedSim == null)
+            if (!IsReplay && !IsSample && _resumedSim == null)
             {
                 // 가져간 군량을 쓴 세이브를 먼저 남기고, 이어하기 기록을 남긴다 (전투 중 꺼져도 이어서)
                 Ctx.Save();
@@ -418,7 +423,7 @@ namespace Game.Unity.Screens
 
         private void Suspend()
         {
-            if (_sim.IsOver || _sim.Tick == _suspendedTick) return;
+            if (IsSample || _sim.IsOver || _sim.Tick == _suspendedTick) return;
             _suspendedTick = _sim.Tick;
             Ctx.SuspendBattle(_plan, _sim);
         }
@@ -850,6 +855,7 @@ namespace Game.Unity.Screens
             _finished = true;
             var result = _sim.Result;
             if (IsReplay) { App.Show(new ReplayListScreen(T("ui.replay.ended"))); return; }
+            if (IsSample) { App.Show(new SampleResultScreen(_sampleStep, result)); return; }
             Ctx.ClearSuspendedBattle(); // 결과를 반영하기 전에 지운다 (두 번 반영되지 않게)
             var report = Ctx.Flow.ApplyResult(Ctx.State, _plan, result);
             Ctx.Save();
