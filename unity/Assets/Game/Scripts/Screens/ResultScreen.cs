@@ -136,7 +136,6 @@ namespace Game.Unity.Screens
         {
             if (_result.EndReason != "defeat" || _plan?.Setup == null) return T("ui.result.endReason." + _result.EndReason);
             string loser = _report.Won ? StoryFlow.EnemyTeam : StoryFlow.PlayerTeam;
-            string side = _report.Won ? "Enemy" : "Own";
             bool anyIn = false;
             Game.Battle.Model.Simulation.CorpsSetup commander = null;
             foreach (var c in _plan.Setup.Corps)
@@ -146,9 +145,9 @@ namespace Game.Unity.Screens
                 var r = _result.Find(c.Id);
                 if (r != null && r.Status == Game.Battle.Model.Simulation.CorpsStatus.Active) anyIn = true;
             }
-            if (!anyIn) return T("ui.result.why.all" + side);
+            if (!anyIn) return T(_report.Won ? "ui.result.why.allEnemy" : "ui.result.why.allOwn");
             var cr = commander == null ? null : _result.Find(commander.Id);
-            if (cr != null && cr.Status != Game.Battle.Model.Simulation.CorpsStatus.Active) return T("ui.result.why.commander" + side);
+            if (cr != null && cr.Status != Game.Battle.Model.Simulation.CorpsStatus.Active) return T(_report.Won ? "ui.result.why.commanderEnemy" : "ui.result.why.commanderOwn");
             return T("ui.result.why.other");
         }
     }
