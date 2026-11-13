@@ -39,8 +39,12 @@ namespace Game.Battle.Model.Events
         public const string PathBlocked = "pathBlocked";
         /// <summary>플레이어 군단이 일기토 신청을 받음, 답을 기다림 (R-79). 군단 = 받은 쪽, 값 = 건 쪽.</summary>
         public const string DuelOffered = "duelOffered";
-        /// <summary>마주침 대결이 일어남 (R-89): CorpsId = 받는 쪽, Data = 건 쪽.</summary>
+        /// <summary>마주침 일기토 기회 (R-89·R-91): CorpsId = 거는 쪽, Data = 상대.</summary>
         public const string DuelEncounter = "duelEncounter";
+        /// <summary>직접 지휘하는 플레이어 군단에 일기토 기회, 걸지 말지 기다림 (R-91): CorpsId = 거는 쪽(내 군단), Data = 상대.</summary>
+        public const string DuelChance = "duelChance";
+        /// <summary>일기토 기회를 넘김 (R-91): CorpsId = 거는 쪽, Data = 상대.</summary>
+        public const string DuelChancePassed = "duelChancePassed";
         /// <summary>일기토 신청을 받아들임 (R-71). 군단 = 건 쪽, 값 = 받은 쪽.</summary>
         public const string DuelStarted = "duelStarted";
         /// <summary>일기토 신청을 거절 (그 군단 사기↓). 군단 = 거절한 쪽, 값 = 건 쪽.</summary>

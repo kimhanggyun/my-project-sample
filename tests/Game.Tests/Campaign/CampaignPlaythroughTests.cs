@@ -1,6 +1,7 @@
 using System;
 using Game.Battle.Model.Simulation;
 using Game.Campaign;
+using Game.Campaign.Roster;
 using Game.Flow;
 using Game.Foundation.Time;
 using Xunit;
@@ -32,6 +33,12 @@ namespace Game.Tests.Campaign
                 {
                     clock.Advance(TimeSpan.FromMinutes(Kit.D.Balance.WoundedRecoverMinutes));
                     flow.Tick(s);
+                    // 다친 장수(일기토 중상 등)가 나을 때까지 기다린다 (플레이어도 그렇게 한다)
+                    long healAt = 0;
+                    foreach (var g in s.Generals)
+                        if (g.Status == GeneralStatus.LightInjury || g.Status == GeneralStatus.SeriousInjury) healAt = Math.Max(healAt, g.StatusUntilUnixSeconds);
+                    long now = clock.UtcNow.ToUnixTimeSeconds();
+                    if (healAt > now) { clock.Advance(TimeSpan.FromSeconds(healAt - now)); flow.Tick(s); }
                     foreach (var p in troops.RefillPlan(s)) troops.Conscript(s, p.Key, p.Value);
                     var plan = flow.Prepare(s, new SortieRequest { StepId = id, Seed = seed++, Delegate = true });
                     if (!plan.Ok && !flow.IsUnlocked(s, id)) break; // 선택 스텝(구출 등)은 조건이 맞을 때만

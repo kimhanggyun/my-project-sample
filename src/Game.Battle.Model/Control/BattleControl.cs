@@ -215,6 +215,14 @@ namespace Game.Battle.Model.Control
                 && Issue(c, CommandKinds.DuelAnswer, x => x.Mode = accept ? "accept" : "refuse");
         }
 
+        /// <summary>마주침 일기토 기회에 답한다 (R-91): 신청하면 true로. 기회가 없으면 false.</summary>
+        public bool AnswerDuelChance(string corpsId, bool challenge)
+        {
+            var c = Context.FindCorps(corpsId);
+            return c != null && Contests.InBattleDuels.ChanceFor(Context, c.Id) != null
+                && Issue(c, CommandKinds.DuelChance, x => x.Mode = challenge ? "challenge" : "pass");
+        }
+
         public bool MoveTo(Vec point, string mode = null) =>
             Issue(Selected, CommandKinds.MoveTo, c => { c.X = point.X; c.Y = point.Y; c.Mode = mode ?? MoveMode; c.Queued = Queueing; });
 
@@ -310,7 +318,7 @@ namespace Game.Battle.Model.Control
                     TargetType = s.TargetType,
                     Cost = Combat.TraitEffects.SkillCost(Context, Selected, s.Id, s.Cost),
                     UsesLeft = Selected.SkillPoints.UsesLeft(s.Id),
-                    Affordable = Selected.SkillPoints.CanUse(s.Id, Combat.TraitEffects.SkillCost(Context, Selected, s.Id, s.Cost), true),
+                    Affordable = Selected.SkillReady(s.Id, Context.Tick) && Selected.SkillPoints.CanUse(s.Id, Combat.TraitEffects.SkillCost(Context, Selected, s.Id, s.Cost), true),
                 });
             return list;
         }

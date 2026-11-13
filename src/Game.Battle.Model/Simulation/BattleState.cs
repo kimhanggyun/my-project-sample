@@ -139,6 +139,8 @@ namespace Game.Battle.Model.Simulation
     public static class StatusIds
     {
         public const string Taunted = "taunted";
+        /// <summary>일기토를 거절해 잠깐 공격이 약함 (R-91).</summary>
+        public const string DuelRefused = "duelRefused";
         public const string AmbushSetup = "ambushSetup";
         public const string Surprise = "surprise";
         /// <summary>일기토 패배: 혼란이 끝나면 퇴각.</summary>
@@ -189,6 +191,10 @@ namespace Game.Battle.Model.Simulation
         // 스킬·상태
         public Skills.SkillPointPool SkillPoints { get; internal set; }
         public IReadOnlyList<SkillDef> KnownSkills { get; internal set; }
+        /// <summary>스킬 id → 다시 쓸 수 있는 틱 (쿨타임, R-91).</summary>
+        internal Dictionary<string, long> SkillReadyTick { get; } = new Dictionary<string, long>(System.StringComparer.Ordinal);
+        /// <summary>쿨타임이 끝났나.</summary>
+        public bool SkillReady(string skillId, long tick) => !SkillReadyTick.TryGetValue(skillId, out var t) || tick >= t;
         public List<StatusEffect> Statuses { get; } = new List<StatusEffect>();
         /// <summary>은신 (복병 완성). 적에게 보이지 않고, 들키거나 공격하기 전에는 공격하지 않는다 (R-20 예외).</summary>
         public bool Hidden { get; internal set; }
@@ -337,6 +343,8 @@ namespace Game.Battle.Model.Simulation
         public List<Contests.DuelState> Duels { get; } = new List<Contests.DuelState>();
         /// <summary>플레이어 군단이 받고 아직 답하지 않은 일기토 신청 (R-79).</summary>
         public List<Contests.DuelOffer> DuelOffers { get; } = new List<Contests.DuelOffer>();
+        /// <summary>마주침 일기토 기회 (R-91): 직접 지휘하는 플레이어 군단이 걸지 말지 고르기를 기다린다.</summary>
+        public List<Contests.DuelChance> DuelChances { get; } = new List<Contests.DuelChance>();
         /// <summary>마주침 대결 (R-89): 판정한 쌍 "대결|A|B", 이미 마주침 대결을 한(신청 받은) 군단.</summary>
         internal HashSet<string> EncounterChecked { get; } = new HashSet<string>(System.StringComparer.Ordinal);
         internal HashSet<string> EncounterDone { get; } = new HashSet<string>(System.StringComparer.Ordinal);

@@ -263,14 +263,11 @@
       "nameKey": "skill.challenge",
       "category": "valor",
       "tier": "intermediate",
-      "requires": [
-        {
-          "stat": "might",
-          "min": 55
-        }
-      ],
-      "cost": 15,
-      "usesPerBattle": 1,
+      "_forAll": "모든 장수가 배우지 않아도 가진다 (R-91). 쿨타임 cooldownSec, 점수를 쓰지 않는다",
+      "forAll": true,
+      "cooldownSec": 60,
+      "cost": 0,
+      "usesPerBattle": 3,
       "target": {
         "type": "enemyCorps",
         "range": 10
@@ -284,16 +281,7 @@
         {
           "type": "challenge",
           "contest": "duel",
-          "decideSec": 30,
-          "refuseMorale": -10,
-          "acceptChance": 0.5,
-          "accept.brave": 0.9,
-          "accept.arrogant": 1,
-          "accept.loyal": 0.6,
-          "accept.calm": 0.5,
-          "accept.cunning": 0.3,
-          "accept.cautious": 0.25,
-          "accept.timid": 0.1
+          "_params": "응할 확률·거절 벌칙·고르는 시간은 contests.json duel (accept·refuse·trigger.decideSec)"
         }
       ]
     },

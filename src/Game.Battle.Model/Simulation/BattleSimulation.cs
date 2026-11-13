@@ -244,6 +244,8 @@ namespace Game.Battle.Model.Simulation
                     known.Add(sk);
                     uses[id] = sk.UsesPerBattle;
                 }
+                foreach (var sk in setup.Defs.Skills.Values) // 모든 장수가 가진 스킬 (R-91 일기토 신청)
+                    if (sk.ForAll && !known.Contains(sk)) { known.Add(sk); uses[sk.Id] = sk.UsesPerBattle; }
                 corps.KnownSkills = known;
                 corps.SkillPoints = new SkillPointPool(cs.General.Intellect, uses);
                 foreach (var u in cs.Units)
