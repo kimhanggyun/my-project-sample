@@ -9,3 +9,4 @@
 - 2026-11-13 [데스크탑] desktop/assets-kenney — Kenney CC0 에셋 1차: 병사 5종·장수·투석기·배·지형 소품 OBJ(한 메시로 합침), 효과음 5개, 최신 캡처(전투에 새 나무·병사)
 - 2026-11-13 [데스크탑] desktop/kaykit-nature — KayKit으로 통일 시작: 나무·바위·풀·덤불·갈대·집을 KayKit Forest·Medieval Hexagon으로, 모델 미리보기 그림(docs/captures/models)
 - 2026-11-13 [원격] claude/kind-bohr-365c76 — ArtCatalog 뼈대(SkinnedMesh)·여러 조각 모델 굳히기(Idle 자세), 땅 색 연두·흙색, 타이틀 콜백 오류, 병사 tint 0.8, 캡처 전투 안내 끄기 (PR #129)
+- 2026-11-13 [원격] claude/kind-bohr-365c76 — 마스터 계정(서버 Game:Masters)·개발 행동(자원 지급·전체 해금·장수 주기), 하단 탭 두 줄(배포/개발) (PR #130)

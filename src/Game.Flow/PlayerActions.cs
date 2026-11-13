@@ -85,7 +85,41 @@ namespace Game.Flow
                 new Economy.Wallet(s.Wallet).Add(a.PayWith, a.Count);
                 return true;
             }));
+            // 개발 행동 (R-86): 서버는 마스터 계정의 것만 받는다 (StrategyGameModule). 기기는 개발 빌드·마스터일 때만 화면에 둔다.
+            Register(new Handler(ActionKinds.DevGrant, (s, a) =>
+            {
+                if (a.Count <= 0 || a.Count > DevGrantMax) return false;
+                if (a.PayWith != Economy.ResourceIds.Supply && a.PayWith != Economy.ResourceIds.Gold && a.PayWith != Economy.ResourceIds.Gem) return false;
+                new Economy.Wallet(s.Wallet).Add(a.PayWith, a.Count);
+                return true;
+            }));
+            Register(new Handler(ActionKinds.DevUnlockAll, (s, a) =>
+            {
+                bool any = false;
+                foreach (var id in defs.StepIndex.Order)
+                    if (!s.ClearedSteps.Contains(id)) { s.ClearedSteps.Add(id); any = true; }
+                return any;
+            }));
+            Register(new Handler(ActionKinds.DevGiveGeneral, (s, a) =>
+            {
+                if (a.GeneralId == null) return false;
+                var ids = new List<string>();
+                if (a.GeneralId == "*") ids.AddRange(defs.Generals.Keys);
+                else if (defs.Generals.ContainsKey(a.GeneralId)) ids.Add(a.GeneralId);
+                ids.Sort(StringComparer.Ordinal);
+                bool any = false;
+                foreach (var id in ids)
+                    if (s.FindGeneral(id) == null && s.FindPrisoner(id) == null) { s.Generals.Add(GeneralState.Join(defs.Generals[id])); any = true; }
+                return any;
+            }));
         }
+
+        /// <summary>dev.grant 한 번 상한.</summary>
+        public const long DevGrantMax = 1_000_000_000;
+
+        public static PlayerAction DevGrant(string resource, long amount) => new PlayerAction { Kind = ActionKinds.DevGrant, PayWith = resource, Count = amount };
+        public static PlayerAction DevUnlockAll() => new PlayerAction { Kind = ActionKinds.DevUnlockAll };
+        public static PlayerAction DevGiveGeneral(string generalId) => new PlayerAction { Kind = ActionKinds.DevGiveGeneral, GeneralId = generalId };
 
         public static List<ActionCorps> ToActionCorps(IEnumerable<CorpsComposition> comps)
         {

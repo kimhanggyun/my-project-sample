@@ -44,7 +44,7 @@ jobs:
             --execution-environment gen2 \
             --add-volume "name=store,type=cloud-storage,bucket=${{ vars.GCS_BUCKET }},mount-options=uid=1654;gid=1654" \
             --add-volume-mount "volume=store,mount-path=/data/store" \
-            --set-env-vars "Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }},Game__AllowFakeReceipts=false"
+            --set-env-vars "^@^Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }}@Game__AllowFakeReceipts=false@Game__Masters=${{ vars.GAME_MASTERS }}"
       - name: Smoke test
         run: |
           URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
