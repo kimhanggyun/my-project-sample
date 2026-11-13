@@ -80,7 +80,7 @@
 
 > 데스크탑 Claude가 에셋을 넣을 때마다 한 줄 추가한다 ([collab.md](../../collab.md) 6장). 이미지·모델은 LFS라 원격 Claude는 내용을 못 볼 수 있으니 **생김새**를 글로 적는다.
 
-**2026-11-13 1차 (Kenney, 모두 CC0)** — 경로는 `Game/Resources/` 아래. 모델은 **OBJ**(FBX 아님): Kenney FBX 캐릭터는 뼈대(SkinnedMesh)라 `ArtCatalog`(MeshFilter만 읽음)가 못 쓰고, 여러 조각이라 첫 조각만 쓰이므로 OBJ 조각들을 **한 메시로 합쳤다**(무기도 손 위치에 붙여 합침). 각 `.obj` 옆에 같은 이름 `.mtl`, 텍스처는 `Art/Models/Textures/`. 모두 앞이 +Z로 가정 — 뒤를 보면 `catalog.json` `yaw: 180`.
+**2026-11-13 1차 (Kenney) → 같은 날 2차 (KayKit, 나무·바위·풀·집), 모두 CC0.** 모델 미리보기 그림(원격도 볼 수 있음): [docs/captures/models/](../../captures/models/) `units.png`·`props.png` (간이 렌더, 방향·조명은 실제와 다름). — 경로는 `Game/Resources/` 아래. 모델은 **OBJ**(FBX 아님): Kenney FBX 캐릭터는 뼈대(SkinnedMesh)라 `ArtCatalog`(MeshFilter만 읽음)가 못 쓰고, 여러 조각이라 첫 조각만 쓰이므로 OBJ 조각들을 **한 메시로 합쳤다**(무기도 손 위치에 붙여 합침). 각 `.obj` 옆에 같은 이름 `.mtl`, 텍스처는 `Art/Models/Textures/`. 모두 앞이 +Z로 가정 — 뒤를 보면 `catalog.json` `yaw: 180`.
 
 | 경로 | 출처 | 삼각형 | 생김새·용도 |
 |---|---|---|---|
@@ -94,16 +94,16 @@
 | `Art/Models/general_commander.obj` | 위 기사 + [Castle Kit](https://kenney.nl/assets/castle-kit) `flag-pennant` | 1,176 | 장수와 같고 등 뒤에 삼각 깃발 깃대. 총대장 |
 | `Art/Models/soldier_catapult.obj` | Castle Kit `siege-catapult` | 1,492 | 나무 바퀴 4개 달린 투석기, 던지는 팔 위로 |
 | `Art/Models/ship.obj` | Pirate Kit `ship-small` | 2,384 | 돛대 하나·흰 돛의 작은 범선(서양 해적선풍). 길이가 Z축. 수군 4종 공통 |
-| `Art/Models/tree_a.obj` | [Nature Kit](https://kenney.nl/assets/nature-kit) `tree_default` | 114 | 갈색 줄기 + 초록 둥근 각진 잎 덩어리 |
-| `Art/Models/tree_b.obj` | Nature Kit `tree_pineRoundA` | 204 | 층진 둥근 소나무 |
-| `Art/Models/tree_burnt.obj` | Nature Kit `stump_oldTall` | 120 | 키 큰 오래된 그루터기 (탄 숲 대용) |
-| `Art/Models/rock_a.obj` | Nature Kit `rock_largeA` | 80 | 낮고 넓은 회색 바위 |
-| `Art/Models/rock_b.obj` | Nature Kit `rock_tallA` | 136 | 키 큰 회색 바위 |
-| `Art/Models/grass.obj` | Nature Kit `grass_large` | 224 | 초록 풀 포기 |
-| `Art/Models/bush.obj` | Nature Kit `plant_bush` | 32 | 둥근 초록 덤불 |
-| `Art/Models/reed.obj` | Nature Kit `crops_wheatStageB` | 360 | 노란 밀 줄기 다발 (갈대 대용) |
-| `Art/Models/Textures/*.png` | 위 팩들의 텍스처 (`blocky_*`, `mini_colormap`, `castle_colormap`, `pirate_colormap`) | — | 색 팔레트 그림. Nature Kit 모델은 텍스처 없이 재질 색 |
-| (`house` 없음) | — | — | 받은 팩에 맞는 집이 없어 비움 (다음에 Fantasy Town Kit) |
+| `Art/Models/tree_a.obj` | [KayKit Forest Nature Pack](https://kaylousberg.itch.io/kaykit-forest) `Tree_1_A` | 530 | **(2차, KayKit)** 굵고 짧은 주황 줄기 + 크고 둥근 연두 잎 덩어리 하나. 만화풍 |
+| `Art/Models/tree_b.obj` | KayKit Forest `Tree_4_A` | 404 | **(2차)** 가는 주황 줄기 위 초록 원뿔 잎 2~3층 (소나무) |
+| `Art/Models/tree_burnt.obj` | KayKit Forest `Tree_Bare_1_B` | 332 | **(2차)** 잎 없는 주황 고목, 위가 두 갈래 (탄 숲) |
+| `Art/Models/rock_a.obj` | KayKit Forest `Rock_1_A` | 48 | **(2차)** 각진 회색 바위 두 덩이 (낮음) |
+| `Art/Models/rock_b.obj` | KayKit Forest `Rock_1_J` | 521 | **(2차)** 회색 바위가 층층이 쌓여 솟은 봉우리 (산) |
+| `Art/Models/grass.obj` | KayKit Forest `Grass_1_B` | 132 | **(2차)** 넓적한 연두 풀잎 2장 포기 |
+| `Art/Models/bush.obj` | KayKit Forest `Bush_1_A` | 72 | **(2차)** 둥근 연두 덤불 덩어리 |
+| `Art/Models/reed.obj` | KayKit Forest `Grass_2_C` | 528 | **(2차)** 가늘고 긴 연두 풀잎 여러 가닥 다발 (갈대) |
+| `Art/Models/Textures/*.png` | 위 팩들의 텍스처 (`blocky_*`, `mini_colormap`, `castle_colormap`, `pirate_colormap`, `kaykit_forest`, `kaykit_medieval`) | — | 색 팔레트 그림 |
+| `Art/Models/house.obj` | [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) `building_home_A_red` | 1,011 | **(2차)** 붉은 지붕·흰 벽·나무 기둥의 작은 집, 회색 굴뚝. 귀여운 만화풍 |
 | `Audio/click.ogg` | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `click_001` | — | 짧은 딸깍 |
 | `Audio/clash.ogg` | [Impact Sounds](https://kenney.nl/assets/impact-sounds) `impactMetal_medium_000` | — | 쇠 부딪히는 소리 |
 | `Audio/gong.ogg` | Impact Sounds `impactBell_heavy_000` | — | 무거운 종 소리 (징 대용) |
@@ -112,6 +112,7 @@
 | (`arrow` `horn` `fire` `cheer` `duel` `battle` 없음) | — | — | 받은 팩에 맞는 소리가 없어 코드 합성 그대로 |
 
 - 라이선스: 모두 CC0 (출처 표시 불필요, 개인·교육·상업 이용 가능). `Art/Models/License.txt`에 정리.
+- **화풍 방향 (2026-11-13 사용자 결정): KayKit으로 통일.** 남은 Kenney(병사·장수·투석기·배)도 차례로 KayKit으로 바꾼다. KayKit 캐릭터(Adventurers)는 **뼈대(SkinnedMesh)·삼각형 5,800~8,900**이라 지금 `ArtCatalog`가 못 읽는다 → 원격에 "SkinnedMesh 지원" 요청. 병사는 무거워 보류 (폰 측정 후 기준 조정).
 - [RPG Audio](https://kenney.nl/assets/rpg-audio)도 받았지만 이번에는 쓰지 않았다 (책·문·가죽 소리 위주).
 
 ## 효과음 (임시, 2026-11-12)
