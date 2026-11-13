@@ -29,7 +29,9 @@ builder.Services.AddSingleton<IExternalTokenVerifier>(sp =>
     var project = builder.Configuration["Game:Firebase:ProjectId"];
     return string.IsNullOrEmpty(project) ? null : new FirebaseTokenVerifier(project, FirebaseTokenVerifier.GoogleCerts(new System.Net.Http.HttpClient()));
 });
-builder.Services.AddSingleton(sp => ServerSetup.Registry(builder.Configuration, sp.GetRequiredService<ITimeProvider>(), sp.GetRequiredService<IGameStore>()));
+// 마스터 계정 (R-86): Game:Masters = 쉼표로 나눈 계정 id
+builder.Services.AddSingleton(sp => MasterAccounts.Parse(builder.Configuration["Game:Masters"]));
+builder.Services.AddSingleton(sp => ServerSetup.Registry(builder.Configuration, sp.GetRequiredService<ITimeProvider>(), sp.GetRequiredService<IGameStore>(), sp.GetRequiredService<MasterAccounts>()));
 
 var app = builder.Build();
 var time = app.Services.GetRequiredService<ITimeProvider>();
@@ -53,8 +55,8 @@ app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
     return code == null ? Results.NotFound() : Json(new ResolveAppResponse { Game = code });
 });
 // 계정 (공통): 닉네임
-app.MapGet(OnlineRoutes.Me, (HttpRequest req, IPlatformStore p) =>
-    Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id) })));
+app.MapGet(OnlineRoutes.Me, (HttpRequest req, IPlatformStore p, MasterAccounts masters) =>
+    Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id) })));
 app.MapPost(OnlineRoutes.MyNickname, async (HttpRequest req, IPlatformStore p) =>
 {
     var body = await Body<NicknameRequest>(req);
@@ -209,7 +211,7 @@ namespace Game.Server
         public const string DefaultGame = "ancientwar";
 
         /// <summary>설정의 게임 목록으로 등록표를 만든다. 비어 있으면 이 저장소의 게임 하나.</summary>
-        public static GameRegistry Registry(IConfiguration config, ITimeProvider time, IGameStore store)
+        public static GameRegistry Registry(IConfiguration config, ITimeProvider time, IGameStore store, MasterAccounts masters = null)
         {
             var registry = new GameRegistry();
             var games = config.GetSection("Game:Games").GetChildren();
@@ -227,9 +229,27 @@ namespace Game.Server
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
             bool allowFake = !string.Equals(config["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase);
             foreach (var code in registry.Codes)
-                if (registry.Find(code) is StrategyGameModule m) m.AllowFakeReceipts = allowFake;
+                if (registry.Find(code) is StrategyGameModule m) { m.AllowFakeReceipts = allowFake; if (masters != null) m.Masters = masters; }
             return registry;
         }
+    }
+
+    /// <summary>마스터 계정 목록 (R-86). 실행 중에 더할 수 있다 (테스트·운영 도구).</summary>
+    public sealed class MasterAccounts
+    {
+        private readonly HashSet<string> _ids = new HashSet<string>(StringComparer.Ordinal);
+        private readonly object _lock = new object();
+
+        public static MasterAccounts Parse(string csv)
+        {
+            var m = new MasterAccounts();
+            if (!string.IsNullOrWhiteSpace(csv))
+                foreach (var part in csv.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)) m.Add(part.Trim());
+            return m;
+        }
+
+        public void Add(string accountId) { if (!string.IsNullOrEmpty(accountId)) lock (_lock) _ids.Add(accountId); }
+        public bool Contains(string accountId) { if (accountId == null) return false; lock (_lock) return _ids.Contains(accountId); }
     }
 
     public static class ServerPaths

@@ -1,95 +1,131 @@
 {
-  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). 순서대로 표시, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 가로 스크롤. 지금은 확인용으로 모든 컨텐츠를 탭에 둔다 (필요 없는 탭은 나중에 hidden).",
+  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포에 들어갈 탭) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임). 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 줄마다 가로 스크롤.",
   "tabs": [
     {
       "id": "story",
       "nameKey": "ui.tab.story",
-      "status": "active"
+      "status": "active",
+      "row": "release"
     },
     {
       "id": "general",
       "nameKey": "ui.tab.general",
-      "status": "active"
-    },
-    {
-      "id": "prisoner",
-      "nameKey": "ui.tab.prisoner",
-      "status": "active"
-    },
-    {
-      "id": "practice",
-      "nameKey": "ui.tab.practice",
-      "status": "active"
+      "status": "active",
+      "row": "release"
     },
     {
       "id": "troop",
       "nameKey": "ui.tab.troop",
-      "status": "active"
+      "status": "active",
+      "row": "release"
     },
     {
-      "id": "care",
-      "nameKey": "ui.tab.care",
-      "status": "active"
-    },
-    {
-      "id": "formation",
-      "nameKey": "ui.tab.formation",
-      "status": "active"
-    },
-    {
-      "id": "formationDrag",
-      "nameKey": "ui.tab.formationDrag",
-      "status": "active"
-    },
-    {
-      "id": "territory",
-      "nameKey": "ui.tab.territory",
-      "status": "active"
-    },
-    {
-      "id": "hiring",
-      "nameKey": "ui.tab.hiring",
-      "status": "active"
+      "id": "practice",
+      "nameKey": "ui.tab.practice",
+      "status": "active",
+      "row": "release"
     },
     {
       "id": "shop",
       "nameKey": "ui.tab.shop",
-      "status": "active"
+      "status": "active",
+      "row": "release"
     },
     {
-      "id": "gacha",
-      "nameKey": "ui.tab.gacha",
-      "status": "active"
+      "id": "sampleBattle",
+      "nameKey": "ui.tab.sampleBattle",
+      "status": "tobe",
+      "row": "dev"
     },
     {
-      "id": "codex",
-      "nameKey": "ui.tab.codex",
-      "status": "active"
+      "id": "map",
+      "nameKey": "ui.tab.map",
+      "status": "tobe",
+      "row": "dev"
+    },
+    {
+      "id": "territory",
+      "nameKey": "ui.tab.territory",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "hiring",
+      "nameKey": "ui.tab.hiring",
+      "status": "active",
+      "row": "dev"
     },
     {
       "id": "replay",
       "nameKey": "ui.tab.replay",
-      "status": "active"
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "codex",
+      "nameKey": "ui.tab.codex",
+      "status": "active",
+      "row": "dev"
     },
     {
       "id": "mail",
       "nameKey": "ui.tab.mail",
-      "status": "active"
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "master",
+      "nameKey": "ui.tab.master",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "prisoner",
+      "nameKey": "ui.tab.prisoner",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "care",
+      "nameKey": "ui.tab.care",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "formation",
+      "nameKey": "ui.tab.formation",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "formationDrag",
+      "nameKey": "ui.tab.formationDrag",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "gacha",
+      "nameKey": "ui.tab.gacha",
+      "status": "active",
+      "row": "dev"
     },
     {
       "id": "alliance",
       "nameKey": "ui.tab.alliance",
-      "status": "active"
+      "status": "active",
+      "row": "dev"
     },
     {
       "id": "settings",
       "nameKey": "ui.tab.settings",
-      "status": "active"
+      "status": "active",
+      "row": "dev"
     },
     {
       "id": "pvp",
       "nameKey": "ui.tab.pvp",
-      "status": "tobe"
+      "status": "tobe",
+      "row": "dev"
     }
   ]
 }

@@ -108,6 +108,28 @@ namespace Game.Server.Tests
             }
         }
 
+        [Fact(DisplayName = "R-86 마스터: 개발 행동 dev.*은 마스터 계정만 (아니면 422), 프로필에 IsMaster")]
+        public async Task MasterOnlyDevActions()
+        {
+            var c = _factory.CreateClient();
+            var who = OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.GuestSignIn, null)).Content.ReadAsStringAsync());
+            c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", who.Token);
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            var first = await Read<CloudSave>(await c.GetAsync(Save));
+            Assert.False((await Read<ProfileResponse>(await c.GetAsync(OnlineRoutes.Me))).IsMaster);
+            var denied = await c.PostAsync(actions, Body(new ActionSubmission { BaseRevision = first.Revision, Actions = { PlayerActionRunner.DevGrant("supply", 1000) } }));
+            Assert.Equal((HttpStatusCode)422, denied.StatusCode);
+
+            _factory.Services.GetRequiredService<MasterAccounts>().Add(who.AccountId);
+            Assert.True((await Read<ProfileResponse>(await c.GetAsync(OnlineRoutes.Me))).IsMaster);
+            long supply = StrategyGameModule.FromJson(first.Json).Wallet["supply"];
+            var ok = await c.PostAsync(actions, Body(new ActionSubmission { BaseRevision = first.Revision, Actions = { PlayerActionRunner.DevGrant("supply", 1000), PlayerActionRunner.DevUnlockAll() } }));
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+            var after = StrategyGameModule.FromJson((await Read<ActionVerdict>(ok)).Save.Json);
+            Assert.Equal(supply + 1000, after.Wallet["supply"]);
+            Assert.NotEmpty(after.ClearedSteps);
+        }
+
         [Fact(DisplayName = "R-41 행동 제출: 서버가 같은 규칙으로 적용(200), 안 되는 행동은 422, 옛 세이브는 409. 진행이 생긴 뒤 세이브 통째 올리기는 409")]
         public async Task Actions()
         {

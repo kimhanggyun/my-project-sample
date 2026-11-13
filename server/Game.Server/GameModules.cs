@@ -104,6 +104,9 @@ namespace Game.Server
         /// 실제 스토어 검증은 백엔드를 정한 뒤 더한다. 쓴 영수증은 지금은 메모리에만 (실제 서버는 저장소에).
         /// </summary>
         public bool AllowFakeReceipts { get; set; } = true;
+
+        /// <summary>마스터 계정 (R-86, 설정 Game:Masters). 개발 행동 dev.*은 여기 있는 계정의 것만 받는다.</summary>
+        public MasterAccounts Masters { get; set; } = new MasterAccounts();
         private readonly HashSet<string> _usedReceipts = new HashSet<string>(StringComparer.Ordinal);
 
         public StrategyGameModule(string code, IReadOnlyList<string> packageIds, IDataSource source, string theme, ITimeProvider time, IGameStore store)
@@ -211,6 +214,7 @@ namespace Game.Server
             bool ServerCheck(PlayerAction a)
             {
                 if (!receipts.Check(a)) return false;
+                if (ActionKinds.IsDev(a?.Kind)) return Masters.Contains(accountId);
                 if (a?.Kind != ActionKinds.MailClaim) return true;
                 var m = box.Find(x => x.Id == a.MailId);
                 return m != null && m.Resource == a.PayWith && m.Amount == a.Count && claimed.Add(m.Id);

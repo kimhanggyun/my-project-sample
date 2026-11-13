@@ -18,7 +18,10 @@ namespace Game.Unity.Screens
         private const float TopBarHeight = 110f;
         private const float TabBarHeight = 104f;
         private const float MinTabWidth = 160f;
-        private const int VisibleTabs = 6; // 탭 6개가 한 줄에 다 보이게 (더 많으면 가로 스크롤)
+        private const int VisibleTabs = 5; // 배포 탭 5개가 한 줄에 다 보이게 (더 많으면 가로 스크롤)
+        private const float DevTabBarHeight = 72f;
+        private const float MinDevTabWidth = 120f;
+        private const int VisibleDevTabs = 7;
 
         /// <summary>탭 id → 내용. 새 탭은 구현을 만들고 여기에 한 줄 + mainTabs.json에 한 줄.</summary>
         private static readonly Dictionary<string, System.Func<ITabView>> Views = new Dictionary<string, System.Func<ITabView>>
@@ -41,6 +44,7 @@ namespace Game.Unity.Screens
             { "mail", () => new ScreenTabView(() => new MailScreen()) },
             { "alliance", () => new ScreenTabView(() => new AllianceScreen()) },
             { "settings", () => new ScreenTabView(() => new SettingsScreen()) },
+            { "master", () => new MasterTabView() },
         };
 
         private readonly string _initial;
@@ -81,24 +85,36 @@ namespace Game.Unity.Screens
             _content = Ui.Rect(Root, "Content");
             Ui.Size(_content, flexibleHeight: 1);
 
-            // 아래: 탭 바 (많아지면 가로 스크롤)
+            // 아래: 탭 바 두 줄 (main-screen.md 3장). 위 줄 = 개발용(개발 빌드·마스터만), 아래 줄 = 배포 탭. 줄마다 가로 스크롤.
             var tabs = new List<MainTabEntry>();
-            foreach (var t in Ctx.MainTabs) if (t.Status != MainTabEntry.Hidden) tabs.Add(t);
-            var barBg = Ui.Rect(Root, "TabBar");
-            Ui.Background(barBg, Palette.Bar);
-            Ui.Size(barBg, TabBarHeight);
-            var bar = Ui.HScrollRow(barBg, "Tabs", TabBarHeight, 6, 8);
             var alerts = Game.Flow.TabAlerts.Compute(Ctx.Defs, Ctx.State, Ctx.Flow, Ctx.Clock.UtcNow.ToUnixTimeSeconds());
-            Ui.Fill((RectTransform)bar.parent.parent);
-            float width = Mathf.Max(MinTabWidth, (GameApp.ReferenceWidth - 16f) / Mathf.Min(VisibleTabs, Mathf.Max(1, tabs.Count)) - 6f);
-            foreach (var t in tabs)
+            bool dev = Ctx.DevToolsVisible;
+            foreach (var row in new[] { MainTabEntry.RowDev, MainTabEntry.RowRelease })
             {
-                var tab = t;
-                var b = Ui.Button(bar, T(t.NameKey), () => Select(tab), TabBarHeight - 16, fontSize: 28);
-                Ui.Size(b, width: width);
-                if (t.Status != MainTabEntry.Active) b.GetComponentInChildren<Text>().color = Palette.TextDim;
-                _tabButtons[t.Id] = b;
-                if (alerts.Contains(t.Id) && t.Status == MainTabEntry.Active) Dot(b); // 할 일이 있는 탭 (E21)
+                if (row == MainTabEntry.RowDev && !dev) continue;
+                var rowTabs = new List<MainTabEntry>();
+                foreach (var t in Ctx.MainTabs)
+                    if (t.Status != MainTabEntry.Hidden && (t.Row == row || (row == MainTabEntry.RowRelease && t.Row != MainTabEntry.RowDev))) rowTabs.Add(t);
+                if (rowTabs.Count == 0) continue;
+                if (row == MainTabEntry.RowRelease) tabs.InsertRange(0, rowTabs); else tabs.AddRange(rowTabs); // 처음 열 탭은 배포 줄에서 먼저 찾는다
+                bool small = row == MainTabEntry.RowDev;
+                float h = small ? DevTabBarHeight : TabBarHeight;
+                var barBg = Ui.Rect(Root, small ? "DevTabBar" : "TabBar");
+                Ui.Background(barBg, small ? Palette.Card : Palette.Bar);
+                Ui.Size(barBg, h);
+                var bar = Ui.HScrollRow(barBg, small ? "DevTabs" : "Tabs", h, 6, 8);
+                Ui.Fill((RectTransform)bar.parent.parent);
+                int visible = small ? VisibleDevTabs : VisibleTabs;
+                float width = Mathf.Max(small ? MinDevTabWidth : MinTabWidth, (GameApp.ReferenceWidth - 16f) / Mathf.Min(visible, rowTabs.Count) - 6f);
+                foreach (var t in rowTabs)
+                {
+                    var tab = t;
+                    var b = Ui.Button(bar, T(t.NameKey), () => Select(tab), h - 16, fontSize: small ? 22 : 28);
+                    Ui.Size(b, width: width);
+                    if (t.Status != MainTabEntry.Active) b.GetComponentInChildren<Text>().color = Palette.TextDim;
+                    _tabButtons[t.Id] = b;
+                    if (alerts.Contains(t.Id) && t.Status == MainTabEntry.Active) Dot(b); // 할 일이 있는 탭 (E21)
+                }
             }
 
             MainTabEntry first = null;

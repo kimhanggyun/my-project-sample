@@ -314,9 +314,15 @@ namespace Game.Unity.Boot
         public string Nickname { get; private set; }
         private readonly Dictionary<string, string> _names = new Dictionary<string, string>();
 
+        /// <summary>서버가 마스터 계정이라고 했다 (R-86). 서버 없이는 false (개발 빌드면 화면은 그래도 연다).</summary>
+        public bool IsMaster { get; private set; }
+
+        /// <summary>개발 줄 탭·마스터 화면을 보여 줄지: 개발 빌드이거나 서버 마스터 계정.</summary>
+        public bool DevToolsVisible => UnityEngine.Debug.isDebugBuild || IsMaster;
+
         public void LoadProfile(Action<ProfileResponse> done) => Online.GetProfile(p =>
         {
-            if (p != null) Nickname = p.Nickname;
+            if (p != null) { Nickname = p.Nickname; IsMaster = p.IsMaster; }
             done?.Invoke(p);
         });
 
@@ -572,12 +578,16 @@ namespace Game.Unity.Boot
         public string Id { get; private set; }
         public string NameKey { get; private set; }
         public string Status { get; private set; }
+        /// <summary>줄: release(아래, 배포) / dev(그 위, 개발 빌드·마스터만).</summary>
+        public string Row { get; private set; }
+        public const string RowRelease = "release";
+        public const string RowDev = "dev";
 
         public static List<MainTabEntry> Load(IDataSource data)
         {
             var list = new List<MainTabEntry>();
             foreach (JObject t in (JArray)JObject.Parse(data.ReadText(File))["tabs"])
-                list.Add(new MainTabEntry { Id = t.Value<string>("id"), NameKey = t.Value<string>("nameKey"), Status = t.Value<string>("status") ?? Active });
+                list.Add(new MainTabEntry { Id = t.Value<string>("id"), NameKey = t.Value<string>("nameKey"), Status = t.Value<string>("status") ?? Active, Row = t.Value<string>("row") ?? RowRelease });
             return list;
         }
     }

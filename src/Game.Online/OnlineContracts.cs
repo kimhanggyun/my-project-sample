@@ -90,6 +90,8 @@ namespace Game.Online
         public string AccountId { get; set; }
         /// <summary>아직 없으면 null.</summary>
         public string Nickname { get; set; }
+        /// <summary>마스터 계정이면 true (R-86: 개발 행동 dev.*을 서버가 받아 준다).</summary>
+        public bool IsMaster { get; set; }
     }
 
     public sealed class NicknameRequest
@@ -570,6 +572,16 @@ namespace Game.Online
         public const string PrisonerRelease = "prisoner.release";
         /// <summary>전체 난이도 설정 (R-75). Situation = 설정 id.</summary>
         public const string SetDifficulty = "settings.difficulty";
+        /// <summary>개발 행동 접두어 (R-86). 서버는 마스터 계정의 것만 받는다.</summary>
+        public const string DevPrefix = "dev.";
+        /// <summary>자원 지급 (마스터): PayWith = 자원 id, Count = 양 (1 ~ 10억).</summary>
+        public const string DevGrant = "dev.grant";
+        /// <summary>모든 스텝 깬 것으로 (마스터, 보상 없음).</summary>
+        public const string DevUnlockAll = "dev.unlockAll";
+        /// <summary>장수 주기 (마스터): GeneralId (없는 장수만, "*" = 아직 없는 모든 장수).</summary>
+        public const string DevGiveGeneral = "dev.giveGeneral";
+
+        public static bool IsDev(string kind) => kind != null && kind.StartsWith(DevPrefix, System.StringComparison.Ordinal);
     }
 
     /// <summary>편성 저장 행동의 군단 하나 (캠페인 편성과 같은 내용).</summary>

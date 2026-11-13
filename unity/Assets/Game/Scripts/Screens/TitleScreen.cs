@@ -46,6 +46,7 @@ namespace Game.Unity.Screens
                     if (status == null || start == null) return; // 동기화가 끝났을 때 타이틀이 이미 닫혔으면 무시 (Unity: 파괴된 객체는 == null)
                     status.text = T("ui.online." + Ctx.OnlineStatus);
                     Ui.SetEnabled(start, true);
+                    Ctx.LoadProfile(null); // 마스터 계정인지 (R-86, 개발 줄 탭)
                 });
             }
         }
