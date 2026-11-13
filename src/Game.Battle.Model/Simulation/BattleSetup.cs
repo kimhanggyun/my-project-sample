@@ -33,6 +33,8 @@ namespace Game.Battle.Model.Simulation
         public Dictionary<string, bool[]> InitialExplored { get; set; } = new Dictionary<string, bool[]>();
         /// <summary>전투 시작 직전 대결 (일기토·논쟁). 발생 판정은 바깥에서 <see cref="Contests.ContestTrigger"/>로 한다.</summary>
         public List<ContestSetup> Contests { get; set; } = new List<ContestSetup>();
+        /// <summary>전투 중 마주치면 일어나는 대결 id (R-89, 대결 정의 trigger.when = encounter). 스텝이 허용한 것만.</summary>
+        public List<string> EncounterContests { get; set; } = new List<string>();
         /// <summary>바람 (스텝 데이터). 세기 0이면 바람 없음.</summary>
         public WindSetup Wind { get; set; } = new WindSetup();
         /// <summary>날씨 id (conditions.json weather). 기본 맑음.</summary>

@@ -28,7 +28,7 @@ namespace Game.Battle.Model.Systems
                 corps.MovedThisTick = false;
                 if (!corps.InBattle) continue;
                 Vec? dest = Destination(ctx, corps, out bool chasing);
-                if (dest == null || ShouldStop(corps) || Immobile(corps)) continue;
+                if (dest == null || ShouldStop(ctx, corps, dest.Value) || Immobile(corps)) continue;
 
                 Cell goal = Cell.Of(dest.Value);
                 Cell here = Cell.Of(corps.Anchor);
@@ -70,11 +70,22 @@ namespace Game.Battle.Model.Systems
             return false;
         }
 
-        /// <summary>강행·퇴각은 멈추지 않는다. 근접 소부대가 있으면 접전에 들면, 원거리만 남은 군단은 사거리에 들면 멈춘다.</summary>
-        private static bool ShouldStop(CorpsState corps)
+        /// <summary>
+        /// 강행·퇴각은 멈추지 않는다. 근접 소부대가 있으면 접전에 들면, 원거리만 남은 군단은 사거리에 들면 멈춘다.
+        /// 다만 플레이어가 직접 지휘하는 군단의 보통 지점 이동은 가장 가까운 적에게서 멀어지는(옆·뒤) 쪽이면 접전 중에도 움직인다 (R-88: 빼기·물러서기).
+        /// AI·위임 군단, 공격 이동·후위 이동, 적 쪽으로 가는 이동은 그대로 멈춘다.
+        /// </summary>
+        private static bool ShouldStop(BattleContext ctx, CorpsState corps, Vec dest)
         {
             if (corps.Status == CorpsStatus.Retreating || corps.Order.Mode == MoveModes.Forced) return false;
-            return corps.HasAliveMelee(Tags.Melee) ? corps.MeleeContact : corps.Engaged;
+            bool stop = corps.HasAliveMelee(Tags.Melee) ? corps.MeleeContact : corps.Engaged;
+            if (stop && corps.Order.Kind == OrderKinds.MoveTo && corps.Order.Mode == MoveModes.Normal
+                && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
+            {
+                var enemy = ctx.NearestEnemy(corps);
+                if (enemy == null || (dest - corps.Anchor).Dot(enemy.Anchor - corps.Anchor) <= Fix.Zero) return false;
+            }
+            return stop;
         }
 
         private static Vec? Destination(BattleContext ctx, CorpsState corps, out bool chasing)

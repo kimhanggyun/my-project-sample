@@ -1047,5 +1047,6 @@
   "terrain.building": "건물",
   "terrain.flood": "물에 잠김",
   "terrain.water": "물 (호수·바다)",
-  "terrain.mud": "진흙"
+  "terrain.mud": "진흙",
+  "ui.event.duelEncounter": "{0}: 적 대장과 마주쳤다! 일기토의 기운이 감돈다."
 }

@@ -124,6 +124,7 @@ namespace Game.Flow
             HoldOut = s.HoldOut,
             InitialExplored = s.InitialExplored,
             Contests = s.Contests,
+            EncounterContests = s.EncounterContests,
             Wind = s.Wind,
             Weather = s.Weather,
             TimeOfDay = s.TimeOfDay,

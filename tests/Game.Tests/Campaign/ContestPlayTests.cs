@@ -9,18 +9,22 @@ namespace Game.Tests.Campaign
     /// <summary>일기토를 한 라운드씩 고르기 (battle.md 2.7): 앞 라운드는 다시 계산해도 같고, 마지막 기록으로 전투가 같은 결과 (R-29).</summary>
     public class ContestPlayTests
     {
+        /// <summary>
+        /// 전투 직전 대결 (setup.Contests) 고르기 화면 흐름. 일기토는 이제 전투 중 마주칠 때 일어나므로 (R-89)
+        /// 출진 계획에 직접 넣어 같은 엔진(ContestPlay)을 확인한다. 논쟁처럼 출진 때 대결(trigger.when = sortie)이 이 길을 그대로 쓴다.
+        /// </summary>
         private static SortiePlan PlanWithDuel()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            for (ulong seed = 1; seed < 500; seed++)
-            {
-                // 일기토는 두 대장의 무력 차이 3 이내에서만 (battle.md 2.7): step01 적 대장(무력 46)과 장수 A(45)
-                var state = StartingKitService.CreateNewGame(Kit.D);
-                var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = seed });
-                if (plan.Setup.Contests.Any(c => c.ContestId == "duel")) return plan;
-            }
-            Assert.Fail("일기토가 일어나는 시드를 찾지 못했습니다.");
-            return null;
+            var state = StartingKitService.CreateNewGame(Kit.D);
+            var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
+            Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+            var mine = plan.Setup.Corps.First(c => c.Team == StoryFlow.PlayerTeam && c.Role == CorpsRoles.Commander);
+            var theirs = plan.Setup.Corps.First(c => c.Team == StoryFlow.EnemyTeam && c.Role == CorpsRoles.Commander);
+            plan.Setup.Contests.RemoveAll(c => c.ContestId == "duel");
+            plan.Setup.Contests.Insert(0, new ContestSetup { ContestId = "duel", CorpsA = mine.Id, CorpsB = theirs.Id });
+            plan.Setup.EncounterContests.Clear();
+            return plan;
         }
 
         [Fact(DisplayName = "일기토 고르기: 고른 만큼만 라운드가 보이고, 앞 라운드는 바뀌지 않으며, 끝난 기록으로 전투를 만들면 같은 대결 결과")]
