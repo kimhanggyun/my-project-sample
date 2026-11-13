@@ -1,8 +1,3 @@
-# Created by Kenney (www.kenney.nl)
-
-newmtl woodBark
-Kd 0.8862745 0.5137255 0.3411765
-
-newmtl leafsGreen
-Kd 0.1607843 0.7882353 0.6705883
-
+newmtl kaykit_forest
+Kd 1 1 1
+map_Kd Textures/kaykit_forest.png
