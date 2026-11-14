@@ -1,0 +1,39 @@
+{
+  "_comment": "패배 팁 (20 시안, verification R-104). order = 보는 차례 (supply 군량이 떨어짐 · commander 총대장 군단이 물러남 · troops 처음 병력이 적의 troopsRatio 아래 · losses 내 손실 heavyLossPct% 이상인데 적 손실 enemyLightLossPct% 아래 · time 시간 제한), 맞는 게 없으면 other. shortcuts = 이유마다 바로가기 (supply 군량 · shop 상점 · formation 편성 · general 장수 · troop 부대 · shared 공략). 수치는 예시",
+  "order": [
+    "supply",
+    "commander",
+    "troops",
+    "losses",
+    "time"
+  ],
+  "troopsRatio": 0.8,
+  "heavyLossPct": 60,
+  "enemyLightLossPct": 30,
+  "shortcuts": {
+    "supply": [
+      "supply",
+      "shop"
+    ],
+    "commander": [
+      "formation",
+      "general"
+    ],
+    "troops": [
+      "troop",
+      "formation"
+    ],
+    "losses": [
+      "formation",
+      "shared"
+    ],
+    "time": [
+      "formation",
+      "shared"
+    ],
+    "other": [
+      "shared",
+      "formation"
+    ]
+  }
+}
