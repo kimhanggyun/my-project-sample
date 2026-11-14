@@ -127,5 +127,30 @@ namespace Game.Tests.Campaign
             store.Write(ReplayLibrary.SaveKey, "{망가짐");
             Assert.Empty(ReplayLibrary.Read(store).Items);
         }
+        [Fact(DisplayName = "R-101 최근 자동 보관: 끝난 전투는 최근 recentKeep개에 (새것이 앞, 넘으면 오래된 것 밀려남), [저장]하면 id 그대로 저장 목록으로, 분류")]
+        public void Recent()
+        {
+            var rules = ReplayRules.Load(Kit.Source);
+            Assert.Equal(5, rules.RecentKeep);
+            var (plan, sim, _) = Play(13);
+            var lib = new ReplayLibrary();
+            for (int i = 0; i < 7; i++) lib.AddRecent(ReplayService.Capture(plan, sim.CommandLog, sim.Result, 1000 + i), rules.RecentKeep);
+            Assert.Equal(new[] { "rp7", "rp6", "rp5", "rp4", "rp3" }, lib.Recent.Select(x => x.Id));
+            Assert.Empty(lib.Items);
+            Assert.True(lib.Keep("rp5", 2));
+            Assert.Equal(new[] { "rp5" }, lib.Items.Select(x => x.Id));
+            Assert.DoesNotContain(lib.Recent, x => x.Id == "rp5");
+            Assert.False(lib.Keep("rp5", 2));
+            Assert.True(lib.Keep("rp6", 2)); Assert.True(lib.Keep("rp7", 2));
+            Assert.Equal(new[] { "rp7", "rp6" }, lib.Items.Select(x => x.Id));
+            Assert.NotNull(lib.Find("rp4"));
+            Assert.True(lib.Remove("rp4"));
+            var store = new InMemorySaveStore();
+            lib.Write(store);
+            Assert.Equal(new[] { "rp3" }, ReplayLibrary.Read(store).Recent.Select(x => x.Id));
+            Assert.Equal("story", ReplayService.CategoryOf(lib.Items[0]));
+            Assert.Equal("territory", ReplayService.CategoryOf(new ReplayRecord { StepId = "territory.flag:1,2" }));
+            Assert.Equal("merc", ReplayService.CategoryOf(new ReplayRecord { StepId = "step01", Hired = true }));
+        }
     }
 }

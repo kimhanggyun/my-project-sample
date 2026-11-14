@@ -28,6 +28,8 @@ namespace Game.Flow
         public long Seconds { get; set; }
         public long PlayerStartTroops { get; set; }
         public long PlayerLosses { get; set; }
+        /// <summary>고용(용병)을 데리고 나간 전투 (14 분류 merc).</summary>
+        public bool Hired { get; set; }
         /// <summary>결과 상태 지문 (16진). 다시 돌린 결과와 같아야 재생할 수 있다.</summary>
         public string Hash { get; set; }
         /// <summary>스텝 규칙(Defs·Map·Balance·Combat·Flags)은 비어 있다.</summary>
@@ -39,6 +41,8 @@ namespace Game.Flow
     {
         public const string File = "Rules/replay.json";
         public int MaxSaved { get; private set; } = 20;
+        /// <summary>저장 안 한 최근 전투를 저절로 남기는 수 (R-101).</summary>
+        public int RecentKeep { get; private set; } = 5;
         /// <summary>공유 녹화 목록에 보이는 개수 (스텝마다, R-81).</summary>
         public int SharedListMax { get; private set; } = 20;
         /// <summary>서버가 게임마다 남기는 공유 녹화 수 (넘으면 오래된 것부터 지움).</summary>
@@ -52,6 +56,7 @@ namespace Game.Flow
             return new ReplayRules
             {
                 MaxSaved = max,
+                RecentKeep = o.ContainsKey("recentKeep") ? System.Math.Max(0, (int)JsonUtil.RequireLong(o, "recentKeep", File)) : 5,
                 SharedListMax = o.ContainsKey("sharedListMax") ? (int)JsonUtil.RequireLong(o, "sharedListMax", File) : 20,
                 SharedStoreMax = o.ContainsKey("sharedStoreMax") ? (int)JsonUtil.RequireLong(o, "sharedStoreMax", File) : 500,
             };
@@ -106,6 +111,7 @@ namespace Game.Flow
                 Seconds = result.ElapsedSeconds.FloorToLong(),
                 PlayerStartTroops = start,
                 PlayerLosses = lost,
+                Hired = plan.Hired != null && !plan.Hired.IsEmpty,
                 Hash = result.StateHash.ToString("x16"),
                 Setup = bare,
                 Commands = new List<BattleCommand>(commands ?? (IReadOnlyList<BattleCommand>)new List<BattleCommand>()),
@@ -114,6 +120,13 @@ namespace Game.Flow
         }
 
         /// <summary>스텝 규칙(Defs·Map·Balance·Combat·Flags)을 뺀 전투 설정 (얕은 사본, 저장할 때 JSON으로 떼어 낸다).</summary>
+        /// <summary>분류 (14 칩): territory (영토 전투) · merc (고용을 데리고 나감) · story.</summary>
+        public static string CategoryOf(ReplayRecord r)
+        {
+            if (r?.StepId != null && r.StepId.StartsWith("territory", StringComparison.Ordinal)) return "territory";
+            return r != null && r.Hired ? "merc" : "story";
+        }
+
         public static BattleSetup BareSetup(BattleSetup s) => new BattleSetup
         {
             Seed = s.Seed,
@@ -183,6 +196,28 @@ namespace Game.Flow
         public const string SaveKey = "replays";
         public long NextNumber { get; set; } = 1;
         public List<ReplayRecord> Items { get; set; } = new List<ReplayRecord>();
+        /// <summary>저장 안 한 최근 전투 (새것이 앞, R-101). [저장]하면 Items로 옮긴다.</summary>
+        public List<ReplayRecord> Recent { get; set; } = new List<ReplayRecord>();
+
+        /// <summary>끝난 전투를 최근에 더한다 (id를 붙이고, keep개를 넘으면 가장 오래된 것을 밀어낸다, R-101).</summary>
+        public void AddRecent(ReplayRecord r, int keep)
+        {
+            r.Id = "rp" + NextNumber++;
+            if (keep <= 0) return;
+            Recent.Insert(0, r);
+            while (Recent.Count > keep) Recent.RemoveAt(Recent.Count - 1);
+        }
+
+        /// <summary>최근 녹화를 저장 목록으로 옮긴다 (id 그대로). 없으면 false. 한도를 넘으면 가장 오래된 저장을 지운다.</summary>
+        public bool Keep(string id, int maxSaved)
+        {
+            var r = Recent.Find(x => x.Id == id);
+            if (r == null) return false;
+            Recent.Remove(r);
+            Items.Insert(0, r);
+            while (Items.Count > Math.Max(1, maxSaved)) Items.RemoveAt(Items.Count - 1);
+            return true;
+        }
 
         /// <summary>더하고 id를 붙인다. 한도를 넘어 지운 개수를 돌려준다.</summary>
         public int Add(ReplayRecord r, int maxSaved)
@@ -194,8 +229,8 @@ namespace Game.Flow
             return removed;
         }
 
-        public bool Remove(string id) => Items.RemoveAll(x => x.Id == id) > 0;
-        public ReplayRecord Find(string id) => Items.Find(x => x.Id == id);
+        public bool Remove(string id) => Items.RemoveAll(x => x.Id == id) + Recent.RemoveAll(x => x.Id == id) > 0;
+        public ReplayRecord Find(string id) => Items.Find(x => x.Id == id) ?? Recent.Find(x => x.Id == id);
 
         public static ReplayLibrary Read(ISaveStore store)
         {
