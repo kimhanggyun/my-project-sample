@@ -29,7 +29,8 @@ namespace Game.Unity.Boot
         public bool Done { get; private set; }
         public string Folder => _folder;
 
-        public PlayTestTour(GameApp app, string folder) { _app = app; _folder = folder; }
+        private readonly bool _battleOnly;
+        public PlayTestTour(GameApp app, string folder, bool battleOnly = false) { _app = app; _folder = folder; _battleOnly = battleOnly; }
 
         private GameContext Ctx => _app.Context;
         private string T(string key, params object[] args) => Ctx.T(key, args);
@@ -49,6 +50,14 @@ namespace Game.Unity.Boot
                 ("5·6·7 전투 이동·일기토(거절)·탈것", () => BattleChecks(false)),
                 ("6 일기토 응하기 (새 전투)", () => BattleChecks(true)),
                 ("8 아이콘·ⓘ", IconsAndInfo),
+                ("9 큰 전투", BigBattle),
+            };
+            if (_battleOnly) sections = new (string name, Func<IEnumerator> run)[]
+            {
+                ("R-92 진형 전환", Reform),
+                ("R-93 퇴각 선택 [버틴다] + 사기 막대·쓰러짐·일기토 알림", () => RetreatChoice(true)),
+                ("R-93 퇴각 선택 [퇴각한다]", () => RetreatChoice(false)),
+                ("장수 자세 확대", PoseCloseups),
                 ("9 큰 전투", BigBattle),
             };
             foreach (var s in sections)
@@ -353,6 +362,126 @@ namespace Game.Unity.Boot
             VisibleButton(T("ui.battle.skip"))?.onClick.Invoke();
             yield return new WaitForSecondsRealtime(1f);
         }
+
+        // ---------- PR #139: 진형 전환 ----------
+        private IEnumerator Reform()
+        {
+            var screen = StartFirstSample(); if (screen == null) yield break;
+            var ctl = screen.DebugControl; var sim = screen.DebugSim; var field = FieldOf(screen);
+            screen.DebugSetSpeed(0);
+            yield return new WaitForSecondsRealtime(1f);
+            var c = ctl.OwnCorps().FirstOrDefault(x => x.Setup.KnownFormations != null && x.Setup.KnownFormations.Any(f => f != x.Formation?.Id));
+            if (c == null) { Log("진형을 바꿀 수 있는 아군 군단 없음 (아는 진형이 하나뿐)"); yield break; }
+            string to = c.Setup.KnownFormations.First(f => f != c.Formation?.Id);
+            field.LookAt(c); field.Rig.SetDistance(14f);
+            ctl.Select(c.Id);
+            bool ok = ctl.ChangeFormation(to);
+            yield return null; yield return null;
+            Log($"진형 전환 {c.Id}: {c.Formation?.Id} → {to}, 명령 {(ok ? "받음" : "거부")}, 전환 {c.ReformTotalTicks}틱 ({c.ReformTotalTicks * sim.Context.Combat.TickSeconds.ToDisplayDouble():0.0}초)");
+            yield return Shot("pt30_reform_start");
+            float until = Time.realtimeSinceStartup + 12f;
+            while (c.Reforming && c.ReformProgress < Fix.FromInt(1) / Fix.FromInt(2) && Time.realtimeSinceStartup < until) yield return null;
+            yield return Shot("pt31_reform_mid");
+            while (c.Reforming && Time.realtimeSinceStartup < until) yield return null;
+            yield return new WaitForSecondsRealtime(0.3f);
+            Log($"전환 끝: 지금 진형 {c.Formation?.Id}, 전환 중 {c.Reforming}");
+            yield return Shot("pt32_reform_end");
+            VisibleButton(T("ui.battle.skip"))?.onClick.Invoke();
+            yield return new WaitForSecondsRealtime(1f);
+        }
+
+        // ---------- PR #139: 퇴각 선택 (+ 사기 막대·쓰러짐·일기토 알림) ----------
+        private IEnumerator RetreatChoice(bool hold)
+        {
+            var screen = StartFirstSample(); if (screen == null) yield break;
+            var ctl = screen.DebugControl; var field = FieldOf(screen);
+            screen.DebugSetSpeed(2);
+            string tag = hold ? "hold" : "retreat";
+            bool asked = false, closeShot = false, duelNoted = false;
+            float until = Time.realtimeSinceStartup + 200f, after = 0f;
+            while (Time.realtimeSinceStartup < until && _app.CurrentScreen == screen)
+            {
+                yield return new WaitForSecondsRealtime(0.25f);
+                // 일기토 창: 위 알림 문구만 기록하고 거절해 넘어간다 (이 시험의 주제가 아님)
+                var duelNo = VisibleButton(T("ui.duel.refuse")) ?? VisibleButton(T("ui.duel.pass"));
+                if (duelNo != null)
+                {
+                    if (!duelNoted) { duelNoted = true; Log("일기토 창이 뜰 때 위 알림: " + string.Join(" / ", NoticeTexts())); yield return Shot("pt33_duel_notice"); }
+                    duelNo.onClick.Invoke(); continue;
+                }
+                // 접전 확대 한 번 (사기 막대·쓰러지는 병사·시체)
+                var engaged = ctl.OwnCorps().FirstOrDefault(x => x.MeleeContact);
+                if (!closeShot && engaged != null)
+                {
+                    closeShot = true;
+                    screen.DebugSetSpeed(0);
+                    field.LookAt(engaged); field.Rig.SetDistance(12f);
+                    yield return new WaitForSecondsRealtime(1.2f);
+                    yield return Shot("pt34_melee_close_" + tag);
+                    field.Rig.SetDistance(20f);
+                    yield return Shot("pt35_morale_bars_" + tag);
+                    screen.DebugSetSpeed(2);
+                }
+                var holdB = VisibleButton(T("ui.retreatAsk.hold"));
+                if (holdB != null && !asked)
+                {
+                    asked = true;
+                    var who = ctl.OwnCorps().OrderBy(x => x.Morale).FirstOrDefault();
+                    if (who != null) { field.LookAt(who); field.Rig.SetDistance(16f); }
+                    yield return null;
+                    Log($"퇴각 선택 창 뜸 ({who?.Id} 사기 {who?.Morale.FloorToLong()} 병력 {who?.Troops:N0})");
+                    yield return Shot("pt36_retreat_prompt");
+                    if (hold) holdB.onClick.Invoke(); else VisibleButton(T("ui.retreatAsk.retreat"))?.onClick.Invoke();
+                    Log("누름: " + (hold ? "[버틴다]" : "[퇴각한다]"));
+                    after = Time.realtimeSinceStartup;
+                    continue;
+                }
+                if (asked)
+                {
+                    var hit = NoticeTexts().FirstOrDefault(t => t.Contains("패주") || t.Contains("퇴각한다"));
+                    if (hit != null) { Log("알림: " + hit); yield return Shot("pt37_after_" + tag); break; }
+                    if (Time.realtimeSinceStartup - after > 90f) { Log("누른 뒤 90초 안에 퇴각·패주 알림을 못 봄"); break; }
+                }
+            }
+            if (!asked) Log("퇴각 선택 창이 안 뜸 (200초)");
+            if (!closeShot) Log("접전 장면을 못 찍음");
+            if (_app.CurrentScreen is BattleScreen) VisibleButton(T("ui.battle.skip"))?.onClick.Invoke();
+            yield return new WaitForSecondsRealtime(1f);
+        }
+
+        // ---------- 장수 자세 확대 ----------
+        private IEnumerator PoseCloseups()
+        {
+            var screen = StartFirstSample(); if (screen == null) yield break;
+            var sim = screen.DebugSim; var field = FieldOf(screen);
+            yield return new WaitForSecondsRealtime(1f);
+            SetPaused(screen, true);
+            int n = 0;
+            foreach (var c in sim.Context.Corps.Where(x => x.InBattle).ToList())
+            {
+                field.LookAt(c); field.Rig.SetDistance(Game.Unity.Battle3D.BattleCameraRig.MinDistance);
+                yield return new WaitForSecondsRealtime(0.4f);
+                string role = c.Setup.Role == CorpsRoles.Commander ? "총대장" : "장수";
+                string name = $"pt40_pose_{n++}_{c.Id}";
+                yield return Shot(name);
+                Log($"자세 확대: {c.Id} ({c.Team}, {role}) → {name}");
+            }
+            SetPaused(screen, false);
+            VisibleButton(T("ui.battle.skip"))?.onClick.Invoke();
+            yield return new WaitForSecondsRealtime(1f);
+        }
+
+        private BattleScreen StartFirstSample()
+        {
+            var catalog = SampleBattles.Catalog(Ctx.Defs, Ctx.Flow);
+            if (catalog.Count == 0) { Log("전투할 맵 없음"); return null; }
+            return StartSample(catalog[0]);
+        }
+        private static Game.Unity.Battle3D.BattleField3D FieldOf(BattleScreen s) =>
+            (Game.Unity.Battle3D.BattleField3D)typeof(BattleScreen).GetField("_field", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(s);
+        private static void SetPaused(BattleScreen s, bool on) =>
+            typeof(BattleScreen).GetField("_paused", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(s, on);
+        private IEnumerable<string> NoticeTexts() => Texts().Select(t => t.text).Where(t => !string.IsNullOrEmpty(t) && (t.Contains("군단") || t.Contains("일기토")));
 
         // ---------- 도움 ----------
         private static Vec ClampToField(BattleSimulation sim, Vec p)
