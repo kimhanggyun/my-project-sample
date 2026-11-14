@@ -290,6 +290,8 @@ namespace Game.Online
     public sealed class TerritoryDefense
     {
         public long Version { get; set; }
+        /// <summary>수비 주인 계정 (깃발 공성전에서 그 주인의 용병이 배신, R-99). 예전 스냅샷은 null.</summary>
+        public string OwnerAccountId { get; set; }
         public long RegisteredAtUnixSeconds { get; set; }
         public List<DefenseCorps> Corps { get; set; } = new List<DefenseCorps>();
     }

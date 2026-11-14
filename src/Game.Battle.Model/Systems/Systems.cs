@@ -80,7 +80,7 @@ namespace Game.Battle.Model.Systems
             if (corps.Status == CorpsStatus.Retreating || corps.Order.Mode == MoveModes.Forced) return false;
             bool stop = corps.HasAliveMelee(Tags.Melee) ? corps.MeleeContact : corps.Engaged;
             if (stop && corps.Order.Kind == OrderKinds.MoveTo && corps.Order.Mode == MoveModes.Normal
-                && corps.Setup.Controller == Controllers.Player && !corps.Delegated)
+                && corps.Controller == Controllers.Player && !corps.Delegated)
             {
                 var enemy = ctx.NearestEnemy(corps);
                 if (enemy == null || (dest - corps.Anchor).Dot(enemy.Anchor - corps.Anchor) <= Fix.Zero) return false;
@@ -556,7 +556,7 @@ namespace Game.Battle.Model.Systems
                         string reason = fewTroops ? RetreatReasons.Troops : broken ? RetreatReasons.Morale : null;
                         if (reason != null)
                         {
-                            bool ask = ctx.IsEnabled(RetreatChoiceFlag) && corps.Setup.Controller == Controllers.Player && !corps.Delegated;
+                            bool ask = ctx.IsEnabled(RetreatChoiceFlag) && corps.Controller == Controllers.Player && !corps.Delegated;
                             if (!ask) BeginRetreat(ctx, corps, reason);
                             else if (corps.RetreatAskReason == null)
                             {

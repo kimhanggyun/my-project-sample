@@ -167,7 +167,11 @@ namespace Game.Battle.Model.Simulation
         /// <summary>진행 중인 거짓 퇴각 (R-80).</summary>
         internal Skills.FeignPlan Feign { get; set; }
         public string Id => Setup.Id;
-        public string Team => Setup.Team;
+        /// <summary>편 (배신하면 바뀐 편, R-99). 설정(Setup)은 바꾸지 않는다 (같은 설정으로 다시 돌릴 수 있게).</summary>
+        public string Team => TeamOverride ?? Setup.Team;
+        internal string TeamOverride { get; set; }
+        /// <summary>조종 (배신하면 ai).</summary>
+        public string Controller => Betrayed ? Controllers.Ai : Setup.Controller;
         public CorpsSetup Setup { get; internal set; }
         public FormationDef Formation { get; internal set; }
         /// <summary>바꾸는 중인 진형 (R-56). 다 바뀔 때까지 지금 진형(Formation)을 쓰고, 받는 피해가 늘어난다. 없으면 null.</summary>
@@ -307,13 +311,15 @@ namespace Game.Battle.Model.Simulation
 
         /// <summary>위임 중 (아군 군단을 AI가 지휘, ai.md 9장).</summary>
         public bool Delegated { get; internal set; }
+        /// <summary>배신해 편을 바꿨다 (R-99).</summary>
+        public bool Betrayed { get; internal set; }
         /// <summary>지금 명령을 플레이어가 내렸다 (위임 중에도 이 명령이 끝날 때까지 AI가 덮어쓰지 않는다).</summary>
         public bool OrderByPlayer { get; internal set; }
         /// <summary>AI 판단 수준 (AI 군단은 설정값, 아군 군단은 장수 능력치로 정한 위임 수준).</summary>
         public string AiDifficulty { get; internal set; }
 
         /// <summary>AI가 지휘하는가: AI 군단이거나, 위임 중이고 플레이어 명령이 진행 중이 아닐 때.</summary>
-        public bool AiInCharge => Setup.Controller == Controllers.Ai || (Delegated && !OrderByPlayer);
+        public bool AiInCharge => Controller == Controllers.Ai || (Delegated && !OrderByPlayer);
 
         public void ClearPath()
         {

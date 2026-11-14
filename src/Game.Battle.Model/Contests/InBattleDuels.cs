@@ -125,7 +125,7 @@ namespace Game.Battle.Model.Contests
                         ctx.EncounterDone.Add(a.Id);
                         ctx.EncounterDone.Add(b.Id);
                         Events.EventLog.Add(ctx, Events.EventKinds.DuelEncounter, a.Id, b.Id);
-                        if (a.Setup.Controller == Controllers.Player && !a.Delegated)
+                        if (a.Controller == Controllers.Player && !a.Delegated)
                         {
                             // 내가 거는 쪽: 신청할지 묻는다 (답이 없으면 넘어감)
                             ctx.DuelChances.Add(new DuelChance { ContestId = id, CorpsA = a.Id, CorpsB = b.Id, DeadlineTick = ctx.Tick + SkillRules.Ticks(ctx, def.EncounterOfferSec) });
@@ -190,14 +190,14 @@ namespace Game.Battle.Model.Contests
                 DecideTicks = SkillRules.Ticks(ctx, def.EncounterDecideSec),
                 DeadlineTick = ctx.Tick + SkillRules.Ticks(ctx, def.EncounterOfferSec),
             };
-            if (b.Setup.Controller == Controllers.Player && !b.Delegated)
+            if (b.Controller == Controllers.Player && !b.Delegated)
             {
                 ctx.DuelOffers.Add(offer);
                 Events.EventLog.Add(ctx, Events.EventKinds.DuelOffered, b.Id, a.Id);
                 return;
             }
             // 고를 사람이 없는 쪽끼리면 고르는 시간 없이 바로 AI로 (군단을 세워 두지 않음)
-            if (!(a.Setup.Controller == Controllers.Player && !a.Delegated)) offer.DecideTicks = 0;
+            if (!(a.Controller == Controllers.Player && !a.Delegated)) offer.DecideTicks = 0;
             Decide(ctx, offer, ctx.Random.Chance(chance));
         }
 

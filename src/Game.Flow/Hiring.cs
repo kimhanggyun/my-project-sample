@@ -20,6 +20,10 @@ namespace Game.Flow
         public Dictionary<string, long> Costs { get; } = new Dictionary<string, long>();
         /// <summary>등록마다 낸 비용 (서버가 등록자 보상을 만든다).</summary>
         public List<HireCharge> Charges { get; } = new List<HireCharge>();
+        /// <summary>고용 장수 id → 등록자 계정 (배신 판정, R-99).</summary>
+        public Dictionary<string, string> GeneralOwners { get; } = new Dictionary<string, string>();
+        /// <summary>전투에서 배신한 용병의 등록자 (R-99): 그 등록자의 고용비는 돌려받고 등록자 보상은 없다.</summary>
+        public HashSet<string> BetrayedOwners { get; } = new HashSet<string>();
         /// <summary>제출 메시지에 그대로 실을 고용 목록.</summary>
         public List<HireUse> Uses { get; } = new List<HireUse>();
 
@@ -151,6 +155,7 @@ namespace Game.Flow
                     foreach (var other in forces.Generals)
                         if (other.GeneralId == g.GeneralId) { error = $"같은 장수 '{g.GeneralId}'를 둘 고용했습니다."; return null; }
                     forces.Generals.Add(g);
+                    forces.GeneralOwners[g.GeneralId] = l.OwnerAccountId;
                     cost = l.Price;
                     forces.Uses.Add(new HireUse { ListingId = l.Id, Version = l.Version });
                 }

@@ -93,16 +93,16 @@ namespace Game.Battle.Model.Control
         {
             var list = new List<CorpsState>();
             foreach (var c in Context.Corps)
-                if (c.Team == Team && c.Setup.Controller == Controllers.Player) list.Add(c);
+                if (c.Team == Team && c.Controller == Controllers.Player) list.Add(c);
             return list;
         }
 
-        public bool CanCommand(CorpsState c) => c != null && c.Team == Team && c.Setup.Controller == Controllers.Player && c.Status == CorpsStatus.Active;
+        public bool CanCommand(CorpsState c) => c != null && c.Team == Team && c.Controller == Controllers.Player && c.Status == CorpsStatus.Active;
 
         public bool Select(string corpsId)
         {
             var c = Context.FindCorps(corpsId);
-            if (c == null || c.Team != Team || c.Setup.Controller != Controllers.Player) return false;
+            if (c == null || c.Team != Team || c.Controller != Controllers.Player) return false;
             Selected = c;
             TargetingSkill = null;
             return true;
@@ -416,7 +416,7 @@ namespace Game.Battle.Model.Control
 
             if (hit != null && hit.Team == Team)
             {
-                if (hit.Setup.Controller != Controllers.Player) return TapResult.None;
+                if (hit.Controller != Controllers.Player) return TapResult.None;
                 Select(hit.Id);
                 return TapResult.Selected;
             }

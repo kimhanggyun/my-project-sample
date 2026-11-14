@@ -47,3 +47,4 @@
 - 2026-11-15 [데스크탑] desktop/territory-flags — 08 영토 규칙 PR 1 (R-96 · R-97): 깃발 꽂기(칸 맞춤 · 정수 거리 · 계급 반지름 · 장수 · 겹침 · 남의 원 안 = 공성전), 깃발 공성전(flags.json 틀 · 상대 수비 스냅샷 · 보호 시간 · 이기면 깃발 교체), 깃발 수입, 서버 POST /territory/plant · 가짜 서버(SeedFlag), 계급 flagRadiusM. 화면은 다음 PR
 - 2026-11-15 [데스크탑] desktop/territory-screen — 08 영토 화면 1단계: 위치 띠, 칸 지도(깃발 원 · 계급 깃 글자 · 내 위치 · 꽂을 수 있는 범위), 줌 가까이 · 칸 대표(+n) · 세력도, 하위 탭 주변 부대(깃발 꽂기 장수 고르기 · 가까운 순 · 공격 · 보호) · 내 깃발(수입) · 연합, 가짜 서버 시험 깃발 넣기, ui.terr.* 문구
 - 2026-11-15 [데스크탑] desktop/mercenary-avatar — 09 용병 규칙 PR 1 (R-98): 닉네임 장수(avatar 틀, 처음 지급 · avatar.create · 이름 = 닉네임), 장수 등록은 닉네임 장수만(notAvatar), 남의 닉네임 장수 고용 시 avatar_hired, 테스트 갱신
+- 2026-11-15 [데스크탑] desktop/mercenary-betrayal — 09 용병 규칙 PR 2 (R-99): 배신 — 수비 주인의 닉네임 장수를 고용해 그 깃발을 치면 첫 교전 직후 적 편 · AI(BetrayalSystem, 상태 편만 바꿔 재현 동일), 고용비 돌려받음, 서버 등록자 보상 없음. 군단 조종은 CorpsState.Controller로

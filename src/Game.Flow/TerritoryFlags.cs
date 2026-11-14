@@ -103,6 +103,7 @@ namespace Game.Flow
             if (defense == null) return new PlantResponse { Ok = false, Reason = PlantReasons.NotInFormation };
             defense.Version = 1;
             defense.RegisteredAtUnixSeconds = now;
+            defense.OwnerAccountId = accountId;
             var flag = new TerritoryOwner
             {
                 RegionId = check.FlagKey, OwnerAccountId = accountId, SinceUnixSeconds = now, CollectedUnixSeconds = now,
@@ -148,7 +149,7 @@ namespace Game.Flow
             flag.RadiusM = RadiusOf(defs, attackerState);
             flag.ProtectedUntilUnixSeconds = until;
             var d = TerritoryDefenses.SnapshotGeneral(defs, attackerState, attackerGeneralId, out _);
-            if (d != null) { d.Version = 1; d.RegisteredAtUnixSeconds = at; }
+            if (d != null) { d.Version = 1; d.RegisteredAtUnixSeconds = at; d.OwnerAccountId = attackerId; }
             flag.Defense = d;
         }
     }

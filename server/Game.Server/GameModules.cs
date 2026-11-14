@@ -206,6 +206,7 @@ namespace Game.Server
             if (hired != null)
                 foreach (var c in hired.Charges)
                 {
+                    if (hired.BetrayedOwners.Contains(c.OwnerAccountId)) continue; // 배신한 용병은 보상 없음 (R-99)
                     long reward = _hire.OwnerReward(c.Cost);
                     if (reward > 0) _store.AddMail(Code, c.OwnerAccountId, new Mail { Kind = MailKinds.HireReward, Resource = c.Resource, Amount = reward, ListingId = c.ListingId, CreatedAtUnixSeconds = Now });
                 }
