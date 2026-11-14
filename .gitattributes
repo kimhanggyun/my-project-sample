@@ -70,3 +70,7 @@ docs/worklog.md merge=union
 # 최신 화면 캡처: LFS 밖에 둔다 (원격 Claude가 직접 열어 보게, 작은 JPG 한 세트만 — docs/collab.md 7장)
 docs/captures/**/*.jpg -filter -diff -merge binary
 docs/captures/**/*.png -filter -diff -merge binary
+
+# 디자인 시안: LFS 밖에 둔다 (원격 Claude가 직접 열어 보게 — docs/design/mockups/README.md)
+docs/design/mockups/**/*.png -filter -diff -merge binary
+docs/design/mockups/**/*.jpg -filter -diff -merge binary
