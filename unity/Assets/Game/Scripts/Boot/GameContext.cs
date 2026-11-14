@@ -320,9 +320,16 @@ namespace Game.Unity.Boot
         /// <summary>개발 줄 탭·마스터 화면을 보여 줄지: 개발 빌드이거나 서버 마스터 계정.</summary>
         public bool DevToolsVisible => UnityEngine.Debug.isDebugBuild || IsMaster;
 
+        /// <summary>닉네임 장수가 없는 예전 세이브면 만든다 (R-98, 행동 avatar.create).</summary>
+        public void EnsureAvatar()
+        {
+            if (State != null && State.FindGeneral(AvatarGeneral.GeneralId) == null && Defs.Generals.ContainsKey(AvatarGeneral.GeneralId)) Do(PlayerActionRunner.AvatarCreate());
+        }
+
         public void LoadProfile(Action<ProfileResponse> done) => Online.GetProfile(p =>
         {
             if (p != null) { Nickname = p.Nickname; IsMaster = p.IsMaster; }
+            EnsureAvatar();
             done?.Invoke(p);
         });
 
@@ -491,6 +498,7 @@ namespace Game.Unity.Boot
 
         public string GeneralName(string generalId)
         {
+            if (generalId == AvatarGeneral.GeneralId && !string.IsNullOrEmpty(Nickname)) return Nickname; // 닉네임 장수 (R-98)
             if (generalId != null && Defs.Generals.TryGetValue(generalId, out var g)) return T(g.NameKey);
             var opp = generalId == null ? null : Defs.Practice?.Opponent(generalId); // 연습 상대 (대결 연습)
             return opp != null ? T(opp.NameKey) : generalId ?? "?";

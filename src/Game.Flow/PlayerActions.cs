@@ -101,6 +101,12 @@ namespace Game.Flow
                 s.LordLevel = (int)to;
                 return true;
             }));
+            Register(new Handler(ActionKinds.AvatarCreate, (s, a) =>
+            {
+                if (s.FindGeneral(AvatarGeneral.GeneralId) != null || !defs.Generals.TryGetValue(AvatarGeneral.GeneralId, out var ad)) return false;
+                s.Generals.Add(GeneralState.Join(ad));
+                return true;
+            }));
             Register(new Handler(ActionKinds.DevUnlockAll, (s, a) =>
             {
                 bool any = false;
@@ -112,7 +118,7 @@ namespace Game.Flow
             {
                 if (a.GeneralId == null) return false;
                 var ids = new List<string>();
-                if (a.GeneralId == "*") ids.AddRange(defs.Generals.Keys);
+                if (a.GeneralId == "*") { foreach (var gid in defs.Generals.Keys) if (!AvatarGeneral.IsAvatar(gid)) ids.Add(gid); }
                 else if (defs.Generals.ContainsKey(a.GeneralId)) ids.Add(a.GeneralId);
                 ids.Sort(StringComparer.Ordinal);
                 bool any = false;
@@ -128,6 +134,7 @@ namespace Game.Flow
         public static PlayerAction DevGrant(string resource, long amount) => new PlayerAction { Kind = ActionKinds.DevGrant, PayWith = resource, Count = amount };
         public static PlayerAction DevUnlockAll() => new PlayerAction { Kind = ActionKinds.DevUnlockAll };
         public static PlayerAction DevLordLevel(long delta) => new PlayerAction { Kind = ActionKinds.DevLordLevel, Count = delta };
+        public static PlayerAction AvatarCreate() => new PlayerAction { Kind = ActionKinds.AvatarCreate };
         public static PlayerAction DevGiveGeneral(string generalId) => new PlayerAction { Kind = ActionKinds.DevGiveGeneral, GeneralId = generalId };
 
         public static List<ActionCorps> ToActionCorps(IEnumerable<CorpsComposition> comps)

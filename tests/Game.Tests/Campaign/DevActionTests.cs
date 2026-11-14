@@ -1,3 +1,4 @@
+using System.Linq;
 using Game.Campaign;
 using Game.Flow;
 using Game.Online;
@@ -32,6 +33,17 @@ namespace Game.Tests.Campaign
             Assert.False(runner.Apply(s, PlayerActionRunner.DevUnlockAll()));
         }
 
+        [Fact(DisplayName = "R-98 avatar.create: 닉네임 장수가 없을 때만 합류 (예전 세이브), 있으면 false")]
+        public void AvatarCreate()
+        {
+            var runner = new PlayerActionRunner(Kit.D);
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            Assert.False(runner.Apply(s, PlayerActionRunner.AvatarCreate())); // 새 게임은 처음 지급에 있음
+            s.Generals.RemoveAll(g => g.GeneralId == AvatarGeneral.GeneralId);
+            Assert.True(runner.Apply(s, PlayerActionRunner.AvatarCreate()));
+            Assert.Equal(1, s.Generals.Count(g => g.GeneralId == AvatarGeneral.GeneralId));
+        }
+
         [Fact(DisplayName = "R-86 dev.giveGeneral: 없는 장수를 합류시킨다 (\"*\" = 아직 없는 모든 장수), 이미 있으면 false")]
         public void GiveGeneral()
         {
@@ -40,7 +52,8 @@ namespace Game.Tests.Campaign
             Assert.False(runner.Apply(s, PlayerActionRunner.DevGiveGeneral(s.Generals[0].GeneralId)));
             Assert.False(runner.Apply(s, PlayerActionRunner.DevGiveGeneral("no_such_general")));
             Assert.True(runner.Apply(s, PlayerActionRunner.DevGiveGeneral("*")));
-            foreach (var id in Kit.D.Generals.Keys) Assert.NotNull(s.FindGeneral(id));
+            foreach (var id in Kit.D.Generals.Keys) if (id != AvatarGeneral.HiredId) Assert.NotNull(s.FindGeneral(id)); // 고용 틀(avatar_hired)은 주지 않는다
+            Assert.Null(s.FindGeneral(AvatarGeneral.HiredId));
             Assert.False(runner.Apply(s, PlayerActionRunner.DevGiveGeneral("*")));
             Assert.True(ActionKinds.IsDev(ActionKinds.DevGrant));
             Assert.False(ActionKinds.IsDev(ActionKinds.MailClaim));

@@ -52,7 +52,7 @@ namespace Game.Tests.Campaign
             Assert.True(flow.ApplyResult(state, plan, BattleSimulation.Run(plan.Setup)).Won);
             long expected = LevelEngine.BattleExp(L, StepDef.Load(Kit.Source, "step01").RewardExp);
             Assert.True(expected > 0);
-            Assert.All(state.Generals, g => Assert.Equal(expected, g.Exp));
+            Assert.All(state.Generals.Where(g => plan.Compositions.Any(c => c.GeneralId == g.GeneralId)), g => Assert.Equal(expected, g.Exp));
         }
     }
 

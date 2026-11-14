@@ -1,9 +1,10 @@
 {
-  "_comment": "새 게임 초기 지급 (임시 값). docs/design/content/formation.md 3장 2026-11-14 군대 개편(army-v2.md): 병사는 병종마다 한 묶음(부대 id = 병종 id), 처음은 십부장 = 군단 1 × 병종 1 (장수 A, 보병 3,000). 장수 3명은 그대로 (출진 1명).",
+  "_comment": "새 게임 초기 지급 (임시 값). docs/design/content/formation.md 3장 2026-11-14 군대 개편(army-v2.md): 병사는 병종마다 한 묶음(부대 id = 병종 id), 처음은 십부장 = 군단 1 × 병종 1 (장수 A, 보병 3,000). 장수 3명은 그대로 (출진 1명). avatar = 닉네임 장수 (hiring-v2.md 2장, 용병으로 등록할 수 있는 유일한 장수).",
   "generals": [
     "general_a",
     "general_b",
-    "general_c"
+    "general_c",
+    "avatar"
   ],
   "units": [
     {

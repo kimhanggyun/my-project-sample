@@ -1,5 +1,5 @@
 {
-  "_comment": "임시 익명 장수. 이름은 strings에서.",
+  "_comment": "임시 익명 장수. 이름은 strings에서. avatar = 닉네임 장수 틀 (hiring-v2.md 2장, 모든 유저 같은 틀 · 이름은 닉네임), avatar_hired = 고용한 남의 닉네임 장수 (내 avatar와 겹치지 않게).",
   "generals": [
     {
       "id": "general_a",
@@ -267,6 +267,48 @@
         "leadership": 0.5,
         "might": 0.3,
         "intellect": 0.8
+      }
+    },
+    {
+      "id": "avatar",
+      "nameKey": "general.avatar",
+      "grade": "advanced",
+      "temperament": "calm",
+      "traits": [],
+      "innateSkills": [
+        "warCry"
+      ],
+      "recruitable": false,
+      "stats": {
+        "leadership": 55,
+        "might": 50,
+        "intellect": 50
+      },
+      "growthRates": {
+        "leadership": 0.5,
+        "might": 0.4,
+        "intellect": 0.4
+      }
+    },
+    {
+      "id": "avatar_hired",
+      "nameKey": "general.avatar_hired",
+      "grade": "advanced",
+      "temperament": "calm",
+      "traits": [],
+      "innateSkills": [
+        "warCry"
+      ],
+      "recruitable": false,
+      "stats": {
+        "leadership": 55,
+        "might": 50,
+        "intellect": 50
+      },
+      "growthRates": {
+        "leadership": 0.5,
+        "might": 0.4,
+        "intellect": 0.4
       }
     }
   ]
