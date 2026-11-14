@@ -43,6 +43,7 @@ namespace Game.Flow
         public const string NoBanner = "noBanner";
         public const string BadCount = "badCount";
         public const string NotEnough = "notEnough";
+        public const string NoFree = "noFree";
 
         private readonly DefinitionSet _defs;
         public GachaService(DefinitionSet defs) { _defs = defs; }
@@ -56,7 +57,33 @@ namespace Game.Flow
             long cost = Cost(b, count);
             if (cost < 0) { r.Reason = BadCount; return r; }
             if (!new Wallet(state.Wallet).TrySpend(b.Currency, cost)) { r.Reason = NotEnough; return r; }
+            return Pull(state, b, count, seed, r);
+        }
 
+        /// <summary>오늘 남은 무료 모집 수 (R-100). 날이 바뀌면 다시 freeDaily.</summary>
+        public static int FreeLeft(CampaignState state, GachaBannerDef b, long nowUnixSeconds)
+        {
+            if (b == null || b.FreeDaily <= 0) return 0;
+            int used = 0;
+            if (state.GachaFreeDay == PracticeService.DayOf(nowUnixSeconds)) state.GachaFreeUsed.TryGetValue(b.Id, out used);
+            return System.Math.Max(0, b.FreeDaily - used);
+        }
+
+        /// <summary>무료 1회 모집 (R-100): 재화 없이 1회 모집과 같게 (천장도 센다), 오늘 남은 무료가 없으면 아무것도 바뀌지 않는다.</summary>
+        public GachaResult DrawFree(CampaignState state, string bannerId, ulong seed, long nowUnixSeconds)
+        {
+            var r = new GachaResult();
+            if (bannerId == null || !_defs.Gacha.Banners.TryGetValue(bannerId, out var b)) { r.Reason = NoBanner; return r; }
+            if (FreeLeft(state, b, nowUnixSeconds) <= 0) { r.Reason = NoFree; return r; }
+            long day = PracticeService.DayOf(nowUnixSeconds);
+            if (state.GachaFreeDay != day) { state.GachaFreeDay = day; state.GachaFreeUsed.Clear(); }
+            state.GachaFreeUsed.TryGetValue(b.Id, out var n);
+            state.GachaFreeUsed[b.Id] = n + 1;
+            return Pull(state, b, 1, seed, r);
+        }
+
+        private GachaResult Pull(CampaignState state, GachaBannerDef b, int count, ulong seed, GachaResult r)
+        {
             var rng = new SeededRandom(seed);
             var guarantee = b.TenGuarantee == null ? null : _defs.Gacha.Grade(b.TenGuarantee);
             var pityGrade = b.PityGrade == null ? null : _defs.Gacha.Grade(b.PityGrade);

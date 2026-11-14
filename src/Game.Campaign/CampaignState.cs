@@ -37,6 +37,9 @@ namespace Game.Campaign
         public Dictionary<string, long> GeneralShards { get; set; } = new Dictionary<string, long>();
         /// <summary>연습 대결 횟수를 센 날 (서버 시각 unix 일)과 그날 횟수 (R-59). 예전 세이브는 0.</summary>
         public long PracticeDay { get; set; }
+        /// <summary>무료 모집을 센 날 (서버 시각 unix 일)과 그날 모집 id → 쓴 수 (R-100). 예전 세이브는 0 · 빈 것.</summary>
+        public long GachaFreeDay { get; set; }
+        public Dictionary<string, int> GachaFreeUsed { get; set; } = new Dictionary<string, int>();
         public int PracticeCount { get; set; }
         /// <summary>본 처음 안내 id (R-62). 세이브에 남아 서버·다른 기기에서도 다시 나오지 않는다.</summary>
         public List<string> SeenGuides { get; set; } = new List<string>();
