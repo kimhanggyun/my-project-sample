@@ -142,9 +142,9 @@ namespace Game.Unity.Boot
         public GameScreen CurrentScreen => _current;
 
         /// <summary>개발용: 확인 목록을 버튼을 눌러 가며 해 보고 캡처·기록을 남긴다 (<see cref="PlayTestTour"/>).</summary>
-        public PlayTestTour StartPlayTest(string folder)
+        public PlayTestTour StartPlayTest(string folder, bool battleOnly = false)
         {
-            var tour = new PlayTestTour(this, folder);
+            var tour = new PlayTestTour(this, folder, battleOnly);
             StartCoroutine(tour.Run());
             return tour;
         }
