@@ -460,6 +460,10 @@ namespace Game.Flow
             done?.Invoke(new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n });
         }
 
+        /// <summary>가짜 서버: 삭제 요청만 받아 둔다 (유예 · 영구 삭제는 진짜 서버, R-102).</summary>
+        public void DeleteAccount(Action<DeleteAccountResponse> done) =>
+            done?.Invoke(new DeleteAccountResponse { Ok = true, PurgeAtUnixSeconds = _time.UtcNow.ToUnixTimeSeconds() + AccountDeletion.GraceSeconds });
+
         public void GetNames(IReadOnlyCollection<string> ids, Action<NamesResponse> done)
         {
             var r = new NamesResponse();

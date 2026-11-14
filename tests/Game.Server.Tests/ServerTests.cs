@@ -379,6 +379,43 @@ namespace Game.Server.Tests
             Assert.False(names.Names.ContainsKey(bMe.AccountId)); // b는 아직 없음
         }
 
+        [Fact(DisplayName = "R-102 계정 삭제: 요청하면 7일 뒤 삭제 시각, 그 안에 다시 들어오면(/me) 취소")]
+        public async Task DeleteAccountCancel()
+        {
+            var a = await SignedIn();
+            var del = await Read<DeleteAccountResponse>(await a.PostAsync(OnlineRoutes.MyDelete, null));
+            Assert.True(del.Ok);
+            var now = await Read<ServerTimeResponse>(await a.GetAsync(OnlineRoutes.Time));
+            Assert.InRange(del.PurgeAtUnixSeconds - now.UnixSeconds, AccountDeletion.GraceSeconds - 5, AccountDeletion.GraceSeconds);
+            var me = await Read<ProfileResponse>(await a.GetAsync(OnlineRoutes.Me));
+            Assert.True(me.DeletionCancelled);
+            Assert.False((await Read<ProfileResponse>(await a.GetAsync(OnlineRoutes.Me))).DeletionCancelled);
+        }
+
+        [Fact(DisplayName = "R-102 계정 삭제: 유예가 지나면 토큰 · 닉네임 · 세이브 · 고용 등록이 모두 지워진다, 취소한 계정은 남는다")]
+        public void DeleteAccountPurge()
+        {
+            var store = new InMemoryStore();
+            var gone = store.CreateGuest();
+            var kept = store.CreateGuest();
+            Assert.True(store.SetNickname(gone.AccountId, "Gone" + System.Guid.NewGuid().ToString("N").Substring(0, 4)).Ok);
+            store.PutSave("g", gone.AccountId, 0, "{}", 10);
+            store.UpsertListing("g", new HireListing { OwnerAccountId = gone.AccountId, Kind = HireKinds.General, SourceId = "avatar" });
+            long t = 1_000_000;
+            Assert.Equal(t + AccountDeletion.GraceSeconds, store.RequestDeletion(gone.AccountId, t));
+            Assert.Equal(t + AccountDeletion.GraceSeconds, store.RequestDeletion(gone.AccountId, t + 50)); // 다시 눌러도 처음 시각
+            store.RequestDeletion(kept.AccountId, t);
+            Assert.True(store.CancelDeletion(kept.AccountId));
+            Assert.Equal(0, store.PurgeDeleted(t + AccountDeletion.GraceSeconds - 1));
+            Assert.Equal(gone.AccountId, store.AccountOf(gone.Token));
+            Assert.Equal(1, store.PurgeDeleted(t + AccountDeletion.GraceSeconds));
+            Assert.Null(store.AccountOf(gone.Token));
+            Assert.Null(store.NicknameOf(gone.AccountId));
+            Assert.Empty(store.Listings("g", null).FindAll(l => l.OwnerAccountId == gone.AccountId));
+            Assert.Equal(0, store.GetSave("g", gone.AccountId)?.Revision ?? 0);
+            Assert.Equal(kept.AccountId, store.AccountOf(kept.Token));
+        }
+
         /// <summary>기기 쪽: 서버 세이브로 출진 준비 → 전투 → 제출 메시지.</summary>
         private static (BattleSubmission sub, BattleResult result) PlayOnDevice(CloudSave save, ulong seed, bool tamper = false)
         {

@@ -35,6 +35,8 @@ namespace Game.Online
         /// <summary>내 계정 (GET), 닉네임 정하기 (POST /v1/me/nickname).</summary>
         public const string Me = "/v1/me";
         public const string MyNickname = "/v1/me/nickname";
+        /// <summary>계정 삭제 요청 (15 시안, R-102): 7일 유예, 그 안에 다시 로그인하면 취소.</summary>
+        public const string MyDelete = "/v1/me/delete";
         /// <summary>계정 id들 → 닉네임 (GET ?ids=a,b,c).</summary>
         public static string Names(IEnumerable<string> ids) => "/v1/accounts/names?ids=" + Uri.EscapeDataString(string.Join(",", ids));
         public static string ResolveApp(string appId) => "/v1/games/resolve?app=" + Uri.EscapeDataString(appId ?? "");
@@ -94,6 +96,21 @@ namespace Game.Online
         public string Nickname { get; set; }
         /// <summary>마스터 계정이면 true (R-86: 개발 행동 dev.*을 서버가 받아 준다).</summary>
         public bool IsMaster { get; set; }
+        /// <summary>삭제 요청 중이던 계정이 다시 들어와 삭제가 취소되었다 (R-102).</summary>
+        public bool DeletionCancelled { get; set; }
+    }
+
+    /// <summary>계정 삭제 (15 시안, R-102): 요청하면 유예 뒤 영구 삭제, 유예 안에 다시 로그인하면 취소.</summary>
+    public static class AccountDeletion
+    {
+        public const long GraceSeconds = 7 * 86400;
+    }
+
+    public sealed class DeleteAccountResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary>이 시각이 지나면 영구 삭제 (그 전에 다시 로그인하면 취소).</summary>
+        public long PurgeAtUnixSeconds { get; set; }
     }
 
     public sealed class NicknameRequest
@@ -747,6 +764,8 @@ namespace Game.Online
         // ---- 계정 (닿지 않으면 null) ----
         void GetProfile(Action<ProfileResponse> done);
         void SetNickname(string nickname, Action<NicknameResponse> done);
+        /// <summary>계정 삭제 요청 (R-102). 닿지 않으면 null.</summary>
+        void DeleteAccount(Action<DeleteAccountResponse> done);
         /// <summary>계정 id들 → 닉네임.</summary>
         void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done);
 
@@ -785,6 +804,7 @@ namespace Game.Online
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
+        public void DeleteAccount(Action<DeleteAccountResponse> done) => done?.Invoke(null);
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);

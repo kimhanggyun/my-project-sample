@@ -60,8 +60,14 @@ app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
     return code == null ? Results.NotFound() : Json(new ResolveAppResponse { Game = code });
 });
 // 계정 (공통): 닉네임
+// 내 계정: 들어오면 삭제 요청을 취소한다 (R-102, 7일 유예 안에 다시 로그인)
 app.MapGet(OnlineRoutes.Me, (HttpRequest req, IPlatformStore p, MasterAccounts masters) =>
-    Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id) })));
+{
+    p.PurgeDeleted(Now());
+    return Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id), DeletionCancelled = p.CancelDeletion(id) }));
+});
+app.MapPost(OnlineRoutes.MyDelete, (HttpRequest req, IPlatformStore p) =>
+    Authed(req, p, id => Json(new DeleteAccountResponse { Ok = true, PurgeAtUnixSeconds = p.RequestDeletion(id, Now()) })));
 app.MapPost(OnlineRoutes.MyNickname, async (HttpRequest req, IPlatformStore p) =>
 {
     var body = await Body<NicknameRequest>(req);

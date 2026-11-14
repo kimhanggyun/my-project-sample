@@ -202,6 +202,9 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.MyNickname, OnlineJson.Write(new NicknameRequest { Nickname = nickname }), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<NicknameResponse>(body) : null));
 
+        public void DeleteAccount(Action<DeleteAccountResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.MyDelete, null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<DeleteAccountResponse>(body) : null));
+
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Names(accountIds), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<NamesResponse>(body) : null));
 

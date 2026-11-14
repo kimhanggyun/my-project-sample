@@ -3,6 +3,7 @@
   "steps": ["splash", "versionCheck", "signIn", "terms", "title"],
   "splashSeconds": 1.5,
   "termsVersion": 1,
+  "links": { "terms": "", "privacy": "", "locationTerms": "", "contact": "" },
   "signIn": [
     { "id": "google", "nameKey": "ui.signIn.google", "status": "active" },
     { "id": "apple", "nameKey": "ui.signIn.apple", "status": "tobe" },
