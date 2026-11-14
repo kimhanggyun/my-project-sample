@@ -446,6 +446,9 @@ namespace Game.Unity.Boot
         /// <summary>내 지역에 지금 기본 편성을 수비 편성으로 등록 (서버 세이브 기준, R-48).</summary>
         public void RegisterDefense(string regionId, Action<DefenseResponse> done) => Online.RegisterDefense(new DefenseRequest { RegionId = regionId }, done);
 
+        /// <summary>깃발 꽂기 (R-96).</summary>
+        public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => Online.PlantFlag(request, done);
+
         /// <summary>우편 받기 = 행동 mail.claim (서버가 우편이 있는지 확인하고 같은 규칙으로 더한다).</summary>
         public bool ClaimMail(Mail mail)
         {
