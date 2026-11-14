@@ -82,6 +82,10 @@ namespace Game.Flow
         public bool FirstClear { get; internal set; }
         public List<UnitReport> Units { get; } = new List<UnitReport>();
         public long SupplyReturned { get; internal set; }
+        /// <summary>배신한 용병 장수 (R-99).</summary>
+        public List<string> Betrayed { get; } = new List<string>();
+        /// <summary>배신으로 돌려받은 고용비 (자원 → 양).</summary>
+        public Dictionary<string, long> Refunded { get; } = new Dictionary<string, long>();
         public long SupplyCaptured { get; internal set; }
         public Dictionary<string, string> Injuries { get; } = new Dictionary<string, string>();
         public List<string> CapturedOwn { get; } = new List<string>();
@@ -260,6 +264,8 @@ namespace Game.Flow
                     SlotRow = comp.BoardRow,
                     SlotCol = comp.BoardCol,
                     Controller = Controllers.Player,
+                    // 용병 배신 (R-99): 이 전투 수비 주인의 용병(닉네임 장수)이면 첫 교전 직후 적 편으로
+                    BetrayToTeam = hired != null && request.Defense?.OwnerAccountId != null && hired.GeneralOwners.TryGetValue(comp.GeneralId, out var hireOwner) && hireOwner == request.Defense.OwnerAccountId ? EnemyTeam : null,
                     General = Snapshot(g),
                     Formation = comp.Formation,
                     KnownFormations = new List<string>(state.LearnedFormations),
@@ -501,6 +507,18 @@ namespace Game.Flow
                     report.CapturedOwn.Add(cap.GeneralId);
                 }
             }
+
+            // 배신한 용병 (R-99): 그 등록자 몫 고용비를 돌려받는다
+            if (plan.Hired != null)
+                foreach (var ev in result.Events)
+                {
+                    if (ev.Kind != Game.Battle.Model.Events.EventKinds.Betrayed) continue;
+                    var bc = plan.Setup.Corps.Find(c => c.Id == ev.CorpsId);
+                    if (bc?.General == null || !plan.Hired.GeneralOwners.TryGetValue(bc.General.Id, out var owner) || !plan.Hired.BetrayedOwners.Add(owner)) continue;
+                    foreach (var ch in plan.Hired.Charges)
+                        if (ch.OwnerAccountId == owner) { wallet.Add(ch.Resource, ch.Cost); report.Refunded.TryGetValue(ch.Resource, out var r0); report.Refunded[ch.Resource] = r0 + ch.Cost; }
+                    report.Betrayed.Add(bc.General.Id);
+                }
 
             RecordContests(state, result, report);
             BattleRecords.Record(state, plan.PlayerCorps, result);

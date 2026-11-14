@@ -26,6 +26,7 @@ namespace Game.Flow
         {
             if (defense == null || !owners.TryGetValue(regionId ?? "", out var o) || o.OwnerAccountId != accountId) return null;
             defense.Version = (o.Defense?.Version ?? 0) + 1;
+            defense.OwnerAccountId = accountId;
             defense.RegisteredAtUnixSeconds = at;
             o.Defense = defense;
             return defense;

@@ -183,6 +183,8 @@ namespace Game.Battle.Model.Simulation
         public string AdvanceRole { get; set; }
         /// <summary>"player" 또는 "ai".</summary>
         public string Controller { get; set; } = Controllers.Ai;
+        /// <summary>용병 배신 (R-99): 지금 편이 처음 교전하면 이 편으로 돌아선다. 없으면 null.</summary>
+        public string BetrayToTeam { get; set; }
         /// <summary>AI 성향 id (<see cref="Ai.AiStanceIds"/>).</summary>
         public string AiStance { get; set; } = Ai.AiStanceIds.Aggressive;
         /// <summary>AI 난이도 id (ai.json). 판단의 질만 바꾼다.</summary>

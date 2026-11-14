@@ -82,7 +82,7 @@ namespace Game.Battle.Model.Simulation
         {
             if (IsOver || command == null) return false;
             var corps = Context.FindCorps(command.CorpsId);
-            if (corps == null || corps.Setup.Controller != Controllers.Player || corps.Status != CorpsStatus.Active) return false;
+            if (corps == null || corps.Controller != Controllers.Player || corps.Status != CorpsStatus.Active) return false;
             if (corps.HasStatus(StatusIds.Taunted)) return false; // 도발당한 동안은 명령을 받지 않는다
             if (corps.DuelWith != null && command.Kind != Commands.CommandKinds.DuelChoices) return false; // 일기토 중 (R-71)
             if (!_ext.Commands.TryGet(command.Kind, out var handler)) return false;
@@ -149,6 +149,7 @@ namespace Game.Battle.Model.Simulation
             Skills.PalisadeSystem.Step(ctx); // 목책이 불타면 무너짐 (R-83)
             Skills.Floods.Step(ctx); // 물 → 진흙 → 마름 (R-84)
             _combat.Step(ctx, _calculator);
+            BetrayalSystem.Step(ctx); // 첫 교전 직후 용병 배신 (R-99)
             SupplySystem.Step(ctx);
             MoraleSystem.Step(ctx);
             StatusSystem.Tick(ctx);

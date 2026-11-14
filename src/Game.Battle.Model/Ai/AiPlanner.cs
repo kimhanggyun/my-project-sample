@@ -172,7 +172,7 @@ namespace Game.Battle.Model.Ai
         public string EffectType => "taunt";
         public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
         {
-            if (c.Setup.AiStance == AiStanceIds.Aggressive) return (0, null);
+            if (c.AiStance == AiStanceIds.Aggressive) return (0, null);
             var e = ctx.NearestEnemy(c);
             if (e == null || e.HasStatus(StatusIds.Taunted)) return (0, null);
             Fix r = s.Range ?? Fix.Zero;
@@ -365,7 +365,7 @@ namespace Game.Battle.Model.Ai
         public string EffectType => "decoy";
         public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
         {
-            if (c.Setup.AiStance == AiStanceIds.Aggressive || ctx.NearestEnemy(c) != null) return (0, null);
+            if (c.AiStance == AiStanceIds.Aggressive || ctx.NearestEnemy(c) != null) return (0, null);
             var f = ctx.Forward(c);
             var side = new Vec(f.Y, Fix.Zero - f.X);
             var p = ctx.ClampToField(c.Anchor + side * Fix.FromInt(4) + f * Fix.FromInt(2));
@@ -501,7 +501,7 @@ namespace Game.Battle.Model.Ai
         public string EffectType => "palisade";
         public (int, BattleCommand) Evaluate(BattleContext ctx, CorpsState c, SkillDef s, AiDifficultyDef d)
         {
-            if (c.Setup.AiStance == AiStanceIds.Aggressive || c.Engaged || c.MeleeContact) return (0, null);
+            if (c.AiStance == AiStanceIds.Aggressive || c.Engaged || c.MeleeContact) return (0, null);
             var e = ctx.NearestEnemy(c);
             if (e == null) return (0, null);
             var gap = e.Anchor - c.Anchor;
