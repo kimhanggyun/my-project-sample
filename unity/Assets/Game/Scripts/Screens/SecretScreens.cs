@@ -125,7 +125,7 @@ namespace Game.Unity.Screens
             {
                 int n = 0, f = 0;
                 foreach (var e in codex) if (e.Category == c) { n++; if (e.Found) f++; }
-                chips.Add((c, CatIcon(c) + " " + f + "/" + n));
+                chips.Add((c, T("ui.codex.cat." + c) + " " + f + "/" + n));
             }
             Ui.SegmentTabs(header, chips, _cat, id => { _cat = id; App.Show(new CodexScreen()); }, 62, 150);
 
@@ -142,14 +142,16 @@ namespace Game.Unity.Screens
                 var tile = Ui.Card(row, def.Id, 12, 4);
                 Ui.Size(tile, 340, -1, -1, 1);
                 tile.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
-                Ui.Label(tile, Ui.Colored(CatIcon(e.Category), Palette.TextDim), 22, TextAnchor.MiddleLeft);
+                Ui.Label(tile, Ui.Colored(CatIcon(e.Category), Palette.TextDim), 22, TextAnchor.MiddleLeft).font = Ui.TitleFont;
                 var stamp = Ui.Rect(tile, "Stamp");
                 Ui.Size(stamp, 130, 130);
                 string id = def.Id;
                 if (e.Found)
                 {
                     Ui.Background(stamp, Seal).sprite = UiShapes.Circle;
-                    Ui.Fill(Ui.Label(stamp, def.RewardSkill != null ? "技" : "性", 56, TextAnchor.MiddleCenter, Color.white).rectTransform);
+                    var seal = Ui.Label(stamp, def.RewardSkill != null ? "技" : "性", 56, TextAnchor.MiddleCenter, Color.white);
+                    seal.font = Ui.TitleFont;
+                    Ui.Fill(seal.rectTransform);
                     Ui.Label(tile, SecretText.Name(Ctx, id), 24, TextAnchor.MiddleCenter);
                     Ui.Tag(tile, T(def.RewardSkill != null ? "ui.codex.skill" : "ui.codex.trait"), Palette.Ally, 18, 34);
                     tile.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new CodexScreen(null, id)));
@@ -185,11 +187,13 @@ namespace Game.Unity.Screens
             var stamp = Ui.Rect(card, "Stamp");
             Ui.Size(stamp, 230, 230);
             Ui.Background(stamp, Seal).sprite = UiShapes.Circle;
-            Ui.Fill(Ui.Label(stamp, def.RewardSkill != null ? "技" : "性", 100, TextAnchor.MiddleCenter, Color.white).rectTransform);
+            var bigSeal = Ui.Label(stamp, def.RewardSkill != null ? "技" : "性", 100, TextAnchor.MiddleCenter, Color.white);
+            bigSeal.font = Ui.TitleFont;
+            Ui.Fill(bigSeal.rectTransform);
             Ui.Label(card, SecretText.Name(Ctx, def.Id), Ui.FontTitle - 14, TextAnchor.MiddleCenter);
             var tags = Ui.Row(card, "Tags", 48, 8);
             Ui.Spacer(tags, 0, 1);
-            Ui.Size(Ui.Tag(tags, CatIcon(def.Category) + " " + T("ui.codex.cat." + def.Category), Palette.TextDim, 20, 44), width: 180);
+            Ui.Size(Ui.Tag(tags, T("ui.codex.cat." + def.Category), Palette.TextDim, 20, 44), width: 180);
             var find = entry.Find;
             if (find?.StepId != null) Ui.Size(Ui.Tag(tags, T("step." + find.StepId + ".name"), Palette.Ally, 20, 44), width: 260);
             if (find != null && find.AtUnixSeconds > 0) Ui.Size(Ui.Tag(tags, System.DateTimeOffset.FromUnixTimeSeconds(find.AtUnixSeconds).ToLocalTime().ToString("yyyy.MM.dd"), Palette.TextDim, 20, 44), width: 200);

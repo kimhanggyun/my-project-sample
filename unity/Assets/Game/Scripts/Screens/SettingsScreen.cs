@@ -76,7 +76,9 @@ namespace Game.Unity.Screens
             var dot = Ui.Rect(row, "Icon");
             Ui.Size(dot, 56, 56);
             Ui.Background(dot, new Color(0.9f, 0.86f, 0.78f)).sprite = UiShapes.Circle;
-            Ui.Fill(Ui.Label(dot, icon, 26, TextAnchor.MiddleCenter, Palette.Text).rectTransform);
+            var glyph = Ui.Label(dot, icon, 26, TextAnchor.MiddleCenter, Palette.Text);
+            glyph.font = Ui.TitleFont; // 한자 아이콘은 제목 글꼴(본명조)에 있다
+            Ui.Fill(glyph.rectTransform);
             var col = Ui.Rect(row, "Name");
             Ui.Size(col, flexibleWidth: 1);
             Ui.Column(col, 0, 0).childAlignment = TextAnchor.MiddleLeft;
@@ -130,12 +132,12 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Tag(signIn, method == "guest" ? T("ui.settings.guest") : T("ui.settings.linked"), method == "guest" ? Palette.TextDim : Palette.Good, 20, 44), width: 160);
             if (Ctx.OnlineEnabled && Ctx.AccountId != null)
             {
-                var id = Line(card, "#", T("ui.settings.accountId"), Ctx.AccountId);
+                var id = Line(card, "番", T("ui.settings.accountId"), Ctx.AccountId);
                 Arrow(id, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Ctx.AccountId; App.Show(new SettingsScreen(T("ui.settings.copied"))); });
             }
-            var logout = Line(card, "⇥", T("ui.settings.logout"));
+            var logout = Line(card, "出", T("ui.settings.logout"));
             Arrow(logout, "›", () => Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutBody"), T("ui.settings.logout"), () => { Ctx.SignOut(); App.Reboot(); }, (T("ui.common.cancel"), () => { })));
-            var del = Line(card, "✕", T("ui.settings.deleteAccount"), T("ui.settings.irreversible"), Palette.Bad);
+            var del = Line(card, "削", T("ui.settings.deleteAccount"), T("ui.settings.irreversible"), Palette.Bad);
             Arrow(del, "›", DeleteDialog, Ctx.OnlineEnabled);
         }
 
@@ -185,7 +187,7 @@ namespace Game.Unity.Screens
             foreach (var id in Ctx.Defs.Ai.SettingShift.Keys) levels.Add((id, T("ui.difficulty." + id)));
             Ui.Size(Ui.SegmentTabs(diff, levels, current, id => { Ctx.Do(Game.Flow.PlayerActionRunner.SetDifficulty(id)); App.Show(new SettingsScreen()); }, 56, 120), width: 420);
             Ui.Label(card, T("ui.settings.difficultyNote." + current), 20, TextAnchor.MiddleLeft, Palette.TextDim);
-            var speed = Line(card, "»", T("ui.settings.battleSpeed"));
+            var speed = Line(card, "速", T("ui.settings.battleSpeed"));
             Ui.Size(Ui.SegmentTabs(speed, new[] { ("1", "×1"), ("2", "×2"), ("4", "×4") }, Ctx.DefaultBattleSpeed.ToString(), id => { Ctx.SetDefaultBattleSpeed(int.Parse(id)); App.Show(new SettingsScreen()); }, 56, 110), width: 380);
         }
 
@@ -193,16 +195,18 @@ namespace Game.Unity.Screens
         private void BuildSound(RectTransform body)
         {
             var card = Section(body, "sound");
-            Volume(card, "♪", T("ui.settings.bgm"), Ctx.BgmVolume, Ctx.SetBgmVolume);
-            Volume(card, "♬", T("ui.settings.sfx"), Ctx.SfxVolume, v => { Ctx.SetSfxVolume(v); Sfx.Play("click"); });
+            Volume(card, "樂", T("ui.settings.bgm"), Ctx.BgmVolume, Ctx.SetBgmVolume);
+            Volume(card, "音", T("ui.settings.sfx"), Ctx.SfxVolume, v => { Ctx.SetSfxVolume(v); Sfx.Play("click"); });
         }
 
         /// <summary>막대 조절: 아이콘 = 음소거, − 막대 + , 값.</summary>
         private void Volume(RectTransform card, string icon, string name, int value, System.Action<int> set)
         {
             var row = Ui.Row(card, name, 80, 10);
-            var mute = Ui.Button(row, value == 0 ? "✕" : icon, () => { set(value == 0 ? 100 : 0); App.Show(new SettingsScreen()); }, 64, value == 0 ? Palette.Card : (Color?)null, 28);
+            var mute = Ui.Button(row, icon, () => { set(value == 0 ? 100 : 0); App.Show(new SettingsScreen()); }, 64, value == 0 ? Palette.Card : (Color?)null, 28);
             Ui.Size(mute, width: 70);
+            var muteText = mute.GetComponentInChildren<Text>();
+            if (muteText != null) { muteText.font = Ui.TitleFont; if (value == 0) muteText.color = Palette.TextDim; }
             Ui.Size(Ui.Label(row, name, 26), width: 140);
             Ui.Size(Ui.Button(row, "−", () => { set(value - 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             var g = Ui.Gauge(row, Palette.Ally, 22);
@@ -231,7 +235,7 @@ namespace Game.Unity.Screens
         {
             var card = Section(body, "location");
             bool available = Ctx.Location != null && Ctx.Location.IsAvailable;
-            var row = Line(card, "⌖", T("ui.settings.locationPerm"), T("ui.settings.locationSub"));
+            var row = Line(card, "地", T("ui.settings.locationPerm"), T("ui.settings.locationSub"));
             Ui.Size(Ui.Tag(row, T(available ? "ui.settings.allowed" : "ui.settings.off"), available ? Palette.Good : Palette.TextDim, 20, 44), width: 150);
         }
 
@@ -244,7 +248,7 @@ namespace Game.Unity.Screens
             var ad = Line(card, "広", T("ui.settings.adFree"));
             if (adFree) Ui.Size(Ui.Tag(ad, T("ui.settings.inUse"), Palette.Good, 20, 44), width: 160);
             else Arrow(ad, T("ui.settings.toShop"), () => App.ShowMain("shop"));
-            var restore = Line(card, "↺", T("ui.settings.restore"));
+            var restore = Line(card, "復", T("ui.settings.restore"));
             Arrow(restore, "›", () =>
             {
                 if (Ctx.Store == null) return;
@@ -256,7 +260,7 @@ namespace Game.Unity.Screens
         private void BuildHelp(RectTransform body)
         {
             var card = Section(body, "help");
-            var guides = Line(card, "?", T("ui.settings.guidesAgain"));
+            var guides = Line(card, "導", T("ui.settings.guidesAgain"));
             Arrow(guides, "›", () =>
             {
                 bool ok = Ctx.Do(Game.Flow.PlayerActionRunner.ResetGuides());
@@ -266,14 +270,14 @@ namespace Game.Unity.Screens
             {
                 string key = k;
                 Ctx.Startup.Links.TryGetValue(key, out var url);
-                var row = Line(card, key == "contact" ? "✉" : "§", T("ui.settings." + key));
+                var row = Line(card, key == "contact" ? "問" : "約", T("ui.settings." + key));
                 Arrow(row, string.IsNullOrEmpty(url) ? T("ui.settings.soon") : "›", () =>
                 {
                     if (key == "contact" && Ctx.AccountId != null) GUIUtility.systemCopyBuffer = Ctx.AccountId; // 문의에 계정 번호가 같이 가게
                     Application.OpenURL(url);
                 }, !string.IsNullOrEmpty(url));
             }
-            var ver = Line(card, "v", T("ui.settings.versionLine"));
+            var ver = Line(card, "版", T("ui.settings.versionLine"));
             Ui.Size(Ui.Label(ver, Application.version, 24, TextAnchor.MiddleRight, Palette.TextDim), width: 200);
         }
 
@@ -304,7 +308,7 @@ namespace Game.Unity.Screens
                 Ui.Button(styles, T(kv.Value), () => { Ctx.SetStyleOverride(id); App.Reboot(); }, 80, id == UiStyle.Current ? Palette.ButtonActive : (Color?)null, 24);
             }
 
-            var save = Line(card, "▣", T("ui.settings.savePath"), Application.persistentDataPath);
+            var save = Line(card, "存", T("ui.settings.savePath"), Application.persistentDataPath);
             Arrow(save, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Application.persistentDataPath; App.Show(new SettingsScreen(T("ui.settings.copied"))); });
             foreach (var kv in Ctx.ServiceChoices) Ui.Label(card, kv.Key + ": " + kv.Value, 20, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Button(card, T("ui.settings.reset"), OnReset, 80, Palette.Danger, 26);

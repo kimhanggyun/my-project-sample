@@ -5,6 +5,7 @@ using Game.Flow;
 using Game.Unity.Boot;
 using Game.Unity.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.Unity.Screens
 {
@@ -393,91 +394,332 @@ namespace Game.Unity.Screens
     }
 
     /// <summary>
-    /// 전투 전 대사 (story.md 1.3): data/Dialogue/&lt;스텝&gt;.json의 before를 한 줄씩 [다음], [건너뛰기]로 바로 전투.
-    /// 대사 파일이 없으면 예전 한 줄 대사(키)를 쓴다. 끝나면 대결(직접 지휘일 때) 또는 전투.
+    /// 전투 전 대사 (story.md 1.3, 17 시안): data/Dialogue/&lt;스텝&gt;.json의 before. 대사 파일이 없으면 예전 한 줄 대사(키).
+    /// 끝나면(또는 건너뛰면) 대결(직접 지휘일 때) 또는 전투. 첫 장면에 장 표시.
     /// </summary>
-    public sealed class DialogueScreen : GameScreen
+    public sealed class DialogueScreen : DialogueScene
     {
         private readonly SortiePlan _plan;
         private readonly string _lineKey;
         private readonly bool _playContests;
-        private readonly int _index;
 
         /// <param name="playContests">전투 직전 대결(일기토·논쟁)을 직접 고를지 (직접 지휘). 아니면 AI가 고른다.</param>
-        public DialogueScreen(SortiePlan plan, string lineKey, bool playContests = false, int index = 0) { _plan = plan; _lineKey = lineKey; _playContests = playContests; _index = index; }
+        public DialogueScreen(SortiePlan plan, string lineKey, bool playContests = false, int index = 0) { _plan = plan; _lineKey = lineKey; _playContests = playContests; }
 
-        public override void Build()
+        protected override StepDef Step => _plan.Step;
+        protected override bool ShowChapter => true;
+
+        protected override List<DialogueLine> Lines()
         {
-            var lines = DialogueScript.Load(Ctx.Data, _plan.Step.Id).Before;
-            string speaker, text;
-            int count = lines.Count;
-            if (count > 0)
-            {
-                var l = lines[System.Math.Min(_index, count - 1)];
-                speaker = l.Speaker != null ? Ctx.GeneralName(l.Speaker) : "";
-                text = T(l.Key);
-            }
-            else
-            {
-                speaker = _plan.Setup.Corps.Count > 0 && _plan.Setup.Corps[0].General != null ? Ctx.GeneralName(_plan.Setup.Corps[0].General.Id) : "";
-                text = Ctx.Defs.Strings.ContainsKey(_lineKey) ? T(_lineKey) : "…";
-            }
-            bool last = count == 0 || _index >= count - 1;
-            DialogueView.Show(Ctx, Root, T(_plan.Step.NameKey), speaker, text,
-                last ? null : (System.Action)(() => App.Show(new DialogueScreen(_plan, _lineKey, _playContests, _index + 1))),
-                Begin, last ? (_playContests && _plan.Setup.Contests.Count > 0 ? T("ui.contest.challenge") : T("ui.dialogue.next")) : null);
+            var lines = new List<DialogueLine>(DialogueScript.Load(Ctx.Data, _plan.Step.Id).Before);
+            if (lines.Count > 0) return lines;
+            string speaker = _plan.Setup.Corps.Count > 0 && _plan.Setup.Corps[0].General != null ? _plan.Setup.Corps[0].General.Id : null;
+            return new List<DialogueLine> { DialogueScript.Line(speaker, Ctx.Defs.Strings.ContainsKey(_lineKey ?? "") ? _lineKey : null) };
         }
 
-        private void Begin()
+        protected override void Finish()
         {
             bool contest = _playContests && _plan.Setup.Contests.Count > 0;
             App.Show(contest ? (GameScreen)new ContestScreen(_plan, 0) : new BattleScreen(_plan));
         }
     }
 
-    /// <summary>전투 뒤 대사 (이긴 스텝의 after). 끝나면(또는 건너뛰면) 스토리 탭.</summary>
-    public sealed class AfterDialogueScreen : GameScreen
+    /// <summary>전투 뒤 대사 (이긴 스텝의 after, 17 시안). 끝나면(또는 건너뛰면) 스토리 탭.</summary>
+    public sealed class AfterDialogueScreen : DialogueScene
     {
         private readonly string _stepId;
-        private readonly int _index;
-        public AfterDialogueScreen(string stepId, int index = 0) { _stepId = stepId; _index = index; }
+        private StepDef _step;
+        public AfterDialogueScreen(string stepId, int index = 0) { _stepId = stepId; }
 
         public static bool Has(GameContext ctx, string stepId) => DialogueScript.Load(ctx.Data, stepId).After.Count > 0;
 
-        public override void Build()
-        {
-            var lines = DialogueScript.Load(Ctx.Data, _stepId).After;
-            if (lines.Count == 0) { App.ShowMain("story"); return; }
-            var l = lines[System.Math.Min(_index, lines.Count - 1)];
-            bool last = _index >= lines.Count - 1;
-            var step = Ctx.Flow.LoadStep(_stepId);
-            DialogueView.Show(Ctx, Root, T(step.NameKey), l.Speaker != null ? Ctx.GeneralName(l.Speaker) : "", T(l.Key),
-                last ? null : (System.Action)(() => App.Show(new AfterDialogueScreen(_stepId, _index + 1))),
-                () => App.ShowMain("story"), last ? T("ui.result.toStory") : null);
-        }
+        protected override StepDef Step => _step ?? (_step = Ctx.Flow.LoadStep(_stepId));
+        protected override List<DialogueLine> Lines() => new List<DialogueLine>(DialogueScript.Load(Ctx.Data, _stepId).After);
+        protected override void Finish() => App.ShowMain("story");
     }
 
-    /// <summary>대사 한 장 그리기: 스텝 이름, 말하는 사람, 문구, [다음] 또는 마지막 버튼, [건너뛰기].</summary>
-    internal static class DialogueView
+    /// <summary>
+    /// 대화 장면 (17 시안): 배경(스텝 지형 수묵 자리 · 없으면 한지) · 반신 초상 좌우(아군 왼쪽 · 적 오른쪽, 말하는 쪽 밝게, 지금은 큰 원 초상) ·
+    /// 아래 대사 상자(이름표 편 색 · 글자 한 자씩 · n / 전체 · ▼) · 오른쪽 위 [자동] [기록] [건너뛰기] · 아무 데나 누르면 다음 · 장 표시 · 대화 기록 판.
+    /// 시간 값은 data/Ui/dialogue.json (화면 연출만).
+    /// </summary>
+    public abstract class DialogueScene : GameScreen
     {
-        /// <param name="next">다음 줄 (마지막이면 null).</param>
-        /// <param name="finish">끝 / 건너뛰기.</param>
-        /// <param name="finishLabel">마지막 줄의 버튼 문구 (마지막이 아니면 null).</param>
-        public static void Show(GameContext ctx, RectTransform root, string title, string speaker, string text, System.Action next, System.Action finish, string finishLabel)
+        private static bool _auto;
+
+        protected abstract StepDef Step { get; }
+        protected abstract List<DialogueLine> Lines();
+        protected abstract void Finish();
+        protected virtual bool ShowChapter => false;
+
+        private List<DialogueLine> _lines;
+        private int _index;
+        private float _chars, _wait, _chapterLeft;
+        private string _full = "";
+        private bool _done;
+        private Text _text, _name, _progress, _more;
+        private Image _nameTag, _autoBg;
+        private CanvasGroup _left, _right;
+        private Portrait _leftPic, _rightPic;
+        private RectTransform _chapter, _log;
+        private float _cps = 40f, _autoBase = 1.2f, _autoPerChar = 0.05f, _chapterSeconds = 2.5f;
+
+        public override void Build()
         {
-            Ui.Column(root, 24, 48).childAlignment = TextAnchor.LowerCenter;
-            Ui.Size(Ui.Label(root, title, Ui.FontTitle, TextAnchor.MiddleCenter), 200);
-            Ui.Size(Ui.Label(root, "", Ui.FontBody), flexibleHeight: 1);
-            var box = Ui.Card(root, "Box", 40, 16);
-            Ui.Label(box, Ui.Colored(speaker, Palette.Ally), Ui.FontBody);
-            Ui.Size(Ui.Label(box, text, Ui.FontBody, TextAnchor.UpperLeft), 200);
-            var row = Ui.Row(root, "Buttons", 140);
-            if (next != null)
+            _lines = Lines();
+            if (_lines.Count == 0) { Finish(); return; }
+            ReadTiming();
+            var step = Step;
+
+            // 배경
+            var bg = Ui.Rect(Root, "Backdrop");
+            Ui.Fill(bg);
+            Ui.Background(bg, BackdropColor(step));
+            Hill(bg, new Vector2(0.25f, 0.62f), 900, new Color(0f, 0f, 0f, 0.10f));
+            Hill(bg, new Vector2(0.8f, 0.58f), 1100, new Color(0f, 0f, 0f, 0.07f));
+            Hill(bg, new Vector2(0.78f, 0.86f), 160, new Color(0.75f, 0.22f, 0.15f, 0.55f)); // 해
+
+            // 초상 좌우
+            _left = PortraitSlot("Left", 0.27f, out _leftPic);
+            _right = PortraitSlot("Right", 0.74f, out _rightPic);
+
+            // 화면 아무 데나 누르면 다음
+            var tap = Ui.Rect(Root, "Tap");
+            Ui.Fill(tap);
+            Ui.Background(tap, new Color(0, 0, 0, 0));
+            tap.gameObject.AddComponent<Button>().onClick.AddListener(Advance);
+
+            // 대사 상자
+            var box = Ui.Rect(Root, "Box");
+            box.anchorMin = new Vector2(0.03f, 0.08f);
+            box.anchorMax = new Vector2(0.97f, 0.29f);
+            box.offsetMin = box.offsetMax = Vector2.zero;
+            Ui.Round(Ui.Background(box, new Color(0.98f, 0.95f, 0.88f, 0.96f)));
+            box.gameObject.AddComponent<Button>().onClick.AddListener(Advance);
+            var tag = Ui.Rect(box, "NameTag");
+            tag.anchorMin = tag.anchorMax = new Vector2(0f, 1f);
+            tag.pivot = new Vector2(0f, 0.5f);
+            tag.anchoredPosition = new Vector2(30, 0);
+            tag.sizeDelta = new Vector2(260, 64);
+            _nameTag = Ui.Round(Ui.Background(tag, Palette.Ally));
+            _name = Ui.Label(tag, "", 30, TextAnchor.MiddleCenter, Color.white);
+            Ui.Fill(_name.rectTransform);
+            _text = Ui.Label(box, "", 36, TextAnchor.UpperLeft, Palette.Text);
+            Ui.Fill(_text.rectTransform);
+            _text.rectTransform.offsetMin = new Vector2(44, 60);
+            _text.rectTransform.offsetMax = new Vector2(-44, -54);
+            _progress = Ui.Label(box, "", 22, TextAnchor.LowerLeft, Palette.TextDim);
+            Ui.Fill(_progress.rectTransform);
+            _progress.rectTransform.offsetMin = new Vector2(44, 16);
+            _more = Ui.Label(box, "▼", 30, TextAnchor.LowerRight, Palette.Seal);
+            Ui.Fill(_more.rectTransform);
+            _more.rectTransform.offsetMax = new Vector2(-30, -16);
+            _more.rectTransform.offsetMin = new Vector2(0, 16);
+
+            // 오른쪽 위 원 버튼 3개
+            _autoBg = RoundButton(0, T("ui.dialogue.auto"), "自", () => { _auto = !_auto; _autoBg.color = _auto ? Palette.Seal : Palette.Card; _wait = 0; });
+            _autoBg.color = _auto ? Palette.Seal : Palette.Card;
+            RoundButton(1, T("ui.dialogue.log"), "記", OpenLog);
+            RoundButton(2, T("ui.dialogue.skip"), "越", Finish);
+
+            Show(0);
+            if (ShowChapter && step != null && step.Chapter > 0) OpenChapter(step);
+        }
+
+        private void ReadTiming()
+        {
+            try
             {
-                Ui.Button(row, ctx.T("ui.dialogue.skip"), finish, 140, Palette.Card);
-                Ui.Button(row, ctx.T("ui.dialogue.more"), next, 140);
+                if (!Ctx.Data.Exists("Ui/dialogue.json")) return;
+                var o = Game.Data.Json.JsonUtil.ParseObject(Ctx.Data.ReadText("Ui/dialogue.json"));
+                _cps = o.Value<float?>("typeCharsPerSecond") ?? _cps;
+                _autoBase = o.Value<float?>("autoBaseSeconds") ?? _autoBase;
+                _autoPerChar = o.Value<float?>("autoPerCharSeconds") ?? _autoPerChar;
+                _chapterSeconds = o.Value<float?>("chapterSeconds") ?? _chapterSeconds;
             }
-            else Ui.Button(row, finishLabel, finish, 140);
+            catch (System.Exception e) { Debug.LogWarning("Ui/dialogue.json: " + e.Message); }
+        }
+
+        private static Color BackdropColor(StepDef step)
+        {
+            string key = step?.Backdrop;
+            Color c = key == "siege" || key == "castle" ? new Color(0.84f, 0.81f, 0.76f)
+                : key == "naval" ? new Color(0.80f, 0.85f, 0.86f)
+                : key == "field" ? new Color(0.86f, 0.86f, 0.78f)
+                : new Color(0.93f, 0.89f, 0.81f); // 한지
+            if (step?.TimeOfDay == "dusk") c = Color.Lerp(c, new Color(0.93f, 0.7f, 0.55f), 0.35f);
+            if (step?.TimeOfDay == "night") c = Color.Lerp(c, new Color(0.25f, 0.27f, 0.35f), 0.6f);
+            return c;
+        }
+
+        private void Hill(RectTransform parent, Vector2 at, float size, Color color)
+        {
+            var h = Ui.Rect(parent, "Ink");
+            h.anchorMin = h.anchorMax = at;
+            h.sizeDelta = new Vector2(size, size);
+            Ui.Background(h, color).sprite = UiShapes.Circle;
+        }
+
+        private CanvasGroup PortraitSlot(string name, float x, out Portrait pic)
+        {
+            var slot = Ui.Rect(Root, name);
+            slot.anchorMin = slot.anchorMax = new Vector2(x, 0.43f);
+            slot.sizeDelta = new Vector2(440, 440);
+            var group = slot.gameObject.AddComponent<CanvasGroup>();
+            group.blocksRaycasts = false;
+            pic = new Portrait(slot, 440);
+            return group;
+        }
+
+        private Image RoundButton(int i, string label, string icon, System.Action act)
+        {
+            var b = Ui.Rect(Root, "Round" + i);
+            b.anchorMin = b.anchorMax = new Vector2(1f, 1f);
+            b.pivot = new Vector2(0.5f, 1f);
+            b.anchoredPosition = new Vector2(-440 + i * 140, -40);
+            b.sizeDelta = new Vector2(96, 96);
+            var img = Ui.Background(b, Palette.Card);
+            img.sprite = UiShapes.Circle;
+            var glyph = Ui.Label(b, icon, 36, TextAnchor.MiddleCenter, Palette.Text);
+            glyph.font = Ui.TitleFont; // 한자 아이콘
+            Ui.Fill(glyph.rectTransform);
+            b.gameObject.AddComponent<Button>().onClick.AddListener(() => act());
+            var cap = Ui.Label(b, label, 20, TextAnchor.UpperCenter, Palette.Text);
+            cap.rectTransform.anchorMin = new Vector2(0f, 0f);
+            cap.rectTransform.anchorMax = new Vector2(1f, 0f);
+            cap.rectTransform.pivot = new Vector2(0.5f, 1f);
+            cap.rectTransform.sizeDelta = new Vector2(60, 30);
+            cap.rectTransform.anchoredPosition = new Vector2(0, -4);
+            return img;
+        }
+
+        private string NameOf(DialogueLine l) => l.Speaker != null ? Ctx.GeneralName(l.Speaker) : T("ui.dialogue.narration");
+
+        private static Color SideColor(string side) => side == DialogueScript.Enemy ? Palette.Enemy : side == DialogueScript.Ally ? Palette.Ally : Palette.TextDim;
+
+        private void Show(int index)
+        {
+            _index = index;
+            var l = _lines[index];
+            string side = DialogueScript.SideOf(l, Step);
+            _full = l.Key != null && Ctx.Defs.Strings.ContainsKey(l.Key) ? T(l.Key) : "…";
+            _chars = 0; _wait = 0; _done = false;
+            _text.text = "";
+            _name.text = NameOf(l);
+            _nameTag.color = SideColor(side);
+            _progress.text = (index + 1) + " / " + _lines.Count;
+            _more.enabled = false;
+            // 초상: 이 줄의 편 자리에 말하는 장수, 맞은편은 가장 최근 그 편 장수 (흐리게)
+            string ally = null, enemy = null;
+            for (int i = index; i >= 0; i--)
+            {
+                var x = _lines[i];
+                string s = DialogueScript.SideOf(x, Step);
+                if (s == DialogueScript.Ally && ally == null) ally = x.Speaker;
+                if (s == DialogueScript.Enemy && enemy == null) enemy = x.Speaker;
+            }
+            if (ally != null) _leftPic.Show(ally, Ctx.GeneralName(ally), Palette.Ally);
+            if (enemy != null) _rightPic.Show(enemy, Ctx.GeneralName(enemy), Palette.Enemy);
+            _left.alpha = ally == null ? 0f : side == DialogueScript.Ally ? 1f : 0.4f;
+            _right.alpha = enemy == null ? 0f : side == DialogueScript.Enemy ? 1f : 0.4f;
+        }
+
+        /// <summary>누르면: 글자가 다 안 나왔으면 그 줄 완성, 다 나왔으면 다음 줄 (마지막이면 끝).</summary>
+        private void Advance()
+        {
+            if (_chapter != null) { CloseChapter(); return; }
+            if (_log != null) return;
+            if (!_done) { _chars = _full.Length; Tick(0f); return; }
+            if (_index + 1 >= _lines.Count) { Finish(); return; }
+            Show(_index + 1);
+        }
+
+        public override void Tick(float deltaTime)
+        {
+            if (_text == null) return;
+            if (_chapter != null)
+            {
+                _chapterLeft -= deltaTime;
+                if (_chapterLeft <= 0f) CloseChapter();
+                return;
+            }
+            if (_log != null) return;
+            if (!_done)
+            {
+                _chars += deltaTime * _cps;
+                int n = Mathf.Min(_full.Length, Mathf.FloorToInt(_chars));
+                _text.text = _full.Substring(0, n);
+                if (n >= _full.Length) { _done = true; _more.enabled = true; _wait = 0f; }
+                return;
+            }
+            if (!_auto) return;
+            _wait += deltaTime;
+            if (_wait >= _autoBase + _autoPerChar * _full.Length) Advance();
+        }
+
+        // ---- 장 표시 ----
+        private void OpenChapter(StepDef step)
+        {
+            _chapterLeft = _chapterSeconds;
+            _chapter = Ui.Rect(Root, "Chapter");
+            Ui.Fill(_chapter);
+            Ui.Background(_chapter, new Color(0f, 0f, 0f, 0.55f));
+            _chapter.gameObject.AddComponent<Button>().onClick.AddListener(CloseChapter);
+            var band = Ui.Rect(_chapter, "Band");
+            band.anchorMin = new Vector2(0f, 0.43f);
+            band.anchorMax = new Vector2(1f, 0.6f);
+            band.offsetMin = band.offsetMax = Vector2.zero;
+            Ui.Background(band, new Color(0.12f, 0.11f, 0.1f, 0.92f));
+            Ui.Column(band, 6, 24).childAlignment = TextAnchor.MiddleCenter;
+            string chapterName = Ctx.Defs.Strings.ContainsKey("chapter." + step.Chapter + ".name") ? T("chapter." + step.Chapter + ".name") : "";
+            Ui.Label(band, T("ui.dialogue.chapter", step.Chapter, chapterName), 34, TextAnchor.MiddleCenter, new Color(0.85f, 0.8f, 0.7f));
+            var title = Ui.Label(band, T(step.NameKey), 96, TextAnchor.MiddleCenter, Color.white);
+            title.font = Ui.TitleFont;
+            var line = Ui.Rect(band, "Underline");
+            Ui.Size(line, 6, 320);
+            Ui.Background(line, Palette.Seal);
+            Ui.Label(band, T("ui.dialogue.tapToStart"), 24, TextAnchor.MiddleCenter, new Color(0.75f, 0.72f, 0.66f));
+        }
+
+        private void CloseChapter()
+        {
+            if (_chapter == null) return;
+            Object.Destroy(_chapter.gameObject);
+            _chapter = null;
+        }
+
+        // ---- 대화 기록 ----
+        private void OpenLog()
+        {
+            if (_log != null) return;
+            _log = Ui.Rect(Root, "Log");
+            Ui.Fill(_log);
+            Ui.Background(_log, new Color(0f, 0f, 0f, 0.5f));
+            var panel = Ui.Rect(_log, "Panel");
+            panel.anchorMin = new Vector2(0.03f, 0.05f);
+            panel.anchorMax = new Vector2(0.97f, 0.8f);
+            panel.offsetMin = panel.offsetMax = Vector2.zero;
+            Ui.Round(Ui.Background(panel, Palette.Background));
+            Ui.Column(panel, 10, 24);
+            Ui.Size(Ui.Label(panel, T("ui.dialogue.logTitle"), 40, TextAnchor.MiddleCenter), 70);
+            var list = Ui.ScrollList(panel, "Lines", 8, 4);
+            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            for (int i = 0; i <= _index && i < _lines.Count; i++)
+            {
+                var l = _lines[i];
+                string side = DialogueScript.SideOf(l, Step);
+                var row = Ui.Row(list, "Line" + i, 130, 14);
+                var pic = Ui.Rect(row, "Pic");
+                Ui.Size(pic, 96, 96);
+                if (l.Speaker != null) new Portrait(pic, 96).Show(l.Speaker, NameOf(l), SideColor(side));
+                var col = Ui.Rect(row, "Text");
+                Ui.Size(col, flexibleWidth: 1);
+                Ui.Column(col, 2, 0);
+                Ui.Label(col, Ui.Colored(NameOf(l), SideColor(side)), 24);
+                Ui.Label(col, l.Key != null && Ctx.Defs.Strings.ContainsKey(l.Key) ? T(l.Key) : "…", 26, TextAnchor.UpperLeft);
+            }
+            Ui.Label(list, Ui.Colored("── " + T("ui.dialogue.here") + " ──", Palette.Bad), 22, TextAnchor.MiddleCenter);
+            Ui.Button(panel, T("ui.common.close"), () => { Object.Destroy(_log.gameObject); _log = null; }, 96, fontSize: 30);
         }
     }
 }

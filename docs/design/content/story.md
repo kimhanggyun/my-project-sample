@@ -45,6 +45,7 @@
 ```
 
 - `speaker`는 장수 id. 화면에 보이는 이름은 테마 문자열에서 가져온다 ([../theme.md](../theme.md)).
+- `side` (선택, 17 대화): ally · enemy — 초상 자리(아군 왼쪽 · 적 오른쪽)와 이름표 색. 없으면 그 스텝 적 장수면 enemy, 나머지 ally, 말하는 장수가 없으면 해설. 스텝 `chapter`(장 번호, 이름 `chapter.<n>.name`) · `backdrop`(배경 키, 없으면 battleType). 연출 시간은 `data/Ui/dialogue.json`.
 
 ## 4. 출진 준비
 

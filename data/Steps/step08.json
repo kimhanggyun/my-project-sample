@@ -1,6 +1,7 @@
 {
   "id": "step08",
   "nameKey": "step.step08.name",
+  "chapter": 3,
   "battleType": "field",
   "map": "hills_valley",
   "maxCorps": 3,

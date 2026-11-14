@@ -1,3 +1,4 @@
+using System.Linq;
 using Game.Data.Defs;
 using Game.Flow;
 using Xunit;
@@ -21,6 +22,12 @@ namespace Game.Tests.Campaign
                 Assert.NotEmpty(d.Before);
                 foreach (var l in d.Before) Check(id, l);
                 foreach (var l in d.After) Check(id, l);
+                if (step.Chapter > 0) Assert.True(Kit.D.Strings.ContainsKey("chapter." + step.Chapter + ".name"), id + ": 장 이름");
+                foreach (var l in d.Before)
+                {
+                    string side = DialogueScript.SideOf(l, step);
+                    Assert.Equal(l.Speaker == null ? DialogueScript.Narration : step.Enemy.Any(e => e.General == l.Speaker) ? DialogueScript.Enemy : DialogueScript.Ally, side);
+                }
             }
             Assert.Empty(DialogueScript.Load(Kit.Source, "no_such_step").Before);
         }

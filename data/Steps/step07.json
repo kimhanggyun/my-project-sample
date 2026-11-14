@@ -1,6 +1,7 @@
 {
   "id": "step07",
   "nameKey": "step.step07.name",
+  "chapter": 3,
   "battleType": "field",
   "map": "river_ford",
   "maxCorps": 3,
