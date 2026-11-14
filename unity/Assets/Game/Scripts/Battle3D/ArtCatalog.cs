@@ -104,14 +104,15 @@ namespace Game.Unity.Battle3D
             var prefab = string.IsNullOrEmpty(path) ? null : Resources.Load<GameObject>(path);
             if (prefab != null)
             {
-                var baked = Bake(prefab, FindPose(path, e));
-                if (baked.mesh != null)
+                var baked = Bake(prefab, FindPose(path, e), path);
+                if (baked.Mesh != null)
                 {
-                    var mesh = Own(baked.mesh);
-                    var mats = new Material[baked.materials.Count];
-                    for (int i = 0; i < mats.Length; i++) mats[i] = Own(Usable(baked.materials[i]));
-                    // 방향 → 크기를 목표 높이로, 바닥 = 0, 가운데 = 원점 (메시는 이미 모델 뿌리 기준)
-                    var turned = Matrix4x4.Rotate(Quaternion.Euler(0f, e.Yaw, 0f));
+                    // 굳힌 메시는 이 목록 것 (나중에 지움). 원래 메시를 그대로 쓰는 경우는 에셋이라 지우면 안 된다
+                    var mesh = baked.Owned ? Own(baked.Mesh) : baked.Mesh;
+                    var mats = new Material[baked.Materials.Count];
+                    for (int i = 0; i < mats.Length; i++) mats[i] = Own(Usable(baked.Materials[i]));
+                    // 방향 → 크기를 목표 높이로, 바닥 = 0, 가운데 = 원점 (메시 → 모델 뿌리 → 방향)
+                    var turned = Matrix4x4.Rotate(Quaternion.Euler(0f, e.Yaw, 0f)) * baked.MeshToRoot;
                     var b = Transform(mesh.bounds, turned);
                     float s = b.size.y > 1e-5f ? e.Height / b.size.y : 1f;
                     var local = Matrix4x4.Translate(new Vector3(-b.center.x * s, -b.min.y * s, -b.center.z * s)) * Matrix4x4.Scale(Vector3.one * s) * turned;
@@ -123,53 +124,103 @@ namespace Game.Unity.Battle3D
             return model;
         }
 
+        /// <summary>굳힌 결과: 메시, 하위 메시별 재질, 메시 → 모델 뿌리 행렬, 새로 만든 메시인지(지워도 되는지).</summary>
+        private struct Baked
+        {
+            public Mesh Mesh;
+            public List<Material> Materials;
+            public Matrix4x4 MeshToRoot;
+            public bool Owned;
+        }
+
         /// <summary>
         /// 모델 하나를 메시 하나로 굳힌다: 보통 메시(MeshFilter)와 뼈대 메시(SkinnedMeshRenderer, 2026-11-13)를 모두 모아,
         /// 뼈대 메시는 Idle 동작 첫 프레임 자세(없으면 기본 자세)로 BakeMesh 한 뒤, 뼈에 붙은 무기·방패 같은 자식 메시까지
         /// 모델 뿌리 기준으로 합친다. 재질이 같은 조각은 한 하위 메시로 묶는다 (그리는 횟수를 줄인다).
+        /// 읽을 수 없는 메시(가져오기 설정 Read/Write 꺼짐)는 합칠 수 없다 (2026-11-14):
+        /// 조각이 그것 하나뿐이면 굳히지 않고 원래 메시를 그대로 쓰고, 여러 조각이면 그 조각만 빼고 경고를 남긴다.
+        /// 모델 전체를 버리지 않는다.
         /// </summary>
-        private static (Mesh mesh, List<Material> materials) Bake(GameObject prefab, AnimationClip pose)
+        private static Baked Bake(GameObject prefab, AnimationClip pose, string path)
         {
             var inst = Object.Instantiate(prefab);
             inst.hideFlags = HideFlags.HideAndDontSave;
             inst.transform.position = Vector3.zero;
             inst.transform.rotation = Quaternion.identity;
             inst.transform.localScale = Vector3.one;
+            var temp = new List<Mesh>();
             try
             {
                 PoseIdle(inst, pose);
                 var toRoot = inst.transform.worldToLocalMatrix;
-                var groups = new List<(Material mat, List<CombineInstance> parts)>();
-                void Add(Mesh mesh, Material[] mats, Matrix4x4 m)
-                {
-                    for (int sub = 0; sub < mesh.subMeshCount; sub++)
-                    {
-                        var mat = mats != null && mats.Length > 0 ? mats[Mathf.Min(sub, mats.Length - 1)] : null;
-                        int gi = groups.FindIndex(g => g.mat == mat);
-                        if (gi < 0) { groups.Add((mat, new List<CombineInstance>())); gi = groups.Count - 1; }
-                        groups[gi].parts.Add(new CombineInstance { mesh = mesh, subMeshIndex = sub, transform = m });
-                    }
-                }
-                var temp = new List<Mesh>();
+                var pieces = new List<(Mesh mesh, Material[] mats, Matrix4x4 m, bool baked)>();
                 foreach (var smr in inst.GetComponentsInChildren<SkinnedMeshRenderer>(true))
                 {
                     if (smr.sharedMesh == null) continue;
+                    var t = smr.transform;
+                    if (!smr.sharedMesh.isReadable)
+                    {
+                        // 읽을 수 없으면 BakeMesh도 못 한다 → 기본 자세 메시를 그대로 (아래에서 하나뿐이면 원래대로)
+                        pieces.Add((smr.sharedMesh, smr.sharedMaterials, toRoot * Matrix4x4.TRS(t.position, t.rotation, t.lossyScale), false));
+                        continue;
+                    }
                     var bakedMesh = new Mesh();
                     smr.BakeMesh(bakedMesh, true); // 크기까지 반영해 굳힌 메시 (렌더러 위치·회전 기준)
                     temp.Add(bakedMesh);
-                    var t = smr.transform;
-                    Add(bakedMesh, smr.sharedMaterials, toRoot * Matrix4x4.TRS(t.position, t.rotation, Vector3.one));
+                    pieces.Add((bakedMesh, smr.sharedMaterials, toRoot * Matrix4x4.TRS(t.position, t.rotation, Vector3.one), true));
                 }
                 foreach (var mf in inst.GetComponentsInChildren<MeshFilter>(true))
                 {
                     if (mf.sharedMesh == null) continue;
                     var mr = mf.GetComponent<MeshRenderer>();
-                    Add(mf.sharedMesh, mr != null ? mr.sharedMaterials : null, toRoot * mf.transform.localToWorldMatrix);
+                    pieces.Add((mf.sharedMesh, mr != null ? mr.sharedMaterials : null, toRoot * mf.transform.localToWorldMatrix, false));
                 }
-                if (groups.Count == 0) return (null, null);
+                if (pieces.Count == 0) return default;
+
+                List<Material> MatsOf(Mesh mesh, Material[] mats)
+                {
+                    var list = new List<Material>();
+                    for (int sub = 0; sub < mesh.subMeshCount; sub++)
+                        list.Add(mats != null && mats.Length > 0 ? mats[Mathf.Min(sub, mats.Length - 1)] : null);
+                    return list;
+                }
+
+                // 조각 하나: 합칠 필요가 없다. 읽을 수 없는 원래 메시면 그대로 쓴다
+                if (pieces.Count == 1 && !pieces[0].baked && !pieces[0].mesh.isReadable)
+                {
+                    Debug.LogWarning("아트 모델의 Read/Write가 꺼져 있어 굳히지 않고 원래 메시를 씁니다 (켜 두면 더 좋음): Resources/" + path);
+                    return new Baked { Mesh = pieces[0].mesh, Materials = MatsOf(pieces[0].mesh, pieces[0].mats), MeshToRoot = pieces[0].m, Owned = false };
+                }
+
+                var groups = new List<(Material mat, List<CombineInstance> parts)>();
+                int skipped = 0;
+                (Mesh mesh, Material[] mats, Matrix4x4 m) biggestUnreadable = (null, null, Matrix4x4.identity);
+                foreach (var pc in pieces)
+                {
+                    if (!pc.mesh.isReadable)
+                    {
+                        skipped++;
+                        if (biggestUnreadable.mesh == null || pc.mesh.vertexCount > biggestUnreadable.mesh.vertexCount) biggestUnreadable = (pc.mesh, pc.mats, pc.m);
+                        continue;
+                    }
+                    for (int sub = 0; sub < pc.mesh.subMeshCount; sub++)
+                    {
+                        var mat = pc.mats != null && pc.mats.Length > 0 ? pc.mats[Mathf.Min(sub, pc.mats.Length - 1)] : null;
+                        int gi = groups.FindIndex(g => g.mat == mat);
+                        if (gi < 0) { groups.Add((mat, new List<CombineInstance>())); gi = groups.Count - 1; }
+                        groups[gi].parts.Add(new CombineInstance { mesh = pc.mesh, subMeshIndex = sub, transform = pc.m });
+                    }
+                }
+                if (skipped > 0)
+                    Debug.LogWarning($"아트 모델 조각 {skipped}개의 Read/Write가 꺼져 있어 합치지 못했습니다 (가져오기 설정에서 켜 주세요): Resources/{path}");
+                if (groups.Count == 0)
+                {
+                    // 읽을 수 있는 조각이 없으면 가장 큰 조각 하나라도 원래대로
+                    return new Baked { Mesh = biggestUnreadable.mesh, Materials = MatsOf(biggestUnreadable.mesh, biggestUnreadable.mats), MeshToRoot = biggestUnreadable.m, Owned = false };
+                }
                 // 재질마다 한 메시 → 하위 메시로 합침
                 var subs = new CombineInstance[groups.Count];
-                var mats = new List<Material>();
+                var matsOut = new List<Material>();
                 long vertices = 0;
                 for (int i = 0; i < groups.Count; i++)
                 {
@@ -178,16 +229,22 @@ namespace Game.Unity.Battle3D
                     vertices += part.vertexCount;
                     temp.Add(part);
                     subs[i] = new CombineInstance { mesh = part, transform = Matrix4x4.identity };
-                    mats.Add(groups[i].mat);
+                    matsOut.Add(groups[i].mat);
                 }
                 var combined = new Mesh { name = prefab.name + " (굳힘)", indexFormat = vertices > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
                 combined.CombineMeshes(subs, false, false);
                 combined.RecalculateBounds();
-                foreach (var m in temp) Object.Destroy(m);
-                return (combined, mats);
+                return new Baked { Mesh = combined, Materials = matsOut, MeshToRoot = Matrix4x4.identity, Owned = true };
+            }
+            catch (System.Exception ex)
+            {
+                // 그 밖의 실패도 모델 하나만 단순 도형으로 (전투 전체가 멈추지 않게)
+                Debug.LogWarning("아트 모델을 굳히지 못했습니다: Resources/" + path + " — " + ex.Message);
+                return default;
             }
             finally
             {
+                foreach (var m in temp) Object.Destroy(m);
                 Object.Destroy(inst);
             }
         }
