@@ -184,6 +184,7 @@ namespace Game.Unity.Screens
 
             // ① 상단: 시간 + 일시정지·배속·끝까지 (얇게)
             var top = Ui.Row(Root, "Top", TopHeight, 8);
+            Ui.Background(top, Palette.Bar); // 3D 전장일 때 화면 배경이 꺼져 검은 바탕에 먹색 글자가 안 보였다 (데스크탑 플레이 테스트 2026-11-14)
             _clock = Ui.Label(top, "", 28, TextAnchor.MiddleLeft);
             Ui.Size(_clock, flexibleWidth: 2);
             _pauseButton = Ui.Button(top, "", TogglePause, TopHeight, fontSize: 28);
@@ -199,6 +200,7 @@ namespace Game.Unity.Screens
             Ui.Button(top, T(IsReplay ? "ui.replay.stop" : "ui.battle.skip"), IsReplay ? (System.Action)(() => App.Show(new ReplayListScreen())) : SkipToEnd, TopHeight, fontSize: 28);
 
             var status = Ui.Row(Root, "Status", StatusHeight, 10);
+            Ui.Background(status, Palette.Bar);
             _supplyText = Ui.Label(status, "", 22, TextAnchor.MiddleLeft);
             Ui.Size(_supplyText, width: 150);
             var gauge = Ui.Rect(status, "SupplyGauge");
@@ -842,6 +844,11 @@ namespace Game.Unity.Screens
         }
 
         private void TogglePause() { _paused = !_paused; _dirty = true; }
+        /// <summary>개발 도구용 (PlayTestTour): 조작·시뮬레이션·배속.</summary>
+        internal BattleControl DebugControl => _ctl;
+        internal BattleSimulation DebugSim => _sim;
+        internal void DebugSetSpeed(int index) { _speedIndex = Mathf.Clamp(index, 0, Speeds.Length - 1); _dirty = true; }
+
         private void NextSpeed() { _speedIndex = (_speedIndex + 1) % Speeds.Length; _dirty = true; }
 
         private void SkipToEnd()

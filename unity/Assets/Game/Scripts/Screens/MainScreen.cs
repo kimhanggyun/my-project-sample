@@ -136,6 +136,9 @@ namespace Game.Unity.Screens
             var t = Ui.Label(hint, "›", Mathf.RoundToInt(h * 0.6f), TextAnchor.MiddleCenter, Palette.TextDim);
             t.raycastTarget = false;
             Ui.Fill(t.rectTransform);
+            // 끝까지 밀면 "›"를 숨긴다 (데스크탑 플레이 테스트 2026-11-14: 끝에서도 남아 있었다)
+            var scroll = bar.GetComponentInChildren<ScrollRect>();
+            if (scroll != null) scroll.onValueChanged.AddListener(v => hint.gameObject.SetActive(v.x < 0.98f));
         }
 
         /// <summary>탭 버튼 오른쪽 위 빨간 점.</summary>

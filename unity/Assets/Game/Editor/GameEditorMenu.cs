@@ -78,6 +78,33 @@ namespace Game.Unity.EditorTools
             Debug.Log("화면 캡처를 시작합니다: " + folder);
         }
 
+        /// <summary>
+        /// 플레이 테스트 (Play 중에만): 하단 탭·마스터·샘플전투·맵·전투 이동·일기토·아이콘·큰 전투를 버튼을 눌러 가며 해 보고
+        /// 캡처(pt*.png)와 기록(playtest.log)을 저장소/captures/playtest_날짜_시각/ 에 남긴다. 마스터 행동이 세이브를 바꾸므로 세이브를 먼저 백업한다.
+        /// </summary>
+        [MenuItem("Game/Play Test")]
+        public static void PlayTest()
+        {
+            if (!EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("플레이 테스트", "Play를 누른 뒤 (타이틀 이후) 다시 고르세요.", "확인");
+                return;
+            }
+            var app = Object.FindFirstObjectByType<GameApp>();
+            if (app == null || app.Context == null) { Debug.LogWarning("GameApp이 준비되지 않았습니다."); return; }
+            string folder = Path.Combine(GameDataPaths.RepoRoot, "captures", "playtest_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+            var tour = app.StartPlayTest(folder);
+            EditorApplication.CallbackFunction wait = null;
+            wait = () =>
+            {
+                if (!tour.Done && EditorApplication.isPlaying) return;
+                EditorApplication.update -= wait;
+                if (tour.Done) EditorUtility.RevealInFinder(folder);
+            };
+            EditorApplication.update += wait;
+            Debug.Log("플레이 테스트를 시작합니다: " + folder);
+        }
+
         [MenuItem("Game/Open Save Folder")]
         public static void OpenSaveFolder() => EditorUtility.RevealInFinder(Application.persistentDataPath);
     }
