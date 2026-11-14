@@ -1,6 +1,7 @@
 # 용병 등록 · 고용 (온라인)
 
 > 상태: **서버 기반 구현** (2026-11-09: 등록·목록·해제, 고용 출진, 서버 재현, 등록자 우편 보상 — verification R-43, [../../impl/server.md](../../impl/server.md)). 화면(고용 탭)·이력(4장 일부)·하루 고용 수·대기시간 제한(R-44)도 구현. 검색·정렬·상세·재생은 다음 단계 · **서버 필수**
+> **개편 확정 (2026-11-14)**: 고용 → **용병** — 닉네임 장수와 그가 이끄는 부대만 등록, 장수+부대·장수만·부대만, 숨은 배신 — [hiring-v2.md](hiring-v2.md). 구현할 때 이 문서의 2·3·6장을 고친다.
 > 전체 흐름: [../flow.md](../flow.md) · 관련: [general-growth.md](general-growth.md), [troop-growth.md](troop-growth.md), [formation.md](formation.md), [economy.md](economy.md) · 구조: [../structure.md](../structure.md)(../structure.md) Online 모듈
 
 ---

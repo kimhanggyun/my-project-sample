@@ -52,6 +52,7 @@
 | [economy.md](design/content/economy.md) | 군량·돈·결제 | 확정 (상품 일부 미결) |
 | [ads.md](design/content/ads.md) | 광고, 광고 제거 상품 | 확정 |
 | [hiring.md](design/content/hiring.md) | 장수·부대 등록과 고용, 전투 이력 (온라인) | 확정 (보상 미결) |
+| [hiring-v2.md](design/content/hiring-v2.md) | 용병 개편: 닉네임 장수 용병, 빌리는 단위, 배신(첫 교전 직후 · 반간이면 낌새) | 확정 (2026-11-14), 구현 전 |
 | [replay.md](design/content/replay.md) | 전투 녹화·재생, 공략 공유 | 기획 중 |
 | [pvp.md](design/content/pvp.md) | 유저 대전 1:1 · N:N | 확장 예정 (구조만 대비) |
 | [territory.md](design/content/territory.md) | 영토: 실제 지역(GPS) 땅따먹기, 지역 단계별 연합, 위치정보법·조작 방지 | 별도 컨텐츠, 기획 중 (서버 도입 후) |
