@@ -18,6 +18,8 @@ namespace Game.Flow
         public SortiePlan Plan { get; internal set; }
         public BattleResult Result { get; internal set; }
         public bool Won { get; internal set; }
+        /// <summary>찾은 시각 (도감 기록).</summary>
+        public long NowUnixSeconds { get; internal set; }
     }
 
     /// <summary>숨은 보상 조건 하나 (secrets.json condition.all[].type). 새 조건은 구현 추가 + 등록.</summary>
@@ -51,6 +53,20 @@ namespace Game.Flow
         public bool Found { get; internal set; }
         /// <summary>못 찾은 칸에 보이는 힌트 키.</summary>
         public string HintKey { get; internal set; }
+        /// <summary>분류 (못 찾아도 보인다).</summary>
+        public string Category { get; internal set; }
+        /// <summary>찾은 기록 (찾았고 기록이 있을 때만).</summary>
+        public SecretFind Find { get; internal set; }
+    }
+
+    /// <summary>장수 도감 한 칸 (13 시안): 가졌는지 · 얻는 곳 (계산만, 새 저장 없음).</summary>
+    public sealed class GeneralCodexEntry
+    {
+        public string GeneralId { get; internal set; }
+        public string Grade { get; internal set; }
+        public bool Owned { get; internal set; }
+        /// <summary>얻는 곳: gacha (모집 목록) · start (처음 지급) · story (스토리 합류 · 등용).</summary>
+        public List<string> Sources { get; } = new List<string>();
     }
 
     public sealed class SecretRegistry
@@ -105,6 +121,7 @@ namespace Game.Flow
                 if (g == null) continue;
                 found.Add(Grant(c, s, g));
                 if (!c.State.FoundSecrets.Contains(s.Id)) c.State.FoundSecrets.Add(s.Id);
+                c.State.SecretFinds[s.Id] = new SecretFind { StepId = c.Step?.Id, GeneralId = g.GeneralId, AtUnixSeconds = c.NowUnixSeconds };
             }
             return found;
         }
@@ -163,9 +180,33 @@ namespace Game.Flow
             foreach (var s in d.Secrets)
             {
                 bool found = state.FoundSecrets.Contains(s.Id);
-                list.Add(new CodexEntry { SecretId = found ? s.Id : null, Found = found, HintKey = found ? null : s.HintKey });
+                state.SecretFinds.TryGetValue(s.Id, out var find);
+                list.Add(new CodexEntry { SecretId = found ? s.Id : null, Found = found, HintKey = found ? null : s.HintKey, Category = s.Category, Find = found ? find : null });
             }
             return list;
+        }
+
+        /// <summary>장수 도감 (13 시안): 데이터의 모든 장수 (닉네임 장수 틀 빼고), 가졌는지 · 얻는 곳.</summary>
+        public static List<GeneralCodexEntry> GeneralCodex(DefinitionSet d, CampaignState state)
+        {
+            var list = new List<GeneralCodexEntry>();
+            foreach (var g in d.Generals.Values)
+            {
+                if (AvatarGeneral.IsAvatar(g.Id)) continue;
+                var e = new GeneralCodexEntry { GeneralId = g.Id, Grade = g.Grade, Owned = state.FindGeneral(g.Id) != null };
+                foreach (var b in d.Gacha.Banners.Values) if (Contains(b.Pool, g.Id)) { e.Sources.Add("gacha"); break; }
+                if (d.StartingKit != null && Contains(d.StartingKit.Generals, g.Id)) e.Sources.Add("start");
+                if (e.Sources.Count == 0) e.Sources.Add("story");
+                list.Add(e);
+            }
+            return list;
+        }
+
+        private static bool Contains(IReadOnlyList<string> list, string id)
+        {
+            if (list == null) return false;
+            foreach (var x in list) if (x == id) return true;
+            return false;
         }
     }
 

@@ -527,7 +527,7 @@ namespace Game.Flow
             if (!step.IsTerritory && result.Explored.TryGetValue(PlayerTeam, out var explored)) StepProgress.MergeExplored(state, step.Id, explored);
 
             if (report.Won) GrantBattleExp(state, plan, step, report);
-            report.Secrets.AddRange(new SecretEngine().Evaluate(new SecretContext { Defs = _defs, State = state, Step = step, Plan = plan, Result = result, Won = report.Won }));
+            report.Secrets.AddRange(new SecretEngine().Evaluate(new SecretContext { Defs = _defs, State = state, Step = step, Plan = plan, Result = result, Won = report.Won, NowUnixSeconds = _time.UtcNow.ToUnixTimeSeconds() }));
 
             if (report.Won && !step.IsTerritory)
             {

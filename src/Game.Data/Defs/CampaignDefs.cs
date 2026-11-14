@@ -178,6 +178,9 @@ namespace Game.Data.Defs
         public string RewardSkill { get; internal set; }
         public string RewardTrait { get; internal set; }
         public string HintKey { get; internal set; }
+        /// <summary>분류 (13 도감 칩): story · battle · duel · land · merc. 없으면 스텝이 있으면 story, 아니면 battle.</summary>
+        public string Category { get; internal set; }
+        public static readonly string[] Categories = { "story", "battle", "duel", "land", "merc" };
 
         internal static List<SecretDef> LoadAll(JObject doc)
         {
@@ -203,6 +206,7 @@ namespace Game.Data.Defs
                     RewardSkill = reward.Value<string>("skill"),
                     RewardTrait = reward.Value<string>("trait"),
                     HintKey = s.Value<string>("hintKey"),
+                    Category = s.Value<string>("category") ?? (cond.Value<string>("step") != null ? "story" : "battle"),
                 });
             }
             return list;

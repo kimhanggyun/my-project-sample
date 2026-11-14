@@ -82,6 +82,19 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "숨은 보상 데이터의 조건·받는 장수 종류는 모두 등록되어 있다")]
         public void Registered() => Assert.Empty(new SecretEngine().Validate(Kit.D));
 
+        [Fact(DisplayName = "장수 도감: 닉네임 장수 틀 빼고 모든 장수, 가진 것 표시, 얻는 곳 (모집 · 처음 · 스토리)")]
+        public void GeneralCodex()
+        {
+            var state = StartingKitService.CreateNewGame(Kit.D);
+            var codex = SecretEngine.GeneralCodex(Kit.D, state);
+            Assert.DoesNotContain(codex, e => AvatarGeneral.IsAvatar(e.GeneralId));
+            Assert.Equal(Kit.D.Generals.Count - 2, codex.Count);
+            Assert.All(codex, e => Assert.Equal(state.FindGeneral(e.GeneralId) != null, e.Owned));
+            Assert.Contains(codex, e => e.GeneralId == "general_h" && e.Sources.Contains("gacha") && !e.Owned);
+            Assert.All(codex, e => Assert.NotEmpty(e.Sources));
+            Assert.Contains(codex, e => e.Sources.Contains("start") && e.Owned);
+        }
+
         [Fact(DisplayName = "일기토로 적장을 쓰러뜨리면 그 장수에게 특성 (한 번만), 도감에 기록")]
         public void DuelSecret()
         {
@@ -102,6 +115,12 @@ namespace Game.Tests.Campaign
             Assert.Contains("peerless", state.FindGeneral(winner).LearnedTraits);
             Assert.Contains(SecretEngine.Codex(Kit.D, state), e => e.SecretId == "secret_duel_fall" && e.Found);
             Assert.Contains(SecretEngine.Codex(Kit.D, state), e => !e.Found && e.HintKey != null);
+            var entry = SecretEngine.Codex(Kit.D, state).Single(e => e.SecretId == "secret_duel_fall");
+            Assert.Equal("duel", entry.Category);
+            Assert.Equal("step01", entry.Find.StepId);
+            Assert.Equal(winner, entry.Find.GeneralId);
+            Assert.True(entry.Find.AtUnixSeconds > 0);
+            Assert.All(SecretEngine.Codex(Kit.D, state), e => Assert.Contains(e.Category, Game.Data.Defs.SecretDef.Categories));
             Assert.Equal(1, state.FindGeneral(winner).Records["duelWins"]);
 
             // 한 번만
