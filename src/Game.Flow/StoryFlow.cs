@@ -100,6 +100,8 @@ namespace Game.Flow
         public List<(string generalId, GrowthReward reward)> GrowthRewards { get; } = new List<(string, GrowthReward)>();
         /// <summary>장수 id → 레벨업 결과 (오른 것만).</summary>
         public Dictionary<string, LevelUpResult> LevelUps { get; } = new Dictionary<string, LevelUpResult>();
+        /// <summary>전투 경험치를 받은 장수마다 전 · 후 (20 시안 성장 게이지): 장수 → (전 레벨, 전 경험치, 받은 양, 후 레벨, 후 경험치).</summary>
+        public Dictionary<string, (int levelBefore, long expBefore, long gained, int levelAfter, long expAfter)> ExpGains { get; } = new Dictionary<string, (int, long, long, int, long)>();
         public List<FoundSecret> Secrets { get; } = new List<FoundSecret>();
     }
 
@@ -561,7 +563,10 @@ namespace Game.Flow
             {
                 var g = state.FindGeneral(comp.GeneralId);
                 if (g == null || g.Status == GeneralStatus.Captured) continue;
+                int levelBefore = g.Level;
+                long expBefore = g.Exp;
                 var r = LevelEngine.AddExp(_defs.Levels, _defs.Generals[g.GeneralId].GrowthRates, g.Level, g.Exp, exp, LimitBreakService.MaxLevelOf(_defs, g));
+                report.ExpGains[g.GeneralId] = (levelBefore, expBefore, exp, r.Level, r.Exp);
                 g.Level = r.Level;
                 g.Exp = r.Exp;
                 foreach (var kv in r.StatGains)
