@@ -64,6 +64,14 @@ namespace Game.Data.Defs
         public Fix CoordinateResponseSec { get; private set; }
         /// <summary>후퇴 한 번에 뒤로 물러나는 칸 (R-60).</summary>
         public Fix FallBackCells { get; private set; }
+        /// <summary>새 명령 (R-103): 돌격 이동 % · 첫 접전 사기 피해, 은밀 이동 % · 적 시야 %, 지키기 반지름, 엄호 따라붙는 거리 · 반지름.</summary>
+        public Fix ChargeMovePct { get; private set; }
+        public Fix ChargeShockMorale { get; private set; }
+        public Fix StealthMovePct { get; private set; }
+        public Fix StealthSightPct { get; private set; }
+        public Fix GuardRadiusCells { get; private set; }
+        public Fix EscortFollowCells { get; private set; }
+        public Fix EscortRadiusCells { get; private set; }
         public Fix FlankPp { get; private set; }
         public Fix RearPp { get; private set; }
         public Fix FrontDot { get; private set; }
@@ -282,6 +290,13 @@ namespace Game.Data.Defs
                 CoordinateWaitSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateWaitSec", Fix.FromInt(30), c + ".orders"),
                 CoordinateResponseSec = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "coordinateResponseSec", Fix.FromInt(10), c + ".orders"),
                 FallBackCells = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "fallBackCells", Fix.FromInt(8), c + ".orders"),
+                ChargeMovePct = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "chargeMovePct", Fix.FromInt(30), c + ".orders"),
+                ChargeShockMorale = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "chargeShockMorale", Fix.FromInt(8), c + ".orders"),
+                StealthMovePct = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "stealthMovePct", Fix.FromInt(-30), c + ".orders"),
+                StealthSightPct = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "stealthSightPct", Fix.FromInt(50), c + ".orders"),
+                GuardRadiusCells = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "guardRadiusCells", Fix.FromInt(6), c + ".orders"),
+                EscortFollowCells = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "escortFollowCells", Fix.FromInt(3), c + ".orders"),
+                EscortRadiusCells = JsonUtil.FixOr(o["orders"] as JObject ?? new JObject(), "escortRadiusCells", Fix.FromInt(6), c + ".orders"),
                 FrontLineTroopsPerUnit = JsonUtil.FixOr(o["frontLine"] as JObject ?? new JObject(), "troopsPerUnit", Fix.Zero, c + ".frontLine"),
                 FrontLineRefillPctPerSecond = JsonUtil.FixOr(o["frontLine"] as JObject ?? new JObject(), "refillPctPerSecond", Fix.FromInt(25), c + ".frontLine"),
                 FlankPp = JsonUtil.RequireFix(dir, "flankPp", c + ".direction"),

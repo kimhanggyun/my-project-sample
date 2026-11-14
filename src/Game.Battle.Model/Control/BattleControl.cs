@@ -126,7 +126,7 @@ namespace Game.Battle.Model.Control
 
         public void SetMoveMode(string mode)
         {
-            if (mode == MoveModes.Normal || mode == MoveModes.Forced || mode == MoveModes.AttackMove) MoveMode = mode;
+            if (mode == MoveModes.Normal || mode == MoveModes.Forced || mode == MoveModes.AttackMove || mode == MoveModes.Stealth) MoveMode = mode;
         }
 
         // ---- 버튼 명령 ----
@@ -284,6 +284,78 @@ namespace Game.Battle.Model.Control
 
         public bool Attack(string targetCorpsId) =>
             Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Queued = Queueing; });
+
+        // ---- 새 명령 (R-103, 19 시안 명령 줄) ----
+
+        /// <summary>공격 방식으로 공격: 돌격 · 사격만. 예약 모드면 예약.</summary>
+        public bool AttackWith(string targetCorpsId, string attackMode) =>
+            Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Mode = attackMode; c.Queued = Queueing; });
+
+        /// <summary>유인: 상대를 건드리고 맞붙으면 지점(back)으로 강행해 물러난다.</summary>
+        public bool Lure(string targetCorpsId, Vec back) =>
+            Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Mode = AttackModes.Lure; c.X = back.X; c.Y = back.Y; c.Queued = Queueing; });
+
+        /// <summary>지키기: 지점 둘레 안의 적만 친다.</summary>
+        public bool Guard(Vec point) =>
+            Issue(Selected, CommandKinds.Hold, c => { c.Mode = HoldModes.Guard; c.X = point.X; c.Y = point.Y; c.Queued = Queueing; });
+
+        /// <summary>엄호: 아군 군단을 따라다니며 지킨다.</summary>
+        public bool Escort(string allyCorpsId) =>
+            Issue(Selected, CommandKinds.Hold, c => { c.Mode = HoldModes.Escort; c.TargetCorpsId = allyCorpsId; c.Queued = Queueing; });
+
+        /// <summary>고른 군단마다 act를 고른 채 부른다 (여러 군단 명령, 19 시안). 받은 군단 수. 원래 선택은 되돌린다.</summary>
+        public int ForEach(IEnumerable<string> corpsIds, System.Func<bool> act)
+        {
+            var keep = Selected;
+            int n = 0;
+            foreach (var id in corpsIds)
+            {
+                var c = Context.FindCorps(id);
+                if (!CanCommand(c)) continue;
+                Selected = c;
+                if (act()) n++;
+            }
+            Selected = keep;
+            return n;
+        }
+
+        /// <summary>일제 공격 (여러 군단이 같은 적): 협공 대기로 서로 기다렸다 함께 친다 (R-103 = 협공 대기 동기화).</summary>
+        public int Volley(IEnumerable<string> corpsIds, string targetCorpsId) =>
+            ForEach(corpsIds, () => Issue(Selected, CommandKinds.Hold, c => { c.Mode = HoldModes.Coordinate; c.TargetCorpsId = targetCorpsId; }));
+
+        /// <summary>집결: 고른 군단이 한 지점 둘레로 모인다 (나란히 2칸 간격).</summary>
+        public int Rally(IList<string> corpsIds, Vec point)
+        {
+            int i = 0;
+            return ForEach(corpsIds, () =>
+            {
+                var side = Context.Forward(Selected).RightOf();
+                int k = i++;
+                Fix off = Fix.FromInt((k + 1) / 2 * 2 * (k % 2 == 0 ? 1 : -1));
+                var p = Clamp(point + side * off);
+                return Issue(Selected, CommandKinds.MoveTo, c => { c.X = p.X; c.Y = p.Y; c.Mode = MoveModes.Normal; });
+            });
+        }
+
+        /// <summary>
+        /// 경로 (19 시안 이동 › 경로 그리기): 첫 점은 지금 명령, 나머지는 예약으로 이어 간다 (방식 = 보통 · 강행 · 은밀).
+        /// 끝이 적 군단이면 도착 뒤 그 군단 공격 (우회 습격). 받은 명령 수 (첫 점을 못 받으면 0).
+        /// </summary>
+        public int Path(IList<Vec> points, string moveMode, string endTargetCorpsId = null)
+        {
+            if (!CanCommand(Selected) || points == null || points.Count == 0) return 0;
+            int n = 0;
+            for (int i = 0; i < points.Count; i++)
+            {
+                var p = Clamp(points[i]);
+                bool queued = i > 0 || Queueing;
+                if (!Issue(Selected, CommandKinds.MoveTo, c => { c.X = p.X; c.Y = p.Y; c.Mode = moveMode ?? MoveModes.Normal; c.Queued = queued; }))
+                    return n;
+                n++;
+            }
+            if (endTargetCorpsId != null && Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = endTargetCorpsId; c.Queued = true; })) n++;
+            return n;
+        }
 
         public bool ChangeFormation(string formationId) =>
             Issue(Selected, CommandKinds.ChangeFormation, c => c.FormationId = formationId);
