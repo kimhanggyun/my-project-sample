@@ -495,12 +495,28 @@ namespace Game.Unity.Boot
 
         public long Resource(string id) => new Wallet(State.Wallet).Get(id);
 
-        /// <summary>화면에 보이는 부대 이름 "제N부대" (보유 순서). 내부 id(u01…)는 보이지 않게. 고용 부대는 "고용 부대".</summary>
+        /// <summary>
+        /// 화면에 보이는 부대 이름 "제N부대" (기본 부대의 보유 순서 — 승급 부대는 번호를 차지하지 않는다). 내부 id(u01…)는 보이지 않게.
+        /// 승급으로 갈라져 나온 부대는 맨 위 기본 부대 이름 + " ›" (예: "제1부대 ›"). 고용 부대는 "고용 부대".
+        /// </summary>
         public string UnitLabel(string unitId)
         {
             if (Game.Flow.HireRules.IsHiredUnit(unitId)) return T("ui.unit.hired");
-            int i = State.Units.FindIndex(u => u.UnitId == unitId);
-            return i < 0 ? unitId ?? "?" : T("ui.unit.label", i + 1);
+            var unit = State.FindUnit(unitId);
+            if (unit == null) return unitId ?? "?";
+            if (unit.ParentUnitId != null && State.FindUnit(unit.ParentUnitId) != null)
+            {
+                var top = unit;
+                for (int guard = 0; guard < 8 && top.ParentUnitId != null && State.FindUnit(top.ParentUnitId) != null; guard++) top = State.FindUnit(top.ParentUnitId);
+                return T("ui.unit.childLabel", UnitLabel(top.UnitId));
+            }
+            int n = 0;
+            foreach (var u in State.Units)
+            {
+                if (u.ParentUnitId == null || State.FindUnit(u.ParentUnitId) == null) n++;
+                if (u.UnitId == unitId) break;
+            }
+            return T("ui.unit.label", n);
         }
 
         public void Save() => Saves.Save(State);

@@ -4,51 +4,57 @@ using UnityEngine.UI;
 
 namespace Game.Unity.Screens
 {
-    /// <summary>(임시) 타이틀. 누르면 메인 화면으로.</summary>
+    /// <summary>
+    /// 타이틀 (시안 01): 위 대표 그림 자리 + 붓 획 제목, 연결 문구, 주홍 [시작]. 온라인이면 서버 세이브를 받는 동안 [시작]을 막는다.
+    /// 준비되면 화면 아무 곳이나 눌러도 시작.
+    /// </summary>
     public sealed class TitleScreen : GameScreen
     {
+        private bool _ready;
+
         public override void Build()
         {
-            Ui.Column(Root, 40, 80).childAlignment = TextAnchor.MiddleCenter;
-            Ui.Size(Ui.Label(Root, "", Ui.FontBody), 460);
-            // 제목: 먹 붓 획 위에 글자, 오른쪽 아래에 낙관 (art-direction.md 3장)
-            var titleBox = Ui.Rect(Root, "TitleBox");
-            Ui.Size(titleBox, 220);
-            var stroke = Ui.Rect(titleBox, "Brush");
-            stroke.anchorMin = new Vector2(0.02f, 0.08f);
-            stroke.anchorMax = new Vector2(0.98f, 0.92f);
-            stroke.offsetMin = stroke.offsetMax = Vector2.zero;
-            var strokeImg = Ui.Background(stroke, Palette.IsLight ? new Color(0.17f, 0.15f, 0.12f, 0.92f) : new Color(0.9f, 0.86f, 0.78f, 0.12f));
-            strokeImg.sprite = UiArt.Brush;
-            strokeImg.raycastTarget = false;
-            var title = Ui.Label(titleBox, T("ui.title.name"), Ui.FontTitle + 8, TextAnchor.MiddleCenter, Palette.IsLight ? new Color(0.97f, 0.94f, 0.87f) : Palette.Text);
-            Ui.Fill(title.rectTransform);
-            var stamp = Ui.Rect(titleBox, "Seal");
-            stamp.anchorMin = stamp.anchorMax = new Vector2(0.86f, 0.06f);
-            stamp.sizeDelta = new Vector2(92f, 92f);
-            var stampImg = Ui.Background(stamp, Palette.Seal);
-            stampImg.sprite = UiArt.Seal;
-            stampImg.raycastTarget = false;
-            var stampText = Ui.Label(stamp, T("ui.title.seal"), 40, TextAnchor.MiddleCenter, new Color(0.98f, 0.94f, 0.86f));
-            stampText.font = Ui.TitleFont;
-            Ui.Fill(stampText.rectTransform);
-            Ui.Size(Ui.Label(Root, T("ui.title.tapToStart"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 80);
-            var status = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-            Ui.Size(status, 220);
-            var start = Ui.Button(Root, T("ui.title.start"), () => App.EnterGame(), 160);
+            // 화면 전체 누름 = 시작 (준비됐을 때만). 다른 것보다 뒤에 깐다.
+            var anywhere = Ui.Rect(Root, "TapAnywhere");
+            anywhere.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Ui.Fill(anywhere);
+            var hit = Ui.Background(anywhere, new Color(0, 0, 0, 0));
+            var tap = anywhere.gameObject.AddComponent<Button>();
+            tap.targetGraphic = hit;
+            tap.transition = Selectable.Transition.None;
+            tap.onClick.AddListener(Start);
+
+            Ui.Column(Root, 0, 0);
+            Ui.TitleHeader(Root, Ctx);
+            Ui.Spacer(Root);
+            var status = Ui.Hint(Root, "", 120);
+            Ui.Spacer(Root, 30, 0);
+            var bottom = Ui.Inset(Root, "Bottom", 80);
+            var start = Ui.PrimaryButton(bottom, T("ui.title.start"), Start, 160);
+            Ui.Spacer(Root, 310, 0);
+
+            _ready = !Ctx.OnlineEnabled;
+            Ui.SetPrimaryEnabled(start, _ready);
             // 온라인이면 서버 세이브를 받은 뒤 시작 (docs/impl/server.md 5장)
             if (Ctx.OnlineEnabled)
             {
-                Ui.SetEnabled(start, false);
                 status.text = T("ui.online.connecting");
                 Ctx.StartSync(() =>
                 {
                     if (status == null || start == null) return; // 동기화가 끝났을 때 타이틀이 이미 닫혔으면 무시 (Unity: 파괴된 객체는 == null)
                     status.text = T("ui.online." + Ctx.OnlineStatus);
-                    Ui.SetEnabled(start, true);
+                    _ready = true;
+                    Ui.SetPrimaryEnabled(start, true);
                     Ctx.LoadProfile(null); // 마스터 계정인지 (R-86, 개발 줄 탭)
                 });
             }
+        }
+
+        private void Start()
+        {
+            if (!_ready) return;
+            _ready = false; // 두 번 누름 막기
+            App.EnterGame();
         }
     }
 
