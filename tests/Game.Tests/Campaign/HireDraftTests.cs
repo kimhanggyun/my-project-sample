@@ -27,9 +27,9 @@ namespace Game.Tests.Campaign
             Assert.All(market, l => Assert.Equal(LocalOnlineService.NpcAccount, l.OwnerAccountId));
 
             HireListingResponse reg = null;
-            fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "u06", Price = 2, PayWith = "gold" }, x => reg = x);
+            fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = "gold" }, x => reg = x);
             Assert.True(reg.Ok);
-            fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "u06", Price = 1, PayWith = "gold" }, x => reg = x);
+            fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 1, PayWith = "gold" }, x => reg = x);
             Assert.Equal(2, reg.Listing.Version); // 같은 부대 → 갱신
             Assert.Equal(5, Market(fake).Count);
             bool? gone = null;
@@ -46,7 +46,8 @@ namespace Game.Tests.Campaign
             var market = Market(fake);
             var general = market.First(l => l.Kind == HireKinds.General && l.GeneralId == "enemy_general_04");
             var unit = market.First(l => l.Kind == HireKinds.Unit && l.TroopType == "cavalry");
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
+            state.Compositions[1].Picks.RemoveAt(state.Compositions[1].Picks.Count - 1); // 병종 칸 하나 비움 (대장군 4칸)
             var draft = new HireDraft(Kit.D);
 
             long room = draft.DefaultCount(state, "field", unit, 1);
@@ -56,8 +57,8 @@ namespace Game.Tests.Campaign
             var (comps, hired) = draft.Build(state, "field", "local", out var error);
             Assert.Null(error);
             Assert.Equal("enemy_general_04", comps[2].GeneralId);
-            Assert.Equal(HireRules.UnitIdOf(unit.Id), comps[1].Slots.Values.Last());
-            Assert.Equal(state.Compositions[2].Slots, comps[2].Slots); // 지휘관만 바뀜
+            Assert.Equal(HireRules.UnitIdOf(unit.Id), comps[1].Picks.Last().UnitId);
+            Assert.Equal(state.Compositions[2].Picks.Select(p => (p.UnitId, p.Troops)), comps[2].Picks.Select(p => (p.UnitId, p.Troops))); // 지휘관만 바뀜
             Assert.Equal(2, hired.Uses.Count);
             Assert.Equal("general_c", state.Compositions[2].GeneralId); // 세이브 편성은 그대로
 
@@ -65,6 +66,7 @@ namespace Game.Tests.Campaign
             var full = new HireDraft(Kit.D);
             full.Picks.Add(new HirePick { Listing = unit, CorpsIndex = 0, Count = 10 });
             full.Picks.Add(new HirePick { Listing = market.First(l => l.Kind == HireKinds.Unit && l.TroopType == "archer"), CorpsIndex = 0, Count = 10 });
+            for (int i = 0; i < 2; i++) full.Picks.Add(new HirePick { Listing = market.First(l => l.Kind == HireKinds.Unit && l.TroopType == "archer"), CorpsIndex = 0, Count = 10 }); // 자기 3칸 + 고용 4칸 > 진형 칸 6
             Assert.Null(full.Build(state, "field", "local", out var e2).compositions);
             Assert.Contains("빈 칸", e2);
         }

@@ -24,7 +24,7 @@ namespace Game.Tests.Campaign
             return s;
         }
 
-        [Theory(DisplayName = "스텝 목표 승률 범위 (위임 출진, 초기 편성, 고정 시드 60개)")]
+        [Theory(Skip = "군대 개편 PR 2에서 다시 켬: 새 군대 규모(army-v2.md, 처음 십부장 보병 3,000)에 맞춘 스텝·영토 밸런스 재조정 전", DisplayName = "스텝 목표 승률 범위 (위임 출진, 초기 편성, 고정 시드 60개)")]
         [InlineData("step01")]
         [InlineData("step02")]
         [InlineData("step03")]

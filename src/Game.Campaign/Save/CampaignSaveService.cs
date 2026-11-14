@@ -69,7 +69,9 @@ namespace Game.Campaign.Save
                 version++;
                 root["version"] = version;
             }
-            return root["campaign"].ToObject<CampaignState>(JsonSerializer.Create(Settings));
+            var state = root["campaign"].ToObject<CampaignState>(JsonSerializer.Create(Settings));
+            if (state != null) Game.Campaign.Roster.Army.Normalize(null, state); // 예전 군대(같은 병종 부대 여러 개·칸 편성) → 병종 묶음 (army-v2.md 7장)
+            return state;
         }
     }
 

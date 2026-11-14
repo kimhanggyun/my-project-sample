@@ -504,6 +504,7 @@ namespace Game.Unity.Boot
             if (Game.Flow.HireRules.IsHiredUnit(unitId)) return T("ui.unit.hired");
             var unit = State.FindUnit(unitId);
             if (unit == null) return unitId ?? "?";
+            if (unit.UnitId == unit.TroopType && Defs.TroopTypes.TryGetValue(unit.TroopType ?? "", out var tt)) return T(tt.NameKey); // 병종 묶음 (army-v2.md)
             if (unit.ParentUnitId != null && State.FindUnit(unit.ParentUnitId) != null)
             {
                 var top = unit;

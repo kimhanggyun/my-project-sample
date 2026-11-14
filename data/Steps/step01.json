@@ -29,73 +29,32 @@
         {
           "slot": "vanguard",
           "troopType": "infantry",
-          "troops": 3150
+          "troops": 550
         },
         {
           "slot": "center",
           "troopType": "infantry",
-          "troops": 3150
+          "troops": 550
         },
         {
           "slot": "leftWing",
           "troopType": "spearman",
-          "troops": 2700
+          "troops": 400
         },
         {
           "slot": "rightWing",
           "troopType": "spearman",
-          "troops": 2700
+          "troops": 400
         },
         {
           "slot": "leftGuard",
           "troopType": "archer",
-          "troops": 2250
+          "troops": 300
         },
         {
           "slot": "rightGuard",
           "troopType": "archer",
-          "troops": 2250
-        }
-      ]
-    },
-    {
-      "id": "enemy_corps_01b",
-      "general": "enemy_general_02",
-      "role": "vanguard",
-      "formation": "square",
-      "ai": "aggressive",
-      "difficulty": "easy",
-      "supplyMinutes": 10,
-      "units": [
-        {
-          "slot": "vanguard",
-          "troopType": "infantry",
-          "troops": 2700
-        },
-        {
-          "slot": "center",
-          "troopType": "spearman",
-          "troops": 2700
-        },
-        {
-          "slot": "leftWing",
-          "troopType": "infantry",
-          "troops": 2700
-        },
-        {
-          "slot": "rightWing",
-          "troopType": "infantry",
-          "troops": 2700
-        },
-        {
-          "slot": "leftGuard",
-          "troopType": "archer",
-          "troops": 1350
-        },
-        {
-          "slot": "rightGuard",
-          "troopType": "archer",
-          "troops": 1350
+          "troops": 300
         }
       ]
     }
@@ -124,8 +83,8 @@
     }
   ],
   "balanceTarget": {
-    "_comment": "위임 출진(초기 편성 기준) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다",
+    "_comment": "위임 출진(초기 편성 = 십부장 보병 3,000 한 칸, army-v2.md) 목표 승률 범위. StepBalanceTests가 고정 시드로 확인한다. 2026-11-14 군대 개편으로 적 1군단 2,500명으로 줄임 (나머지 스텝은 PR 2)",
     "winRateMin": 0.9,
-    "winRateMax": 1.0
+    "winRateMax": 1
   }
 }

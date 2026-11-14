@@ -133,7 +133,7 @@ docker run -p 8080:8080 -v game-store:/data/store game-server
 ## 5.6 클라우드 배포 (2026-11-11)
 
 - **Google Cloud Run + Firebase 로그인**으로 정했다. 배포 순서·사용자가 할 일·로그인 흐름은 [deploy-cloudrun.md](deploy-cloudrun.md).
-- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. `Game:AllowFakeReceipts=false`면 가짜 결제 영수증을 거절한다. `Game:Masters`(쉼표로 나눈 계정 id)는 마스터 계정: 개발 행동 `dev.*`을 받아 주고 `/v1/me`에 IsMaster (R-86). Cloud Run은 환경 변수 `Game__Masters`.
+- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. `Game:AllowFakeReceipts=false`면 가짜 결제 영수증을 거절한다. `Game:Masters`(쉼표로 나눈 **계정 id 또는 구글 로그인 이메일** — 구글이 확인한 이메일만, 대소문자 무시, 섞어 적어도 됨. 게스트는 이메일이 없어 계정 id로)는 마스터 계정: 개발 행동 `dev.*`을 받아 주고 `/v1/me`에 IsMaster (R-86). Cloud Run은 환경 변수 `Game__Masters`.
 
 ## 6. 다음 단계
 

@@ -28,7 +28,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "시작: 서버에 연결 못 하면 기기 세이브 그대로, 연결되면 서버 세이브를 받아 쓴다")]
         public void StartPaths()
         {
-            var local = StartingKitService.CreateNewGame(Kit.D);
+            var local = Kit.Veteran();
             var off = Run(done => new CloudSync(new OfflineOnlineService(), null).Start(local, 0, done));
             Assert.Equal((SyncOutcomes.Offline, 0L), (off.Outcome, off.Revision));
             Assert.Same(local, off.State);
@@ -44,7 +44,7 @@ namespace Game.Tests.Campaign
         public void FirstLinkUploadsProgress()
         {
             var (sync, online, _) = Make();
-            var local = StartingKitService.CreateNewGame(Kit.D);
+            var local = Kit.Veteran();
             local.ClearedSteps.Add("step01");
             var r = Run(done => sync.Start(local, 0, done));
             Assert.Equal(SyncOutcomes.Uploaded, r.Outcome);
@@ -53,7 +53,7 @@ namespace Game.Tests.Campaign
             online.LoadSave(s => server = s);
             Assert.Contains("step01", SaveJson.Read(server.Json).ClearedSteps);
 
-            var again = Run(done => sync.Start(StartingKitService.CreateNewGame(Kit.D), r.Revision, done)); // 이미 맞춘 기기
+            var again = Run(done => sync.Start(Kit.Veteran(), r.Revision, done)); // 이미 맞춘 기기
             Assert.Equal(SyncOutcomes.FromServer, again.Outcome);
             Assert.Contains("step01", again.State.ClearedSteps);
         }
@@ -94,7 +94,7 @@ namespace Game.Tests.Campaign
         public void SubmissionCarriesSortie()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 3, DelegateGenerals = { "general_b" } });
             var sim = new BattleSimulation(plan.Setup);
             while (!sim.IsOver) sim.Step();
@@ -104,7 +104,7 @@ namespace Game.Tests.Campaign
             Assert.Equal(plan.SupplyTaken, sub.Supply);
             Assert.Equal(plan.Setup.Contests.Select(c => c.ContestId), sub.ContestChoices.Keys);
             // 같은 메시지로 출진 준비를 다시 하면 같은 전투
-            var again = flow.Prepare(StartingKitService.CreateNewGame(Kit.D), BattleVerifier.RequestOf(sub));
+            var again = flow.Prepare(Kit.Veteran(), BattleVerifier.RequestOf(sub));
             Assert.Equal(sim.Result.StateHash, BattleSimulation.Run(again.Setup, sub.Commands).StateHash);
         }
 

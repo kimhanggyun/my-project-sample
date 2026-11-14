@@ -17,7 +17,7 @@ namespace Game.Tests.Battle
         private static BattleSetup Step01Manual(ulong seed = 1)
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var plan = flow.Prepare(StartingKitService.CreateNewGame(Kit.D), new SortieRequest { StepId = "step01", Seed = seed });
+            var plan = flow.Prepare(Kit.Veteran(), new SortieRequest { StepId = "step01", Seed = seed });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));
             return plan.Setup;
         }
@@ -348,7 +348,7 @@ namespace Game.Tests.Battle
         public void AmbushPoint()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             state.FindGeneral("general_c").LearnedSkills.Add("ambush");
             var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));

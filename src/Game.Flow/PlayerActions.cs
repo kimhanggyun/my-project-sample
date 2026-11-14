@@ -93,6 +93,14 @@ namespace Game.Flow
                 new Economy.Wallet(s.Wallet).Add(a.PayWith, a.Count);
                 return true;
             }));
+            Register(new Handler(ActionKinds.DevLordLevel, (s, a) =>
+            {
+                int max = System.Math.Max(1, defs.Campaign.LordMaxLevel);
+                long to = System.Math.Max(1, System.Math.Min(max, s.LordLevel + a.Count));
+                if (a.Count == 0 || to == s.LordLevel) return false;
+                s.LordLevel = (int)to;
+                return true;
+            }));
             Register(new Handler(ActionKinds.DevUnlockAll, (s, a) =>
             {
                 bool any = false;
@@ -119,13 +127,18 @@ namespace Game.Flow
 
         public static PlayerAction DevGrant(string resource, long amount) => new PlayerAction { Kind = ActionKinds.DevGrant, PayWith = resource, Count = amount };
         public static PlayerAction DevUnlockAll() => new PlayerAction { Kind = ActionKinds.DevUnlockAll };
+        public static PlayerAction DevLordLevel(long delta) => new PlayerAction { Kind = ActionKinds.DevLordLevel, Count = delta };
         public static PlayerAction DevGiveGeneral(string generalId) => new PlayerAction { Kind = ActionKinds.DevGiveGeneral, GeneralId = generalId };
 
         public static List<ActionCorps> ToActionCorps(IEnumerable<CorpsComposition> comps)
         {
             var list = new List<ActionCorps>();
             foreach (var c in comps)
-                list.Add(new ActionCorps { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new Dictionary<string, string>(c.Slots) });
+            {
+                var ac = new ActionCorps { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role };
+                foreach (var p in c.Picks) ac.Picks.Add(new ActionPick { UnitId = p.UnitId, Troops = p.Troops, Hired = p.Hired });
+                list.Add(ac);
+            }
             return list;
         }
 
@@ -133,7 +146,11 @@ namespace Game.Flow
         {
             var list = new List<CorpsComposition>();
             foreach (var c in corps)
-                list.Add(new CorpsComposition { GeneralId = c?.GeneralId, Formation = c?.Formation, Role = c?.Role, Slots = new Dictionary<string, string>(c?.Slots ?? new Dictionary<string, string>()) });
+            {
+                var cc = new CorpsComposition { GeneralId = c?.GeneralId, Formation = c?.Formation, Role = c?.Role };
+                if (c?.Picks != null) foreach (var p in c.Picks) if (p != null) cc.Picks.Add(new TroopPick { UnitId = p.UnitId, Troops = p.Troops, Hired = p.Hired });
+                list.Add(cc);
+            }
             return list;
         }
 

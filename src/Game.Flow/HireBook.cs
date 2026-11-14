@@ -50,9 +50,13 @@ namespace Game.Flow
                     if (cs.Team != StoryFlow.PlayerTeam || !byCorps.TryGetValue(cs.Id, out var cr)) continue;
                     if (isUnit)
                     {
-                        var ur = Find(cr, unitId);
-                        if (ur == null) continue;
-                        list.Add(new HireOutcome { ListingId = use.ListingId, Result = ResultOf(cr, result), TroopsStart = ur.StartTroops, TroopsLost = ur.Losses });
+                        // 고용 부대는 진형 칸 여러 개로 나뉘어 싸운다 (R-94: 소부대 id = 묶음 id + "@" + 칸) → 모아서 센다
+                        long start = 0, lost = 0;
+                        bool any = false;
+                        foreach (var u in cr.Units)
+                            if (StoryFlow.PoolIdOf(u.UnitId) == unitId) { start += u.StartTroops; lost += u.Losses; any = true; }
+                        if (!any) continue;
+                        list.Add(new HireOutcome { ListingId = use.ListingId, Result = ResultOf(cr, result), TroopsStart = start, TroopsLost = lost });
                         break;
                     }
                     if (cs.General?.Id == generalId)
@@ -71,12 +75,6 @@ namespace Game.Flow
             int g = 0;
             for (int i = 0; i < useIndex; i++) if (hired.Uses[i].Count == 0) g++;
             return g < hired.Generals.Count ? hired.Generals[g].GeneralId : null;
-        }
-
-        private static UnitResult Find(CorpsResult cr, string unitId)
-        {
-            foreach (var u in cr.Units) if (u.UnitId == unitId) return u;
-            return null;
         }
 
         private static string ResultOf(CorpsResult cr, BattleResult result)

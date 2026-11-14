@@ -93,7 +93,7 @@ namespace Game.Unity.Screens
             var growth = new TroopGrowthService(ctx.Defs);
             var troops = new TroopService(ctx.Defs);
             string id = u.UnitId;
-            long max = ctx.Defs.Balance.UnitMaxTroops;
+            long max = Game.Campaign.Roster.Army.TroopMax(ctx.Defs, ctx.State); // 계급의 병종 최대 병력 (army-v2.md 2장)
             float dx = Indent * depth;
 
             var holder = Ui.Rect(list, id);
@@ -110,7 +110,7 @@ namespace Game.Unity.Screens
 
             string troopName = FormationTabView.TroopName(ctx, u.TroopType);
             var parent = u.ParentUnitId != null ? ctx.State.FindUnit(u.ParentUnitId) : null;
-            string title = parent != null ? ctx.UnitLabel(id) + " " + troopName : ctx.UnitLabel(id) + " · " + troopName;
+            string title = troopName; // 병종마다 묶음 하나 (army-v2.md 3장)
             var name = Ui.Label(Ui.Place(Ui.Rect(card, "Name"), tx, 10, width - tx - 300, 56), title, 34);
             name.fontStyle = FontStyle.Bold;
             name.horizontalOverflow = HorizontalWrapMode.Overflow;
@@ -135,7 +135,7 @@ namespace Game.Unity.Screens
             bool hasChild = ctx.State.Units.Exists(x => x.ParentUnitId == id);
             string bottom;
             if (parent != null)
-                bottom = ctx.T("ui.troops.promotedFrom", ctx.UnitLabel(parent.UnitId).TrimEnd('›', ' ') + " " + FormationTabView.TroopName(ctx, parent.TroopType)) + " · ";
+                bottom = ctx.T("ui.troops.promotedFrom", FormationTabView.TroopName(ctx, parent.TroopType)) + " · ";
             else bottom = "";
             if (u.Troops == 0 && u.Wounded == 0 && hasChild) bottom += ctx.T("ui.troops.allPromoted", troopName);
             else bottom += promos.Count > 0 ? ctx.T("ui.troops.promoteCount", promos.Count) : ctx.T("ui.troops.noPromotion");
@@ -160,7 +160,7 @@ namespace Game.Unity.Screens
                 trainCheck == TroopGrowthService.Ok, trainCheck == TroopGrowthService.NotEnough);
             PlaceRight((RectTransform)train.transform, 20, 18, 190, 100);
 
-            long room = troops.Room(u);
+            long room = troops.Room(ctx.State, u);
             long step = System.Math.Min(RefillStep, room);
             var refillTop = ctx.T("ui.troops.refill", (step > 0 ? step : RefillStep).ToString("N0"));
             var refill = Ui.TwoLineButton(card, refillTop,
@@ -260,7 +260,7 @@ namespace Game.Unity.Screens
             hh.childAlignment = TextAnchor.MiddleLeft;
             Ui.Size(Ui.SecondaryButton(head, "‹", () => app.ShowMain("troop"), 80, 44), 80, 80).flexibleWidth = 0;
             Ui.TroopPicture(ctx, head, u.TroopType, 80);
-            var title = Ui.Label(head, ctx.T("ui.troops.promoteTitle", ctx.UnitLabel(unitId) + " · " + FormationTabView.TroopName(ctx, u.TroopType)), 48);
+            var title = Ui.Label(head, ctx.T("ui.troops.promoteTitle", FormationTabView.TroopName(ctx, u.TroopType)), 48);
             title.font = Ui.TitleFont;
             title.horizontalOverflow = HorizontalWrapMode.Overflow;
             Ui.Size(title, 100, -1, -1, 1);
