@@ -73,6 +73,9 @@
     "delegate": {
       "default": true
     },
+    "retreatChoice": {
+      "default": true
+    },
     "generalSpeech": {
       "default": true
     },

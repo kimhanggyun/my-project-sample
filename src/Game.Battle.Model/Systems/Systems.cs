@@ -229,8 +229,17 @@ namespace Game.Battle.Model.Systems
             bool auto = UnitAutonomy.On(ctx);
             foreach (var u in corps.Units)
             {
-                var off = corps.Formation.Slots[auto ? UnitAutonomy.SlotOf(corps, u) : u.Slot]; // 빈 선봉 메우기 (R-74)
-                Vec p = corps.Anchor + right * off.X + fwd * off.Y;
+                string slot = auto ? UnitAutonomy.SlotOf(corps, u) : u.Slot; // 빈 선봉 메우기 (R-74)
+                var off = corps.Formation.Slots[slot];
+                Fix ox = off.X, oy = off.Y;
+                // 진형 전환 중 (R-92): 옛 자리에서 새 자리로 전환 시간에 걸쳐 옮겨 간다
+                if (corps.PendingFormation != null && corps.PendingFormation.Slots.TryGetValue(slot, out var to))
+                {
+                    Fix t = corps.ReformProgress;
+                    ox = ox + (to.X - ox) * t;
+                    oy = oy + (to.Y - oy) * t;
+                }
+                Vec p = corps.Anchor + right * ox + fwd * oy;
                 if (auto) p = UnitAutonomy.Pursue(ctx, u, p); // 퇴각하는 적 추격
                 p = new Vec(Fix.Clamp(p.X, Fix.Zero, maxX), Fix.Clamp(p.Y, Fix.Zero, maxY));
                 if (!ctx.Field.CanEnter(Cell.Of(p), u.Troop)) p = corps.Anchor;
@@ -456,6 +465,7 @@ namespace Game.Battle.Model.Systems
                 corps.Formation = corps.PendingFormation;
                 corps.PendingFormation = null;
                 corps.ReformTicksLeft = 0;
+                corps.ReformTotalTicks = 0;
             }
         }
     }
@@ -503,6 +513,16 @@ namespace Game.Battle.Model.Systems
         }
     }
 
+    /// <summary>퇴각 까닭 (이벤트 retreatStarted의 값, R-93).</summary>
+    public static class RetreatReasons
+    {
+        public const string Morale = "morale";
+        public const string Troops = "troops";
+        public const string Order = "order";
+        public const string Rout = "rout";
+        public const string Other = "other";
+    }
+
     /// <summary>궤멸·퇴각: 병력 0 → 궤멸. 사기 ≤ 성향 기준 또는 병력 ≤ 시작 × 비율 → 퇴각. 퇴각 방향 끝에 닿으면 이탈.</summary>
     internal static class RetreatSystem
     {
@@ -521,9 +541,33 @@ namespace Game.Battle.Model.Systems
                 }
                 if (corps.Status == CorpsStatus.Active)
                 {
-                    bool fewTroops = Fix.FromInt(corps.Troops) <= c.RetreatTroopRatio * corps.StartTroops;
-                    bool broken = ctx.IsEnabled(RuleFlagIds.Morale) && corps.Morale <= corps.Temperament.RetreatMorale;
-                    if (fewTroops || broken) BeginRetreat(ctx, corps);
+                    bool moraleOn = ctx.IsEnabled(RuleFlagIds.Morale);
+                    if (corps.StandFast)
+                    {
+                        // 버티는 군단 (R-93): 병력·사기가 바닥나면 무너진다
+                        bool routTroops = Fix.FromInt(corps.Troops) <= c.StandFastTroopRatio * corps.StartTroops;
+                        bool routMorale = moraleOn && corps.Morale <= c.StandFastMorale;
+                        if (routTroops || routMorale) BeginRetreat(ctx, corps, RetreatReasons.Rout);
+                    }
+                    else
+                    {
+                        bool fewTroops = Fix.FromInt(corps.Troops) <= c.RetreatTroopRatio * corps.StartTroops;
+                        bool broken = moraleOn && corps.Morale <= corps.Temperament.RetreatMorale;
+                        string reason = fewTroops ? RetreatReasons.Troops : broken ? RetreatReasons.Morale : null;
+                        if (reason != null)
+                        {
+                            bool ask = ctx.IsEnabled(RetreatChoiceFlag) && corps.Setup.Controller == Controllers.Player && !corps.Delegated;
+                            if (!ask) BeginRetreat(ctx, corps, reason);
+                            else if (corps.RetreatAskReason == null)
+                            {
+                                corps.RetreatAskReason = reason;
+                                corps.RetreatAskDeadline = ctx.Tick + Skills.SkillRules.Ticks(ctx, c.RetreatAskSec);
+                                Events.EventLog.Add(ctx, Events.EventKinds.RetreatAsked, corps.Id, reason);
+                            }
+                            else if (ctx.Tick >= corps.RetreatAskDeadline) BeginRetreat(ctx, corps, corps.RetreatAskReason); // 답이 없으면 퇴각
+                        }
+                        else corps.RetreatAskReason = null; // 조건이 풀리면 (사기 회복 등) 묻기도 끝
+                    }
                 }
                 // 가장자리로 갈 길이 아예 없으면 (예: 배인데 가장자리가 뭍, R-85) 그 자리에서 전장을 떠난 것으로
                 bool noWayOut = corps.Order.Kind == OrderKinds.Retreat && corps.PathGoal != null && corps.Path.Count == 0;
@@ -535,11 +579,15 @@ namespace Game.Battle.Model.Systems
             }
         }
 
-        /// <summary>퇴각 시작. 근처 아군 사기가 떨어진다 (battle.md 2.5.1 공통).</summary>
-        public static void BeginRetreat(BattleContext ctx, CorpsState corps)
+        /// <summary>퇴각 선택 스위치 (R-93).</summary>
+        public const string RetreatChoiceFlag = "retreatChoice";
+
+        /// <summary>퇴각 시작. 근처 아군 사기가 떨어진다 (battle.md 2.5.1 공통). reason = 까닭 (이벤트 값, R-93).</summary>
+        public static void BeginRetreat(BattleContext ctx, CorpsState corps, string reason = RetreatReasons.Other)
         {
+            corps.RetreatAskReason = null;
             NearbyMoraleDrop(ctx, corps);
-            Events.EventLog.Add(ctx, Events.EventKinds.RetreatStarted, corps.Id);
+            Events.EventLog.Add(ctx, Events.EventKinds.RetreatStarted, corps.Id, reason);
             corps.Status = CorpsStatus.Retreating;
             corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Retreat, Mode = MoveModes.Forced });
         }

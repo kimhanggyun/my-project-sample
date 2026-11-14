@@ -215,6 +215,13 @@ namespace Game.Battle.Model.Control
                 && Issue(c, CommandKinds.DuelAnswer, x => x.Mode = accept ? "accept" : "refuse");
         }
 
+        /// <summary>퇴각 선택에 답한다 (R-93): true = 퇴각, false = 버틴다. 묻는 중이 아니면 false.</summary>
+        public bool AnswerRetreat(string corpsId, bool retreat)
+        {
+            var c = Context.FindCorps(corpsId);
+            return c != null && c.RetreatAskReason != null && Issue(c, CommandKinds.RetreatAnswer, x => x.Mode = retreat ? "retreat" : "hold");
+        }
+
         /// <summary>마주침 일기토 기회에 답한다 (R-91): 신청하면 true로. 기회가 없으면 false.</summary>
         public bool AnswerDuelChance(string corpsId, bool challenge)
         {

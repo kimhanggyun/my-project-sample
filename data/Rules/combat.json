@@ -31,7 +31,11 @@
     "supplyExhaustedPerSecond": 1.0
   },
   "retreat": {
-    "troopRatio": 0.3
+    "troopRatio": 0.3,
+    "_choice": "퇴각 선택 (R-93): 직접 지휘하는 플레이어 군단은 퇴각 조건(사기 ≤ 성향 기준 또는 병력 ≤ troopRatio)이 되면 askSec초 동안 [퇴각]/[버틴다]를 묻는다 (답이 없으면 퇴각). 버티면 병력 ≤ standFastTroopRatio 또는 사기 ≤ standFastMorale일 때 무너져 퇴각(rout). 스위치 retreatChoice",
+    "askSec": 8,
+    "standFastTroopRatio": 0.1,
+    "standFastMorale": 0
   },
   "retreatEdgeMargin": 1.5,
   "aiThinkEveryTicks": 10,
@@ -117,14 +121,16 @@
     "restSurpriseConfusionSec": 3
   },
   "discipline": {
-    "_comment": "규율 (battle.md 2.6, R-56): 통솔 위주 + 지략 일부. 규율 50이면 기본값, 높을수록 진형 전환이 빠르다. 전환 중에는 받는 피해가 늘고 이전 진형을 쓴다. 수치는 예시",
+    "_comment": "규율 (battle.md 2.6, R-56·R-92): 통솔 위주 + 지략 일부. 규율 50이면 기본값, 높을수록 진형 전환이 빠르다. 전환 중에는 받는 피해가 늘고 주는 피해가 줄며, 진형 특성은 이전 진형을 쓰고, 소부대는 전환 시간에 걸쳐 새 자리로 옮겨 간다. 수치는 예시",
     "leadershipWeight": 0.8,
     "intellectWeight": 0.2,
     "formationChangeSeconds": 3,
     "changeCutPerPoint": 0.01,
     "minChangeSeconds": 1,
     "maxChangeSeconds": 6,
-    "reformingDamageTakenPp": 10
+    "reformingDamageTakenPp": 10,
+    "_reformingAttackPp": "전환 중 주는 피해 %p (R-92). 전환 동안 소부대는 옛 자리에서 새 자리로 실제로 걸어간다",
+    "reformingAttackPp": -10
   },
   "frontLine": {
     "_comment": "전열 (battle.md 2.4.1, R-73): 근접 소부대가 앞줄에서 함께 싸우는 병력 = troopsPerUnit × (100 + 진형 정면 폭 %)/100. 잃으면 앞줄에서 빠지고 뒷줄이 1초에 한도의 refillPctPerSecond%씩 채운다. 수치는 예시",

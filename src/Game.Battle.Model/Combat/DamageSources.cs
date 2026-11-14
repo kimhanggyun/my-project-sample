@@ -103,6 +103,9 @@ namespace Game.Battle.Model.Combat
         {
             var pp = a.Battle.Combat.ReformingDamageTakenPp;
             if (a.DefenderCorps.PendingFormation != null && pp != Fix.Zero) into.Add(new DamageModifier("reforming", pp, RuleFlagIds.Discipline));
+            // 전환 중인 쪽이 치면 약하다 (R-92)
+            var ap = a.Battle.Combat.ReformingAttackPp;
+            if (a.AttackerCorps.PendingFormation != null && ap != Fix.Zero) into.Add(new DamageModifier("reformingAttack", ap, RuleFlagIds.Discipline));
         }
     }
 

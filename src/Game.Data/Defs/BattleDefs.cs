@@ -80,6 +80,10 @@ namespace Game.Data.Defs
         public Fix MoraleRecoverPerSecond { get; private set; }
         public Fix MoraleSupplyExhaustedPerSecond { get; private set; }
         public Fix RetreatTroopRatio { get; private set; }
+        /// <summary>퇴각 선택 (R-93): 묻는 시간(초), 버틸 때 무너지는 병력 비율·사기.</summary>
+        public Fix RetreatAskSec { get; private set; }
+        public Fix StandFastTroopRatio { get; private set; }
+        public Fix StandFastMorale { get; private set; }
         public Fix RetreatEdgeMargin { get; private set; }
         public int AiThinkEveryTicks { get; private set; }
         public Fix GeneralMightToAttack { get; private set; }
@@ -96,6 +100,8 @@ namespace Game.Data.Defs
         public Fix MaxFormationChangeSeconds { get; private set; }
         /// <summary>진형 전환 중인 군단이 받는 피해 %p.</summary>
         public Fix ReformingDamageTakenPp { get; private set; }
+        /// <summary>진형 전환 중인 군단이 주는 피해 보정 %p (R-92, 음수 = 약해짐).</summary>
+        public Fix ReformingAttackPp { get; private set; }
         /// <summary>용맹 = 무력 × 가중치 + 통솔 × 가중치 (R-56).</summary>
         public Fix ValorMightWeight { get; private set; }
         public Fix ValorLeadershipWeight { get; private set; }
@@ -293,6 +299,9 @@ namespace Game.Data.Defs
                 MoraleRecoverPerSecond = JsonUtil.RequireFix(morale, "recoverPerSecond", c + ".morale"),
                 MoraleSupplyExhaustedPerSecond = JsonUtil.RequireFix(morale, "supplyExhaustedPerSecond", c + ".morale"),
                 RetreatTroopRatio = JsonUtil.RequireFix(retreat, "troopRatio", c + ".retreat"),
+                RetreatAskSec = JsonUtil.FixOr(retreat, "askSec", Fix.FromInt(8), c + ".retreat"),
+                StandFastTroopRatio = JsonUtil.FixOr(retreat, "standFastTroopRatio", Fix.FromDecimal(0.1m), c + ".retreat"),
+                StandFastMorale = JsonUtil.FixOr(retreat, "standFastMorale", Fix.Zero, c + ".retreat"),
                 RetreatEdgeMargin = JsonUtil.RequireFix(o, "retreatEdgeMargin", c),
                 AiThinkEveryTicks = (int)JsonUtil.RequireLong(o, "aiThinkEveryTicks", c),
                 GeneralMightToAttack = JsonUtil.RequireFix(general, "mightToAttack", c + ".general"),
@@ -305,6 +314,7 @@ namespace Game.Data.Defs
                 MinFormationChangeSeconds = Opt(o, "discipline", "minChangeSeconds", c),
                 MaxFormationChangeSeconds = Opt(o, "discipline", "maxChangeSeconds", c),
                 ReformingDamageTakenPp = Opt(o, "discipline", "reformingDamageTakenPp", c),
+                ReformingAttackPp = Opt(o, "discipline", "reformingAttackPp", c),
                 ValorMightWeight = Opt(o, "valor", "mightWeight", c),
                 ValorLeadershipWeight = Opt(o, "valor", "leadershipWeight", c),
                 ValorMoraleLossCutPerPoint = Opt(o, "valor", "moraleLossCutPerPoint", c),
