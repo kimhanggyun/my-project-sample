@@ -88,6 +88,9 @@ namespace Game.Flow
             return Steps.Count - 1;
         }
 
+        /// <summary>약관을 예전 판으로 동의했는데 판이 올라 다시 묻는 경우 (시안 03 "약관이 바뀌었습니다" 줄). 처음 동의면 false.</summary>
+        public bool IsReagree(StartupRecord r) => r != null && r.TermsVersion > 0 && r.TermsVersion < TermsVersion;
+
         private bool Skip(string step, StartupRecord r, bool hasServer)
         {
             switch (step)

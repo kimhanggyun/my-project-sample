@@ -922,7 +922,8 @@ namespace Game.Unity.Screens
                 if (e.Kind == EventKinds.Dialogue) { Add(string.IsNullOrEmpty(who) ? T(e.Data) : who + ": " + T(e.Data)); Bubble(corps, T(e.Data)); continue; } // 말한 군단이 없으면(지문) 이름 없이
                 var sp = _speech.Feed(e);
                 if (sp != null) { Add(who + ": \"" + T(sp.LineKey) + "\""); Bubble(corps, T(sp.LineKey)); }
-                if (sp != null && sp.Kind == "warning" && sp.QuickActions.Count > 0 && !IsReplay && !_autoFinish && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
+                if (sp != null && sp.Kind == "warning" && sp.QuickActions.Count > 0 && !IsReplay && !_autoFinish && corps != null && _ctl.CanCommand(corps) && !corps.Delegated
+                    && corps.RetreatAskReason == null && !(_promptIsRetreat && _duelOfferCorps == corps.Id)) // 퇴각 선택 중에는 같은 말을 또 하지 않는다 (B5)
                     ShowQuick(corps, T(sp.LineKey), sp.QuickActions);
                 string sysKey = "ui.event." + e.Kind;
                 if (e.Data != null && Ctx.Defs.Strings.ContainsKey(sysKey + "." + e.Data)) sysKey += "." + e.Data; // 까닭별 문구 (퇴각 이유 등, R-93)
@@ -930,7 +931,10 @@ namespace Game.Unity.Screens
                 {
                     // {0} = 이 이벤트의 군단, {1} = 값이 군단 id면 그 군단 (일기토의 상대 등)
                     string other = e.Data != null && _sim.Context.FindCorps(e.Data) != null ? CorpsName(e.Data) : (e.Data ?? "");
-                    Add(Ui.Colored(T(sysKey, who, other), Palette.TextDim));
+                    string line = T(sysKey, who, other);
+                    bool big = e.Kind == EventKinds.RetreatStarted || e.Kind == EventKinds.StandFast; // 퇴각·패주·버티기는 눈에 띄게 + 깃발 말풍선 (B6)
+                    Add(Ui.Colored(line, big ? (corps != null && corps.Team == _ctl.Team ? Palette.Bad : Palette.Good) : Palette.TextDim));
+                    if (big && corps != null) Bubble(corps, line);
                 }
             }
         }
@@ -1017,6 +1021,7 @@ namespace Game.Unity.Screens
         /// <summary>퇴각 선택 (R-93): 내 군단이 퇴각 조건. [버틴다]/[퇴각한다]. 답이 없으면 퇴각.</summary>
         private void ShowRetreatAsk(CorpsState mine, string reason)
         {
+            _quickBar.gameObject.SetActive(false); // 조언 창과 겹치지 않게 (B5)
             _duelOfferCorps = mine.Id;
             _promptIsRetreat = true;
             _duelPromptIsChance = false;
@@ -1218,7 +1223,7 @@ namespace Game.Unity.Screens
             {
                 var c = kv.Key;
                 bool shown = c.InBattle && _ctl.Sees(c);
-                Vector3 sp = shown ? cam.WorldToScreenPoint(_field.ToWorld(c.Anchor) + Vector3.up * 2.2f) : Vector3.zero;
+                Vector3 sp = shown ? cam.WorldToScreenPoint(_field.FlagPoint(c)) : Vector3.zero;
                 shown = shown && sp.z > 0 && cam.pixelRect.Contains(sp);
                 kv.Value.gameObject.SetActive(shown);
                 if (!shown) continue;

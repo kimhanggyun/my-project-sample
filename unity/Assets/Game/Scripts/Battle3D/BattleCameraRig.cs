@@ -19,6 +19,9 @@ namespace Game.Unity.Battle3D
         public Vector3 Focus { get; private set; }
         public float Distance { get; private set; } = 26f;
 
+        /// <summary>맵 밖을 보여 줄 수 있는 너비 (칸, B8).</summary>
+        public const float EdgeMargin = 4f;
+
         public BattleCameraRig(Camera camera, float fieldWidth, float fieldDepth)
         {
             Camera = camera;
@@ -82,16 +85,18 @@ namespace Game.Unity.Battle3D
             var r = Camera.pixelRect;
             if (r.height < 2f || r.width < 2f) return;
             if (!Ground(new Vector2(r.center.x, r.yMin + 1f), 0f, out var bottom) || !Ground(new Vector2(r.center.x, r.yMax - 1f), 0f, out var top)) return;
+            // 가장자리 여유 (B8): 맵 끝에 선 군단(대개 총대장)을 가까이 볼 때 화면 가장자리 UI 밑으로 밀려나지 않게, 맵 밖을 조금은 보여 준다
+            float m = EdgeMargin;
             float dz = 0f;
-            if (top.z - bottom.z >= _depth) dz = _depth / 2f - (top.z + bottom.z) / 2f;
-            else if (bottom.z < 0f) dz = -bottom.z;
-            else if (top.z > _depth) dz = _depth - top.z;
+            if (top.z - bottom.z >= _depth + 2f * m) dz = _depth / 2f - (top.z + bottom.z) / 2f;
+            else if (bottom.z < -m) dz = -m - bottom.z;
+            else if (top.z > _depth + m) dz = _depth + m - top.z;
             float dx = 0f;
             if (Ground(new Vector2(r.xMin + 1f, r.center.y), 0f, out var left) && Ground(new Vector2(r.xMax - 1f, r.center.y), 0f, out var right))
             {
-                if (right.x - left.x >= _width) dx = _width / 2f - (left.x + right.x) / 2f;
-                else if (left.x < 0f) dx = -left.x;
-                else if (right.x > _width) dx = _width - right.x;
+                if (right.x - left.x >= _width + 2f * m) dx = _width / 2f - (left.x + right.x) / 2f;
+                else if (left.x < -m) dx = -m - left.x;
+                else if (right.x > _width + m) dx = _width + m - right.x;
             }
             if (dx == 0f && dz == 0f) return;
             Focus += new Vector3(dx, 0f, dz);

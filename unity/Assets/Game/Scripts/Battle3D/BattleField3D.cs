@@ -464,6 +464,19 @@ namespace Game.Unity.Battle3D
 
         public void LookAt(CorpsState c) { if (c != null) Rig.LookAt(ToWorld(c.Anchor)); }
 
+        /// <summary>
+        /// 이름표·사기 막대를 붙일 곳 (B7): 장수가 서는 곳(군단 가운데에서 0.9 뒤) 위로, 탄 장수·깃대보다 높게.
+        /// 장수는 그리기에서 Anchor + 뒤 0.9에 선다.
+        /// </summary>
+        public Vector3 FlagPoint(CorpsState c)
+        {
+            var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
+            var back = facing.sqrMagnitude > 1e-6f ? -facing.normalized * 0.9f : Vector3.zero;
+            var p = ToWorld(c.Anchor) + back;
+            p.y = GroundHeight(p.x, p.z) + 2.9f;
+            return p;
+        }
+
         /// <summary>여러 군단이 한 화면에 들어오게: 가운데를 보고, 가장 먼 둘의 거리만큼 물러선다 (전투 시작 때 아군 전체).</summary>
         public void Frame(IEnumerable<CorpsState> corps)
         {
