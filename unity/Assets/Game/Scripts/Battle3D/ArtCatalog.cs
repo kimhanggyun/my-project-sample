@@ -289,8 +289,24 @@ namespace Game.Unity.Battle3D
                 foreach (AnimationState st in legacy)
                     if (st.clip != null) { pose = st.clip; if (st.clip.name.ToLowerInvariant().Contains("idle")) break; }
             if (pose == null) return;
-            if (animator != null) animator.enabled = false; // 샘플한 자세를 Animator가 덮지 않게
-            pose.SampleAnimation(animator != null ? animator.gameObject : inst, 0f);
+            // 기기 빌드에서는 AnimationClip.SampleAnimation이 에디터와 다르다 (2026-11-14, 폰 개발 콘솔 오류):
+            // 레거시 동작은 Animation 컴포넌트로, 일반 동작은 Animator가 붙은 오브젝트에서만 샘플할 수 있다.
+            // 없으면 이 임시 사본에 붙여서 샘플한다 (사본은 굳힌 뒤 바로 지운다).
+            if (pose.legacy)
+            {
+                var anim = legacy != null ? legacy : inst.AddComponent<Animation>();
+                if (anim.GetClip(pose.name) == null) anim.AddClip(pose, pose.name);
+                var state = anim[pose.name];
+                state.enabled = true;
+                state.weight = 1f;
+                state.time = 0f;
+                anim.Sample();
+                state.enabled = false;
+                return;
+            }
+            if (animator == null) animator = inst.AddComponent<Animator>();
+            pose.SampleAnimation(animator.gameObject, 0f);
+            animator.enabled = false; // 샘플한 자세를 Animator가 덮지 않게
         }
 
         /// <summary>인스턴싱을 켠 사본. 셰이더가 없거나 이 기기에서 못 쓰면(분홍) 기본 재질에 텍스처·색만 옮긴다.</summary>
