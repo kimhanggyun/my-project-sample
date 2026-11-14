@@ -31,6 +31,14 @@ namespace Game.Server
         NicknameResponse SetNickname(string accountId, string nickname);
         string NicknameOf(string accountId);
         Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds);
+
+        // ---- 계정 삭제 (R-102) ----
+        /// <summary>삭제 요청 (이미 요청 중이면 그 시각 그대로). 영구 삭제 시각을 돌려준다.</summary>
+        long RequestDeletion(string accountId, long nowUnixSeconds);
+        /// <summary>삭제 요청 중이면 취소하고 true.</summary>
+        bool CancelDeletion(string accountId);
+        /// <summary>유예가 지난 계정을 모두 지운다 (토큰 · 외부 로그인 · 이메일 · 닉네임 · 가입 · 게임별 세이브 · 고용 등록 · 우편 · 고용 기록 · 영토 · 공유 녹화). 지운 수.</summary>
+        int PurgeDeleted(long nowUnixSeconds);
     }
 
     public interface IGameStore
@@ -91,6 +99,8 @@ namespace Game.Server
             public Dictionary<string, string> Emails { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → 닉네임.</summary>
             public Dictionary<string, string> Nicknames { get; set; } = new Dictionary<string, string>();
+            /// <summary>계정 → 삭제 요청 시각 (R-102).</summary>
+            public Dictionary<string, long> Deletions { get; set; } = new Dictionary<string, long>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
             public Dictionary<string, Dictionary<string, CloudSave>> Saves { get; set; } = new Dictionary<string, Dictionary<string, CloudSave>>();
             /// <summary>게임 코드 → 고용 등록 목록.</summary>
@@ -139,6 +149,59 @@ namespace Game.Server
                 Persist();
                 return r;
             }
+        }
+
+        public long RequestDeletion(string accountId, long nowUnixSeconds)
+        {
+            lock (_lock)
+            {
+                if (Data.Deletions == null) Data.Deletions = new Dictionary<string, long>();
+                if (!Data.Deletions.TryGetValue(accountId, out var at)) { Data.Deletions[accountId] = at = nowUnixSeconds; Persist(); }
+                return at + AccountDeletion.GraceSeconds;
+            }
+        }
+
+        public bool CancelDeletion(string accountId)
+        {
+            lock (_lock)
+            {
+                if (Data.Deletions == null || accountId == null || !Data.Deletions.Remove(accountId)) return false;
+                Persist();
+                return true;
+            }
+        }
+
+        public int PurgeDeleted(long nowUnixSeconds)
+        {
+            lock (_lock)
+            {
+                if (Data.Deletions == null || Data.Deletions.Count == 0) return 0;
+                var gone = new HashSet<string>();
+                foreach (var kv in Data.Deletions) if (nowUnixSeconds >= kv.Value + AccountDeletion.GraceSeconds) gone.Add(kv.Key);
+                if (gone.Count == 0) return 0;
+                Drop(Data.Tokens, (k, v) => gone.Contains(v));
+                Drop(Data.External, (k, v) => gone.Contains(v));
+                Drop(Data.Emails, (k, v) => gone.Contains(k));
+                Drop(Data.Nicknames, (k, v) => gone.Contains(k));
+                Drop(Data.Memberships, (k, v) => gone.Contains(k));
+                Drop(Data.Deletions, (k, v) => gone.Contains(k));
+                foreach (var g in Data.Saves.Values) Drop(g, (k, v) => gone.Contains(k));
+                foreach (var g in Data.Mail.Values) Drop(g, (k, v) => gone.Contains(k));
+                foreach (var g in Data.HireLogs.Values) Drop(g, (k, v) => gone.Contains(k));
+                foreach (var g in Data.Territory.Values) Drop(g, (k, v) => v != null && gone.Contains(v.OwnerAccountId));
+                foreach (var l in Data.Listings.Values) l.RemoveAll(x => gone.Contains(x.OwnerAccountId));
+                foreach (var l in Data.SharedReplays.Values) l.RemoveAll(x => x.Summary != null && gone.Contains(x.Summary.OwnerAccountId));
+                Persist();
+                return gone.Count;
+            }
+        }
+
+        private static void Drop<V>(Dictionary<string, V> d, Func<string, V, bool> hit)
+        {
+            if (d == null) return;
+            var keys = new List<string>();
+            foreach (var kv in d) if (hit(kv.Key, kv.Value)) keys.Add(kv.Key);
+            foreach (var k in keys) d.Remove(k);
         }
 
         public string AccountOf(string token)

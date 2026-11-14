@@ -46,6 +46,8 @@ namespace Game.Flow
         public IReadOnlyList<string> Steps { get; private set; }
         public List<SignInOption> SignInOptions { get; private set; }
         public int TermsVersion { get; private set; }
+        /// <summary>약관 · 개인정보 · 위치정보 약관 · 문의 주소 (설정 도움 구역, 15 시안). 비면 "준비 중".</summary>
+        public IReadOnlyDictionary<string, string> Links { get; private set; } = new Dictionary<string, string>();
         /// <summary>스플래시 시간 (밀리초).</summary>
         public int SplashMillis { get; private set; }
 
@@ -66,6 +68,7 @@ namespace Game.Flow
                 Steps = steps,
                 SignInOptions = options,
                 TermsVersion = (int)JsonUtil.RequireLong(o, "termsVersion", File),
+                Links = o["links"] is JObject links ? links.ToObject<Dictionary<string, string>>() : new Dictionary<string, string>(),
                 SplashMillis = (int)(o.Value<decimal?>("splashSeconds") * 1000 ?? 1500),
             };
         }

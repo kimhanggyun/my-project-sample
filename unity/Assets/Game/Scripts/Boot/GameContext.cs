@@ -174,13 +174,48 @@ namespace Game.Unity.Boot
         // ---- 기기 설정 (E26): 세이브가 아니라 이 기기에만 (서버 검증과 무관한 값) ----
         private const string SoundKey = "prefs.sound", SpeedKey = "prefs.battleSpeed";
 
-        /// <summary>소리 켜짐 (기본 켜짐). 켜고 끄면 전체 음량(AudioListener)에 바로 반영.</summary>
-        public bool SoundOn => !_saveStore.Exists(SoundKey) || _saveStore.Read(SoundKey) != "off";
+        private const string BgmKey = "prefs.bgm", SfxKey = "prefs.sfx", NotifyPrefix = "prefs.notify.";
 
-        public void SetSound(bool on)
+        /// <summary>소리가 하나라도 켜져 있다 (예전 설정 "off"면 둘 다 0).</summary>
+        public bool SoundOn => BgmVolume > 0 || SfxVolume > 0;
+
+        public void SetSound(bool on) { SetBgmVolume(on ? 100 : 0); SetSfxVolume(on ? 100 : 0); }
+
+        private bool LegacyMuted => _saveStore.Exists(SoundKey) && _saveStore.Read(SoundKey) == "off";
+        private int ReadVolume(string key) => _saveStore.Exists(key) && int.TryParse(_saveStore.Read(key), out var v) ? UnityEngine.Mathf.Clamp(v, 0, 100) : LegacyMuted ? 0 : 100;
+
+        /// <summary>배경음 · 효과음 음량 0~100 (15 시안, 기기에만, 기본 100).</summary>
+        public int BgmVolume => ReadVolume(BgmKey);
+        public int SfxVolume => ReadVolume(SfxKey);
+
+        public void SetBgmVolume(int v) { _saveStore.Write(BgmKey, UnityEngine.Mathf.Clamp(v, 0, 100).ToString()); ApplyVolumes(); }
+        public void SetSfxVolume(int v) { _saveStore.Write(SfxKey, UnityEngine.Mathf.Clamp(v, 0, 100).ToString()); ApplyVolumes(); }
+
+        /// <summary>저장한 음량을 소리에 반영 (시작할 때 · 바꿀 때).</summary>
+        public void ApplyVolumes()
         {
-            _saveStore.Write(SoundKey, on ? "on" : "off");
-            UnityEngine.AudioListener.volume = on ? 1f : 0f;
+            UnityEngine.AudioListener.volume = 1f;
+            Game.Unity.UI.Sfx.BgmVolume = BgmVolume / 100f;
+            Game.Unity.UI.Sfx.SfxVolume = SfxVolume / 100f;
+        }
+
+        /// <summary>알림 종류별 켜기 (attacked · allyHelp · incomeFull, 기본 켜짐). 푸시 서비스가 생기면 서버에도 보낸다.</summary>
+        public bool NotifyOn(string kind) => !_saveStore.Exists(NotifyPrefix + kind) || _saveStore.Read(NotifyPrefix + kind) != "off";
+        public void SetNotify(string kind, bool on) => _saveStore.Write(NotifyPrefix + kind, on ? "on" : "off");
+
+        /// <summary>로그아웃: 이 기기의 로그인 수단을 지운다 (다시 시작하면 로그인 화면).</summary>
+        public void SignOut()
+        {
+            if (StartupRecord == null) return;
+            StartupRecord.SignInMethod = null;
+            StartupFlow.WriteRecord(_saveStore, StartupRecord);
+        }
+
+        /// <summary>계정 삭제 요청 (R-102): 서버에 요청 후 이 기기의 로그인 기록을 지운다 (7일 안에 다시 로그인하면 취소).</summary>
+        public void RequestAccountDeletion(System.Action<Game.Online.DeleteAccountResponse> done)
+        {
+            if (Online == null) { done?.Invoke(null); return; }
+            Online.DeleteAccount(done);
         }
 
         /// <summary>전투 시작 배속 (1·2·4, 기본 1).</summary>

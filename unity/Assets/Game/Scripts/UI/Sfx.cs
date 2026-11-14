@@ -18,6 +18,8 @@ namespace Game.Unity.UI
         private static AudioSource _oneShot;
         private static AudioSource _loop;
         private static System.Random _rng = new System.Random(7);
+        /// <summary>효과음 · 배경(전장 소음) 음량 0~1 (설정 15, 기기에만).</summary>
+        public static float SfxVolume = 1f, BgmVolume = 1f;
 
         public static void Init(GameObject host)
         {
@@ -40,7 +42,7 @@ namespace Game.Unity.UI
             var clip = Get(id);
             if (clip == null) return;
             _oneShot.pitch = 1f;
-            _oneShot.PlayOneShot(clip, Mathf.Clamp01(volume));
+            _oneShot.PlayOneShot(clip, Mathf.Clamp01(volume) * SfxVolume);
         }
 
         /// <summary>계속 깔리는 전장 소음의 크기 (0이면 멈춤). 매 프레임 불러도 된다 (부드럽게 따라간다).</summary>
@@ -48,7 +50,7 @@ namespace Game.Unity.UI
         {
             if (_loop == null) return;
             if (_loop.clip == null) _loop.clip = Get("battle");
-            float v = Mathf.MoveTowards(_loop.volume, Mathf.Clamp01(target), deltaTime * 0.8f);
+            float v = Mathf.MoveTowards(_loop.volume, Mathf.Clamp01(target) * BgmVolume, deltaTime * 0.8f);
             _loop.volume = v;
             if (v > 0.001f && !_loop.isPlaying) _loop.Play();
             else if (v <= 0.001f && _loop.isPlaying) _loop.Stop();
