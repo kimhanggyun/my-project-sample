@@ -617,5 +617,126 @@ namespace Game.Unity.UI
             SmallInfo(stats, onInfo);
             return card;
         }
+
+        // ---------------- 부대 관리 (시안 06) ----------------
+
+        /// <summary>
+        /// 병종 그림 칸: 둥근 칸(바탕 #E4DBC6) 안에 전투 병사 모델 그림 `Resources/Ui/troops/&lt;병종&gt;`.
+        /// 승급 병종 그림이 없으면 승급 전 병종 그림, 그것도 없으면 병종 이름 글자.
+        /// </summary>
+        public static RectTransform TroopPicture(GameContext ctx, Transform parent, string troopType, float size)
+        {
+            var box = Rect(parent, "TroopPicture");
+            Size(box, size, size).flexibleWidth = 0;
+            var bg = Background(box, new Color(0.894f, 0.859f, 0.776f));
+            bg.sprite = UiShapes.Rounded(14);
+            bg.type = Image.Type.Sliced;
+            bg.raycastTarget = false;
+            Sprite pic = null;
+            string id = troopType;
+            for (int guard = 0; guard < 4 && id != null && pic == null; guard++)
+            {
+                pic = Resources.Load<Sprite>("Ui/troops/" + id);
+                if (pic != null) break;
+                string from = null;
+                foreach (var p in ctx.Defs.TroopGrowth.Promotions) if (p.To == id) { from = p.From; break; }
+                id = from;
+            }
+            if (pic != null)
+            {
+                var img = Background(Rect(box, "Picture"), Color.white);
+                Fill(img.rectTransform);
+                img.rectTransform.offsetMin = new Vector2(4, 4);
+                img.rectTransform.offsetMax = new Vector2(-4, -4);
+                img.sprite = pic;
+                img.preserveAspect = true;
+                img.raycastTarget = false;
+            }
+            else
+            {
+                string name = ctx.Defs.TroopTypes.TryGetValue(troopType ?? "", out var t) ? ctx.T(t.NameKey) : troopType;
+                var l = Label(box, name, Mathf.RoundToInt(size * 0.2f), TextAnchor.MiddleCenter, Palette.TextDim);
+                Fill(l.rectTransform);
+            }
+            return box;
+        }
+
+        /// <summary>
+        /// 게이지 줄: 이름(회색) → 게이지 → 값 (+ 값 아래 작은 글자). extra = 채움 뒤에 이어 붙이는 반투명 칸 (예: 부상병).
+        /// 비율은 화면 표시용 (규칙 계산 아님).
+        /// </summary>
+        public static RectTransform GaugeRow(Transform parent, string name, float ratio, Color color, string value, string sub = null, float extra = 0f, float barWidth = 270f)
+        {
+            var row = Rect(parent, "GaugeRow_" + name);
+            float rowH = sub == null ? 38f : 54f; // 값 아래 작은 글자가 있으면 줄을 높여 다음 줄과 겹치지 않게
+            Size(row, rowH);
+            var h = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            h.spacing = 12;
+            h.childAlignment = TextAnchor.MiddleLeft;
+            h.childControlWidth = h.childControlHeight = true;
+            h.childForceExpandWidth = h.childForceExpandHeight = false;
+            var n = Label(row, name, 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            Size(n, rowH, 80).flexibleWidth = 0;
+
+            var bar = Rect(row, "Bar");
+            Size(bar, 18, barWidth).flexibleWidth = 0;
+            var back = Background(bar, new Color(0.839f, 0.808f, 0.745f));
+            back.sprite = UiShapes.Rounded(9);
+            back.type = Image.Type.Sliced;
+            back.raycastTarget = false;
+            ratio = Mathf.Clamp01(ratio);
+            if (extra > 0f) Fillbar(bar, Mathf.Clamp01(ratio + extra), new Color(color.r, color.g, color.b, 0.37f));
+            Fillbar(bar, ratio, color);
+
+            var vbox = Rect(row, "Value");
+            Size(vbox, rowH, -1, -1, 1);
+            var v = Label(vbox, value, 24, sub == null ? TextAnchor.MiddleLeft : TextAnchor.UpperLeft);
+            v.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Fill(v.rectTransform);
+            if (sub != null)
+            {
+                v.rectTransform.offsetMin = new Vector2(0, 24);
+                var s = Label(vbox, sub, 19, TextAnchor.LowerLeft, Palette.TextDim);
+                s.horizontalOverflow = HorizontalWrapMode.Overflow;
+                Fill(s.rectTransform);
+                s.rectTransform.offsetMax = new Vector2(0, -30);
+            }
+            return row;
+        }
+
+        private static void Fillbar(RectTransform bar, float ratio, Color color)
+        {
+            if (ratio <= 0f) return;
+            var f = Rect(bar, "Fill");
+            f.anchorMin = Vector2.zero;
+            f.anchorMax = new Vector2(ratio, 1f);
+            f.offsetMin = f.offsetMax = Vector2.zero;
+            var img = Background(f, color);
+            img.sprite = UiShapes.Rounded(9);
+            img.type = Image.Type.Sliced;
+            img.raycastTarget = false;
+        }
+
+        /// <summary>
+        /// 2단 작은 버튼 (190×100): 위 = 무엇(+양), 아래 = 비용(굵게). 못 하면(비용 모자람) 흐린 바탕 + 빨간 비용, 꺼진 일(가득 등)이면 흐린 바탕 + 회색.
+        /// </summary>
+        public static Button TwoLineButton(Transform parent, string top, string bottom, Action onClick, bool enabled, bool costShort = false, float width = 190, float height = 100)
+        {
+            var b = Button(parent, "", onClick, height, enabled ? Palette.Button : Palette.ButtonDisabled, 24);
+            Size(b, height, width).flexibleWidth = 0;
+            b.interactable = enabled;
+            var cb = b.colors; cb.disabledColor = Color.white; b.colors = cb; // 꺼져도 반투명하게 만들지 않는다 (색으로 구별)
+            var label = b.GetComponentInChildren<Text>();
+            label.text = top;
+            label.fontSize = Mathf.RoundToInt(25 * UiStyle.FontScale);
+            label.alignment = TextAnchor.UpperCenter;
+            label.color = enabled ? Palette.Text : Palette.TextDim;
+            label.rectTransform.offsetMax = new Vector2(-6, -10);
+            var cost = Label(b.transform, bottom, 26, TextAnchor.LowerCenter, costShort ? Palette.Bad : enabled ? Palette.Text : Palette.TextDim);
+            cost.fontStyle = FontStyle.Bold;
+            Fill(cost.rectTransform);
+            cost.rectTransform.offsetMin = new Vector2(6, 10);
+            return b;
+        }
     }
 }
