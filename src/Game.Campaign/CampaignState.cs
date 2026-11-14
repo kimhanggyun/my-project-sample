@@ -28,6 +28,8 @@ namespace Game.Campaign
         public Dictionary<string, string> ExploredBySteps { get; set; } = new Dictionary<string, string>();
         /// <summary>찾은 숨은 보상 id (도감, secrets.md 3장).</summary>
         public List<string> FoundSecrets { get; set; } = new List<string>();
+        /// <summary>숨은 보상을 찾은 기록 (13 도감 자세히): id → 스텝 · 받은 장수 · 시각. 예전 세이브는 빈 것.</summary>
+        public Dictionary<string, SecretFind> SecretFinds { get; set; } = new Dictionary<string, SecretFind>();
         /// <summary>보관 중인 스킬북·특성서 (id → 개수). 요구 능력치가 모자라 아직 못 배운 숨은 보상도 여기로.</summary>
         public Dictionary<string, long> SkillBooks { get; set; } = new Dictionary<string, long>();
         public Dictionary<string, long> TraitBooks { get; set; } = new Dictionary<string, long>();
@@ -52,5 +54,13 @@ namespace Game.Campaign
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);
         public PrisonerState FindPrisoner(string id) => Prisoners.Find(p => p.GeneralId == id);
+    }
+
+    /// <summary>숨은 보상 찾은 기록 하나 (13 도감).</summary>
+    public sealed class SecretFind
+    {
+        public string StepId { get; set; }
+        public string GeneralId { get; set; }
+        public long AtUnixSeconds { get; set; }
     }
 }
