@@ -12,6 +12,7 @@
 - **여러 조각·뼈대 모델** (2026-11-13): 처음 쓸 때 **메시 하나로 굳힌다**. 보통 메시(MeshFilter)와 뼈대 메시(SkinnedMeshRenderer)를 모두 모으고, 뼈대 메시는 **Idle 동작 첫 프레임 자세**로 `BakeMesh`, 뼈에 붙은 무기·방패 같은 자식 메시까지 모델 뿌리 기준으로 합친다. 재질이 같은 조각은 한 하위 메시로 묶는다. → KayKit 캐릭터 FBX를 그대로 넣어도 된다 (OBJ로 합칠 필요 없음).
   - 자세 동작 찾기: `catalog.json` 항목의 `poseFrom`(동작이 든 파일, Resources 경로, 예: KayKit 리그 FBX) 안에서 이름에 `poseClip`(기본 `"idle"`)이 들어간 동작 → 없으면 모델 파일 안의 동작 → 그것도 없으면 기본 자세. 일반(Generic) 리그 기준 (휴머노이드 동작은 안 먹을 수 있음 — 그때는 FBX Rig를 Generic으로).
   - 예: `"general.default": { "model": "Art/Models/general", "poseFrom": "Art/Models/Anim/Rig_Medium_General", "poseClip": "Idle", "height": 0.8 }`
+  - **장수 자세 (KayKit, 2026-11-14)**: 캐릭터 FBX에는 동작이 없고 팩의 `Animations/Rig_Medium`에 따로 있다. 동작 FBX(예: `Rig_Medium_General.fbx` — Idle이 든 파일)를 `Resources/Art/Models/Anim/`에 넣고, 가져오기 설정 Rig = **Generic**(캐릭터 FBX와 같은 리그), Read/Write 켬. 그다음 `catalog.json`의 `general.default`·`general.commander`에 `"poseFrom": "Art/Models/Anim/Rig_Medium_General"`, `"poseClip": "Idle"`(동작 이름 일부, 대소문자 무관)를 더한다. 말에 탄 모습을 원하면 `poseClip`을 앉은 동작 이름(예: `"Sit"`)으로. 뼈 이름이 캐릭터와 같아야 자세가 먹는다. 안 먹으면 T자 그대로라 캡처로 확인.
 - **모델 파일이 없으면 코드로 만든 병종 인형**(`Battle3D/SoldierMeshes`, 2026-11-11: 머리·몸통 + 보병 방패·칼 / 창병 긴 창 / 궁병 활·화살통 / 기병 말·창 / 정찰병 짧은 칼, 부위별 색: 갑옷·투구·방패 = 팀 색, 얼굴 = 살색, 무기 = 쇠색, 다리·말 = 갈색 — 하위 메시 4개 + 재질 4개)으로 그린다. 진짜 스킨(텍스처·모델)은 아직 없다: 무료 CC0 모델을 넣거나(2장), 수묵 아트 단계에서 바꾼다. 소품은 없음. 모델을 하나씩 넣으면 그 병종부터 바뀐다.
 - **장수** (2026-11-11, 부대원과 구별): 군단마다 진형 한가운데 조금 뒤에 장수 인형 (`SoldierMeshes.General`) — 부대원보다 약 1.8배, 흰 말, 금빛 투구·깃털·어깨·칼, 팀 색 망토. **총대장**은 등에 군기(금 깃대 + 팀 색 깃발)를 하나 더. 군단 깃발은 그대로. 모델 키는 나중에 `general.default` 등으로 바꿀 수 있게 한다.
 - **쓰러진 병사** (2026-11-11): 병력이 줄어 화면 병사가 빠지면 그 자리에 어두운 납작한 상자가 전투 끝까지 남는다 (최대 4,000개). 부대가 전멸하면 남은 병사 모두.
@@ -59,7 +60,7 @@
 | 자리 | 경로 (`unity/Assets/Game/Resources/` 아래) | 형식·조건 |
 |---|---|---|
 | 병사 (병종별) | `Art/Models/soldier*.fbx` (위 표) | 메시 하나, 삼각형 500 이하, 앞이 +Z(아니면 `yaw`) |
-| 장수 | `Art/Models/general.fbx`, `general_commander.fbx` | 메시 하나, 삼각형 2,000 이하 |
+| 장수 | `Art/Models/general.fbx`, `general_commander.fbx` | 삼각형 8,000 이하 (3장). 뼈대 모델이면 자세 동작 (1장 "장수 자세") |
 | 탈것 (R-90) | 목록 키 `mount.horse`·`mount.palanquin` (말·가마만, 메는 사람 포함) | 원점 발밑, 앞이 +Z. `riderY` = 탄 장수 모델을 올릴 높이(칸). 없으면 코드로 만든 말·가마 |
 | 탄 장수 통째 (R-90) | 목록 키 `general.horse`·`general.palanquin`·`general.commander.horse`·`general.commander.palanquin` | 있으면 이것만 그린다 (탈것 + 장수 모델 조합보다 먼저) |
 | 배·투석기 | `Art/Models/ship.fbx`, `soldier_catapult.fbx` | 메시 하나 |
@@ -77,9 +78,14 @@
 
 ## 3. 주의
 
-- 모델은 **메시 하나만** 쓴다 (여러 조각으로 된 모델은 첫 조각만). 조각이 여러 개면 Unity에서 하나로 합치거나 다른 모델을 고른다.
-- **모델 가져오기 설정 Read/Write(`isReadable`)를 켠다** (2026-11-14): #129의 굽기가 `Mesh.CombineMeshes`를 쓰므로, 꺼져 있으면 `Cannot combine mesh that does not allow access`로 그 모델이 통째로 빠진다 (병사·나무가 사라진 원인). 새 모델을 넣으면 `.meta`의 `isReadable: 1` 확인.
-- 폰 성능: 병사 모델은 **삼각형 500개 이하**의 로우폴리를 고른다 (화면 병사 수백 명 × 모델).
+- 여러 조각·뼈대 모델은 처음 쓸 때 메시 하나로 굳힌다 (#129, 위 1장).
+- **모델 가져오기 설정 Read/Write(`isReadable`)를 켠다** (2026-11-14): 굽기가 `Mesh.CombineMeshes`를 쓰므로 꺼져 있으면 합칠 수 없다. 새 모델을 넣으면 `.meta`의 `isReadable: 1` 확인.
+  - 원격 대응 (2026-11-14): 꺼져 있어도 모델이 통째로 사라지지 않는다. 조각이 하나뿐이면 굽지 않고 원래 메시를 그대로 쓰고(뼈대 모델이면 자세 없이 기본 자세), 여러 조각이면 그 조각만 빼고 콘솔에 경고(`Read/Write가 꺼져 있어`)를 남긴다. 그 밖의 굽기 실패도 그 모델만 단순 도형으로.
+- 폰 성능 (삼각형 기준, 2026-11-14 정함):
+  - **병사 500개 이하** (화면 병사 최대 2,000명 × 모델 → 병사만 최대 100만 개).
+  - **장수 8,000개 이하** (군단마다 하나, 전장 장수는 많아야 10명 안팎 → 8만 개). KayKit Knight 5,820·Barbarian 7,123은 그대로 쓴다.
+  - **탈것 2,000개 이하** (장수마다 하나).
+  - 2,000명 전투 프레임을 보고 병사 기준을 다시 정한다 (`balance.json` `display.soldierBudget`는 원격 담당).
 - `Resources` 폴더의 파일은 모두 빌드에 들어간다. 쓰지 않는 모델은 넣지 않는다.
 - 모델 파일은 저장소에 올려도 된다 (CC0). 올리면 라이선스 파일(License.txt)을 같은 폴더에 함께 둔다.
 

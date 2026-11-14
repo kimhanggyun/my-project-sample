@@ -110,6 +110,7 @@ namespace Game.Unity.Screens
                     _tabButtons[t.Id] = b;
                     if (alerts.Contains(t.Id) && t.Status == MainTabEntry.Active) Dot(b); // 할 일이 있는 탭 (E21)
                 }
+                if (rowTabs.Count > visible) MoreHint(barBg, h, small ? Palette.Card : Palette.Bar); // 넘치는 줄: 밀어서 더 본다는 표시
             }
 
             MainTabEntry first = null;
@@ -119,6 +120,22 @@ namespace Game.Unity.Screens
                 if (first == null && t.Status == MainTabEntry.Active) first = t;
             }
             if (first != null) Select(first);
+        }
+
+        /// <summary>가로 스크롤 줄 오른쪽 끝의 "›" 표시 (누름은 막지 않는다).</summary>
+        private static void MoreHint(RectTransform bar, float h, Color back)
+        {
+            var hint = Ui.Rect(bar, "MoreHint");
+            hint.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            hint.anchorMin = new Vector2(1f, 0f);
+            hint.anchorMax = new Vector2(1f, 1f);
+            hint.pivot = new Vector2(1f, 0.5f);
+            hint.sizeDelta = new Vector2(34f, 0f);
+            var bg = Ui.Background(hint, new Color(back.r, back.g, back.b, 0.9f));
+            bg.raycastTarget = false;
+            var t = Ui.Label(hint, "›", Mathf.RoundToInt(h * 0.6f), TextAnchor.MiddleCenter, Palette.TextDim);
+            t.raycastTarget = false;
+            Ui.Fill(t.rectTransform);
         }
 
         /// <summary>탭 버튼 오른쪽 위 빨간 점.</summary>
