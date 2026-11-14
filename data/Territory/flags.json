@@ -1,0 +1,34 @@
+{
+  "_comment": "영토 깃발 (territory-v2.md 2장, 2026-11-14 확정). 깃발 = 장수 1명 + 병력, 원 반지름 = 계정 계급(campaign.json lord.ranks[].flagRadiusM). 좌표는 칸(cellLatE6 × cellLonE6, 백만분의 1도) 가운데로 맞춘다 (약 100m, 실제 위치를 숨김). 거리는 위도·경도 1도당 미터(metersPerDegreeLat·Lon, 한국 근처 값)로 정수 계산. protectMinutes = 공성전이 끝난 깃발은 이만큼 다시 공격받지 않음. incomePerHour = 깃발마다 시간당 수입, incomeCapHours = 받지 않고 쌓이는 최대 시간. battle = 공성전 전투 틀 (스텝 형식, 적은 깃발 주인의 수비 스냅샷으로 바뀜, enemy는 스냅샷이 없을 때만). 수치는 예시",
+  "cellLatE6": 900,
+  "cellLonE6": 1130,
+  "metersPerDegreeLat": 111320,
+  "metersPerDegreeLon": 88800,
+  "protectMinutes": 30,
+  "incomeCapHours": 24,
+  "incomePerHour": {
+    "supply": 1500,
+    "gold": 8
+  },
+  "battle": {
+    "battleType": "field",
+    "map": "test_plain",
+    "maxMinutes": 10,
+    "camp": "camp_north",
+    "enemy": [
+      {
+        "id": "defender_01",
+        "general": "enemy_general_01",
+        "role": "commander",
+        "formation": "square",
+        "ai": "defensive",
+        "difficulty": "easy",
+        "supplyMinutes": 10,
+        "units": [
+          { "slot": "vanguard", "troopType": "infantry", "troops": 1000 },
+          { "slot": "center", "troopType": "spearman", "troops": 1000 }
+        ]
+      }
+    ]
+  }
+}

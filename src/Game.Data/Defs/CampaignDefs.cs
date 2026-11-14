@@ -13,6 +13,8 @@ namespace Game.Data.Defs
         public int Corps { get; internal set; }
         public int Slots { get; internal set; }
         public long TroopMax { get; internal set; }
+        /// <summary>영토 깃발 원 반지름 = 깃발을 꽂을 수 있는 거리 (m, territory-v2.md 2.2). 그 계정의 모든 깃발에 같은 값.</summary>
+        public long FlagRadiusM { get; internal set; } = 1000;
     }
 
     /// <summary>전투 밖 진행 수치 (campaign.json).</summary>
@@ -100,6 +102,7 @@ namespace Game.Data.Defs
                         Corps = (int)JsonUtil.RequireLong(ro, "corps", c + ".lord.ranks"),
                         Slots = (int)JsonUtil.RequireLong(ro, "slots", c + ".lord.ranks"),
                         TroopMax = JsonUtil.RequireLong(ro, "troopMax", c + ".lord.ranks"),
+                        FlagRadiusM = ro.Value<long?>("flagRadiusM") ?? 1000,
                     });
                 }
                 for (int i = 0; i < ranks.Count; i++)

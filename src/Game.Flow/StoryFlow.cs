@@ -202,7 +202,7 @@ namespace Game.Flow
             if (hired != null) { state = WithHires(state, hired, plan.Errors); plan.Hired = hired; }
             if (step.IsTerritory)
             {
-                var err = TerritoryBattles.CheckSortie(Territory, TerritoryBattles.RegionOf(step.Id), request.Location);
+                var err = TerritoryBattles.CheckSortie(Territory, TerritoryBattles.RegionOf(step.Id), request.Location, _defs, state);
                 if (err != null) plan.Errors.Add(err);
             }
             else if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");

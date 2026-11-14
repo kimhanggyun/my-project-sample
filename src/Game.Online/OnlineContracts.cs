@@ -56,6 +56,8 @@ namespace Game.Online
         public static string TerritoryCollect(string game) => Territory(game) + "/collect";
         /// <summary>내 지역에 수비 편성 등록 (POST, R-48).</summary>
         public static string TerritoryDefense(string game) => Territory(game) + "/defense";
+        /// <summary>깃발 꽂기 (POST, R-96). 남의 원 안이면 꽂지 않고 공성전 대상을 알려 준다.</summary>
+        public static string TerritoryPlant(string game) => Territory(game) + "/plant";
         /// <summary>연합 목록 (GET) / 만들기 (POST, R-49).</summary>
         public static string Alliances(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/alliances";
         public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
@@ -206,6 +208,12 @@ namespace Game.Online
         /// <summary>주인이 든 연합 (없으면 null, R-49).</summary>
         public string OwnerAllianceId { get; set; }
         public string OwnerAllianceName { get; set; }
+        /// <summary>깃발 (RegionId = "flag:위도E6,경도E6", territory-v2.md, R-96): 꽂은 장수 id.</summary>
+        public string GeneralId { get; set; }
+        /// <summary>깃발 원 반지름 (m, 꽂을 때 주인 계급).</summary>
+        public long RadiusM { get; set; }
+        /// <summary>이 시각까지 공격받지 않음 (공성전 뒤 보호, R-97).</summary>
+        public long ProtectedUntilUnixSeconds { get; set; }
     }
 
     /// <summary>연합 하나 (territory.md 6장, R-49). 한 계정은 한 연합에만.</summary>
@@ -314,6 +322,41 @@ namespace Game.Online
         /// <summary>ok / notOwner / badFormation.</summary>
         public string Reason { get; set; }
         public TerritoryDefense Defense { get; set; }
+    }
+
+    /// <summary>깃발 꽂기 (R-96): 내 위치(GPS)에서 반지름 안의 지점에, 장수 하나(기본 편성의 그 장수 군단 병력)로.</summary>
+    public sealed class PlantRequest
+    {
+        public string Location { get; set; }
+        /// <summary>꽂을 지점 "위도,경도" (칸 가운데로 맞춘다). 없으면 내 위치.</summary>
+        public string Target { get; set; }
+        public string GeneralId { get; set; }
+    }
+
+    public static class PlantReasons
+    {
+        public const string Ok = "ok";
+        public const string BadLocation = "badLocation";
+        public const string OutOfRange = "outOfRange";
+        public const string NoGeneral = "noGeneral";
+        public const string GeneralBusy = "generalBusy";
+        public const string NotInFormation = "notInFormation";
+        public const string Occupied = "occupied";
+        /// <summary>남의 원 안: 꽂지 않았다. AttackKey의 깃발과 공성전을 해야 한다.</summary>
+        public const string Siege = "siege";
+        public const string Protected = "protected";
+        public const string NoFlags = "noFlags";
+    }
+
+    public sealed class PlantResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="PlantReasons"/>.</summary>
+        public string Reason { get; set; }
+        /// <summary>꽂은 깃발 (Ok일 때).</summary>
+        public TerritoryOwner Flag { get; set; }
+        /// <summary>Reason = siege · protected일 때 그 깃발 키.</summary>
+        public string AttackKey { get; set; }
     }
 
     public sealed class TerritoryResponse
@@ -705,6 +748,8 @@ namespace Game.Online
         void CollectTerritory(Action<MailListResponse> done);
         /// <summary>내 지역에 수비 편성 등록 (닿지 않으면 null).</summary>
         void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done);
+        /// <summary>깃발 꽂기 (R-96, 닿지 않으면 null).</summary>
+        void PlantFlag(PlantRequest request, Action<PlantResponse> done);
 
         // ---- 연합 (R-49). 닿지 않으면 null ----
         void GetAlliances(Action<AllianceListResponse> done);
@@ -735,6 +780,7 @@ namespace Game.Online
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
+        public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
         public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);
         public void CreateAlliance(string name, Action<AllianceResponse> done) => done?.Invoke(null);
         public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);

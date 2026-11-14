@@ -47,16 +47,16 @@
     "maxCount": 20
   },
   "lord": {
-    "_comment": "계급 = 계정(군주) 레벨 (army-v2.md 2장, 2026-11-14 확정). ranks: 그 레벨부터의 계급 — corps = 출진 군단 수, slots = 군단당 병종 칸 수, troopMax = 병종마다 최대 병력(병력+부상병). recruit: 징병·모병으로 들어오는 새 병사의 훈련도·결속(%) = min(max, base + perLevel × (레벨 − 1)), 기존 병력과 인원 가중 평균. 경험치는 아직 없음 (마스터 dev.lordLevel). 수치는 예시",
+    "_comment": "계급 = 계정(군주) 레벨 (army-v2.md 2장, 2026-11-14 확정). ranks: 그 레벨부터의 계급 — corps = 출진 군단 수, slots = 군단당 병종 칸 수, troopMax = 병종마다 최대 병력(병력+부상병), flagRadiusM = 영토 깃발 원 반지름 · 꽂을 수 있는 거리(m, territory-v2.md 2.2, 모든 장수 같음). recruit: 징병·모병으로 들어오는 새 병사의 훈련도·결속(%) = min(max, base + perLevel × (레벨 − 1)), 기존 병력과 인원 가중 평균. 경험치는 아직 없음 (마스터 dev.lordLevel). 수치는 예시",
     "maxLevel": 30,
     "recruit": { "base": 50, "perLevel": 2, "max": 90 },
     "ranks": [
-      { "id": "squad", "minLevel": 1, "corps": 1, "slots": 1, "troopMax": 3000 },
-      { "id": "century", "minLevel": 3, "corps": 1, "slots": 2, "troopMax": 5000 },
-      { "id": "thousand", "minLevel": 6, "corps": 2, "slots": 2, "troopMax": 8000 },
-      { "id": "colonel", "minLevel": 10, "corps": 2, "slots": 3, "troopMax": 12000 },
-      { "id": "general", "minLevel": 15, "corps": 3, "slots": 3, "troopMax": 16000 },
-      { "id": "grandGeneral", "minLevel": 21, "corps": 3, "slots": 4, "troopMax": 20000 }
+      { "id": "squad", "minLevel": 1, "corps": 1, "slots": 1, "troopMax": 3000, "flagRadiusM": 1000 },
+      { "id": "century", "minLevel": 3, "corps": 1, "slots": 2, "troopMax": 5000, "flagRadiusM": 2000 },
+      { "id": "thousand", "minLevel": 6, "corps": 2, "slots": 2, "troopMax": 8000, "flagRadiusM": 3000 },
+      { "id": "colonel", "minLevel": 10, "corps": 2, "slots": 3, "troopMax": 12000, "flagRadiusM": 5000 },
+      { "id": "general", "minLevel": 15, "corps": 3, "slots": 3, "troopMax": 16000, "flagRadiusM": 7000 },
+      { "id": "grandGeneral", "minLevel": 21, "corps": 3, "slots": 4, "troopMax": 20000, "flagRadiusM": 10000 }
     ]
   }
 }
