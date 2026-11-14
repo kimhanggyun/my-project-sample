@@ -104,9 +104,29 @@ namespace Game.Battle.Model.Systems
                         Commands.OrderQueue.Finish(ctx, corps); // 대상이 사라짐 → 다음 예약
                         return null;
                     }
+                    // R-103 공격 방식
+                    if (order.Mode == AttackModes.Charge && corps.Engaged)
+                    {
+                        // 돌격: 첫 접전에 상대 사기 피해 한 번, 그 뒤 보통 공격
+                        target.Morale = Fix.Max(Fix.Zero, target.Morale - ctx.Combat.ChargeShockMorale);
+                        order.Mode = MoveModes.Normal;
+                        Events.EventLog.Add(ctx, Events.EventKinds.Charge, corps.Id, target.Id);
+                    }
+                    if (order.Mode == AttackModes.Lure && corps.Engaged)
+                    {
+                        // 유인: 맞붙었으면 정한 지점으로 강행해 물러난다 (상대가 쫓아오게)
+                        var back = order.Point;
+                        corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.MoveTo, Point = back, Mode = MoveModes.Forced });
+                        corps.OrderByPlayer = true;
+                        Events.EventLog.Add(ctx, Events.EventKinds.Lure, corps.Id, target.Id);
+                        return back;
+                    }
+                    if (order.Mode == AttackModes.Standoff && InRangedReach(corps, target)) return corps.Anchor; // 사격만: 사거리 안이면 다가가지 않는다
                     chasing = true;
                     return target.Anchor;
                 }
+                case OrderKinds.Hold:
+                    return HoldDestination(ctx, corps, out chasing);
                 case OrderKinds.Advance:
                 {
                     if (order.Lane) return ctx.LaneEnd(corps); // AI 진군: 자기 줄로 곧게 (가까워지면 AI가 공격으로 바꾼다, R-65)
@@ -139,6 +159,60 @@ namespace Game.Battle.Model.Systems
                 default:
                     return null;
             }
+        }
+
+        /// <summary>사격만 (R-103): 원거리 소부대 하나라도 상대 군단에 사거리(+닿는 반지름) 안이면 true.</summary>
+        private static bool InRangedReach(CorpsState corps, CorpsState target)
+        {
+            foreach (var u in corps.Units)
+            {
+                if (!u.Alive || !u.Troop.HasTag(Tags.Ranged)) continue;
+                Fix reach = u.Troop.AttackRange;
+                foreach (var v in target.Units)
+                    if (v.Alive && Vec.DistanceSquared(u.Position, v.Position) <= reach * reach) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 대기 중 움직임 (R-103): 지키기 = 지점 둘레 반지름 안의 (보이는) 가장 가까운 적을 치고, 없으면 지점으로.
+        /// 엄호 = 아군 둘레 반지름 안의 적을 치고, 없으면 아군에게서 따라붙는 거리 안으로. 아군이 빠지면 그 자리에서 대기.
+        /// 그 밖의 대기는 움직이지 않는다.
+        /// </summary>
+        private static Vec? HoldDestination(BattleContext ctx, CorpsState corps, out bool chasing)
+        {
+            chasing = false;
+            var order = corps.Order;
+            var k = ctx.Combat;
+            if (order.Mode == HoldModes.Guard)
+            {
+                var e = NearestEnemyAround(ctx, corps, order.Point, k.GuardRadiusCells);
+                if (e != null) { chasing = true; return e.Anchor; }
+                return Vec.DistanceSquared(corps.Anchor, order.Point) <= Fix.OneValue ? (Vec?)null : order.Point;
+            }
+            if (order.Mode == HoldModes.Escort)
+            {
+                var ally = ctx.FindCorps(order.TargetCorpsId);
+                if (ally == null || !ally.InBattle) { order.Mode = HoldModes.Normal; order.TargetCorpsId = null; return null; }
+                var e = NearestEnemyAround(ctx, corps, ally.Anchor, k.EscortRadiusCells);
+                if (e != null) { chasing = true; return e.Anchor; }
+                return Vec.DistanceSquared(corps.Anchor, ally.Anchor) <= k.EscortFollowCells * k.EscortFollowCells ? (Vec?)null : ally.Anchor;
+            }
+            return null;
+        }
+
+        private static CorpsState NearestEnemyAround(BattleContext ctx, CorpsState self, Vec center, Fix radius)
+        {
+            CorpsState best = null;
+            Fix bestD = Fix.Zero;
+            foreach (var c in ctx.Corps)
+            {
+                if (c.Team == self.Team || !c.InBattle || !ctx.IsVisibleTo(self.Team, c)) continue;
+                if (Vec.DistanceSquared(c.Anchor, center) > radius * radius) continue;
+                Fix d = Vec.DistanceSquared(c.Anchor, self.Anchor);
+                if (best == null || d < bestD) { best = c; bestD = d; }
+            }
+            return best;
         }
 
         /// <summary>
@@ -199,6 +273,9 @@ namespace Game.Battle.Model.Systems
             dist = dist * FormationStatEffects.MoveMultiplier(ctx, corps); // 진형 이동 속도 (R-72)
             Fix statusPct = Fix.Zero;
             foreach (var st in corps.Statuses) statusPct += st.MoveSpeedPct; // 강행군 (R-82)
+            // 명령 방식 이동 보정 (R-103): 돌격 빠르게, 은밀 느리게
+            if (corps.Order.Kind == OrderKinds.Attack && corps.Order.Mode == AttackModes.Charge) statusPct += ctx.Combat.ChargeMovePct;
+            if (corps.Order.Kind == OrderKinds.MoveTo && corps.Order.Mode == MoveModes.Stealth) statusPct += ctx.Combat.StealthMovePct;
             if (statusPct != Fix.Zero) dist = dist * Fix.Max(Fix.FromInt(10), Fix.Hundred + statusPct) / Fix.Hundred;
             while (dist > Fix.Zero && corps.PathIndex < corps.Path.Count)
             {

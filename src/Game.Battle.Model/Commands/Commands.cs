@@ -161,7 +161,7 @@ namespace Game.Battle.Model.Commands
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             string mode = cmd.Mode ?? MoveModes.Normal;
-            if (mode != MoveModes.Normal && mode != MoveModes.Forced && mode != MoveModes.AttackMove && mode != MoveModes.Support) return false;
+            if (mode != MoveModes.Normal && mode != MoveModes.Forced && mode != MoveModes.AttackMove && mode != MoveModes.Support && mode != MoveModes.Stealth) return false;
             return ctx.Field.Map.InBounds((int)cmd.X.FloorToLong(), (int)cmd.Y.FloorToLong());
         }
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
@@ -176,11 +176,24 @@ namespace Game.Battle.Model.Commands
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             var t = ctx.FindCorps(cmd.TargetCorpsId);
-            return t != null && t.Team != corps.Team && t.InBattle && ctx.IsVisibleTo(corps.Team, t);
+            if (t == null || t.Team == corps.Team || !t.InBattle || !ctx.IsVisibleTo(corps.Team, t)) return false;
+            if (!AttackModes.IsValid(cmd.Mode)) return false;
+            if (cmd.Mode == AttackModes.Standoff) return HasRanged(corps); // 사격만: 원거리가 있어야
+            if (cmd.Mode == AttackModes.Lure) return ctx.Field.Map.InBounds((int)cmd.X.FloorToLong(), (int)cmd.Y.FloorToLong()); // 유인: 물러날 지점
+            return true;
         }
+
+        internal static bool HasRanged(CorpsState corps)
+        {
+            foreach (var u in corps.Units) if (u.Alive && u.Troop.HasTag(Systems.Tags.Ranged)) return true;
+            return false;
+        }
+
+        /// <summary>공격 (R-103 방식: 보통 · 돌격 · 사격만 · 유인). 보통 공격의 Mode는 예전처럼 normal (재현 같음).</summary>
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
-            corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Attack, TargetCorpsId = cmd.TargetCorpsId, Mode = MoveModes.Normal });
+            string mode = cmd.Mode == null || cmd.Mode == AttackModes.Normal ? MoveModes.Normal : cmd.Mode;
+            corps.AssignOrder(new CorpsOrder { Kind = OrderKinds.Attack, TargetCorpsId = cmd.TargetCorpsId, Mode = mode, Point = mode == AttackModes.Lure ? new Vec(cmd.X, cmd.Y) : default(Vec) });
         }
     }
 
@@ -190,6 +203,12 @@ namespace Game.Battle.Model.Commands
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             if (!HoldModes.IsValid(cmd.Mode)) return false;
+            if (cmd.Mode == HoldModes.Guard) return ctx.Field.Map.InBounds((int)cmd.X.FloorToLong(), (int)cmd.Y.FloorToLong());
+            if (cmd.Mode == HoldModes.Escort)
+            {
+                var a = ctx.FindCorps(cmd.TargetCorpsId);
+                return a != null && a != corps && a.Team == corps.Team && a.InBattle;
+            }
             if (cmd.Mode == HoldModes.Coordinate && cmd.TargetCorpsId != null)
             {
                 var t = ctx.FindCorps(cmd.TargetCorpsId);
@@ -200,7 +219,12 @@ namespace Game.Battle.Model.Commands
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
         {
             var mode = cmd.Mode ?? HoldModes.Normal;
-            corps.AssignOrder(new CorpsOrder { Mode = mode, TargetCorpsId = mode == HoldModes.Coordinate ? cmd.TargetCorpsId : null });
+            corps.AssignOrder(new CorpsOrder
+            {
+                Mode = mode,
+                TargetCorpsId = mode == HoldModes.Coordinate || mode == HoldModes.Escort ? cmd.TargetCorpsId : null,
+                Point = mode == HoldModes.Guard ? new Vec(cmd.X, cmd.Y) : default(Vec),
+            });
             corps.CoordinateSinceTick = ctx.Tick;
             corps.CoordinateAsked = false;
         }

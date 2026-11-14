@@ -35,7 +35,26 @@ namespace Game.Battle.Model.Simulation
         /// <summary>협공 대기: 함께 협공 대기하는 군단이 모두 자리를 잡으면 함께 공격.</summary>
         public const string Coordinate = "coordinate";
 
-        public static bool IsValid(string mode) => mode == null || mode == Normal || mode == Rest || mode == Coordinate;
+        /// <summary>지키기 (R-103): 지점(Point) 둘레 guardRadiusCells 안의 적만 치고, 아니면 지점으로 돌아와 제자리.</summary>
+        public const string Guard = "guard";
+        /// <summary>엄호 (R-103): 아군 군단(TargetCorpsId)을 따라다니며, 그 둘레 escortRadiusCells 안의 적을 친다.</summary>
+        public const string Escort = "escort";
+
+        public static bool IsValid(string mode) => mode == null || mode == Normal || mode == Rest || mode == Coordinate || mode == Guard || mode == Escort;
+    }
+
+    /// <summary>공격 방식 (R-103, 19 시안 공격 ›).</summary>
+    public static class AttackModes
+    {
+        public const string Normal = "normal";
+        /// <summary>돌격: 빨리 다가가 첫 접전에 상대 사기를 깎는다 (chargeMovePct · chargeShockMorale), 그 뒤 보통 공격.</summary>
+        public const string Charge = "charge";
+        /// <summary>사격만: 원거리 사거리 안에 들면 다가가지 않고 쏜다 (거리 유지). 원거리 소부대가 있어야 한다.</summary>
+        public const string Standoff = "standoff";
+        /// <summary>유인: 상대와 맞붙으면(교전) 정한 지점(Point)으로 강행해 물러난다 (쫓아오게).</summary>
+        public const string Lure = "lure";
+
+        public static bool IsValid(string mode) => mode == null || mode == Normal || mode == Charge || mode == Standoff || mode == Lure;
     }
 
     public static class MoveModes
@@ -48,6 +67,8 @@ namespace Game.Battle.Model.Simulation
         public const string AttackMove = "attackMove";
         /// <summary>지원 이동 (후위의 진군, R-63): 곧게 가다가 적이 advanceRoles.rearStandoffCells 안에 들어오면 그 자리에 멈춰 싸운다 (쫓지 않는다).</summary>
         public const string Support = "support";
+        /// <summary>은밀 (R-103): 느리게(stealthMovePct) 가지만 적에게 덜 보인다 (적의 시야가 stealthSightPct %).</summary>
+        public const string Stealth = "stealth";
     }
 
     /// <summary>군단의 현재 명령. 명령 처리기·AI만 바꾼다.</summary>

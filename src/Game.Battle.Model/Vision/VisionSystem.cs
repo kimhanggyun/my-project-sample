@@ -131,6 +131,7 @@ namespace Game.Battle.Model.Vision
             }
             if (e.Hidden) return false;
             Fix concealed = ctx.Combat.VisionConcealedSeenCells;
+            bool stealth = e.Order.Kind == OrderKinds.MoveTo && e.Order.Mode == MoveModes.Stealth; // 은밀 (R-103)
             foreach (var u in e.Units)
             {
                 if (!u.Alive) continue;
@@ -138,6 +139,7 @@ namespace Game.Battle.Model.Vision
                 foreach (var o in observers)
                 {
                     Fix reach = inCover ? Fix.Min(o.radius, concealed) : o.radius;
+                    if (stealth) reach = reach * ctx.Combat.StealthSightPct / Fix.Hundred;
                     if (Vec.DistanceSquared(o.pos, u.Position) <= reach * reach) return true;
                 }
             }
