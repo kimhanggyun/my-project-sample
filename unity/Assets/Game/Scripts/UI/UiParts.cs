@@ -738,5 +738,38 @@ namespace Game.Unity.UI
             cost.rectTransform.offsetMin = new Vector2(6, 10);
             return b;
         }
+
+        /// <summary>
+        /// 수량 조절 줄: 이름 [−] 값 [+] / 최대 [모두]. 누르면 onChange(새 값). minus·plus = 그 버튼이 만들 값 (단위·최소는 화면이 정한다).
+        /// 값이 이미 그 끝이면 그 버튼은 흐리게.
+        /// </summary>
+        public static RectTransform Stepper(Transform parent, string label, long value, long max, string allLabel, Action<long> onChange, long minus, long plus)
+        {
+            var row = Row(parent, "Stepper", 64, 14);
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            h.childForceExpandWidth = false;
+            h.childAlignment = TextAnchor.MiddleLeft;
+            var name = Label(row, label, 28, TextAnchor.MiddleLeft, Palette.TextDim);
+            Size(name, 64, 170).flexibleWidth = 0;
+            Small(row, "−", minus, minus != value, onChange, 64);
+            var v = Label(row, value.ToString("N0"), 34, TextAnchor.MiddleCenter);
+            v.fontStyle = FontStyle.Bold;
+            Size(v, 64, 150).flexibleWidth = 0;
+            Small(row, "+", plus, plus != value, onChange, 64);
+            var m = Label(row, "/ " + max.ToString("N0"), 28, TextAnchor.MiddleLeft, Palette.TextDim);
+            Size(m, 64, 150).flexibleWidth = 0;
+            var all = Small(row, allLabel, max, max != value, onChange, 120);
+            all.GetComponentInChildren<Text>().fontSize = Mathf.RoundToInt(28 * UiStyle.FontScale);
+            return row;
+        }
+
+        private static Button Small(Transform row, string text, long target, bool enabled, Action<long> onChange, float width)
+        {
+            var b = Button(row, text, () => onChange?.Invoke(target), 56, Palette.Button, 34);
+            Size(b, 56, width).flexibleWidth = 0;
+            b.interactable = enabled;
+            if (!enabled) b.GetComponentInChildren<Text>().color = Palette.TextDim;
+            return b;
+        }
     }
 }

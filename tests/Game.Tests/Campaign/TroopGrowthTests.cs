@@ -38,8 +38,8 @@ namespace Game.Tests.Campaign
             Assert.Equal(TroopGrowthService.NotEnough, svc.CheckTrain(s, "u02"));
         }
 
-        [Fact(DisplayName = "R-52 승급: 부모 병종에서만, 훈련도·클리어한 스텝·돈이 모두 되면. 병력·훈련도는 그대로")]
-        public void Promote()
+        [Fact(DisplayName = "R-52 승급 조건: 부모 병종에서만, 훈련도·클리어한 스텝·돈이 모두 되면")]
+        public void PromoteChecks()
         {
             var svc = new TroopGrowthService(Kit.D);
             var s = Rich();
@@ -50,19 +50,107 @@ namespace Game.Tests.Campaign
             Assert.Equal(TroopGrowthService.StepLocked, svc.CheckPromote(s, "u01", "shieldbearer"));
             s.ClearedSteps.Add("step02");
             Assert.Equal(TroopGrowthService.NoPromotion, svc.CheckPromote(s, "u01", "pikeman")); // 다른 계열
-            Assert.True(svc.Promote(s, "u01", "shieldbearer"));
-            Assert.Equal(("shieldbearer", 4000L, 5000L), (u.TroopType, u.Troops, u.Training.Raw));
+            Assert.Equal(TroopGrowthService.BadCount, svc.CheckPromote(s, "u01", "shieldbearer", 4001)); // 지금 병력보다 많음
+            Assert.Equal(TroopGrowthService.Ok, svc.CheckPromote(s, "u01", "shieldbearer", 800));
+            s.Wallet[ResourceIds.Gold] = 399;
+            Assert.Equal(TroopGrowthService.NotEnough, svc.CheckPromote(s, "u01", "shieldbearer", 800));
+        }
+
+        [Fact(DisplayName = "R-52 부분 승급: 800명만 방패병 부대로 갈라 나가고(돈 1,000명당 400, 올림) 보병 3,200명은 남는다. 훈련도·결속은 물려받음")]
+        public void PartialPromotion()
+        {
+            var svc = new TroopGrowthService(Kit.D);
+            var s = Rich();
+            var u = s.FindUnit("u01"); // 보병 4,000
+            u.Training = Fix.FromRaw(5000);
+            u.Cohesion = Fix.FromRaw(70000);
+            s.ClearedSteps.Add("step02");
+            int before = s.Units.Count;
+            Assert.True(svc.Promote(s, "u01", "shieldbearer", 800));
+            Assert.Equal(("infantry", 3200L), (u.TroopType, u.Troops)); // 기본 부대는 그대로 남는다
+            var child = TroopGrowthService.PromotedChild(s, "u01", "shieldbearer");
+            Assert.NotNull(child);
+            Assert.Equal(("shieldbearer", 800L, 5000L, 70000L, "u01"), (child.TroopType, child.Troops, child.Training.Raw, child.Cohesion.Raw, child.ParentUnitId));
+            Assert.Equal(before + 1, s.Units.Count);
+            Assert.Equal(s.Units.IndexOf(u) + 1, s.Units.IndexOf(child)); // 기본 부대 바로 뒤
             Assert.Equal(100_000 - 400, new Wallet(s.Wallet).Get(ResourceIds.Gold));
-            // 2단계 다음은 3단계 정예: 방패병 → 근위병 (훈련도 0.8, step05, 돈 1,200)
-            Assert.Equal(new[] { "guard" }, svc.PromotionsFor(u).Select(p => p.To));
-            Assert.Equal(TroopGrowthService.LowTraining, svc.CheckPromote(s, "u01", "guard"));
+            Assert.Equal(1200, svc.PromoteCost(svc.PromotionsFor(u).First(p => p.To == "shieldbearer"), 2096)); // 2,096명 → 3번 몫
+        }
+
+        [Fact(DisplayName = "R-52 다시 승급하면 같은 승급 부대에 합친다 (훈련도·결속 = 인원 가중 평균, 내림). 부대 상한을 넘으면 안 됨")]
+        public void MergePromotion()
+        {
+            var svc = new TroopGrowthService(Kit.D);
+            var s = Rich();
+            var u = s.FindUnit("u01");
+            u.Training = Fix.FromRaw(5000);
+            s.ClearedSteps.Add("step02");
+            Assert.True(svc.Promote(s, "u01", "shieldbearer", 1000));
             u.Training = Fix.FromRaw(8000);
-            Assert.Equal(TroopGrowthService.StepLocked, svc.CheckPromote(s, "u01", "guard"));
+            int count = s.Units.Count;
+            Assert.True(svc.Promote(s, "u01", "shieldbearer", 3000));
+            var child = TroopGrowthService.PromotedChild(s, "u01", "shieldbearer");
+            Assert.Equal(count, s.Units.Count); // 새 부대 없음
+            Assert.Equal((4000L, 7250L), (child.Troops, child.Training.Raw)); // (0.5×1000 + 0.8×3000) / 4000 = 0.725
+            Assert.Equal(0L, u.Troops);
+            // 상한: 승급 부대 4,000 + 부상 600 + 새로 500 > 5,000
+            u.Troops = 500;
+            child.Wounded = 600;
+            Assert.Equal(TroopGrowthService.NoRoom, svc.CheckPromote(s, "u01", "shieldbearer", 500));
+            Assert.Equal(TroopGrowthService.Ok, svc.CheckPromote(s, "u01", "shieldbearer", 400));
+        }
+
+        [Fact(DisplayName = "R-52 전체 승급: 인원 0(= 전부)이면 모두 옮기고 기본 부대는 병력 0으로 남는다. 부상병은 기본 부대에 남는다")]
+        public void FullPromotion()
+        {
+            var svc = new TroopGrowthService(Kit.D);
+            var s = Rich();
+            var u = s.FindUnit("u01");
+            u.Training = Fix.FromRaw(5000);
+            u.Wounded = 120;
+            s.ClearedSteps.Add("step02");
+            Assert.True(svc.Promote(s, "u01", "shieldbearer"));
+            Assert.Equal(("infantry", 0L, 120L), (u.TroopType, u.Troops, u.Wounded));
+            Assert.Equal(4000L, TroopGrowthService.PromotedChild(s, "u01", "shieldbearer").Troops);
+            Assert.Equal(TroopGrowthService.BadCount, svc.CheckPromote(s, "u01", "shieldbearer")); // 병력 0이면 더 못 함
+        }
+
+        [Fact(DisplayName = "R-52 새 승급 부대도 부대 수 상한에 든다 (합치기는 상한과 무관)")]
+        public void PromotionUnitLimit()
+        {
+            var svc = new TroopGrowthService(Kit.D);
+            var s = Rich();
+            var u = s.FindUnit("u01");
+            u.Training = Fix.FromRaw(5000);
+            s.ClearedSteps.Add("step02");
+            s.ClearedSteps.Add("step03"); // 공병 승급 조건
+            Assert.True(svc.Promote(s, "u01", "shieldbearer", 100));
+            var troops = new TroopService(Kit.D);
+            while (troops.CanCreate(s)) troops.Create(s, "infantry");
+            Assert.Equal(TroopGrowthService.UnitLimit, svc.CheckPromote(s, "u01", "engineer", 100));
+            Assert.Equal(TroopGrowthService.Ok, svc.CheckPromote(s, "u01", "shieldbearer", 100));
+        }
+
+        [Fact(DisplayName = "R-52 승급 부대에서 다시 승급 (방패병 → 근위병): 승급 부대 아래에 또 갈라 나간다")]
+        public void PromoteFromPromoted()
+        {
+            var svc = new TroopGrowthService(Kit.D);
+            var s = Rich();
+            var u = s.FindUnit("u01");
+            u.Training = Fix.FromRaw(8000);
+            s.ClearedSteps.Add("step02");
             s.ClearedSteps.Add("step05");
-            Assert.True(svc.Promote(s, "u01", "guard"));
-            Assert.Equal(("guard", 3, 4000L), (u.TroopType, Kit.D.TroopTypes[u.TroopType].Tier, u.Troops));
-            Assert.Equal(100_000 - 400 - 1200, new Wallet(s.Wallet).Get(ResourceIds.Gold));
-            Assert.Empty(svc.PromotionsFor(u)); // 3단계가 끝
+            Assert.True(svc.Promote(s, "u01", "shieldbearer", 2000));
+            var shield = TroopGrowthService.PromotedChild(s, "u01", "shieldbearer");
+            Assert.Equal(new[] { "guard" }, svc.PromotionsFor(shield).Select(p => p.To));
+            long gold = new Wallet(s.Wallet).Get(ResourceIds.Gold);
+            Assert.True(svc.Promote(s, shield.UnitId, "guard", 500));
+            var guard = TroopGrowthService.PromotedChild(s, shield.UnitId, "guard");
+            Assert.Equal(("guard", 3, 500L, 1500L), (guard.TroopType, Kit.D.TroopTypes[guard.TroopType].Tier, guard.Troops, shield.Troops));
+            Assert.Equal(gold - 1200, new Wallet(s.Wallet).Get(ResourceIds.Gold));
+            Assert.Empty(svc.PromotionsFor(guard)); // 3단계가 끝
+            // 목록 차례: 보병 → 방패병 → 근위병
+            Assert.Equal(new[] { "u01", shield.UnitId, guard.UnitId }, s.Units.SkipWhile(x => x.UnitId != "u01").Take(3).Select(x => x.UnitId));
         }
 
         [Fact(DisplayName = "R-52 3단계 정예: 전투 2단계 4종마다 하나씩, 승급 조건은 2단계보다 높다 (공병·수군은 3단계 없음)")]
@@ -106,15 +194,20 @@ namespace Game.Tests.Campaign
             Assert.Throws<DataException>(() => TroopGrowthRules.From(JsonUtil.ParseObject("{\"training\":{\"step\":0.1,\"max\":2,\"goldPer1000\":1}}"), troops));
         }
 
-        [Fact(DisplayName = "훈련·승급은 행동(unit.train·unit.promote): 서버도 같은 규칙")]
+        [Fact(DisplayName = "훈련·승급은 행동(unit.train·unit.promote, 인원 Count): 서버도 같은 규칙")]
         public void AsActions()
         {
             var runner = new PlayerActionRunner(Kit.D);
             var s = Rich();
             s.ClearedSteps.Add("step02");
             for (int i = 0; i < 5; i++) Assert.True(runner.Apply(s, PlayerActionRunner.TrainUnit("u02")));
-            Assert.True(runner.Apply(s, PlayerActionRunner.PromoteUnit("u02", "pikeman")));
-            Assert.Equal("pikeman", s.FindUnit("u02").TroopType);
+            long troops = s.FindUnit("u02").Troops;
+            Assert.True(runner.Apply(s, PlayerActionRunner.PromoteUnit("u02", "pikeman", 500)));
+            Assert.Equal(("spearman", troops - 500), (s.FindUnit("u02").TroopType, s.FindUnit("u02").Troops));
+            Assert.Equal(500L, TroopGrowthService.PromotedChild(s, "u02", "pikeman").Troops);
+            Assert.True(runner.Apply(s, PlayerActionRunner.PromoteUnit("u02", "pikeman"))); // 인원 0 = 나머지 전부 (예전 행동)
+            Assert.Equal(0L, s.FindUnit("u02").Troops);
+            Assert.Equal(troops, TroopGrowthService.PromotedChild(s, "u02", "pikeman").Troops);
             Assert.False(runner.Apply(s, PlayerActionRunner.PromoteUnit("u02", "pikeman")));
         }
     }
