@@ -475,37 +475,49 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             var step = Ctx.Flow.LoadStep(StepId);
-            Ui.Column(Root, 16, 32);
-            Ui.Size(Ui.Label(Root, T(step.NameKey), Ui.FontTitle), 120);
-            var body = Ui.ScrollList(Root, "Info", 12, 8);
-            Ui.Size(body.parent.parent, flexibleHeight: 1);
-            var info = Ui.Card(body, "Defense");
-            Ui.Label(info, T(_defense != null ? "ui.territory.defenseOwnerTitle" : "ui.territory.defense"));
-            var plan0 = Ctx.Flow.Prepare(Ctx.State, Request(false));
-            foreach (var c in plan0.Setup.Corps)
-            {
-                if (c.Team != StoryFlow.EnemyTeam) continue;
-                long troops = 0;
-                foreach (var u in c.Units) troops += u.Troops;
-                Ui.Label(info, Ui.Colored(Ctx.GeneralName(c.General.Id), Palette.Enemy) + "  " + troops.ToString("N0"), Ui.FontSmall);
-            }
-            Ui.Label(info, T("ui.step.maxMinutes", step.MaxMinutes), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Label(info, T("ui.territory.captureNote"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            var (header, body, footer) = Ui.PageLayout(Root, 130);
+            var top = Ui.Row(header, "Title", 100, 12);
+            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain("territory"), 90, fontSize: 40), width: 90);
+            string owner = null;
+            if (TerritoryTabView.Owners != null && TerritoryTabView.Owners.TryGetValue(_regionId, out var flag)) owner = flag.OwnerAccountId;
+            Ui.Size(Ui.Label(top, owner != null ? T("ui.sortie.siegeOf", Ctx.DisplayName(owner)) : T(step.NameKey), Ui.FontTitle), flexibleWidth: 1);
+            SortiePrep.Tiles(Ctx, header, step);
+            InfoButton.Add(Root, T("ui.sortie.siegeNote"));
 
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(false));
+            var defense = Ui.Card(body, "Defense");
+            Ui.Label(defense, T(_defense != null ? "ui.territory.defenseOwnerTitle" : "ui.territory.defense"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            if (plan.Setup != null) SortiePrep.Enemies(Ctx, defense, plan);
+            // 수비 지원 (겹친 상대 깃발 = 전장 하루 뒤 · 연합원 = 늦게, territory-v2.md 2.5 — 지원 입장은 다음 단계)
+            int overlap = 0;
+            if (owner != null && TerritoryTabView.Owners != null)
+                foreach (var o in TerritoryTabView.Owners.Values) if (o.OwnerAccountId == owner && o.RegionId != _regionId) overlap++;
+            Ui.Label(defense, Ui.Colored(T("ui.sortie.support", overlap), Palette.Bad), 22);
+            if (plan.Setup != null) SortiePrep.Power(Ctx, body, SortiePrep.PlayerTroops(plan), SortiePrep.EnemyTroops(plan));
+
+            Ui.Label(body, T("ui.step.allies"), Ui.FontSmall);
+            SortiePrep.Army(Ctx, body, plan);
+            var armyRow = Ui.Row(body, "ArmyButtons", 72, 10);
+            Ui.Button(armyRow, T("ui.sortie.formation"), () => App.ShowMain("formation"), 72, fontSize: 24);
+            if (Ctx.HiringAvailable) Ui.Button(armyRow, T("ui.sortie.mercenary"), () => App.ShowMain("hiring"), 72, fontSize: 24);
+
             var sortie = Ui.Card(body, "Sortie");
             if (_hired != null) Ui.Label(sortie, T("ui.merc.inSortie", _hired.Generals.Count + _hired.Units.Count), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             // 반간 (R-99, hiring-v2.md 4장): 내 닉네임 장수가 반간을 알면, 이 깃발 주인의 용병이 섞여 있을 때만 낌새를 알린다
             var me = Ctx.State.FindGeneral(AvatarGeneral.GeneralId);
             if (_hired != null && _defense?.OwnerAccountId != null && me != null && me.LearnedSkills.Contains("counterIntrigue") && _hired.GeneralOwners.ContainsValue(_defense.OwnerAccountId))
                 Ui.Label(sortie, Ui.Colored(T("ui.merc.hint"), Palette.Bad), Ui.FontSmall);
-            Ui.Label(sortie, T("ui.step.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
+            Ui.Label(sortie, T("ui.sortie.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
             foreach (var err in plan.Errors) Ui.Label(sortie, Ui.Colored(err, Palette.Bad), Ui.FontSmall);
+            var result = Ui.Row(body, "Result", 64, 10);
+            Ui.Tag(result, T("ui.sortie.win", Ctx.Territory.Flags.IncomePerHour.TryGetValue(ResourceIds.Supply, out var inc) ? inc * 24 : 0), Palette.Good, 22, 56);
+            Ui.Tag(result, T("ui.sortie.lose", Ctx.Territory.Flags.ProtectSeconds / 60), Palette.Bad, 22, 56);
 
-            var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(row, T("ui.common.back"), () => App.ShowMain("territory"));
-            var direct = Ui.Button(row, T("ui.step.directSortie"), () => Sortie(step, false));
-            var delegated = Ui.Button(row, T("ui.step.delegateSortie"), () => Sortie(step, true));
+            Ui.Size(Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("territory"), 100), width: 200);
+            var delegated = Ui.Button(footer, T("ui.sortie.delegate"), () => Sortie(step, true), 100);
+            Ui.Size(delegated, width: 240);
+            var direct = Ui.PrimaryButton(footer, T("ui.sortie.attack"), () => Sortie(step, false), 100);
+            Ui.Size(direct, flexibleWidth: 1);
             Ui.SetEnabled(direct, plan.Ok && Ctx.OnlineEnabled);
             Ui.SetEnabled(delegated, plan.Ok && Ctx.OnlineEnabled);
         }
