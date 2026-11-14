@@ -61,20 +61,20 @@ namespace Game.Unity.Screens
             Ctx.Flow.Tick(Ctx.State); // 화면을 열 때마다 시간 경과 처리 (부상 회복·구출 기한)
             Ui.Column(Root, 0);
 
-            // 위: 자원 + 설정
+            // 위: 자원 칩 3개 + 상점·설정 아이콘 버튼 (시안 04). 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1)
             var top = Ui.Row(Root, "TopBar", TopBarHeight, 16);
             Ui.Background(top, Palette.Bar);
-            top.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(24, 24, 14, 14);
-            // 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1), 상점·설정 버튼
+            var topRow = top.GetComponent<HorizontalLayoutGroup>();
+            topRow.padding = new RectOffset(20, 20, 18, 18);
+            topRow.childForceExpandWidth = false;
+            topRow.childForceExpandHeight = false;
+            topRow.childAlignment = TextAnchor.MiddleLeft;
             foreach (var id in new[] { ResourceIds.Supply, ResourceIds.Gold, ResourceIds.Gem })
-            {
-                // 자원 아이콘 (그림이 없으면 낙관에 한 글자: 糧·錢·玉)
-                Icons.Make(Ctx, top, id, 52);
-                Ui.Size(Ui.Label(top, Ctx.Resource(id).ToString("N0"), 26, TextAnchor.MiddleLeft), flexibleWidth: 2);
-                Ui.Size(Ui.Button(top, "+", () => App.ShowMain("shop"), 64, Palette.ButtonActive, 30), width: 56);
-            }
-            Ui.Size(Ui.Button(top, T("ui.top.shop"), () => App.ShowMain("shop"), 80, fontSize: 26), width: 110);
-            Ui.Size(Ui.Button(top, T("ui.top.settings"), () => App.Show(new SettingsScreen()), 80, fontSize: 26), width: 110);
+                Ui.ResourceChip(Ctx, top, id, Ctx.Resource(id), () => App.ShowMain("shop"));
+            Ui.IconButton(top, "shop", T("ui.top.shop"), () => App.ShowMain("shop"));
+            Ui.IconButton(top, "settings", T("ui.top.settings"), () => App.Show(new SettingsScreen()));
+            // 띠 배너 광고 자리 (광고가 꺼졌거나 광고 제거 상품이면 0)
+            Ui.BannerSlot(Root, Ctx);
 
             // 가운데: 탭 내용
             _content = Ui.Rect(Root, "Content");
@@ -201,30 +201,87 @@ namespace Game.Unity.Screens
         }
     }
 
-    /// <summary>장수 키우기 (일부): 지금은 보유 장수 목록. 스킬북·특성서·대결 전적 보상은 다음 단계.</summary>
+    /// <summary>
+    /// 장수 탭 (시안 05): 머리 줄("장수 n명" · [정렬 ▾] · [모집] · ⓘ) + 두 줄 격자 장수 카드. 카드 = 장수 화면, 카드의 작은 ⓘ = 능력치 말풍선.
+    /// </summary>
     public sealed class GeneralsTabView : ITabView
     {
+        /// <summary>고른 정렬 (앱을 켜 둔 동안 기억).</summary>
+        private static string _sort = Game.Flow.GeneralSorts.Grade;
+
         private static long Stat(GameContext ctx, GeneralState g, string id) => CorpsValidator.EffectiveStat(ctx.Defs, g, id).FloorToLong();
 
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
-            var list = Ui.ScrollList(root, "List");
+            var list = Ui.ScrollList(root, "List", 22, 25);
             Ui.Fill((RectTransform)list.parent.parent);
-            InfoButton.Add(root, ctx.T("ui.tab.generalNote"));
-            if (ctx.Defs.Gacha.Banners.Count > 0) Ui.Button(list, ctx.T("ui.gacha.button"), () => app.Show(new GachaScreen()), 100, Palette.ButtonActive);
-            foreach (var g in ctx.State.Generals)
+
+            var head = Ui.HeaderRow(list, ctx.T("ui.tab.general"), ctx.T("ui.generals.count", ctx.State.Generals.Count));
+            var sort = Ui.SecondaryButton(head, ctx.T("ui.generals.sort", ctx.T("ui.generals.sort." + _sort)) + " ▾", null, 70, 26);
+            Ui.Size(sort, 70, 230).flexibleWidth = 0;
+            var sortRt = (RectTransform)sort.transform;
+            sort.onClick.AddListener(() =>
             {
-                var color = g.Status == GeneralStatus.Available ? Palette.Good : g.Status == GeneralStatus.Captured ? Palette.Bad : Palette.TextDim;
-                string id = g.GeneralId;
-                string grade = ctx.Defs.Generals.TryGetValue(id, out var gdef) ? GradeLabel.Tag(ctx, gdef.Grade) : ""; // 등급 (E25)
-                // 카드 전체가 버튼: 이름 줄 + 능력치 아이콘 줄 (統·武·智)
-                var card = Ui.Card(list, id, 18, 6);
-                var cardButton = card.gameObject.AddComponent<Button>();
-                cardButton.targetGraphic = card.GetComponent<Image>();
-                cardButton.onClick.AddListener(() => app.Show(new GeneralScreen(id)));
-                Ui.Label(card, grade + ctx.T("ui.generals.line", ctx.GeneralName(id), g.Level, Ui.Colored(ctx.T("ui.generals." + g.Status), color)), 32);
-                Icons.Stats(ctx, card, Stat(ctx, g, "leadership"), Stat(ctx, g, "might"), Stat(ctx, g, "intellect"), 38, 26);
+                var items = new List<(string, string, bool, System.Action)>();
+                foreach (var s in Game.Flow.GeneralSorts.All)
+                {
+                    string by = s;
+                    items.Add((ctx.T("ui.generals.sort." + by), by == _sort ? "✓" : null, true, () => { _sort = by; Ui.Clear(root); Build(app, root); }));
+                }
+                Ui.PickMenu(root, sortRt, 300, items.ToArray());
+            });
+            if (ctx.Defs.Gacha.Banners.Count > 0)
+                Ui.Size(Ui.SecondaryButton(head, ctx.T("ui.generals.recruitShort"), () => app.Show(new GachaScreen()), 70, 26), 70, 150).flexibleWidth = 0;
+            Ui.Size(Ui.Rect(head, "InfoGap"), 70, 66).flexibleWidth = 0; // 오른쪽 끝 ⓘ 자리
+            var info = InfoButton.Add(root, ctx.T("ui.tab.generalNote"));
+            ((RectTransform)info.transform).anchoredPosition = new Vector2(-25f, -(25f + 50f - InfoButton.Size / 2f));
+
+            var grid = Ui.Rect(list, "Grid");
+            var g = grid.gameObject.AddComponent<GridLayoutGroup>();
+            g.cellSize = new Vector2(505, 470);
+            g.spacing = new Vector2(20, 22);
+            g.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            g.constraintCount = 2;
+            g.childAlignment = TextAnchor.UpperCenter;
+
+            foreach (var gs in Game.Flow.GeneralRoster.Sorted(ctx.Defs, ctx.State.Generals, _sort))
+            {
+                var gen = gs;
+                string id = gen.GeneralId;
+                ctx.Defs.Generals.TryGetValue(id, out var gdef);
+                string grade = gdef?.Grade;
+                var d = new Ui.GeneralCardData
+                {
+                    Id = id,
+                    Name = ctx.GeneralName(id),
+                    Grade = grade,
+                    GradeName = string.IsNullOrEmpty(grade) ? null : ctx.T("grade." + grade),
+                    Level = gen.Level,
+                    StatusText = gen.Status == GeneralStatus.Available ? null : ctx.T("ui.generals." + gen.Status),
+                    StatusColor = StatusColor(gen.Status),
+                    Leadership = Stat(ctx, gen, "leadership"),
+                    Might = Stat(ctx, gen, "might"),
+                    Intellect = Stat(ctx, gen, "intellect"),
+                    Attention = Game.Flow.GeneralRoster.NeedsAttention(ctx.Defs, ctx.State, id),
+                };
+                Ui.GeneralCard(ctx, grid, d, () => app.Show(new GeneralScreen(id)), anchor =>
+                    Ui.StatTip(ctx, root, anchor,
+                        ("leadership", ctx.T("stat.leadership"), d.Leadership.ToString()),
+                        ("might", ctx.T("stat.might"), d.Might.ToString()),
+                        ("intellect", ctx.T("stat.intellect"), d.Intellect.ToString())));
+            }
+        }
+
+        /// <summary>상태 띠 색: 경상 노랑 / 중상 주황 / 포로 빨강.</summary>
+        private static Color StatusColor(string s)
+        {
+            switch (s)
+            {
+                case GeneralStatus.LightInjury: return new Color(0.851f, 0.651f, 0.180f);
+                case GeneralStatus.SeriousInjury: return new Color(0.851f, 0.463f, 0.180f);
+                case GeneralStatus.Captured: return new Color(0.690f, 0.227f, 0.180f);
+                default: return Palette.Good;
             }
         }
     }

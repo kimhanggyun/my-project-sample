@@ -23,11 +23,11 @@
 
 | 화면 | 상태 |
 |---|---|
-| [01 타이틀](01_title/변경점.md) | 확정 (2026-11-14) |
-| [02 로그인](02_signin/변경점.md) | 확정 (2026-11-14) |
-| [03 약관](03_terms/변경점.md) | 확정 (2026-11-14) |
-| [04 메인 틀 + 스토리](04_main_story/변경점.md) | 확정 (2026-11-14) |
-| [05 장수 탭](05_generals/변경점.md) | 확정 (2026-11-14) |
+| [01 타이틀](01_title/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/design-impl-1, [캡처](../../captures/latest/README.md)) |
+| [02 로그인](02_signin/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/design-impl-1, [캡처](../../captures/latest/README.md)) |
+| [03 약관](03_terms/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/design-impl-1, [캡처](../../captures/latest/README.md)) |
+| [04 메인 틀 + 스토리](04_main_story/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/design-impl-1, [캡처](../../captures/latest/README.md)) |
+| [05 장수 탭](05_generals/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/design-impl-1, [캡처](../../captures/latest/README.md)) |
 | [06 부대 관리 탭](06_troops/변경점.md) | 확정 (2026-11-14) — 승급 규칙 변경 필요 (데스크탑) |
 
 원격 검토(규칙·데이터에서 쓸 값·정할 것): [원격검토.md](원격검토.md)

@@ -36,7 +36,7 @@ namespace Game.Unity.UI
     /// <summary>
     /// 코드로 uGUI를 만드는 도우미 (뼈대 단계: 프리팹·아트 없이 화면 흐름만 확인). 기준 해상도 1080×1920 세로.
     /// </summary>
-    public static class Ui
+    public static partial class Ui
     {
         public const int FontBody = 40;
         public const int FontSmall = 32;
