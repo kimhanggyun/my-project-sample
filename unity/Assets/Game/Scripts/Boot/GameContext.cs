@@ -560,12 +560,34 @@ namespace Game.Unity.Boot
         public ReplayService ReplayService { get; private set; }
         public ReplayLibrary Replays { get; private set; } = new ReplayLibrary();
 
-        /// <summary>끝난 전투를 내 녹화에 더한다. 한도를 넘으면 가장 오래된 녹화를 지운다.</summary>
+        private Game.Battle.Model.Simulation.BattleResult _recentOf;
+        private ReplayRecord _recentRecord;
+
+        /// <summary>끝난 전투를 최근 녹화에 저절로 남긴다 (R-101, 같은 결과는 한 번만).</summary>
+        public ReplayRecord RecordRecent(SortiePlan plan, IReadOnlyList<Game.Battle.Model.Commands.BattleCommand> commands, Game.Battle.Model.Simulation.BattleResult result)
+        {
+            if (ReferenceEquals(_recentOf, result)) return _recentRecord;
+            var r = ReplayService.Capture(plan, commands, result, Clock.UtcNow.ToUnixTimeSeconds());
+            Replays.AddRecent(r, ReplayRules.RecentKeep);
+            Replays.Write(_saveStore);
+            _recentOf = result;
+            _recentRecord = r;
+            return r;
+        }
+
+        /// <summary>최근 녹화를 저장 목록으로 (한도를 넘으면 가장 오래된 저장을 지운다).</summary>
+        public bool KeepReplay(string id)
+        {
+            if (!Replays.Keep(id, ReplayRules.MaxSaved)) return false;
+            Replays.Write(_saveStore);
+            return true;
+        }
+
+        /// <summary>끝난 전투를 바로 내 녹화에 (최근에 있으면 옮기고, 없으면 새로).</summary>
         public ReplayRecord SaveReplay(SortiePlan plan, IReadOnlyList<Game.Battle.Model.Commands.BattleCommand> commands, Game.Battle.Model.Simulation.BattleResult result)
         {
-            var r = ReplayService.Capture(plan, commands, result, Clock.UtcNow.ToUnixTimeSeconds());
-            Replays.Add(r, ReplayRules.MaxSaved);
-            Replays.Write(_saveStore);
+            var r = RecordRecent(plan, commands, result);
+            if (!KeepReplay(r.Id) && Replays.Find(r.Id) == null) { Replays.Add(r, ReplayRules.MaxSaved); Replays.Write(_saveStore); }
             return r;
         }
 

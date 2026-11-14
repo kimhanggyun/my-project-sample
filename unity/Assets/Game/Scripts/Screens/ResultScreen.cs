@@ -94,11 +94,12 @@ namespace Game.Unity.Screens
             foreach (var s in _report.Secrets) secrets.Add(SecretText.Found(Ctx, s));
             Section(body, "ui.result.secrets", secrets);
 
-            // 녹화 저장 (replay.md 3장): 기기에만, 한도를 넘으면 가장 오래된 것부터 지운다
+            // 녹화 (replay.md 3장, R-101): 최근 5개에 저절로 남고, [저장]하면 저장 목록으로 (기기에만)
+            var recent = Ctx.RecordRecent(_plan, _result.Commands, _result);
             Button save = null;
             save = Ui.Button(Root, T("ui.replay.save"), () =>
             {
-                Ctx.SaveReplay(_plan, _result.Commands, _result);
+                if (!Ctx.KeepReplay(recent.Id)) Ctx.SaveReplay(_plan, _result.Commands, _result);
                 SetLabel(save, T("ui.replay.saved", Ctx.Replays.Items.Count, Ctx.ReplayRules.MaxSaved));
                 Ui.SetEnabled(save, false);
             }, 100, Palette.Card);
