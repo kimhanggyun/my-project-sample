@@ -55,6 +55,7 @@
 | [replay.md](design/content/replay.md) | 전투 녹화·재생, 공략 공유 | 기획 중 |
 | [pvp.md](design/content/pvp.md) | 유저 대전 1:1 · N:N | 확장 예정 (구조만 대비) |
 | [territory.md](design/content/territory.md) | 영토: 실제 지역(GPS) 땅따먹기, 지역 단계별 연합, 위치정보법·조작 방지 | 별도 컨텐츠, 기획 중 (서버 도입 후) |
+| [territory-v2.md](design/content/territory-v2.md) | 영토 개편: 깃발 원형 땅(반지름 = 계급), 공성전(준비 1분 · 유저 대전/AI 수비), 전장 지원, 줌 단계, Natural Earth 지도 | 확정 (2026-11-14), 구현 전 |
 | [general-growth.md](design/content/general-growth.md) | 장수 키우기 (스킬북·특성서·대결 보상 먼저, 세부 성장은 TO-BE) | 일부 먼저 열림 |
 | [troop-growth.md](design/content/troop-growth.md) | 부대 키우기 | TO-BE |
 

@@ -1,6 +1,7 @@
 # 영토 (지역 점령, 별도 컨텐츠)
 
 > 상태: 기획 중 · **첫 단계 구현** (2026-11-09: 위치 서비스 경계 + 가짜, 지역 데이터 형식(개발용 가상 지역), 좌표 → 지역, 공격 가능 지역 — verification R-45, 아래 8.1)
+> **개편 확정 (2026-11-14)**: 행정 구역 땅 → **깃발 원형 땅 · 공성전 · 줌 단계** — [territory-v2.md](territory-v2.md). 구현할 때 이 문서의 2·3·5·6·7장을 고친다.
 > 관련: [main-screen.md](main-screen.md)(영토 탭), [story.md](story.md), [pvp.md](pvp.md), [hiring.md](hiring.md), [battle.md](battle.md) 5장(전투 입구·출구), [structure.md](../structure.md)
 
 ---

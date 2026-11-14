@@ -30,6 +30,7 @@
 | [05 장수 탭](05_generals/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/design-impl-1, [캡처](../../captures/latest/README.md)) |
 | [06 부대 관리 탭](06_troops/변경점.md) | 확정 (2026-11-14) · **구현** (#145 목록·승급 화면, desktop/promotion-split 승급 규칙·인원 조절·나무 카드 — 나무 카드는 직접 승급해 확인 필요) |
 | [07 부대 편성](07_formation/변경점.md) | 확정 (2026-11-14) · **구현** (desktop/formation-07, R-95) |
+| [08 영토](08_territory/변경점.md) | 확정 (2026-11-14) — 깃발 원형 땅 · 공성전 · 줌 단계, 정책 [territory-v2.md](../content/territory-v2.md). 구현 전 |
 
 원격 검토(규칙·데이터에서 쓸 값·정할 것): [원격검토.md](원격검토.md)
 
