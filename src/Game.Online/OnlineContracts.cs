@@ -600,6 +600,8 @@ namespace Game.Online
         public const string MailClaim = "mail.claim";
         /// <summary>장수 모집: BannerId, Count(1·10), Seed (R-51).</summary>
         public const string GachaDraw = "gacha.draw";
+        /// <summary>무료 모집 1회: BannerId, Seed, DoneAtUnixSeconds (R-100). 하루 freeDaily번.</summary>
+        public const string GachaFree = "gacha.free";
         /// <summary>부대 훈련: UnitId (R-52).</summary>
         public const string UnitTrain = "unit.train";
         /// <summary>병종 승급: UnitId, TroopType = 승급할 병종 (R-52).</summary>

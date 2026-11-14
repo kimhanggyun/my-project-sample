@@ -52,6 +52,7 @@ namespace Game.Flow
             Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType, a.Count)));
             var gacha = new GachaService(defs);
             Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
+            Register(new Handler(ActionKinds.GachaFree, (s, a) => gacha.DrawFree(s, a.BannerId, a.Seed, a.DoneAtUnixSeconds).Ok));
             var practice = new PracticeService(defs);
             Register(new Handler(ActionKinds.ContestPractice, (s, a) => practice.Apply(s, a) != null));
             // 포로 (R-66): 시각은 행동 시각(서버 시각 기준), 무작위는 행동의 시드 — 서버도 같은 결과
@@ -201,6 +202,9 @@ namespace Game.Flow
 
         public static PlayerAction DrawGacha(string bannerId, int count, ulong seed) =>
             new PlayerAction { Kind = ActionKinds.GachaDraw, BannerId = bannerId, Count = count, Seed = seed };
+
+        public static PlayerAction DrawGachaFree(string bannerId, ulong seed, long nowUnixSeconds) =>
+            new PlayerAction { Kind = ActionKinds.GachaFree, BannerId = bannerId, Seed = seed, DoneAtUnixSeconds = nowUnixSeconds };
 
         public static PlayerAction ClaimMail(Mail mail) =>
             new PlayerAction { Kind = ActionKinds.MailClaim, MailId = mail.Id, PayWith = mail.Resource, Count = mail.Amount };

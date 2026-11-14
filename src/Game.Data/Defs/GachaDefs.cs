@@ -26,6 +26,8 @@ namespace Game.Data.Defs
         public string PityGrade { get; internal set; }
         public int PityCount { get; internal set; }
         public IReadOnlyList<string> Pool { get; internal set; }
+        /// <summary>하루 무료 1회 모집 횟수 (R-100, 서버 시각 unix 일). 0 = 없음. 광고는 화면이 (꺼져 있으면 광고 없이).</summary>
+        public int FreeDaily { get; internal set; }
     }
 
     /// <summary>
@@ -82,7 +84,9 @@ namespace Game.Data.Defs
                     PityGrade = pity?.Value<string>("grade"),
                     PityCount = pity?.Value<int?>("count") ?? 0,
                     Pool = JsonUtil.StringList(b, "pool"),
+                    FreeDaily = b.Value<int?>("freeDaily") ?? 0,
                 };
+                if (def.FreeDaily < 0) throw new DataException($"{c}: freeDaily는 0 이상.");
                 if (def.CostOne < 0 || def.CostTen < 0) throw new DataException($"{c}: 가격은 0 이상.");
                 if (def.TenGuarantee != null && r.Grade(def.TenGuarantee) == null) throw new DataException($"{c}: 없는 보장 등급 '{def.TenGuarantee}'.");
                 if (def.PityGrade != null && (r.Grade(def.PityGrade) == null || def.PityCount < 1)) throw new DataException($"{c}: 천장 등급·횟수가 잘못되었습니다.");

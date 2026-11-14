@@ -173,5 +173,41 @@ namespace Game.Tests.Campaign
             var old = SaveJson.Read(json.ToString());
             Assert.All(old.Generals, g => Assert.Equal(0, g.LimitBreak));
         }
-}
+
+        [Fact(DisplayName = "R-100 무료 모집: 하루 freeDaily번 재화 없이 1회, 다 쓰면 그날은 아무것도 안 바뀜, 다음 날 다시, 천장은 센다")]
+        public void FreeDaily()
+        {
+            var svc = new GachaService(Kit.D);
+            var b = Kit.D.Gacha.Banners["standard"];
+            Assert.Equal(1, b.FreeDaily);
+            var s = Rich(0);
+            long day = 86400L * 20000;
+            Assert.Equal(1, GachaService.FreeLeft(s, b, day + 10));
+            var r = svc.DrawFree(s, "standard", 7, day + 10);
+            Assert.True(r.Ok);
+            Assert.Single(r.Pulls);
+            Assert.Equal(0, s.Wallet.TryGetValue(ResourceIds.Gem, out var g) ? g : 0);
+            Assert.Equal(1, s.GachaPity["standard"]);
+            Assert.Equal(0, GachaService.FreeLeft(s, b, day + 500));
+            var json = SaveJson.Write(s);
+            var again = svc.DrawFree(s, "standard", 8, day + 500);
+            Assert.False(again.Ok);
+            Assert.Equal(GachaService.NoFree, again.Reason);
+            Assert.Equal(json, SaveJson.Write(s));
+            Assert.Equal(1, GachaService.FreeLeft(s, b, day + 86400));
+            Assert.True(svc.DrawFree(s, "standard", 9, day + 86400).Ok);
+        }
+
+        [Fact(DisplayName = "R-100 무료 모집 행동: 같은 시드·시각이면 같은 결과, 하루 두 번째는 거절")]
+        public void FreeAction()
+        {
+            var runner = new PlayerActionRunner(Kit.D);
+            var a = Rich(0); var c = Rich(0);
+            long now = 86400L * 20000 + 30;
+            Assert.True(runner.Apply(a, PlayerActionRunner.DrawGachaFree("standard", 5, now)));
+            Assert.True(runner.Apply(c, PlayerActionRunner.DrawGachaFree("standard", 5, now)));
+            Assert.Equal(SaveJson.Write(a), SaveJson.Write(c));
+            Assert.False(runner.Apply(a, PlayerActionRunner.DrawGachaFree("standard", 6, now + 60)));
+        }
+    }
 }

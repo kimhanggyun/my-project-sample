@@ -29,6 +29,7 @@
       "currency": "gem",
       "costOne": 100,
       "costTen": 900,
+      "freeDaily": 1,
       "tenGuarantee": "rare",
       "pity": {
         "grade": "legend",

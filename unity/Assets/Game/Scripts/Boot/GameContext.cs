@@ -431,6 +431,18 @@ namespace Game.Unity.Boot
             return preview;
         }
 
+        /// <summary>무료 모집 1회 (R-100): DrawGacha와 같게 사본으로 먼저 구한 뒤 같은 시드·시각의 행동으로.</summary>
+        public GachaResult DrawGachaFree(string bannerId)
+        {
+            ulong seed = NewSeed();
+            long now = Clock.UtcNow.ToUnixTimeSeconds();
+            var preview = new GachaService(Defs).DrawFree(SaveJson.Read(SaveJson.Write(State)), bannerId, seed, now);
+            if (!preview.Ok) return preview;
+            Do(PlayerActionRunner.DrawGachaFree(bannerId, seed, now));
+            _formation = null;
+            return preview;
+        }
+
         /// <summary>서버 계정 (고용 목록에서 내 등록을 가린다).</summary>
         public string AccountId => Online?.AccountId;
 
