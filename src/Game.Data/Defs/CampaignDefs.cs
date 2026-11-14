@@ -392,6 +392,10 @@ namespace Game.Data.Defs
         public Fix HoldOutSeconds { get; private set; }
         public string Weather { get; private set; }
         public string TimeOfDay { get; private set; }
+        /// <summary>장 번호 (17 대화 장 표시, 이름 = "chapter.{n}.name"). 0 = 장 표시 없음.</summary>
+        public int Chapter { get; private set; }
+        /// <summary>대화 배경 키 (17 시안, 스텝 지형 수묵). 없으면 전투 종류(battleType).</summary>
+        public string Backdrop { get; private set; }
         public string WindDirection { get; private set; }
         public Fix WindStrength { get; private set; }
         public bool DuelAllowed { get; private set; }
@@ -503,6 +507,8 @@ namespace Game.Data.Defs
                 HoldOutSeconds = o["holdOut"] is JObject ho ? JsonUtil.RequireFix(ho, "seconds", "steps.holdOut") : Fix.Zero,
                 Weather = o.Value<string>("weather") ?? "clear",
                 TimeOfDay = o.Value<string>("timeOfDay") ?? "day",
+                Chapter = o.Value<int?>("chapter") ?? 0,
+                Backdrop = o.Value<string>("backdrop") ?? o.Value<string>("battleType"),
                 WindDirection = wind?.Value<string>("direction"),
                 WindStrength = wind != null ? JsonUtil.FixOr(wind, "strength", Fix.Zero, c) : Fix.Zero,
                 DuelAllowed = contests.Value<bool?>("duel") ?? false,

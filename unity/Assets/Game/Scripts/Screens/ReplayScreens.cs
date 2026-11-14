@@ -53,7 +53,7 @@ namespace Game.Unity.Screens
             {
                 var empty = Ui.Card(body, "Empty", 40, 12);
                 empty.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
-                Ui.Label(empty, "卷", 90, TextAnchor.MiddleCenter, Palette.TextDim);
+                Ui.Label(empty, "卷", 90, TextAnchor.MiddleCenter, Palette.TextDim).font = Ui.TitleFont;
                 Ui.Label(empty, T("ui.replay.emptyHead"), Ui.FontBody, TextAnchor.MiddleCenter);
                 Ui.Label(empty, T("ui.replay.emptyFlow"), 24, TextAnchor.MiddleCenter, Palette.TextDim);
                 Ui.Label(empty, T("ui.replay.emptyRecent", Ctx.ReplayRules.RecentKeep), 22, TextAnchor.MiddleCenter, Palette.Good);

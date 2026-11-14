@@ -1,6 +1,7 @@
 {
   "id": "step02",
   "nameKey": "step.step02.name",
+  "chapter": 1,
   "battleType": "field",
   "map": "test_ambush",
   "maxCorps": 3,

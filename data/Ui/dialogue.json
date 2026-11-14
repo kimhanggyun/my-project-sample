@@ -1,0 +1,7 @@
+{
+  "_comment": "대화 장면 연출 (17 시안, 화면만 · 규칙 아님). typeCharsPerSecond = 글자 한 자씩 나오는 속도, autoBaseSeconds + autoPerCharSeconds × 글자 수 = 자동 넘김 기다림, chapterSeconds = 장 표시가 저절로 넘어가는 시간",
+  "typeCharsPerSecond": 40,
+  "autoBaseSeconds": 1.2,
+  "autoPerCharSeconds": 0.05,
+  "chapterSeconds": 2.5
+}

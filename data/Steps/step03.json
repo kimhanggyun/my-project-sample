@@ -1,6 +1,7 @@
 {
   "id": "step03",
   "nameKey": "step.step03.name",
+  "chapter": 1,
   "battleType": "field",
   "map": "test_mountain_pass",
   "maxCorps": 3,

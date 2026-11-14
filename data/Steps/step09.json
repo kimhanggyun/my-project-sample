@@ -1,6 +1,7 @@
 {
   "id": "step09",
   "nameKey": "step.step09.name",
+  "chapter": 3,
   "battleType": "field",
   "map": "marsh_lake",
   "maxCorps": 3,
