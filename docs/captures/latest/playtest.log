@@ -1,0 +1,82 @@
+# 플레이 테스트 2026-11-14 10:28:17, 화면 1080x1920
+세이브 백업: D:\my_unity_proj\my-project-sample\captures\playtest_20261114_102817\save_backup (되돌리려면 이 파일들을 C:/Users/rlagk/AppData/LocalLow/DefaultCompany/unity 에 다시 복사)
+
+## 1 하단 탭
+개발 탭 줄: 내용 폭 1080 / 보이는 폭 1080 → 한 화면에 다 보임, 스크롤 켜짐, '›' 표시 있음
+탭 '스토리' (story) → 그 탭 내용이 열림
+탭 '장수' (general) → 그 탭 내용이 열림
+탭 '부대' (troop) → 그 탭 내용이 열림
+탭 '샘플전투' (sampleBattle) → 그 탭 내용이 열림
+탭 '맵' (map) → 그 탭 내용이 열림
+탭 '영토' (territory) → 그 탭 내용이 열림
+탭 '고용' (hiring) → 그 탭 내용이 열림
+탭 '녹화' (replay) → 그 탭 내용이 열림
+탭 '도감' (codex) → 그 탭 내용이 열림
+탭 '우편' (mail) → 그 탭 내용이 열림
+탭 '마스터' (master) → 그 탭 내용이 열림
+탭 '포로' (prisoner) → 그 탭 내용이 열림
+탭 '부대 정비' (care) → 그 탭 내용이 열림
+탭 '부대 편성' (formation) → 그 탭 내용이 열림
+탭 '편성(드래그)' (formationDrag) → 그 탭 내용이 열림
+탭 '장수 모집' (gacha) → 그 탭 내용이 열림
+탭 '연합' (alliance) → 그 탭 내용이 열림
+탭 '설정' (settings) → 그 탭 내용이 열림
+탭 '대전' (pvp) → 그 탭 내용이 열림 (준비 중 화면)
+
+## 2 마스터
+누름: '+100,000 군량'
+누름: '+100,000 돈'
+누름: '+10,000 보석(임시)'
+자원 전 supply 1,112,163 gold 3 gem 300 → 후 supply 1,112,163 gold 3 gem 300 (상단 숫자는 화면을 다시 열어야 바뀌는지도 같이 봄)
+화면 결과 글: 서버 마스터 계정이 아닙니다. 서버가 거절해 되돌아갑니다. 위 계정 id를 서버 설정 Game:Masters에 넣어 주세요.
+열린 스텝 2 → 2 / 전체 12, 장수 3 → 3
+
+## 3 샘플전투
+샘플 맵 8개: test_plain(field, 스텝 4), test_ambush(field, 스텝 2), test_mountain_pass(field, 스텝 2), test_forest(field, 스텝 1), river_ford(field, 스텝 2), hills_valley(field, 스텝 1), marsh_lake(field, 스텝 1), lake_naval(naval, 스텝 1)
+싸우기 → 화면 BattleScreen
+끝까지 → 화면 SampleResultScreen
+다시 싸우기 → 화면 BattleScreen
+목록 → 화면 MainScreen
+세이브 그대로 (같음)
+
+## 4 맵
+맵 test_plain: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 4개
+맵 test_ambush: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 2개
+맵 test_mountain_pass: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 2개
+맵 test_forest: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 1개
+맵 river_ford: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 2개
+맵 hills_valley: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 1개
+맵 marsh_lake: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 1개
+맵 lake_naval: 칸 24x40 (비율 0.60), 그림 432x720 (비율 0.60), 스텝 1개
+
+## 5·6·7 전투 이동·일기토(거절)·탈것
+군단: P1(teamA, 총대장), P2(teamA), P3(teamA), enemy_corps_01(teamB, 총대장), enemy_corps_01b(teamB) — 탈것(말·가마)·자세는 캡처 pt11로 확인
+스킬 메뉴 P1: 일기토 신청 있음 (남은 횟수 3, 지금 쓸 수 True)
+스킬 메뉴 P2: 일기토 신청 있음 (남은 횟수 3, 지금 쓸 수 True)
+스킬 메뉴 P3: 일기토 신청 있음 (남은 횟수 3, 지금 쓸 수 True)
+교전 중 뒤쪽 이동 (P1 (12.5, 38.01) → (12.5, 38), 적 enemy_corps_01 (15.6048, 29.6014), 맵 24x40): 명령 받음, 적과 거리 11.1 → 9.0칸, 교전 True/접촉 False
+적 쪽 누름 (P1 → enemy_corps_01): Attack, 거리 6.7칸, 교전 True
+일기토 신청 스킬 사용 (P1 → enemy_corps_01): 누름 True, 결과 Skill, 다음 사용 가능 False (60초 쿨타임이면 False)
+일기토 거절 시험 적의 신청이 없어 못 함
+
+## 6 일기토 응하기 (새 전투)
+군단: P1(teamA, 총대장), P2(teamA), P3(teamA), enemy_corps_01(teamB, 총대장), enemy_corps_01b(teamB) — 탈것(말·가마)·자세는 캡처 pt11로 확인
+스킬 메뉴 P1: 일기토 신청 있음 (남은 횟수 3, 지금 쓸 수 True)
+스킬 메뉴 P2: 일기토 신청 있음 (남은 횟수 3, 지금 쓸 수 True)
+스킬 메뉴 P3: 일기토 신청 있음 (남은 횟수 3, 지금 쓸 수 True)
+이번 전투는 적의 일기토 신청에 [응한다]를 누른다
+적의 신청 → [응한다]
+→ 화면 ContestScreen
+[전투로 돌아가기] → 화면 BattleScreen
+일기토 응하기: 대결 화면 봄
+
+## 8 아이콘·ⓘ
+탭 general: ⓘ 열기 → 닫기 시도. 닫힌 뒤 설명 카드 없음
+탭 prisoner: ⓘ 열기 → 닫기 시도. 닫힌 뒤 설명 카드 없음
+아이콘 그림: supply=그림, gold=그림, gem=그림, leadership=그림, might=그림, intellect=그림
+
+## 9 큰 전투
+큰 전투: 맵 test_plain, 군단 5개, 병력 합 65,888
+FPS (에디터, ×1, 6초): 평균 60.0, 느린 5% 프레임 18ms (= 55.2 FPS), 가장 느린 20ms, 프레임 361개
+
+# 끝

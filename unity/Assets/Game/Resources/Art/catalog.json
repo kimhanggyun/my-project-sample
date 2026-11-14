@@ -49,12 +49,16 @@
     "general.default": {
       "model": "Art/Models/general",
       "height": 0.8,
-      "tint": 0.4
+      "tint": 0.4,
+      "poseFrom": "Art/Models/Anim/Rig_Medium_General",
+      "poseClip": "Idle"
     },
     "general.commander": {
       "model": "Art/Models/general_commander",
       "height": 0.85,
-      "tint": 0.4
+      "tint": 0.4,
+      "poseFrom": "Art/Models/Anim/Rig_Medium_General",
+      "poseClip": "Idle"
     },
     "mount.horse": {
       "model": "Art/Models/horse",

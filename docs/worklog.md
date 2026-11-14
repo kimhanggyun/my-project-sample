@@ -17,3 +17,4 @@
 - 2026-11-14 [데스크탑] desktop/mounts-icons — 장수 KayKit(기사·바바리안 FBX)·말(Quaternius, mount.horse)·자원·능력치 아이콘 6개, 모델 Read/Write 켬(굽기 오류로 병사·나무 사라짐 해결), 최신 캡처
 - 2026-11-14 [원격] claude/kind-bohr-365c76 — 굽기: Read/Write 꺼진 메시도 모델을 버리지 않음(원래 메시 사용·조각만 제외), 장수 자세 동작 넣는 법·삼각형 기준(장수 8,000), 개발 탭 줄 › 표시 (PR #136)
 - 2026-11-14 [원격] claude/kind-bohr-365c76 — 하단 아래 줄(배포 탭)을 사용자가 지목한 대전연습·상점 두 개로 바로잡음, 나머지는 위 줄 (PR #137)
+- 2026-11-14 [데스크탑] desktop/playtest — 플레이 테스트 도구(Game ▸ Play Test)로 확인 목록 1~9, 전투 위 두 줄 바탕·탭 "›" 끝에서 숨김, 장수 자세 동작(Rig_Medium_General, Idle), 버그 목록 B1~B4
