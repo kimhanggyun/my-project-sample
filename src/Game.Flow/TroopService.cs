@@ -10,7 +10,7 @@ namespace Game.Flow
 {
     /// <summary>
     /// 병력 관리 (formation.md 4.1, verification R-10·R-33): 징병(군량)·모병(돈)으로 부대를 채우고, 부상병을 치료한다.
-    /// 부대 최대 병력 = 병력 + 부상병 ≤ 부대 최대치 (`balance.json` troopCap.unitMax). 비용이 모자라면 아무것도 바뀌지 않는다.
+    /// 병종 묶음 최대 병력 = 병력 + 부상병 ≤ 계급의 병종 최대 병력 (army-v2.md 2장). 새 병사는 계급의 기본 훈련도·결속으로 섞인다 (3.1). 비용이 모자라면 아무것도 바뀌지 않는다.
     /// </summary>
     public sealed class TroopService
     {
@@ -19,7 +19,7 @@ namespace Game.Flow
         public TroopService(DefinitionSet defs) { _defs = defs; }
 
         /// <summary>더 채울 수 있는 인원.</summary>
-        public long Room(UnitState u) => System.Math.Max(0, _defs.Balance.UnitMaxTroops - u.Troops - u.Wounded);
+        public long Room(CampaignState state, UnitState u) => System.Math.Max(0, Army.TroopMax(_defs, state) - u.Troops - u.Wounded);
 
         /// <summary>징병: 군량으로 count명(남은 자리까지) 채운다. 채운 인원 (0이면 실패).</summary>
         public long Conscript(CampaignState state, string unitId, long count) =>
@@ -59,9 +59,8 @@ namespace Game.Flow
         public UnitState Create(CampaignState state, string troopType)
         {
             if (!CanCreate(state) || !_defs.TroopTypes.TryGetValue(troopType ?? "", out var t) || t.Tier != 1) return null;
-            var u = new UnitState { UnitId = NextUnitId(state), TroopType = t.Id, Troops = 0, Training = Fix.Zero, Cohesion = Fix.Zero };
-            state.Units.Add(u);
-            return u;
+            if (Army.Pool(state, t.Id) != null) return null; // 병종마다 묶음 하나 (army-v2.md 3장)
+            return Army.EnsurePool(_defs, state, t.Id);
         }
 
         /// <summary>해산할 수 있는가: 기본·상황별 어느 편성에도 들어 있지 않아야 한다.</summary>
@@ -78,9 +77,9 @@ namespace Game.Flow
 
         public static bool InAnyComposition(CampaignState state, string unitId)
         {
-            foreach (var c in state.Compositions) if (c.Slots.ContainsValue(unitId)) return true;
+            foreach (var c in state.Compositions) if (c.Picks.Exists(x => x.UnitId == unitId)) return true;
             foreach (var p in state.CompositionPresets.Values)
-                if (p != null) foreach (var c in p) if (c.Slots.ContainsValue(unitId)) return true;
+                if (p != null) foreach (var c in p) if (c.Picks.Exists(x => x.UnitId == unitId)) return true;
             return false;
         }
 
@@ -96,72 +95,33 @@ namespace Game.Flow
         }
 
         /// <summary>
-        /// 편성 한도까지 보충할 인원 (R-61): 기본 편성의 군단마다 장수 한도 − (병력 + 부상병)만큼,
-        /// 칸 id 순서대로 각 부대의 남은 자리까지 나눈다. 부상병도 한도에 넣으므로 자연 회복 뒤에도 한도를 넘지 않는다.
-        /// 실제 보충은 부대마다 징병 행동(<see cref="Conscript"/>)으로 한다 (서버도 같은 행동으로 재현).
-        /// </summary>
-        /// <summary>같은 병력일 때 먼저 채우는 칸 (앞줄부터). 목록에 없는 칸은 그 뒤에 칸 id 순서.</summary>
-        private static readonly string[] SlotPriority = { "vanguard", "center", "leftWing", "rightWing", "leftGuard", "rightGuard" };
-
-        /// <summary>
-        /// 편성 한도까지 보충 (R-61): 군단마다 장수 한도 − (병력 + 부상병)을 **가장 적은 부대부터 고르게** 나눈다 (물 채우기).
-        /// 같은 수면 앞줄 칸부터. 부대 상한(UnitMaxTroops)을 넘지 않는다. 앞에서부터 다 채우면 뒤 칸(예: 선봉)이 비는 일이 없다.
+        /// 편성 인원까지 보충 (R-61, army-v2.md 4장): 출진에 쓰일 편성(계급의 군단·칸 수까지)에 적힌 병종마다
+        /// 적힌 인원 합 − (병력 + 부상병)만큼, 그 병종 최대 병력(계급)까지. 실제 보충은 병종마다 징병 행동.
         /// </summary>
         public List<KeyValuePair<string, long>> RefillPlan(CampaignState state)
         {
             var plan = new List<KeyValuePair<string, long>>();
-            foreach (var c in state.Compositions)
+            var rank = Army.Rank(_defs, state);
+            var asked = new Dictionary<string, long>();
+            var order = new List<string>();
+            for (int i = 0; i < state.Compositions.Count && i < rank.Corps; i++)
             {
-                var g = state.FindGeneral(c.GeneralId);
-                if (g == null || !_defs.Generals.ContainsKey(g.GeneralId)) continue;
-                long room = TroopCapCalculator.Cap(_defs.Balance, CorpsValidator.EffectiveStat(_defs, g, "leadership"));
-                var units = new List<(UnitState u, long have, long max)>();
-                foreach (var key in OrderedSlots(c.Slots.Keys))
+                var c = state.Compositions[i];
+                for (int j = 0; j < c.Picks.Count && j < rank.Slots; j++)
                 {
-                    var u = state.FindUnit(c.Slots[key]);
-                    if (u == null) continue;
-                    long have = u.Troops + u.Wounded;
-                    room -= have;
-                    units.Add((u, have, have + Room(u)));
+                    var p = c.Picks[j];
+                    if (!asked.ContainsKey(p.UnitId)) order.Add(p.UnitId);
+                    asked[p.UnitId] = (asked.TryGetValue(p.UnitId, out var a) ? a : 0) + p.Troops;
                 }
-                if (room <= 0 || units.Count == 0) continue;
-                // 수면 L: 모든 부대를 min(L, 상한)까지 올리는 데 드는 수가 room 이하인 가장 큰 L
-                long lo = 0, hi = _defs.Balance.UnitMaxTroops;
-                while (lo < hi)
-                {
-                    long mid = (lo + hi + 1) / 2;
-                    if (Need(units, mid) <= room) lo = mid; else hi = mid - 1;
-                }
-                var add = new long[units.Count];
-                for (int i = 0; i < units.Count; i++) add[i] = System.Math.Max(0, System.Math.Min(lo, units[i].max) - units[i].have);
-                room -= Need(units, lo);
-                // 남은 몇 명은 수면에 있는 부대에 앞줄부터 한 명씩
-                for (int i = 0; i < units.Count && room > 0; i++)
-                    if (units[i].have + add[i] == lo && lo < units[i].max) { add[i]++; room--; }
-                for (int i = 0; i < units.Count; i++)
-                    if (add[i] > 0) plan.Add(new KeyValuePair<string, long>(units[i].u.UnitId, add[i]));
+            }
+            foreach (var id in order)
+            {
+                var u = state.FindUnit(id);
+                if (u == null) continue;
+                long add = System.Math.Min(asked[id] - u.Troops - u.Wounded, Room(state, u));
+                if (add > 0) plan.Add(new KeyValuePair<string, long>(id, add));
             }
             return plan;
-        }
-
-        private static long Need(List<(UnitState u, long have, long max)> units, long level)
-        {
-            long n = 0;
-            foreach (var x in units) n += System.Math.Max(0, System.Math.Min(level, x.max) - x.have);
-            return n;
-        }
-
-        private static List<string> OrderedSlots(IEnumerable<string> keys)
-        {
-            var list = new List<string>(keys);
-            list.Sort((a, b) =>
-            {
-                int ia = System.Array.IndexOf(SlotPriority, a), ib = System.Array.IndexOf(SlotPriority, b);
-                if (ia < 0) ia = int.MaxValue;
-                if (ib < 0) ib = int.MaxValue;
-                return ia != ib ? ia.CompareTo(ib) : System.StringComparer.Ordinal.Compare(a, b);
-            });
-            return list;
         }
 
         public long ConscriptCost(long count) => HealCostCalculator.ConscriptCost(_defs.Balance, count);
@@ -171,10 +131,10 @@ namespace Game.Flow
         {
             var u = state.FindUnit(unitId);
             if (u == null || count <= 0) return 0;
-            long n = System.Math.Min(count, Room(u));
+            long n = System.Math.Min(count, Room(state, u));
             if (n <= 0) return 0;
             if (!new Wallet(state.Wallet).TrySpend(resource, cost(n))) return 0;
-            u.Troops = checked(u.Troops + n);
+            Army.AddRecruits(_defs, state, u, n); // 새 병사 = 계급 기본 훈련도·결속, 가중 평균
             return n;
         }
     }

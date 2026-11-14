@@ -81,7 +81,8 @@ namespace Game.Tests
             Assert.Equal(Fix.Parse("1.5"), loaded.Generals[0].StatGrowth["might"]);
             Assert.Equal(Fix.Parse("12.25"), loaded.Units[0].Cohesion);
             Assert.Equal(state.Wallet[ResourceIds.Supply], loaded.Wallet[ResourceIds.Supply]);
-            Assert.Equal(state.Compositions[0].Slots["vanguard"], loaded.Compositions[0].Slots["vanguard"]);
+            Assert.Equal(state.Compositions[0].Picks[0].UnitId, loaded.Compositions[0].Picks[0].UnitId);
+            Assert.Equal(state.Compositions[0].Picks[0].Troops, loaded.Compositions[0].Picks[0].Troops);
         }
 
         private sealed class V0ToV1 : ISaveMigration

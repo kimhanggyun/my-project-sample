@@ -17,7 +17,7 @@ namespace Game.Tests.Battle
         private static (BattleSimulation sim, CorpsState me) Start()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             foreach (var id in Kit.D.StepIndex.Order) { if (id == "step07") break; state.ClearedSteps.Add(id); }
             var plan = flow.Prepare(state, new SortieRequest { StepId = "step07", Seed = 1 });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));

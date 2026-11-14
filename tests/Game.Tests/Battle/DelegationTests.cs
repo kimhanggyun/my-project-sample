@@ -95,9 +95,9 @@ namespace Game.Tests.Battle
         public void SortieDelegation()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var all = flow.Prepare(StartingKitService.CreateNewGame(Kit.D), new SortieRequest { StepId = "step01", Delegate = true });
+            var all = flow.Prepare(Kit.Veteran(), new SortieRequest { StepId = "step01", Delegate = true });
             Assert.All(all.Setup.Corps.Where(c => c.Team == StoryFlow.PlayerTeam), c => Assert.True(c.Delegated));
-            var one = flow.Prepare(StartingKitService.CreateNewGame(Kit.D), new SortieRequest { StepId = "step01", DelegateGenerals = { "general_b" } });
+            var one = flow.Prepare(Kit.Veteran(), new SortieRequest { StepId = "step01", DelegateGenerals = { "general_b" } });
             Assert.Equal(new[] { "general_b" }, one.Setup.Corps.Where(c => c.Delegated).Select(c => c.General.Id));
         }
 
@@ -105,7 +105,7 @@ namespace Game.Tests.Battle
         public void Simulator()
         {
             var sim = new StepSimulator(Kit.D, Kit.Source);
-            System.Func<CampaignState> fresh = () => StartingKitService.CreateNewGame(Kit.D);
+            System.Func<CampaignState> fresh = () => Kit.Veteran();
             var s1 = sim.Measure("step01", fresh, new ulong[] { 1, 2, 3, 4 });
             var s2 = sim.Measure("step01", fresh, new ulong[] { 1, 2, 3, 4 });
             Assert.Empty(s1.Errors);

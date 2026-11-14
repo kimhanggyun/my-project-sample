@@ -177,6 +177,16 @@ namespace Game.Flow
         }
 
         /// <summary>출진 준비: 상태는 바꾸지 않는다. 문제(편성·군량·해금)는 Errors로 돌려준다.</summary>
+        /// <summary>전투 소부대 id에서 병종 묶음 id를 나누는 표시 (묶음 id + "@" + 진형 칸).</summary>
+        public const string SubUnitMark = "@";
+
+        /// <summary>전투 소부대 id → 병종 묶음 id (표시가 없으면 그대로: 고용 부대 등).</summary>
+        public static string PoolIdOf(string subUnitId)
+        {
+            int i = subUnitId == null ? -1 : subUnitId.IndexOf(SubUnitMark, System.StringComparison.Ordinal);
+            return i < 0 ? subUnitId : subUnitId.Substring(0, i);
+        }
+
         /// <summary>스텝 데이터의 팀 이름("player"/"enemy") → 전투 팀 id.</summary>
         private static string StepTeam(string t) => t == "enemy" ? EnemyTeam : PlayerTeam;
 
@@ -197,7 +207,8 @@ namespace Game.Flow
             }
             else if (!IsUnlocked(state, step.Id)) plan.Errors.Add($"스텝 '{step.Id}'가 아직 열리지 않았습니다.");
 
-            var comps = request.Compositions ?? state.CompositionsFor(step.BattleType); // 전장 유형에 맞는 편성 (R-35)
+            // 전장 유형에 맞는 편성 (R-35), 계급의 군단·칸 수까지·병력이 줄었으면 비율대로 (army-v2.md 4장)
+            var comps = Army.ForSortie(_defs, state, request.Compositions ?? state.CompositionsFor(step.BattleType));
             plan.Compositions = comps;
             int maxCorps = step.MaxCorps ?? _defs.Campaign.DefaultMaxCorps;
             if (comps.Count == 0) plan.Errors.Add("출전할 군단이 없습니다.");
@@ -253,12 +264,14 @@ namespace Game.Flow
                     Delegated = request.Delegate || request.DelegateGenerals.Contains(comp.GeneralId),
                 };
                 long d = 0;
-                foreach (var slot in comp.Slots)
+                // 병종 칸 → 진형 칸 6개 자동 배치 (army-v2.md 5장). 전투 소부대 id = 병종 묶음 id + "@" + 칸 (결과를 묶음으로 모은다)
+                var picks = new List<(string unitId, string troopType, long troops)>();
+                foreach (var p in comp.Picks) { var pu = state.FindUnit(p.UnitId); if (pu != null) picks.Add((p.UnitId, pu.TroopType, p.Troops)); }
+                foreach (var st in Army.Layout(_defs, picks))
                 {
-                    var u = state.FindUnit(slot.Value);
-                    if (u == null) continue;
-                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId, Slot = slot.Key, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion, Training = u.Training });
-                    if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + u.Troops * tt.SupplyPerDay);
+                    var u = state.FindUnit(st.UnitId);
+                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId + SubUnitMark + st.Slot, Slot = st.Slot, TroopType = u.TroopType, Troops = st.Troops, Cohesion = u.Cohesion, Training = u.Training });
+                    if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + st.Troops * tt.SupplyPerDay);
                 }
                 daily.Add(d);
                 setup.Corps.Add(cs);
@@ -433,13 +446,19 @@ namespace Game.Flow
                 {
                     foreach (var ur in cr.Units)
                     {
-                        var unit = state.FindUnit(ur.UnitId);
+                        var unit = state.FindUnit(PoolIdOf(ur.UnitId));
                         if (unit == null) continue;
                         var (wounded, dead) = CasualtyService.Apply(b, plan.Setup.Flags, unit, ur.Losses);
                         if (wounded > 0) CasualtyService.ScheduleRecovery(b, unit, _time.UtcNow.ToUnixTimeSeconds());
-                        var before = unit.Cohesion;
-                        unit.Cohesion = Cohesion.After(_defs.Campaign, _campaignFlags, unit.Cohesion, report.Won);
-                        report.Units.Add(new UnitReport { UnitId = unit.UnitId, Losses = ur.Losses, Wounded = wounded, Dead = dead, CohesionBefore = before, CohesionAfter = unit.Cohesion });
+                        // 같은 병종 묶음의 칸들은 보고 한 줄로 모으고, 결속은 묶음마다 한 번만
+                        var rep = report.Units.Find(x => x.UnitId == unit.UnitId);
+                        if (rep == null)
+                        {
+                            var before = unit.Cohesion;
+                            unit.Cohesion = Cohesion.After(_defs.Campaign, _campaignFlags, unit.Cohesion, report.Won);
+                            report.Units.Add(new UnitReport { UnitId = unit.UnitId, Losses = ur.Losses, Wounded = wounded, Dead = dead, CohesionBefore = before, CohesionAfter = unit.Cohesion });
+                        }
+                        else { rep.Losses += ur.Losses; rep.Wounded += wounded; rep.Dead += dead; }
                     }
                     // 남은 지참 군량은 돌려받는다. 궤멸·포로 군단의 군량은 잃는다.
                     if (cr.Status != CorpsStatus.Destroyed && cr.Status != CorpsStatus.Captured) report.SupplyReturned += cr.RemainingSupply;

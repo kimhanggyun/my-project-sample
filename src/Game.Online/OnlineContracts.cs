@@ -580,6 +580,8 @@ namespace Game.Online
         public const string DevUnlockAll = "dev.unlockAll";
         /// <summary>장수 주기 (마스터): GeneralId (없는 장수만, "*" = 아직 없는 모든 장수).</summary>
         public const string DevGiveGeneral = "dev.giveGeneral";
+        /// <summary>계급(계정 레벨) 바꾸기: Count = 더할 양 (음수면 내림), 1 ~ 최대 안으로 (army-v2.md 2장).</summary>
+        public const string DevLordLevel = "dev.lordLevel";
 
         public static bool IsDev(string kind) => kind != null && kind.StartsWith(DevPrefix, System.StringComparison.Ordinal);
     }
@@ -590,7 +592,18 @@ namespace Game.Online
         public string GeneralId { get; set; }
         public string Formation { get; set; }
         public string Role { get; set; }
+        /// <summary>예전 칸 편성 (칸 id → 부대 id). 새 편성은 Picks (army-v2.md).</summary>
         public Dictionary<string, string> Slots { get; set; } = new Dictionary<string, string>();
+        /// <summary>병종 칸: 병종 묶음 id → 인원 (차례대로).</summary>
+        public List<ActionPick> Picks { get; set; } = new List<ActionPick>();
+    }
+
+    /// <summary>편성 행동의 병종 칸 하나.</summary>
+    public sealed class ActionPick
+    {
+        public string UnitId { get; set; }
+        public long Troops { get; set; }
+        public bool Hired { get; set; }
     }
 
     /// <summary>

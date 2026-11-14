@@ -50,7 +50,7 @@ namespace Game.Unity.Screens
                 var c = ed.Draft[i];
                 long troops = ed.Troops(i), cap = ed.Cap(i);
                 string line = ctx.T("ui.formation.corpsLine", i + 1, ctx.GeneralName(c.GeneralId), FormationName(ctx, c.Formation), ctx.T("role." + c.Role),
-                    Ui.Colored(troops.ToString("N0"), troops > cap ? Palette.Bad : Palette.Text), cap.ToString("N0"), c.Slots.Count);
+                    Ui.Colored(troops.ToString("N0"), troops > cap ? Palette.Bad : Palette.Text), cap.ToString("N0"), c.Picks.Count);
                 var b = Ui.Button(list, line, () => app.Show(new CorpsEditScreen(index)), 130, Palette.Card, 30);
                 b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
             }
@@ -79,10 +79,10 @@ namespace Game.Unity.Screens
                 int at = ed.CorpsOf(unitId);
                 string where = at < 0 ? ctx.T("ui.formation.reserveUnit") : ctx.GeneralName(ed.Draft[at].GeneralId);
                 var card = Ui.Card(list, unitId, 16, 6);
-                Ui.Label(card, ctx.T("ui.formation.unitLine", ctx.UnitLabel(unitId), TroopName(ctx, u.TroopType), u.Troops.ToString("N0"), ctx.Defs.Balance.UnitMaxTroops.ToString("N0"),
+                Ui.Label(card, ctx.T("ui.formation.unitLine", ctx.UnitLabel(unitId), TroopName(ctx, u.TroopType), u.Troops.ToString("N0"), Game.Campaign.Roster.Army.TroopMax(ctx.Defs, ctx.State).ToString("N0"),
                     u.Wounded.ToString("N0"), u.Cohesion.FloorToLong(), where), 26);
                 var r = Ui.Row(card, "Troops", 72, 6);
-                long room = troopsSvc.Room(u);
+                long room = troopsSvc.Room(ctx.State, u);
                 long n = System.Math.Min(Step, room);
                 var c1 = Ui.Button(r, ctx.T("ui.formation.conscript", n, troopsSvc.ConscriptCost(n).ToString("N0")), () => Do(app, PlayerActionRunner.Conscript(unitId, Step)), 72, fontSize: 22);
                 Ui.SetEnabled(c1, n > 0 && ctx.Resource(ResourceIds.Supply) >= troopsSvc.ConscriptCost(n));
@@ -136,17 +136,22 @@ namespace Game.Unity.Screens
             Cycle(body, T("ui.formation.formation", FormationTabView.FormationName(Ctx, c.Formation)), Ctx.State.LearnedFormations, c.Formation, v => ed.SetFormation(_index, v));
             Cycle(body, T("ui.formation.role", T("role." + c.Role)), new List<string>(FormationEditor.Roles), c.Role, v => ed.SetRole(_index, v));
 
-            Ui.Label(body, T("ui.formation.slots"), Ui.FontBody);
-            foreach (var slot in SlotIds.All)
+            // 병종 칸 (army-v2.md 4장, 07 시안 전 임시 화면): 칸마다 병종·인원, [−500][+500], 바꾸기. 계급의 칸 수까지 [+ 병종 칸]
+            Ui.Label(body, T("ui.formation.picks", c.Picks.Count, ed.MaxPicks), Ui.FontBody);
+            foreach (var pick in c.Picks.ToArray())
             {
-                string s = slot;
-                string unit = c.Slots.TryGetValue(slot, out var id) ? id : null;
-                var u = unit == null ? null : Ctx.State.FindUnit(unit);
-                string label = T("slot." + slot) + "  " + (u == null ? Ui.Colored(T("ui.formation.empty"), Palette.TextDim)
-                    : Ctx.UnitLabel(u.UnitId) + " " + FormationTabView.TroopName(Ctx, u.TroopType) + " " + u.Troops.ToString("N0"));
-                var b = Ui.Button(body, label, () => App.Show(new UnitPickerScreen(_index, s)), 96, Palette.Card, 30);
-                b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
+                string unitId = pick.UnitId;
+                var u = Ctx.State.FindUnit(unitId);
+                long free = u == null ? 0 : u.Troops - ed.UsedElsewhere(_index, unitId);
+                var pickRow = Ui.Row(body, "Pick", 96, 8);
+                var name = Ui.Button(pickRow, (u == null ? unitId : FormationTabView.TroopName(Ctx, u.TroopType)) + "  " + pick.Troops.ToString("N0") + " / " + free.ToString("N0"),
+                    () => App.Show(new UnitPickerScreen(_index, unitId)), 96, Palette.Card, 30);
+                Ui.Size(name, flexibleWidth: 3);
+                long cur = pick.Troops;
+                Ui.Size(Ui.Button(pickRow, "−500", () => { ed.SetPick(_index, unitId, System.Math.Max(0, cur - 500)); App.Show(new CorpsEditScreen(_index)); }, 96, fontSize: 26), width: 150);
+                Ui.Size(Ui.Button(pickRow, "+500", () => { ed.SetPick(_index, unitId, System.Math.Min(free, cur + 500)); App.Show(new CorpsEditScreen(_index)); }, 96, fontSize: 26), width: 150);
             }
+            if (c.Picks.Count < ed.MaxPicks) Ui.Button(body, T("ui.formation.addPick"), () => App.Show(new UnitPickerScreen(_index, null)), 90, Palette.Card, 30);
             foreach (var e in ed.Errors()) Ui.Label(body, Ui.Colored(e, Palette.Bad), 24);
 
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
@@ -169,18 +174,19 @@ namespace Game.Unity.Screens
         }
     }
 
-    /// <summary>칸에 넣을 부대 고르기: 비우기 + 보유 부대 (다른 군단에 있으면 옮겨 온다).</summary>
+    /// <summary>병종 칸에 넣을 병종 고르기 (army-v2.md 4장): 비우기 + 병종 묶음. 인원은 그 병종의 남은 인원과 장수 한도 남은 자리 중 작은 쪽.</summary>
     public sealed class UnitPickerScreen : GameScreen
     {
         private readonly int _index;
+        /// <summary>바꿀 병종 칸의 병종 묶음 id (null = 새 칸).</summary>
         private readonly string _slot;
-        public UnitPickerScreen(int index, string slot) { _index = index; _slot = slot; }
+        public UnitPickerScreen(int index, string replaceUnitId) { _index = index; _slot = replaceUnitId; }
 
         public override void Build()
         {
             var ed = Ctx.Formation;
             Ui.Column(Root, 10, 24);
-            Ui.Size(Ui.Label(Root, T("ui.formation.pickTitle", _index + 1, T("slot." + _slot)), Ui.FontBody), 80);
+            Ui.Size(Ui.Label(Root, T("ui.formation.pickTitle", _index + 1, _slot == null ? T("ui.formation.addPick") : FormationTabView.TroopName(Ctx, Ctx.State.FindUnit(_slot)?.TroopType)), Ui.FontBody), 80);
             var list = Ui.ScrollList(Root, "Units", 10, 8);
             Ui.Size(list.parent.parent, flexibleHeight: 1);
             Ui.Button(list, T("ui.formation.clearSlot"), () => Pick(null), 90, Palette.Card, 30);
@@ -198,7 +204,15 @@ namespace Game.Unity.Screens
 
         private void Pick(string unitId)
         {
-            Ctx.Formation.Assign(_index, _slot, unitId);
+            var ed = Ctx.Formation;
+            if (_slot != null) ed.SetPick(_index, _slot, 0);
+            if (unitId != null)
+            {
+                var u = Ctx.State.FindUnit(unitId);
+                long free = u == null ? 0 : u.Troops - ed.UsedElsewhere(_index, unitId);
+                long room = ed.Cap(_index) - ed.Troops(_index);
+                ed.SetPick(_index, unitId, System.Math.Max(1, System.Math.Min(free, room)));
+            }
             App.Show(new CorpsEditScreen(_index));
         }
     }

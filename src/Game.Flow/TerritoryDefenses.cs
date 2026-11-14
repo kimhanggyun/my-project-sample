@@ -21,7 +21,7 @@ namespace Game.Flow
         public static TerritoryDefense Snapshot(DefinitionSet defs, CampaignState owner, string situation, out string error)
         {
             error = null;
-            var comps = owner?.CompositionsFor(situation);
+            var comps = owner == null ? null : Army.ForSortie(defs, owner, owner.CompositionsFor(situation));
             if (comps == null || comps.Count == 0 || CorpsValidator.Validate(defs, owner, comps).Count > 0) { error = BadFormation; return null; }
             var d = new TerritoryDefense();
             foreach (var c in comps)
@@ -30,13 +30,16 @@ namespace Game.Flow
                 g.Status = GeneralStatus.Available;
                 g.StatusUntilUnixSeconds = 0;
                 var dc = new DefenseCorps { GeneralJson = OnlineJson.Write(g), Formation = c.Formation };
-                foreach (var slot in SlotIds.All)
+                // 병종 칸 → 진형 칸 6개 자동 배치 (army-v2.md 5장), 칸마다 그 병종 묶음의 훈련도·결속
+                var picks = new List<(string unitId, string troopType, long troops)>();
+                foreach (var p in c.Picks) { var pu = owner.FindUnit(p.UnitId); if (pu != null) picks.Add((p.UnitId, pu.TroopType, p.Troops)); }
+                foreach (var st in Army.Layout(defs, picks))
                 {
-                    if (!c.Slots.TryGetValue(slot, out var unitId)) continue;
-                    var u = OnlineJson.Read<UnitState>(OnlineJson.Write(owner.FindUnit(unitId)));
+                    var u = OnlineJson.Read<UnitState>(OnlineJson.Write(owner.FindUnit(st.UnitId)));
+                    u.Troops = st.Troops;
                     u.Wounded = 0;
                     u.WoundedRecoverAtUnixSeconds = 0;
-                    if (u.Troops > 0) dc.Units.Add(new DefenseUnit { Slot = slot, UnitJson = OnlineJson.Write(u) });
+                    dc.Units.Add(new DefenseUnit { Slot = st.Slot, UnitJson = OnlineJson.Write(u) });
                 }
                 if (dc.Units.Count > 0) d.Corps.Add(dc);
             }

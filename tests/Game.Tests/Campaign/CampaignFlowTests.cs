@@ -29,6 +29,30 @@ namespace Game.Tests.Campaign
         public static DefinitionSet D => _d ?? (_d = Real());
         public static FileDataSource Source => new FileDataSource(DataRoot);
         public static ManualTimeProvider Clock() => new ManualTimeProvider(new DateTimeOffset(2026, 11, 4, 0, 0, 0, TimeSpan.Zero));
+
+        /// <summary>
+        /// 예전 처음 지급과 같은 규모의 군대 (army-v2.md 이전 테스트용): 대장군(Lv21)으로 군단 3개 × 병종 4칸,
+        /// 병종 묶음 병력 = 예전 부대 13개를 병종별로 더한 것. 처음 편성(십부장 · 보병 한 칸)을 따로 보는 테스트는 CreateNewGame을 그대로 쓴다.
+        /// </summary>
+        public static CampaignState Veteran()
+        {
+            var s = Game.Campaign.StartingKitService.CreateNewGame(D);
+            s.LordLevel = 21;
+            foreach (var (type, n) in new[] { ("infantry", 10500L), ("spearman", 8500L), ("archer", 9000L), ("cavalry", 6000L), ("scout", 1000L) })
+                Game.Campaign.Roster.Army.EnsurePool(D, s, type).Troops = n;
+            s.Compositions.Clear();
+            void Corps(string g, string f, string role, params (string, long)[] picks)
+            {
+                var c = new Game.Campaign.Roster.CorpsComposition { GeneralId = g, Formation = f, Role = role };
+                foreach (var (u, n) in picks) c.Picks.Add(new Game.Campaign.Roster.TroopPick { UnitId = u, Troops = n });
+                s.Compositions.Add(c);
+            }
+            // 군단마다 3칸 (대장군은 4칸 → 고용 부대를 넣을 빈 칸 하나)
+            Corps("general_a", "fishScale", "vanguard", ("infantry", 4000), ("spearman", 3000), ("cavalry", 2000));
+            Corps("general_b", "craneWing", "flank", ("infantry", 3000), ("cavalry", 4000), ("archer", 2000));
+            Corps("general_c", "square", "rear", ("infantry", 3500), ("spearman", 3000), ("archer", 4000));
+            return s;
+        }
     }
 
     /// <summary>스텝 데이터·해금 (story.md 1장, 2장).</summary>
@@ -48,7 +72,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "차례 해금: 첫 스텝은 열려 있고, 앞 스텝을 깨야 다음이 열린다. 깬 스텝은 다시 할 수 있다")]
         public void Unlock()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var none = new List<string>();
             Assert.True(StepProgress.IsUnlocked(Kit.D.StepIndex, state, "step01", none));
             Assert.False(StepProgress.IsUnlocked(Kit.D.StepIndex, state, "step02", none));
@@ -61,7 +85,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "구출 전투는 그 수용소에 아군 장수가 갇혀 있을 때만 열린다")]
         public void RescueUnlock()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             Assert.False(StepProgress.IsUnlocked(Kit.D.StepIndex, state, "rescue_camp_north", new List<string>()));
             Assert.True(StepProgress.IsUnlocked(Kit.D.StepIndex, state, "rescue_camp_north", new List<string> { "camp_north" }));
         }
@@ -73,7 +97,7 @@ namespace Game.Tests.Campaign
             Assert.Contains("zone", step.DefeatConditions);
             var zone = Assert.Single(step.Objects);
             Assert.Equal(("zone", "player"), (zone.Type, zone.Team));
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var held = Game.Campaign.Roster.GeneralState.Join(Kit.D.Generals["general_d"]); // 편성 밖 장수가 갇혀 있어야 열린다
             held.Status = Game.Campaign.Roster.GeneralStatus.Captured;
             held.CampId = "camp_north";
@@ -103,12 +127,12 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "출진 준비: 편성 3군단 + 스텝 적군, 군량 자동 계산(R-7), 탐색 기억 전달")]
         public void Prepare()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var plan = Flow().Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));
             Assert.Equal(3, plan.Setup.Corps.Count(c => c.Team == StoryFlow.PlayerTeam));
             Assert.Equal(StepDef.Load(Kit.Source, "step01").Enemy.Count, plan.Setup.Corps.Count(c => c.Team == StoryFlow.EnemyTeam));
-            long daily = state.Units.Sum(u => u.Troops * Kit.D.TroopTypes[u.TroopType].SupplyPerDay);
+            long daily = state.Compositions.SelectMany(c => c.Picks).Sum(p => p.Troops * Kit.D.TroopTypes[state.FindUnit(p.UnitId).TroopType].SupplyPerDay);
             Assert.Equal(SupplyCalculator.AutoSortieSupply(Kit.D.Balance, daily), plan.AutoSupply);
             Assert.Equal(plan.SupplyTaken, plan.Setup.Corps.Where(c => c.Team == StoryFlow.PlayerTeam).Sum(c => c.Supply));
             Assert.True(plan.Setup.InitialExplored.ContainsKey(StoryFlow.PlayerTeam));
@@ -117,13 +141,15 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "출진 준비 오류: 잠긴 스텝, 군단 수 초과, 군량 부족, 출전 불가 장수")]
         public void PrepareErrors()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             Assert.Contains(Flow().Prepare(state, new SortieRequest { StepId = "step02" }).Errors, e => e.Contains("열리지"));
             Assert.Contains(Flow().Prepare(state, new SortieRequest { StepId = "step01", Supply = 999_999_999 }).Errors, e => e.Contains("군량이 모자"));
             state.Generals[0].Status = GeneralStatus.SeriousInjury;
             Assert.Contains(Flow().Prepare(state, new SortieRequest { StepId = "step01" }).Errors, e => e.Contains("출전할 수 없는"));
-            var four = new List<CorpsComposition>(state.Compositions) { state.Compositions[0] };
-            Assert.Contains(Flow().Prepare(StartingKitService.CreateNewGame(Kit.D), new SortieRequest { StepId = "step01", Compositions = four }).Errors, e => e.Contains("한도"));
+            // 계급의 출진 군단 수(대장군 3)를 넘는 군단은 출진 때 뒤에서부터 뺀다 (R-94)
+            var four = new List<CorpsComposition>(Kit.Veteran().Compositions) { Kit.Veteran().Compositions[0] };
+            var plan4 = Flow().Prepare(Kit.Veteran(), new SortieRequest { StepId = "step01", Compositions = four });
+            Assert.Equal(3, plan4.Setup.Corps.Count(c => c.Team == StoryFlow.PlayerTeam));
         }
 
         [Fact(DisplayName = "한 판 전체: 출진 → 전투 → 손실·부상(R-9)·군량 반환·포획(R-8)·결속·클리어 보상, 두 번째 클리어는 보상 없음")]
@@ -131,7 +157,7 @@ namespace Game.Tests.Campaign
         {
             var clock = Kit.Clock();
             var flow = Flow(clock);
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             long supply0 = state.Wallet[ResourceIds.Supply], gold0 = state.Wallet[ResourceIds.Gold];
             var troops0 = state.Units.ToDictionary(u => u.UnitId, u => u.Troops);
 
@@ -148,7 +174,8 @@ namespace Game.Tests.Campaign
             {
                 var unit = state.FindUnit(ur.UnitId);
                 Assert.Equal(troops0[ur.UnitId] - ur.Losses, unit.Troops);
-                Assert.Equal((Kit.D.Balance.WoundedRatio * ur.Losses).FloorToLong(), ur.Wounded);
+                // 진형 칸마다 내림하므로 병종 묶음 합은 한 번에 내림한 값보다 칸 수(6)만큼까지 작을 수 있다 (R-94)
+                Assert.InRange(ur.Wounded, (Kit.D.Balance.WoundedRatio * ur.Losses).FloorToLong() - 6, (Kit.D.Balance.WoundedRatio * ur.Losses).FloorToLong());
                 Assert.Equal(ur.Wounded, unit.Wounded);
                 Assert.Equal(Kit.D.Campaign.CohesionWinGain, unit.Cohesion);
             }
@@ -173,7 +200,7 @@ namespace Game.Tests.Campaign
         public void Loss()
         {
             var flow = Flow();
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             foreach (var u in state.Units) u.Troops = 50; // 아주 약하게
             foreach (var u in state.Units) u.Cohesion = Fix.FromInt(5);
             var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 2 });
@@ -191,7 +218,7 @@ namespace Game.Tests.Campaign
             string Run()
             {
                 var flow = Flow();
-                var state = StartingKitService.CreateNewGame(Kit.D);
+                var state = Kit.Veteran();
                 var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 9 });
                 flow.Confirm(state, plan);
                 flow.ApplyResult(state, plan, BattleSimulation.Run(plan.Setup));
@@ -212,7 +239,7 @@ namespace Game.Tests.Campaign
         public void OwnCapturedDeadline()
         {
             var clock = Kit.Clock();
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var svc = Svc(clock);
             svc.CaptureOwn(state, "general_a", "camp_north");
             var g = state.FindGeneral("general_a");
@@ -230,7 +257,7 @@ namespace Game.Tests.Campaign
         public void RescueOnly()
         {
             var clock = Kit.Clock();
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var svc = Svc(clock, "{\"rescueDeadline\": false}");
             svc.CaptureOwn(state, "general_b", "camp_north");
             clock.Advance(TimeSpan.FromDays(60));
@@ -242,7 +269,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "포로 스위치(capture)를 끄면 잡히지 않는다")]
         public void CaptureOff()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             Svc(Kit.Clock(), "{\"capture\": false}").CaptureOwn(state, "general_a", "camp_north");
             Assert.Equal(GeneralStatus.Available, state.FindGeneral("general_a").Status);
         }
@@ -262,7 +289,7 @@ namespace Game.Tests.Campaign
         public void RecruitRetry()
         {
             var clock = Kit.Clock();
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var svc = Svc(clock);
             svc.AddPrisoner(state, "enemy_general_01", false);
             var rng = new SeededRandom(1);
@@ -289,7 +316,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "등용 불가 장수·등용 스위치 꺼짐 → 시도할 수 없고 해방만")]
         public void NotRecruitable()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var svc = Svc(Kit.Clock());
             svc.AddPrisoner(state, "enemy_general_03", false); // recruitable: false
             Assert.Equal(RecruitOutcome.NotAllowed, svc.TryRecruit(state, "enemy_general_03", new SeededRandom(1)));
@@ -301,7 +328,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "재시도 스위치를 끄면 실패 시 해방, 해방하면 보상 (스위치를 끄면 보상 없음)")]
         public void ReleaseAndReward()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             long gold = state.Wallet[ResourceIds.Gold];
             var svc = Svc(Kit.Clock(), "{\"recruitRetry\": false}");
             svc.AddPrisoner(state, "enemy_general_01", false);
@@ -316,11 +343,11 @@ namespace Game.Tests.Campaign
             Assert.Null(state.FindPrisoner("enemy_general_01"));
             Assert.True(state.Wallet[ResourceIds.Gold] > gold);
 
-            var s2 = StartingKitService.CreateNewGame(Kit.D);
+            var s2 = Kit.Veteran();
             var noReward = Svc(Kit.Clock(), "{\"releaseReward\": false}");
             noReward.AddPrisoner(s2, "enemy_general_02", false);
             Assert.Empty(noReward.Release(s2, "enemy_general_02"));
-            Assert.Equal(StartingKitService.CreateNewGame(Kit.D).Wallet[ResourceIds.Gold], s2.Wallet[ResourceIds.Gold]);
+            Assert.Equal(Kit.Veteran().Wallet[ResourceIds.Gold], s2.Wallet[ResourceIds.Gold]);
         }
     }
 
@@ -331,7 +358,7 @@ namespace Game.Tests.Campaign
         public void Injuries()
         {
             var clock = Kit.Clock();
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var svc = new InjuryService(Kit.D, Flags(Kit.D), clock);
             var a = state.FindGeneral("general_a");
             Fix lead = CorpsValidator.EffectiveStat(Kit.D, a, "leadership");
@@ -357,7 +384,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "부상 스위치를 끄면 부상 없음")]
         public void InjuryOff()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             new InjuryService(Kit.D, Flags(Kit.D, "{\"generalInjury\": false}"), Kit.Clock()).Apply(state, "general_a", InjuryKinds.Heavy);
             Assert.Equal(GeneralStatus.Available, state.FindGeneral("general_a").Status);
         }
@@ -436,7 +463,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "포로·탐색 기억·기록이 세이브에 남는다")]
         public void RoundTripNewFields()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             state.Prisoners.Add(new PrisonerState { GeneralId = "enemy_general_01", BrainwashBonus = true, CapturedAtUnixSeconds = 10 });
             state.ExploredBySteps["step01"] = "0101";
             state.Generals[0].Records["duelWins"] = 3;

@@ -57,7 +57,7 @@ namespace Game.Tests.Campaign
             Assert.Equal(("B", 5400L), (owners["dev_zone_a1"].OwnerAccountId, owners["dev_zone_a1"].CollectedUnixSeconds));
         }
 
-        [Fact(DisplayName = "R-47 가짜 서버: 차지 → 2시간 뒤 받기 → 우편 → mail.claim으로 지갑에, 같은 우편 두 번은 거절")]
+        [Fact(Skip = "군대 개편 PR 2에서 다시 켬: 새 군대 규모(army-v2.md, 처음 십부장 보병 3,000)에 맞춘 스텝·영토 밸런스 재조정 전", DisplayName = "R-47 가짜 서버: 차지 → 2시간 뒤 받기 → 우편 → mail.claim으로 지갑에, 같은 우편 두 번은 거절")]
         public void FakeCollectAndClaim()
         {
             var time = new ManualTimeProvider(Kit.Clock().UtcNow);

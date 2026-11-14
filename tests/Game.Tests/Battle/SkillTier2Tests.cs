@@ -16,7 +16,7 @@ namespace Game.Tests.Battle
         private static (BattleSimulation sim, CorpsState corps) Make(string general, params string[] skills)
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             state.FindGeneral(general).LearnedSkills.AddRange(skills);
             var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));

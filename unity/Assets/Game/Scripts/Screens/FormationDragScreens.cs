@@ -46,16 +46,18 @@ namespace Game.Unity.Screens
                 int fromCorps = int.Parse(p[1]);
                 string fromSlot = p[2].Length == 0 ? null : p[2];
                 if (!targets.Find(screen, out var to)) return;
+                // 군대 개편(army-v2.md) 뒤로 이 비교용 탭은 숨김 (mainTabs hidden). 병종 칸으로 넣고 빼기만 한다.
                 if (to.slot == Reserve)
                 {
-                    if (fromCorps >= 0) ed.Assign(fromCorps, fromSlot, null);
+                    if (fromCorps >= 0) ed.SetPick(fromCorps, unitId, 0);
                 }
                 else
                 {
-                    if (fromCorps == to.corps && fromSlot == to.slot) return;
-                    string existing = ed.Draft[to.corps].Slots.TryGetValue(to.slot, out var e) ? e : null;
-                    ed.Assign(to.corps, to.slot, unitId);
-                    if (existing != null && existing != unitId && fromCorps >= 0) ed.Assign(fromCorps, fromSlot, existing); // 맞바꿈
+                    if (fromCorps == to.corps) return;
+                    var pool = app.Context.State.FindUnit(unitId);
+                    long free = pool == null ? 0 : pool.Troops - ed.UsedElsewhere(to.corps, unitId);
+                    if (fromCorps >= 0) ed.SetPick(fromCorps, unitId, 0);
+                    ed.SetPick(to.corps, unitId, System.Math.Max(1, free));
                 }
                 app.ShowMain(TabId);
             }

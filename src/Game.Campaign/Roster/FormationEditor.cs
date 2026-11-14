@@ -34,7 +34,10 @@ namespace Game.Campaign.Roster
         /// <summary>지금 저장된 편성 (상황별 편성이 없으면 기본 편성).</summary>
         private List<CorpsComposition> Saved() => _state.CompositionsFor(Situation);
 
-        public int MaxCorps => _defs.Campaign.DefaultMaxCorps;
+        /// <summary>계급의 출진 군단 수 (army-v2.md 2장).</summary>
+        public int MaxCorps => Army.Rank(_defs, _state).Corps;
+        /// <summary>계급의 군단당 병종 칸 수.</summary>
+        public int MaxPicks => Army.Rank(_defs, _state).Slots;
 
         /// <summary>지금 사본의 문제 (없으면 저장 가능).</summary>
         public List<string> Errors() => CorpsValidator.Validate(_defs, _state, Draft);
@@ -97,19 +100,31 @@ namespace Game.Campaign.Roster
         public void SetFormation(int index, string formationId) => Draft[index].Formation = formationId;
         public void SetRole(int index, string role) => Draft[index].Role = role;
 
-        /// <summary>칸에 부대 넣기 (null이면 비우기). 다른 칸·군단에 있던 부대면 거기서 빼서 옮긴다 (한 부대는 한 곳에만, R-5).</summary>
-        public void Assign(int index, string slot, string unitId)
+        /// <summary>
+        /// 병종 칸 정하기 (army-v2.md 4장): 그 군단의 그 병종 인원을 troops로 (0 이하면 칸을 뺀다). 칸 수가 모자라면 false.
+        /// 다른 군단의 같은 병종 인원은 그대로 (합이 묶음 병력을 넘으면 검사 R-5가 막는다).
+        /// </summary>
+        public bool SetPick(int index, string unitId, long troops)
         {
-            if (!SlotIds.IsValid(slot)) return;
-            if (unitId != null)
-                foreach (var other in Draft)
-                {
-                    string found = null;
-                    foreach (var kv in other.Slots) if (kv.Value == unitId) { found = kv.Key; break; }
-                    if (found != null) other.Slots.Remove(found);
-                }
-            if (unitId == null) Draft[index].Slots.Remove(slot);
-            else Draft[index].Slots[slot] = unitId;
+            var c = Draft[index];
+            var pick = c.Picks.Find(p => p.UnitId == unitId);
+            if (troops <= 0) { if (pick != null) c.Picks.Remove(pick); return true; }
+            if (pick == null)
+            {
+                if (Army.OwnPicks(c) >= MaxPicks) return false;
+                c.Picks.Add(new TroopPick { UnitId = unitId, Troops = troops });
+            }
+            else pick.Troops = troops;
+            return true;
+        }
+
+        /// <summary>그 병종을 다른 군단들이 이미 쓰는 인원 (index 군단 빼고).</summary>
+        public long UsedElsewhere(int index, string unitId)
+        {
+            long n = 0;
+            for (int i = 0; i < Draft.Count; i++)
+                if (i != index) foreach (var p in Draft[i].Picks) if (p.UnitId == unitId) n += p.Troops;
+            return n;
         }
 
         // ---- 표시용 ----
@@ -117,11 +132,7 @@ namespace Game.Campaign.Roster
         public long Troops(int index)
         {
             long total = 0;
-            foreach (var kv in Draft[index].Slots)
-            {
-                var u = _state.FindUnit(kv.Value);
-                if (u != null) total += u.Troops;
-            }
+            foreach (var p in Draft[index].Picks) total += p.Troops;
             return total;
         }
 
@@ -145,21 +156,25 @@ namespace Game.Campaign.Roster
             return list;
         }
 
-        /// <summary>그 부대가 들어 있는 군단 번호 (없으면 -1).</summary>
+        /// <summary>그 병종을 쓰는 첫 군단 번호 (없으면 -1).</summary>
         public int CorpsOf(string unitId)
         {
             for (int i = 0; i < Draft.Count; i++)
-                foreach (var kv in Draft[i].Slots) if (kv.Value == unitId) return i;
+                foreach (var p in Draft[i].Picks) if (p.UnitId == unitId) return i;
             return -1;
         }
 
-        private static CorpsComposition Copy(CorpsComposition c) =>
-            new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new Dictionary<string, string>(c.Slots) };
+        public static CorpsComposition Copy(CorpsComposition c)
+        {
+            var copy = new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role };
+            foreach (var p in c.Picks) copy.Picks.Add(new TroopPick { UnitId = p.UnitId, Troops = p.Troops, Hired = p.Hired });
+            return copy;
+        }
 
         private static bool Same(CorpsComposition a, CorpsComposition b)
         {
-            if (a.GeneralId != b.GeneralId || a.Formation != b.Formation || a.Role != b.Role || a.Slots.Count != b.Slots.Count) return false;
-            foreach (var kv in a.Slots) if (!b.Slots.TryGetValue(kv.Key, out var v) || v != kv.Value) return false;
+            if (a.GeneralId != b.GeneralId || a.Formation != b.Formation || a.Role != b.Role || a.Picks.Count != b.Picks.Count) return false;
+            for (int i = 0; i < a.Picks.Count; i++) if (a.Picks[i].UnitId != b.Picks[i].UnitId || a.Picks[i].Troops != b.Picks[i].Troops) return false;
             return true;
         }
     }

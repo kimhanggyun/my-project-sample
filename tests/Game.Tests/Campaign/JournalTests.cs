@@ -120,7 +120,7 @@ namespace Game.Tests.Campaign
             w.Net.Down = true;
             w.Do(ChangeFormation(w.State));
             w.Battle(7);
-            w.Do(PlayerActionRunner.CreateUnit("cavalry"));
+            w.Do(PlayerActionRunner.CreateUnit("catapult"));
 
             var queued = w.Flush();
             Assert.Equal(SyncOutcomes.Queued, queued.Outcome);
@@ -145,7 +145,7 @@ namespace Game.Tests.Campaign
         public void PartialUpload()
         {
             var w = new World();
-            w.Do(PlayerActionRunner.CreateUnit("cavalry"));
+            w.Do(PlayerActionRunner.CreateUnit("catapult"));
             var battle = w.Battle(3);
             // 행동 묶음만 받고 전투 전에 끊긴다
             ActionVerdict first = null;
@@ -169,7 +169,7 @@ namespace Game.Tests.Campaign
             var w = new World();
             w.Battle(5);
             w.Link.Journal[0].Battle.ClaimedHash = "deadbeefdeadbeef"; // 조작
-            w.Do(PlayerActionRunner.CreateUnit("cavalry"));
+            w.Do(PlayerActionRunner.CreateUnit("catapult"));
             var r = w.Flush();
             Assert.Equal(SyncOutcomes.Rejected, r.Outcome);
             Assert.Empty(w.Link.Journal);
@@ -199,8 +199,8 @@ namespace Game.Tests.Campaign
             var w2 = new World();
             ActionVerdict v = null;
             long t = w2.Clock.UtcNow.ToUnixTimeSeconds();
-            var a1 = PlayerActionRunner.CreateUnit("cavalry"); a1.DoneAtUnixSeconds = t;
-            var a2 = PlayerActionRunner.CreateUnit("archer"); a2.DoneAtUnixSeconds = t - 3600;
+            var a1 = PlayerActionRunner.CreateUnit("catapult"); a1.DoneAtUnixSeconds = t;
+            var a2 = PlayerActionRunner.CreateUnit("catapult"); a2.DoneAtUnixSeconds = t - 3600;
             w2.Server.SubmitActions(new ActionSubmission { BaseRevision = w2.Link.Revision, Actions = { a1, a2 } }, x => v = x);
             Assert.Equal((VerdictReasons.BadTime, 1), (v.Reason, v.FailedIndex));
         }

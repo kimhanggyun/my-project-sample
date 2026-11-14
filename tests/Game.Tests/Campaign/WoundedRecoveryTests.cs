@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Game.Battle.Model.Simulation;
 using Game.Campaign;
+using Game.Campaign.Roster;
 using Game.Campaign.Troops;
 using Game.Flow;
 using Game.Foundation.Time;
@@ -18,7 +19,7 @@ namespace Game.Tests.Campaign
         {
             var clock = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
             var flow = new StoryFlow(Kit.D, Kit.Source, clock);
-            var s = StartingKitService.CreateNewGame(Kit.D);
+            var s = Kit.Veteran();
             var plan = flow.Prepare(s, new SortieRequest { StepId = "step01", Seed = 1, Delegate = true });
             Assert.True(plan.Ok);
             Assert.True(flow.Confirm(s, plan));
@@ -47,7 +48,7 @@ namespace Game.Tests.Campaign
         [Fact]
         public void NewWoundedResetsTimer()
         {
-            var u = new Game.Campaign.Roster.UnitState { UnitId = "u01", Troops = 1000, Wounded = 0 };
+            var u = new Game.Campaign.Roster.UnitState { UnitId = "infantry", Troops = 1000, Wounded = 0 };
             var b = Kit.D.Balance;
             CasualtyService.Apply(b, Kit.D.ResolveFlags(), u, 100);
             CasualtyService.ScheduleRecovery(b, u, 1000);
@@ -60,33 +61,27 @@ namespace Game.Tests.Campaign
             Assert.Equal(880, u.Troops);
         }
 
-        [Fact(DisplayName = "R-61 보충: 한도 안에서 가장 적은 부대부터 고르게 채운다 (앞줄 칸이 비지 않는다)")]
+        [Fact(DisplayName = "R-61/R-94 보충: 편성에 적힌 병종 인원 합까지 (부상병 포함), 계급의 병종 최대 병력을 넘지 않는다")]
         public void RefillLevelsLowestFirst()
         {
-            var s = StartingKitService.CreateNewGame(Kit.D);
-            var comp = s.Compositions[0];
-            var units = comp.Slots.Values.Select(id => s.FindUnit(id)).ToList();
-            foreach (var u in units) u.Troops = 0; // 모두 잃음
+            var s = Kit.Veteran(); // 보병: 군단 셋에 4,000 + 3,000 + 3,500 = 10,500
+            var inf = Army.Pool(s, "infantry");
+            inf.Troops = 6000;
+            inf.Wounded = 500;
             var svc = new TroopService(Kit.D);
-            var plan = svc.RefillPlan(s).Where(p => units.Any(u => u.UnitId == p.Key)).ToDictionary(p => p.Key, p => p.Value);
-            Assert.Equal(units.Count, plan.Count);
-            long min = plan.Values.Min(), max = plan.Values.Max();
-            Assert.True(max - min <= 1, $"고르지 않음: {min}~{max}");
-            var vanguard = s.FindUnit(comp.Slots["vanguard"]);
-            Assert.Equal(max, plan[vanguard.UnitId]); // 남는 한 명은 앞줄부터
-
-            // 한 부대만 많이 남아 있으면 나머지를 먼저 채운다
-            foreach (var u in units) u.Troops = 100;
-            var big = units.First(u => u != vanguard);
-            big.Troops = 4000;
-            var plan2 = svc.RefillPlan(s).Where(p => units.Any(u => u.UnitId == p.Key)).ToDictionary(p => p.Key, p => p.Value);
-            Assert.True(plan2.GetValueOrDefault(vanguard.UnitId) > plan2.GetValueOrDefault(big.UnitId));
+            var plan = svc.RefillPlan(s).ToDictionary(p => p.Key, p => p.Value);
+            Assert.Equal(10_500 - 6000 - 500, plan["infantry"]);
+            Assert.DoesNotContain("spearman", plan.Keys); // 이미 편성 인원만큼 있다
+            // 계급이 낮으면 병종 최대 병력까지만 (Lv6 천부장 8,000, 군단 2개만 셈 → 보병 7,000)
+            s.LordLevel = 6;
+            plan = svc.RefillPlan(s).ToDictionary(p => p.Key, p => p.Value);
+            Assert.Equal(System.Math.Min(4000 + 3000, 8000) - 6500, plan["infantry"]);
         }
 
         [Fact]
         public void HealingAllClearsTimer()
         {
-            var u = new Game.Campaign.Roster.UnitState { UnitId = "u01", Troops = 900, Wounded = 40, WoundedRecoverAtUnixSeconds = 5000 };
+            var u = new Game.Campaign.Roster.UnitState { UnitId = "infantry", Troops = 900, Wounded = 40, WoundedRecoverAtUnixSeconds = 5000 };
             CasualtyService.Heal(u, 40);
             Assert.Equal(0, u.WoundedRecoverAtUnixSeconds);
         }

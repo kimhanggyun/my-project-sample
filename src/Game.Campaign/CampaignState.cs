@@ -7,7 +7,10 @@ namespace Game.Campaign
     public sealed class CampaignState
     {
         public List<GeneralState> Generals { get; set; } = new List<GeneralState>();
+        /// <summary>보유 병사: 병종마다 한 묶음 (army-v2.md 3장, 보유 부대 id = 병종 id).</summary>
         public List<UnitState> Units { get; set; } = new List<UnitState>();
+        /// <summary>계급 = 계정(군주) 레벨 (army-v2.md 2장). 예전 세이브는 1.</summary>
+        public int LordLevel { get; set; } = 1;
         /// <summary>기본 편성 (상황별 편성이 없는 전장에서 쓴다).</summary>
         public List<CorpsComposition> Compositions { get; set; } = new List<CorpsComposition>();
         /// <summary>상황별 편성 (formation.md 4장): 상황 id(전장 유형 field·siege·naval …) → 편성. 없거나 비면 기본 편성.</summary>

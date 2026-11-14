@@ -15,7 +15,7 @@ namespace Game.Tests.Battle
         private static BattleSetup Step01(bool on = true)
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var plan = flow.Prepare(StartingKitService.CreateNewGame(Kit.D), new SortieRequest { StepId = "step01", Seed = 3, Delegate = true });
+            var plan = flow.Prepare(Kit.Veteran(), new SortieRequest { StepId = "step01", Seed = 3, Delegate = true });
             Assert.True(plan.Ok);
             if (!on) plan.Setup.Flags = Kit.D.ResolveFlags(Newtonsoft.Json.Linq.JObject.Parse("{\"unitAutonomy\": false}"));
             return plan.Setup;

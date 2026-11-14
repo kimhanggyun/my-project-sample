@@ -16,7 +16,7 @@ namespace Game.Tests.Campaign
         public void SortiePicksPreset()
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var plain = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 1 });
             Assert.Equal(state.Compositions.Count, plain.PlayerCorps.Count);
 
@@ -41,7 +41,7 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "기본 편성은 지울 수 없고, 빈 편성은 저장되지 않는다")]
         public void Guards()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             Assert.False(new FormationEditor(Kit.D, state).RemovePreset());
             var ed = new FormationEditor(Kit.D, state, "siege");
             while (ed.Draft.Count > 0) ed.RemoveCorps(0);
@@ -54,7 +54,7 @@ namespace Game.Tests.Campaign
         {
             var store = new InMemorySaveStore();
             var saves = new CampaignSaveService(store);
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var ed = new FormationEditor(Kit.D, state, "field");
             ed.RemoveCorps(2);
             Assert.True(ed.Apply());

@@ -29,6 +29,7 @@ namespace Game.Campaign
             }
             state.LearnedFormations.AddRange(kit.Formations);
             foreach (var w in kit.Wallet) state.Wallet[w.Key] = w.Value;
+            Army.Normalize(defs, state); // 칸 편성 → 병종 칸 (army-v2.md)
             return state;
         }
     }

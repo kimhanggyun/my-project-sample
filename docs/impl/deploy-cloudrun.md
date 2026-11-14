@@ -14,7 +14,7 @@
 | 배포 | GitHub Actions `deploy-cloudrun` (손으로 실행) | 비밀 키 대신 Workload Identity |
 
 - 결제 영수증: 배포 서버는 `Game__AllowFakeReceipts=false` (가짜 영수증 거절). 실제 스토어 검증은 다음 단계.
-- 마스터 계정 (R-86): 저장소 변수 `GAME_MASTERS`(계정 id, 여럿이면 쉼표) → `Game__Masters`. 바꾼 뒤 배포를 다시 돌린다.
+- 마스터 계정 (R-86): 저장소 변수 `GAME_MASTERS`(계정 id 또는 구글 로그인 이메일 — 확인된 이메일, 대소문자 무시, 섞어 적어도 됨, 여럿이면 쉼표. 게스트는 이메일이 없어 계정 id로) → `Game__Masters`. 바꾼 뒤 배포를 다시 돌린다.
 
 ## 2. 사용자가 할 일 (한 번)
 

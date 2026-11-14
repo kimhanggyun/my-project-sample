@@ -70,9 +70,8 @@ namespace Game.Flow
         /// <summary>승급 비용 (돈): 승급할 인원 1,000명당 데이터 금액, 올림 (800명 → 1번 몫, 2,096명 → 3번 몫).</summary>
         public long PromoteCost(PromotionDef p, long count) => (System.Math.Max(1, count) + 999) / 1000 * p.Gold;
 
-        /// <summary>이 부대 아래, 그 병종으로 이미 갈라져 나온 승급 부대 (없으면 null). 다시 승급하면 여기에 합친다.</summary>
-        public static UnitState PromotedChild(CampaignState s, string unitId, string to) =>
-            s.Units.Find(x => x.ParentUnitId == unitId && x.TroopType == to);
+        /// <summary>승급 병종의 묶음 (병종마다 하나, army-v2.md 3.2). 없으면 null. 승급하면 여기에 합친다.</summary>
+        public static UnitState PromotedChild(CampaignState s, string unitId, string to) => Army.Pool(s, to);
 
         /// <summary>부대 전부 승급 (예전 행동과 같은 입구: 인원 = 지금 병력).</summary>
         public string CheckPromote(CampaignState s, string unitId, string to) => CheckPromote(s, unitId, to, 0);
@@ -90,7 +89,8 @@ namespace Game.Flow
             if (p.Step != null && !s.ClearedSteps.Contains(p.Step)) return StepLocked;
             var child = PromotedChild(s, unitId, to);
             if (child == null && s.Units.Count >= _defs.Campaign.UnitCountMax) return UnitLimit;
-            if (child != null && child.Troops + child.Wounded + count > _defs.Balance.UnitMaxTroops) return NoRoom;
+            if (child != null && child.Troops + child.Wounded + count > Army.TroopMax(_defs, s)) return NoRoom;
+            if (child == null && count > Army.TroopMax(_defs, s)) return NoRoom;
             if (new Wallet(s.Wallet).Get(ResourceIds.Gold) < PromoteCost(p, count)) return NotEnough;
             return Ok;
         }
@@ -112,7 +112,7 @@ namespace Game.Flow
             var child = PromotedChild(s, unitId, to);
             if (child == null)
             {
-                child = new UnitState { UnitId = TroopService.NextUnitId(s), TroopType = to, ParentUnitId = unitId, Troops = count, Training = u.Training, Cohesion = u.Cohesion };
+                child = new UnitState { UnitId = to, TroopType = to, ParentUnitId = unitId, Troops = count, Training = u.Training, Cohesion = u.Cohesion };
                 s.Units.Insert(s.Units.IndexOf(u) + 1 + CountDescendants(s, unitId), child); // 기본 부대와 그 아래 부대들 바로 뒤
                 return true;
             }

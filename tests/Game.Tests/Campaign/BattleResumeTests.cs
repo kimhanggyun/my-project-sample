@@ -15,7 +15,7 @@ namespace Game.Tests.Campaign
         private static (StoryFlow flow, CampaignState state, SortiePlan plan) Start(string stepId, ulong seed, bool delegate_)
         {
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             foreach (var id in Kit.D.StepIndex.Order) { if (id == stepId) break; state.ClearedSteps.Add(id); }
             var plan = flow.Prepare(state, new SortieRequest { StepId = stepId, Seed = seed, Delegate = delegate_ });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));

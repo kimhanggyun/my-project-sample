@@ -40,7 +40,7 @@ namespace Game.Tests.Campaign
         public void ReceiptCheckOnServer()
         {
             var check = new ReceiptCheck(allowFake: true);
-            Assert.True(check.Check(PlayerActionRunner.CreateUnit("cavalry"))); // 결제가 아니면 통과
+            Assert.True(check.Check(PlayerActionRunner.CreateUnit("catapult"))); // 결제가 아니면 통과
             Assert.True(check.Check(Buy("gold_pack_small", "fake:a")));
             Assert.False(check.Check(Buy("gold_pack_small", "fake:a")));        // 같은 영수증 두 번
             Assert.False(check.Check(Buy("gold_pack_small", "store:real")));    // 실제 검증 전에는 받지 않음

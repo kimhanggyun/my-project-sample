@@ -43,6 +43,17 @@ namespace Game.Unity.Screens
                 string rid = id; long n = amount;
                 Ui.Button(list, ctx.T("ui.master.grant", ctx.T("resource." + rid), n), () => Run(PlayerActionRunner.DevGrant(rid, n)), 100, Palette.ButtonActive);
             }
+            // 계급 (army-v2.md 2장): 경험치 전까지 여기서 올리고 내려 편성을 시험한다
+            var rank = ctx.Defs.Campaign.RankFor(ctx.State.LordLevel);
+            Ui.Label(list, ctx.T("ui.master.lordLevel", ctx.T("rank." + rank.Id), ctx.State.LordLevel, rank.Corps, rank.Slots, rank.TroopMax), Ui.FontSmall);
+            var lv = Ui.Row(list, "LordLevel", 100, 8);
+            Ui.Button(lv, ctx.T("ui.master.lordDown"), () => Run(PlayerActionRunner.DevLordLevel(-1)), 100);
+            Ui.Button(lv, ctx.T("ui.master.lordUp"), () => Run(PlayerActionRunner.DevLordLevel(1)), 100, Palette.ButtonActive);
+            Ui.Button(lv, ctx.T("ui.master.lordNext"), () =>
+            {
+                var next = ctx.Defs.Campaign.NextRank(ctx.State.LordLevel);
+                Run(PlayerActionRunner.DevLordLevel(next == null ? 0 : next.MinLevel - ctx.State.LordLevel));
+            }, 100);
             Ui.Button(list, ctx.T("ui.master.unlockAll"), () => Run(PlayerActionRunner.DevUnlockAll()), 100);
             Ui.Button(list, ctx.T("ui.master.allGenerals"), () => Run(PlayerActionRunner.DevGiveGeneral("*")), 100);
         }

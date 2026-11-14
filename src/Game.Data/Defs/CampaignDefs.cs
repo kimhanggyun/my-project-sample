@@ -5,6 +5,16 @@ using Newtonsoft.Json.Linq;
 
 namespace Game.Data.Defs
 {
+    /// <summary>계급 하나 (army-v2.md 2장): 그 레벨부터 출진 군단 수·군단당 병종 칸 수·병종마다 최대 병력.</summary>
+    public sealed class RankDef
+    {
+        public string Id { get; internal set; }
+        public int MinLevel { get; internal set; }
+        public int Corps { get; internal set; }
+        public int Slots { get; internal set; }
+        public long TroopMax { get; internal set; }
+    }
+
     /// <summary>전투 밖 진행 수치 (campaign.json).</summary>
     public sealed class CampaignRules
     {
@@ -31,6 +41,31 @@ namespace Game.Data.Defs
         public int UnitCountMax { get; private set; }
         /// <summary>스킬북 가격 (돈): 스킬 단계 → 가격 (generals.md 4장). 단계가 없으면 상점에서 팔지 않는다.</summary>
         public IReadOnlyDictionary<string, long> SkillBookPriceByTier { get; private set; }
+        /// <summary>계급(계정 레벨) 최대 (army-v2.md 2장).</summary>
+        public int LordMaxLevel { get; private set; } = 1;
+        /// <summary>계급 표 (minLevel 오름차순, 첫 계급은 1부터).</summary>
+        public IReadOnlyList<RankDef> Ranks { get; private set; } = new List<RankDef>();
+        public int RecruitBase { get; private set; }
+        public int RecruitPerLevel { get; private set; }
+        public int RecruitMax { get; private set; }
+
+        /// <summary>그 레벨의 계급 (표 밖이면 가장 가까운 끝).</summary>
+        public RankDef RankFor(int level)
+        {
+            RankDef r = Ranks.Count > 0 ? Ranks[0] : new RankDef { Id = "none", MinLevel = 1, Corps = DefaultMaxCorps, Slots = 6, TroopMax = long.MaxValue / 4 };
+            foreach (var x in Ranks) if (x.MinLevel <= level) r = x;
+            return r;
+        }
+
+        /// <summary>다음 계급 (없으면 null).</summary>
+        public RankDef NextRank(int level)
+        {
+            foreach (var x in Ranks) if (x.MinLevel > level) return x;
+            return null;
+        }
+
+        /// <summary>그 레벨에서 새 병사의 훈련도·결속 (%, 0~100): min(max, base + perLevel × (레벨 − 1)).</summary>
+        public int RecruitQuality(int level) => System.Math.Min(RecruitMax, RecruitBase + RecruitPerLevel * (System.Math.Max(1, level) - 1));
 
         public static CampaignRules From(JObject o)
         {
@@ -46,8 +81,42 @@ namespace Game.Data.Defs
             var books = new Dictionary<string, long>();
             if (o["skillBook"]?["priceGoldByTier"] is JObject pb)
                 foreach (var p in pb.Properties()) books[p.Name] = p.Value.Value<long>();
+            var ranks = new List<RankDef>();
+            int lordMax = 1, rb = 0, rp = 0, rm = 0;
+            if (o["lord"] is JObject lord)
+            {
+                lordMax = (int)JsonUtil.RequireLong(lord, "maxLevel", c + ".lord");
+                var rec = JsonUtil.RequireObject(lord, "recruit", c + ".lord");
+                rb = (int)JsonUtil.RequireLong(rec, "base", c + ".lord.recruit");
+                rp = (int)JsonUtil.RequireLong(rec, "perLevel", c + ".lord.recruit");
+                rm = (int)JsonUtil.RequireLong(rec, "max", c + ".lord.recruit");
+                foreach (var t in (JArray)lord["ranks"] ?? new JArray())
+                {
+                    var ro = (JObject)t;
+                    ranks.Add(new RankDef
+                    {
+                        Id = JsonUtil.RequireString(ro, "id", c + ".lord.ranks"),
+                        MinLevel = (int)JsonUtil.RequireLong(ro, "minLevel", c + ".lord.ranks"),
+                        Corps = (int)JsonUtil.RequireLong(ro, "corps", c + ".lord.ranks"),
+                        Slots = (int)JsonUtil.RequireLong(ro, "slots", c + ".lord.ranks"),
+                        TroopMax = JsonUtil.RequireLong(ro, "troopMax", c + ".lord.ranks"),
+                    });
+                }
+                for (int i = 0; i < ranks.Count; i++)
+                {
+                    var r = ranks[i];
+                    if (i == 0 ? r.MinLevel != 1 : r.MinLevel <= ranks[i - 1].MinLevel) throw new DataException(c + ".lord.ranks: minLevel은 1부터 오름차순이어야 합니다 (" + r.Id + ").");
+                    if (r.Corps < 1 || r.Slots < 1 || r.Slots > 6 || r.TroopMax < 1) throw new DataException(c + ".lord.ranks: " + r.Id + "의 corps·slots(1~6)·troopMax가 범위를 벗어남.");
+                }
+                if (rb < 0 || rm > 100 || rb > rm || rp < 0) throw new DataException(c + ".lord.recruit: 0 ≤ base ≤ max ≤ 100, perLevel ≥ 0이어야 합니다.");
+            }
             return new CampaignRules
             {
+                LordMaxLevel = lordMax,
+                Ranks = ranks,
+                RecruitBase = rb,
+                RecruitPerLevel = rp,
+                RecruitMax = rm,
                 SkillBookPriceByTier = books,
                 FormationSituations = JsonUtil.StringList(o, "formationSituations"),
                 UnitCountMax = (int)((o["units"] as JObject)?.Value<long?>("maxCount") ?? 20),

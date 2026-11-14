@@ -74,12 +74,14 @@ namespace Game.Tests
         {
             var state = new CampaignState();
             state.Generals.Add(new GeneralState { GeneralId = "general_c" }); // 통솔 50 (테스트 데이터)
-            long[] troops = { 3000, 3000, 3000, 2000, 1500 };
+            state.LordLevel = 21; // 병종 칸 4 (army-v2.md)
+            state.LearnedFormations.Add("square");
+            (string type, long n)[] troops = { ("infantry", 3500), ("spearman", 3000), ("archer", 3000), ("cavalry", 3000) };
             var comp = new CorpsComposition { GeneralId = "general_c", Formation = "square", Role = "rear" };
-            for (int i = 0; i < troops.Length; i++)
+            foreach (var (type, n) in troops)
             {
-                state.Units.Add(new UnitState { UnitId = "t" + i, TroopType = "infantry", Troops = troops[i] });
-                comp.Slots[SlotIds.All[i]] = "t" + i;
+                state.Units.Add(new UnitState { UnitId = type, TroopType = type, Troops = n });
+                comp.Picks.Add(new TroopPick { UnitId = type, Troops = n });
             }
             long cap = TroopCapCalculator.Cap(D.Balance, D.Generals["general_c"].Stats.Get("leadership"));
             var errors = CorpsValidator.Validate(D, state, new[] { comp });
@@ -87,16 +89,18 @@ namespace Game.Tests
             else Assert.Empty(errors);
         }
 
-        [Fact(DisplayName = "R-5 한 부대는 한 군단에만")]
+        [Fact(DisplayName = "R-5/R-94 병종 하나를 여러 군단이 나눠 쓰면 인원 합 ≤ 보유 병력")]
         public void R5_UnitOnce()
         {
-            var state = new CampaignState();
+            var state = new CampaignState { LordLevel = 6 };
             state.Generals.Add(new GeneralState { GeneralId = "general_a" });
             state.Generals.Add(new GeneralState { GeneralId = "general_b" });
-            state.Units.Add(new UnitState { UnitId = "x", TroopType = "infantry", Troops = 100 });
-            var c1 = new CorpsComposition { GeneralId = "general_a", Slots = { ["vanguard"] = "x" } };
-            var c2 = new CorpsComposition { GeneralId = "general_b", Slots = { ["vanguard"] = "x" } };
-            Assert.Contains(CorpsValidator.Validate(D, state, new[] { c1, c2 }), e => e.Contains("두 군단"));
+            state.Units.Add(new UnitState { UnitId = "infantry", TroopType = "infantry", Troops = 100 });
+            var c1 = new CorpsComposition { GeneralId = "general_a", Picks = { new TroopPick { UnitId = "infantry", Troops = 60 } } };
+            var c2 = new CorpsComposition { GeneralId = "general_b", Picks = { new TroopPick { UnitId = "infantry", Troops = 60 } } };
+            Assert.Contains(CorpsValidator.Validate(D, state, new[] { c1, c2 }), e => e.Contains("보유 병력"));
+            c2.Picks[0].Troops = 40;
+            Assert.DoesNotContain(CorpsValidator.Validate(D, state, new[] { c1, c2 }), e => e.Contains("보유 병력"));
         }
 
         [Fact(DisplayName = "R-6/R-7 군량: 출진 자동 계산 = 출진 분량만큼의 전투 소비")]

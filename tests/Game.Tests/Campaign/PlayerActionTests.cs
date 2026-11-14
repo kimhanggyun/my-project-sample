@@ -34,9 +34,9 @@ namespace Game.Tests.Campaign
         public void ActionsMatchServices()
         {
             var runner = Runner();
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             int units = state.Units.Count;
-            Assert.True(runner.Apply(state, PlayerActionRunner.CreateUnit("infantry")));
+            Assert.True(runner.Apply(state, PlayerActionRunner.CreateUnit("catapult")));
             var made = state.Units[state.Units.Count - 1];
             Assert.Equal(units + 1, state.Units.Count);
             Assert.True(runner.Apply(state, PlayerActionRunner.Conscript(made.UnitId, 100)));
@@ -62,7 +62,7 @@ namespace Game.Tests.Campaign
 
         private static string FirstSlot(CampaignState s)
         {
-            foreach (var v in s.Compositions[0].Slots.Values) return v;
+            foreach (var p in s.Compositions[0].Picks) return p.UnitId;
             return null;
         }
 
@@ -72,7 +72,7 @@ namespace Game.Tests.Campaign
             var (sync, _, _, start) = Online();
             var local = SaveJson.Read(SaveJson.Write(start.State));
             var runner = Runner();
-            var create = PlayerActionRunner.CreateUnit("archer");
+            var create = PlayerActionRunner.CreateUnit("catapult");
             Assert.True(runner.Apply(local, create));
             var recruit = PlayerActionRunner.Recruit(local.Units[local.Units.Count - 1].UnitId, 50);
             Assert.True(runner.Apply(local, recruit));
@@ -88,16 +88,16 @@ namespace Game.Tests.Campaign
         public void RejectsBadOrStale()
         {
             var (sync, online, _, start) = Online();
-            var bad = Submit(sync, start.Revision, start.State, PlayerActionRunner.CreateUnit("cavalry"), PlayerActionRunner.DisbandUnit("u99"));
+            var bad = Submit(sync, start.Revision, start.State, PlayerActionRunner.CreateUnit("catapult"), PlayerActionRunner.DisbandUnit("u99"));
             Assert.Equal(SyncOutcomes.Rejected, bad.Outcome);
             Assert.Equal(start.Revision, bad.Revision);
             Assert.Equal(start.State.Units.Count, bad.State.Units.Count);
 
             ActionVerdict v = null;
-            online.SubmitActions(new ActionSubmission { BaseRevision = start.Revision, Actions = { PlayerActionRunner.CreateUnit("cavalry"), PlayerActionRunner.DisbandUnit("u99") } }, x => v = x);
+            online.SubmitActions(new ActionSubmission { BaseRevision = start.Revision, Actions = { PlayerActionRunner.CreateUnit("catapult"), PlayerActionRunner.DisbandUnit("u99") } }, x => v = x);
             Assert.Equal((VerdictReasons.BadAction, 1), (v.Reason, v.FailedIndex));
 
-            var stale = Submit(sync, start.Revision + 5, start.State, PlayerActionRunner.CreateUnit("cavalry"));
+            var stale = Submit(sync, start.Revision + 5, start.State, PlayerActionRunner.CreateUnit("catapult"));
             Assert.Equal(SyncOutcomes.Rejected, stale.Outcome);
             var empty = Submit(sync, start.Revision, start.State);
             Assert.Equal(SyncOutcomes.Rejected, empty.Outcome);
@@ -107,9 +107,9 @@ namespace Game.Tests.Campaign
         public void PutOnlyOnFreshServer()
         {
             var (sync, online, _, start) = Online();
-            var after = Submit(sync, start.Revision, start.State, PlayerActionRunner.CreateUnit("cavalry"));
+            var after = Submit(sync, start.Revision, start.State, PlayerActionRunner.CreateUnit("catapult"));
             Assert.Equal(2, after.Revision);
-            var cheat = StartingKitService.CreateNewGame(Kit.D);
+            var cheat = Kit.Veteran();
             cheat.Wallet[ResourceIds.Gold] = 999999;
             SavePutResponse put = null;
             online.PutSave(new SavePutRequest { BaseRevision = after.Revision, Json = SaveJson.Write(cheat) }, x => put = x);
@@ -150,9 +150,9 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "행동 메시지는 JSON으로 오가도 같다 (기기 보관·HTTP)")]
         public void ActionJsonRoundTrip()
         {
-            var state = StartingKitService.CreateNewGame(Kit.D);
+            var state = Kit.Veteran();
             var a = PlayerActionRunner.SaveFormation("siege", new Game.Campaign.Roster.FormationEditor(Kit.D, state).Draft);
-            var link = new OnlineLink { Revision = 3, Journal = { new JournalEntry { Action = a }, new JournalEntry { Action = PlayerActionRunner.Heal("u10", 5, ResourceIds.Gold) } } };
+            var link = new OnlineLink { Revision = 3, Journal = { new JournalEntry { Action = a }, new JournalEntry { Action = PlayerActionRunner.Heal("archer", 5, ResourceIds.Gold) } } };
             var back = OnlineJson.Read<OnlineLink>(OnlineJson.Write(link));
             Assert.Equal(2, back.Journal.Count);
             Assert.Equal(OnlineJson.Write(link), OnlineJson.Write(back));

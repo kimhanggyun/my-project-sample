@@ -43,7 +43,7 @@ namespace Game.Flow
             error = null;
             var comps = new List<CorpsComposition>();
             foreach (var c in state.CompositionsFor(battleType))
-                comps.Add(new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, Slots = new Dictionary<string, string>(c.Slots) });
+                comps.Add(FormationEditor.Copy(c));
             if (IsEmpty) return (comps, null);
 
             var byId = new Dictionary<string, HireListing>();
@@ -61,15 +61,22 @@ namespace Game.Flow
                 }
                 else
                 {
-                    string slot = null;
-                    foreach (var s in SlotIds.All) if (!comp.Slots.ContainsKey(s)) { slot = s; break; }
-                    if (slot == null) { error = "고용 부대를 넣을 빈 칸이 없습니다."; return (null, null); }
-                    comp.Slots[slot] = HireRules.UnitIdOf(l.Id);
+                    // 고용 부대는 계급의 병종 칸 밖에 더한다 (진형 칸 6개까지, army-v2.md 6장)
+                    if (comp.Picks.Count >= Army.MaxPicksPerCorps) { error = "고용 부대를 넣을 빈 칸이 없습니다."; return (null, null); }
+                    comp.Picks.Add(new TroopPick { UnitId = HireRules.UnitIdOf(l.Id), Troops = p.Count, Hired = true });
                     uses.Add(new HireUse { ListingId = l.Id, Version = l.Version, Count = p.Count });
                 }
             }
             var hired = new HireRules(_defs).Resolve(uses, id => byId.TryGetValue(id, out var x) ? x : null, hirerAccountId, state, out error);
-            return hired == null ? (null, null) : (comps, hired);
+            if (hired == null) return (null, null);
+            // 고용 부대 칸의 인원 = 해석된 고용 인원
+            foreach (var c in comps)
+                foreach (var pk in c.Picks)
+                {
+                    var hu = hired.Units.Find(x => x.UnitId == pk.UnitId);
+                    if (hu != null) pk.Troops = hu.Troops;
+                }
+            return (comps, hired);
         }
 
         /// <summary>
@@ -85,11 +92,7 @@ namespace Game.Flow
             if (general == null) return 0;
             long cap = TroopCapCalculator.Cap(_defs.Balance, CorpsValidator.EffectiveStat(_defs, general, "leadership"));
             long used = 0;
-            foreach (var kv in comp.Slots)
-            {
-                var u = state.FindUnit(kv.Value) ?? hired?.Units.Find(x => x.UnitId == kv.Value);
-                if (u != null) used += u.Troops;
-            }
+            foreach (var pk in comp.Picks) used += pk.Troops;
             return System.Math.Max(0, System.Math.Min(unitListing.Troops, cap - used));
         }
     }
