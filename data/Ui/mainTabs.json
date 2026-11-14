@@ -1,24 +1,6 @@
 {
-  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포에 들어갈 탭) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임). 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 줄마다 가로 스크롤.",
+  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포에 들어갈 탭 — 사용자가 [실:]로 지목한 것만: 대전연습·상점, 2026-11-14) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임). 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 줄마다 가로 스크롤.",
   "tabs": [
-    {
-      "id": "story",
-      "nameKey": "ui.tab.story",
-      "status": "active",
-      "row": "release"
-    },
-    {
-      "id": "general",
-      "nameKey": "ui.tab.general",
-      "status": "active",
-      "row": "release"
-    },
-    {
-      "id": "troop",
-      "nameKey": "ui.tab.troop",
-      "status": "active",
-      "row": "release"
-    },
     {
       "id": "practice",
       "nameKey": "ui.tab.practice",
@@ -30,6 +12,24 @@
       "nameKey": "ui.tab.shop",
       "status": "active",
       "row": "release"
+    },
+    {
+      "id": "story",
+      "nameKey": "ui.tab.story",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "general",
+      "nameKey": "ui.tab.general",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "troop",
+      "nameKey": "ui.tab.troop",
+      "status": "active",
+      "row": "dev"
     },
     {
       "id": "sampleBattle",
