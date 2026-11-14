@@ -142,6 +142,95 @@ namespace Game.Unity.Screens
     }
 
     /// <summary>스텝 정보 + 출진 (직접 지휘 / 위임). 출진 준비(Prepare)와 확정(Confirm)은 규칙 객체가 한다.</summary>
+    /// <summary>
+    /// 출진 준비 공통 조각 (10 시안): 전장 타일 · 적(대략, 내 닉네임 장수가 척후 파견을 알면 정확) · 전력 막대 + 판단 · 내 군단 카드 줄.
+    /// 스토리 스텝(StepScreen)과 영토 공성전(TerritorySortieScreen)이 같이 쓴다. 글자는 줄이고 설명은 ⓘ.
+    /// </summary>
+    internal static class SortiePrep
+    {
+        public static void Tiles(GameContext ctx, Transform parent, StepDef step)
+        {
+            var row = Ui.Row(parent, "Field", 96, 8);
+            foreach (var t in new[] { ctx.T("battleType." + step.BattleType), ctx.T("ui.sortie.minutes", step.MaxMinutes), ctx.T("timeOfDay." + step.TimeOfDay), ctx.T("weather." + step.Weather), (step.WindStrength.ToString() == "0" ? ctx.T("ui.battle.windNone") : ctx.T("ui.sortie.wind", ctx.T("ui.battle.windLevel." + step.WindStrength))) })
+            {
+                var tile = Ui.Rect(row, "Tile");
+                Ui.Round(Ui.Background(tile, Palette.Card));
+                Ui.Fill(Ui.Label(tile, t, 24, TextAnchor.MiddleCenter).rectTransform);
+            }
+        }
+
+        /// <summary>내 닉네임 장수가 척후 파견을 안다 → 적 병력 정확히 (10 시안).</summary>
+        public static bool Scout(GameContext ctx)
+        {
+            var me = ctx.State.FindGeneral(AvatarGeneral.GeneralId);
+            return me != null && me.LearnedSkills.Contains("scoutDispatch");
+        }
+
+        public static void Enemies(GameContext ctx, Transform card, SortiePlan plan)
+        {
+            bool exact = Scout(ctx);
+            if (exact) Ui.Label(card, Ui.Colored(ctx.T("ui.sortie.scout"), Palette.Ally), 22);
+            foreach (var c in plan.Setup.Corps)
+            {
+                if (c.Team != StoryFlow.EnemyTeam) continue;
+                long troops = 0;
+                foreach (var u in c.Units) troops += u.Troops;
+                string n = exact ? troops.ToString("N0") : "~" + SortieAdvice.Rough(troops).ToString("N0");
+                string f = ctx.Defs.Formations.TryGetValue(c.Formation ?? "", out var fd) ? ctx.T(fd.NameKey) : c.Formation;
+                Ui.Label(card, Ui.Colored(ctx.GeneralName(c.General?.Id), Palette.Enemy) + "  " + n + "  · " + f + (c.Reserve ? "  (" + ctx.T("ui.corps.reserve") + ")" : ""), Ui.FontSmall);
+            }
+        }
+
+        public static long PlayerTroops(SortiePlan plan)
+        {
+            long t = 0;
+            foreach (var c in plan.Setup.Corps) if (c.Team == StoryFlow.PlayerTeam) foreach (var u in c.Units) t += u.Troops;
+            return t;
+        }
+
+        public static long EnemyTroops(SortiePlan plan)
+        {
+            long t = 0;
+            foreach (var c in plan.Setup.Corps) if (c.Team == StoryFlow.EnemyTeam) foreach (var u in c.Units) t += u.Troops;
+            return t;
+        }
+
+        /// <summary>전력: 파랑 내 병력 ─ 막대 ─ 빨강 상대 병력, 판단 알약 (우세 · 비슷 · 위험).</summary>
+        public static void Power(GameContext ctx, Transform parent, long mine, long enemy)
+        {
+            var card = Ui.Card(parent, "Power", 18, 6);
+            string judge = SortieAdvice.Judge(mine, enemy);
+            var color = judge == SortieAdvice.Favorable ? Palette.Good : judge == SortieAdvice.Even ? Palette.Text : Palette.Bad;
+            Ui.Tag(card, ctx.T("ui.sortie.judge." + judge), color, 24, 44);
+            var row = Ui.Row(card, "Bar", 52, 10);
+            Ui.Size(Ui.Label(row, Ui.Colored(mine.ToString("N0"), Palette.Ally), 28), width: 170);
+            var g = Ui.Gauge(row, Palette.Ally, 26);
+            Ui.Size(g, flexibleWidth: 1);
+            Ui.SetGauge((RectTransform)g.GetChild(0), mine + enemy <= 0 ? 0.5f : (float)mine / (mine + enemy));
+            Ui.Size(Ui.Label(row, Ui.Colored("~" + SortieAdvice.Rough(enemy).ToString("N0"), Palette.Enemy), 28, TextAnchor.MiddleRight), width: 170);
+        }
+
+        /// <summary>내 군단 카드 줄: 장수 · 병력 · 진형, 고용 표시, 영토 깃발에 나간 장수는 출진 불가 표시.</summary>
+        public static void Army(GameContext ctx, Transform parent, SortiePlan plan)
+        {
+            if (plan.Compositions == null || plan.Compositions.Count == 0) return;
+            var row = Ui.HScrollRow(parent, "Army", 170, 10, 4);
+            foreach (var comp in plan.Compositions)
+            {
+                long troops = 0;
+                foreach (var p in comp.Picks) troops += p.Troops;
+                bool onFlag = false;
+                if (TerritoryTabView.Owners != null) foreach (var o in TerritoryTabView.Owners.Values) if (o.OwnerAccountId == ctx.AccountId && o.GeneralId == comp.GeneralId) onFlag = true;
+                bool hired = comp.GeneralId == AvatarGeneral.HiredId || ctx.State.FindGeneral(comp.GeneralId) == null;
+                var card = Ui.Card(row, comp.GeneralId, 14, 4);
+                Ui.Size(card, width: 300);
+                Ui.Label(card, (comp.Commander ? "★ " : "") + ctx.GeneralName(comp.GeneralId) + (hired ? "  " + Ui.Colored(ctx.T("ui.formation.hired"), Palette.Ally) : ""), 24);
+                Ui.Label(card, troops.ToString("N0") + "  · " + (ctx.Defs.Formations.TryGetValue(comp.Formation ?? "", out var fd) ? ctx.T(fd.NameKey) : comp.Formation), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                if (onFlag) Ui.Label(card, Ui.Colored(ctx.T("ui.terr.onFlag"), Palette.Bad), 20);
+            }
+        }
+    }
+
     public sealed class StepScreen : GameScreen
     {
         /// <summary>스텝마다 고른 군량 분 (E22, 앱을 켜 둔 동안 기억). 없으면 자동(3분).</summary>
@@ -151,12 +240,13 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 16, 32);
             var step = StepDef.Load(Ctx.Data, _stepId);
-            Ui.Size(Ui.Label(Root, T(step.NameKey), Ui.FontTitle), 120);
-
-            var body = Ui.ScrollList(Root, "Info", 12, 8);
-            Ui.Size(body.parent.parent, flexibleHeight: 1);
+            var (header, body, footer) = Ui.PageLayout(Root, 130);
+            var top = Ui.Row(header, "Title", 100, 12);
+            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain("story"), 90, fontSize: 40), width: 90);
+            Ui.Size(Ui.Label(top, T(step.NameKey), Ui.FontTitle), flexibleWidth: 1);
+            SortiePrep.Tiles(Ctx, header, step);
+            InfoButton.Add(Root, T("ui.sortie.note"));
 
             // 구출 전투 (E23): 갇힌 장수마다 남은 기한, 승리 조건(수용소 점령)
             if (step.RescueCamp != null)
@@ -172,74 +262,48 @@ namespace Game.Unity.Screens
                         Ui.Label(rescue, T("ui.rescue.goal", o.Seconds.FloorToLong()), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             }
 
-            var info = Ui.Card(body, "Conditions");
-            Ui.Label(info, T("ui.step.battleType", T("battleType." + step.BattleType)));
-            Ui.Label(info, T("ui.step.maxMinutes", step.MaxMinutes));
-            Ui.Label(info, T("ui.step.conditions", T("weather." + step.Weather), T("timeOfDay." + step.TimeOfDay)));
-            int reserve = 0;
-            foreach (var e in step.Enemy) if (e.Reserve) reserve++;
-            Ui.Label(info, T("ui.step.enemies", step.Enemy.Count, reserve));
-
-            // 적 정보는 대략 (E22): 장수·병력 어림·진형
-            var enemies = Ui.Card(body, "Enemies");
-            foreach (var e in step.Enemy)
-            {
-                long troops = 0;
-                foreach (var u in e.Units) troops += u.Troops;
-                Ui.Label(enemies, Ui.Colored(Ctx.GeneralName(e.General), Palette.Enemy) + "  " + T("ui.step.roughTroops", SortieAdvice.Rough(troops).ToString("N0"))
-                    + "  " + FormationName(e.Formation) + (e.Reserve ? "  (" + T("ui.corps.reserve") + ")" : ""), Ui.FontSmall);
-            }
-
-            // 공략 (R-81): 다른 사람이 공유한 이 스텝 녹화
-            if (Ctx.OnlineEnabled)
-                Ui.Button(body, T("ui.shared.button"), () => App.Show(new SharedReplayScreen(_stepId)), 84, Palette.Card, 28);
-
-            var rewards = Ui.Card(body, "Rewards");
-            Ui.Label(rewards, T("ui.step.rewards"));
-            var parts = new List<string>();
-            foreach (var kv in step.RewardResources) parts.Add(T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
-            foreach (var f in step.RewardFormations) parts.Add(FormationName(f));
-            foreach (var s in step.RewardSkills) parts.Add(SkillName(s));
-            Ui.Label(rewards, parts.Count == 0 ? T("ui.common.none") : string.Join(", ", parts), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-
             // 고용 (온라인일 때, R-43): 고른 것을 편성 사본에 넣어 출진 준비에 넘긴다
             var request = Request(step, false, out var hireError);
-            if (Ctx.HiringAvailable) HireCard(body, step);
-
             // 출진 준비 (상태는 바꾸지 않는다)
             var plan = Ctx.Flow.Prepare(Ctx.State, request);
-            // 군량 분 (E22): 고른 분이 있으면 그만큼 다시 준비
             int minutes = SupplyMinutes.TryGetValue(_stepId, out var mm) ? mm : SortieAdvice.AutoMinutes;
             if (minutes != SortieAdvice.AutoMinutes && plan.AutoSupply > 0)
             {
                 request.Supply = SortieAdvice.SupplyFor(plan.AutoSupply, minutes);
                 plan = Ctx.Flow.Prepare(Ctx.State, request);
             }
-            // 아군 편성 요약 (출진할 군단: 장수 · 진형 · 병력)
-            if (plan.Compositions != null && plan.Compositions.Count > 0)
-            {
-                var allies = Ui.Card(body, "Allies");
-                Ui.Label(allies, T("ui.step.allies") + "  " + Ui.Colored(T("ui.step.situation", T("battleType." + step.BattleType)), Palette.TextDim)); // 고른 상황 편성 (E22)
-                long mine = 0;
-                foreach (var comp in plan.Compositions)
-                {
-                    long troops = 0;
-                    foreach (var slot in comp.Slots) { var u = Ctx.State.FindUnit(slot.Value); if (u != null) troops += u.Troops; }
-                    Ui.Label(allies, T("ui.step.allyLine", Ui.Colored(Ctx.GeneralName(comp.GeneralId), Palette.Ally), FormationName(comp.Formation), troops.ToString("N0")), Ui.FontSmall);
-                    mine += troops;
-                }
-                // 전력 판단 (E22): 내 출진 병력 ÷ 적 병력(예비 포함)
-                string judge = SortieAdvice.Judge(mine, SortieAdvice.EnemyTroops(step, true));
-                var color = judge == SortieAdvice.Favorable ? Palette.Good : judge == SortieAdvice.Even ? Palette.Text : Palette.Bad;
-                Ui.Label(allies, Ui.Colored(T("ui.step.judge." + judge), color), Ui.FontSmall);
-                if (step.RecommendedLevel > 0) Ui.Label(allies, T("ui.step.recommendedLevel", step.RecommendedLevel), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-            }
+
+            // 적 (대략, 척후 파견이면 정확)
+            var enemies = Ui.Card(body, "Enemies");
+            int reserve = 0;
+            foreach (var e in step.Enemy) if (e.Reserve) reserve++;
+            Ui.Label(enemies, T("ui.step.enemies", step.Enemy.Count, reserve), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            if (plan.Setup != null) SortiePrep.Enemies(Ctx, enemies, plan);
+
+            var extra = Ui.Row(body, "Extra", 84, 10);
+            if (Ctx.OnlineEnabled) Ui.Button(extra, T("ui.shared.button"), () => App.Show(new SharedReplayScreen(_stepId)), 84, Palette.Card, 26); // 공략 (R-81)
+            var parts = new List<string>();
+            foreach (var kv in step.RewardResources) parts.Add(T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
+            foreach (var f in step.RewardFormations) parts.Add(FormationName(f));
+            foreach (var s in step.RewardSkills) parts.Add(SkillName(s));
+            var reward = Ui.Card(extra, "Rewards", 12, 2);
+            Ui.Label(reward, Ui.Colored(T("ui.sortie.firstClear"), Palette.Seal) + "  " + (parts.Count == 0 ? T("ui.common.none") : string.Join(", ", parts)), 22);
+
+            if (plan.Setup != null) SortiePrep.Power(Ctx, body, SortiePrep.PlayerTroops(plan), SortiePrep.EnemyTroops(plan));
+            if (step.RecommendedLevel > 0) Ui.Label(body, T("ui.step.recommendedLevel", step.RecommendedLevel), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+
+            Ui.Label(body, T("ui.step.allies") + "  " + Ui.Colored(T("ui.step.situation", T("battleType." + step.BattleType)), Palette.TextDim), Ui.FontSmall);
+            SortiePrep.Army(Ctx, body, plan);
+            var armyRow = Ui.Row(body, "ArmyButtons", 72, 10);
+            Ui.Button(armyRow, T("ui.sortie.formation"), () => App.ShowMain("formation"), 72, fontSize: 24);
+            if (Ctx.HiringAvailable) Ui.Button(armyRow, T("ui.sortie.mercenary"), () => App.ShowMain("hiring"), 72, fontSize: 24);
+            if (Ctx.HiringAvailable && !Ctx.HiresFor(_stepId).IsEmpty) HireCard(body, step);
+
             var sortie = Ui.Card(body, "Sortie");
             if (hireError != null) Ui.Label(sortie, Ui.Colored(hireError, Palette.Bad), Ui.FontSmall);
             if (plan.Hired != null)
                 foreach (var kv in plan.Hired.Costs) Ui.Label(sortie, T("ui.hire.cost", kv.Value.ToString("N0") + " " + T("resource." + kv.Key)), Ui.FontSmall);
-            Ui.Label(sortie, T("ui.step.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
-            // 군량 ± (E22): 몇 분 분량 가져갈지. 모자라면 안내 + 가능한 만큼·상점
+            Ui.Label(sortie, T("ui.sortie.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
             var supplyRow = Ui.Row(sortie, "SupplyRow", 76, 8);
             Ui.Button(supplyRow, "−", () => SetMinutes(minutes - 1), 76, fontSize: 32);
             Ui.Size(Ui.Label(supplyRow, T("ui.step.supplyMinutes", minutes), 28, TextAnchor.MiddleCenter), flexibleWidth: 2);
@@ -256,11 +320,11 @@ namespace Game.Unity.Screens
             }
             foreach (var err in plan.Errors) Ui.Label(sortie, Ui.Colored(err, Palette.Bad), Ui.FontSmall);
 
-            if (!plan.Ok) Ui.Label(Root, Ui.Colored(T("ui.step.cannotSortie"), Palette.Bad), Ui.FontSmall, TextAnchor.MiddleCenter);
-            var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(row, T("ui.common.back"), () => App.ShowMain("story"));
-            var direct = Ui.Button(row, T("ui.step.directSortie"), () => Sortie(step, false));
-            var delegated = Ui.Button(row, T("ui.step.delegateSortie"), () => Sortie(step, true));
+            Ui.Size(Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("story"), 100), width: 200);
+            var delegated = Ui.Button(footer, T("ui.sortie.delegate"), () => Sortie(step, true), 100);
+            Ui.Size(delegated, width: 240);
+            var direct = Ui.PrimaryButton(footer, T("ui.sortie.go"), () => Sortie(step, false), 100);
+            Ui.Size(direct, flexibleWidth: 1);
             Ui.SetEnabled(direct, plan.Ok && hireError == null);
             Ui.SetEnabled(delegated, plan.Ok && hireError == null);
             GuideOverlay.Show(App, Root, "screen.step"); // 처음 안내 (R-62)
