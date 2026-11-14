@@ -8,59 +8,118 @@ using UnityEngine;
 
 namespace Game.Unity.Screens
 {
-    /// <summary>스토리 탭: 스텝 목록 (차례 해금) + 포로가 있는 수용소의 구출 전투.</summary>
+    /// <summary>
+    /// 스토리 탭 (시안 04): 머리 줄(진행도·도감·녹화) → 훈련 전투 줄 → "다음 도전" 큰 카드 → 구출 카드 → 깬 스텝 줄 → 다음(잠긴) 스텝 줄.
+    /// 값은 <see cref="StoryBoard"/>에서 받아 그리기만 한다.
+    /// </summary>
     public sealed class StoryTabView : ITabView
     {
-        /// <summary>목록 한 줄: 갇힌 장수 수와 가장 짧은 남은 기한 (E23).</summary>
-        private static string RescueLine(Game.Unity.Boot.GameContext ctx, string camp)
-        {
-            var held = RescueInfo.Held(ctx, camp);
-            if (held.Count == 0) return ctx.T("ui.rescue.none");
-            long soonest = long.MaxValue;
-            foreach (var g in held) soonest = System.Math.Min(soonest, g.RescueDeadlineUnixSeconds);
-            return ctx.T("ui.rescue.listLine", held.Count, RescueInfo.Left(ctx, soonest));
-        }
-
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
-            var list = Ui.ScrollList(root, "Steps");
+            var list = Ui.ScrollList(root, "Steps", 14, 25);
             Ui.Fill((RectTransform)list.parent.parent);
-            Ui.Size(Ui.Label(list, ctx.T("ui.story.header"), Ui.FontTitle, TextAnchor.MiddleLeft), 120);
-            int found = SecretText.FoundCount(ctx, out int total);
-            var extras = Ui.Row(list, "Extras", 100, 8);
-            if (total > 0) Ui.Button(extras, ctx.T("ui.codex.button", found, total), () => app.Show(new CodexScreen()), 100, Palette.Card, 28);
-            Ui.Button(extras, ctx.T("ui.replay.button", ctx.Replays.Items.Count), () => app.Show(new ReplayListScreen()), 100, Palette.Card, 28);
 
-            var steps = new List<(string id, bool rescue)>();
-            foreach (var id in ctx.Defs.StepIndex.Order) steps.Add((id, false));
-            foreach (var kv in ctx.Defs.StepIndex.RescueSteps)
-                if (ctx.Flow.IsUnlocked(ctx.State, kv.Value)) steps.Add((kv.Value, true));
-            // 훈련 전투 (R-85): 그 병종이 있으면 맨 위 줄에 버튼 (반복 가능)
-            foreach (var kv in ctx.Defs.StepIndex.Drills)
+            var (cleared, total) = StoryBoard.Progress(ctx.Defs, ctx.State);
+            var head = Ui.HeaderRow(list, ctx.T("ui.story.header"), ctx.T("ui.story.progress", cleared, total));
+            int found = SecretText.FoundCount(ctx, out int secrets);
+            if (secrets > 0) Small(head, ctx.T("ui.codex.short", found, secrets), () => app.Show(new CodexScreen()));
+            Small(head, ctx.T("ui.replay.short", ctx.Replays.Items.Count), () => app.Show(new ReplayListScreen()));
+
+            // 훈련 전투 (R-85): 그 병종이 있으면 머리 아래 작은 버튼 (반복 가능)
+            var drills = StoryBoard.Drills(ctx.Defs, ctx.Flow, ctx.State);
+            if (drills.Count > 0)
             {
-                if (!ctx.Flow.IsUnlocked(ctx.State, kv.Key)) continue;
-                string drillId = kv.Key;
-                string name;
-                try { name = ctx.T(StepDef.Load(ctx.Data, drillId).NameKey); } catch (System.Exception) { name = drillId; }
-                Ui.Button(extras, name, () => app.Show(new StepScreen(drillId)), 100, Palette.Card, 28);
+                var row = Ui.Row(list, "Drills", 72, 10);
+                row.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandWidth = false;
+                foreach (var id in drills)
+                {
+                    string drillId = id, name;
+                    try { name = ctx.T(StepDef.Load(ctx.Data, drillId).NameKey); } catch (System.Exception) { name = drillId; }
+                    Ui.Size(Ui.SecondaryButton(row, name, () => app.Show(new StepScreen(drillId)), 72, 26), width: 260);
+                }
             }
 
-            foreach (var s in steps)
+            var cards = StoryBoard.Build(ctx.Defs, ctx.Flow, ctx.State);
+            foreach (var c in cards) if (c.IsNext) NextCard(app, list, c);
+            foreach (var c in cards) if (c.IsRescue && c.State == StepCardState.Open) RescueCard(app, list, c);
+
+            bool header = false;
+            foreach (var c in cards)
             {
-                StepDef step;
-                try { step = StepDef.Load(ctx.Data, s.id); }
-                catch (System.Exception e) { Debug.LogException(e); Ui.Label(list, s.id + " ?", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad); continue; }
-                bool unlocked = ctx.Flow.IsUnlocked(ctx.State, s.id);
-                bool cleared = ctx.State.ClearedSteps.Contains(s.id);
-                string state = cleared ? Ui.Colored(ctx.T("ui.story.cleared"), Palette.Good)
-                             : unlocked ? ctx.T("ui.story.open")
-                             : Ui.Colored(ctx.T("ui.story.locked"), Palette.TextDim);
-                string label = (s.rescue ? "[" + ctx.T("ui.story.rescue") + "] " : "") + ctx.T(step.NameKey) + "   " + state;
-                if (s.rescue && step.RescueCamp != null) label += "\n" + Ui.Colored(RescueLine(ctx, step.RescueCamp), Palette.Bad); // 갇힌 장수·남은 기한 (E23)
-                var b = Ui.Button(list, label, () => app.Show(new StepScreen(s.id)), 112);
-                Ui.SetEnabled(b, unlocked);
+                if (c.IsRescue || c.State != StepCardState.Cleared) continue;
+                if (!header) { Ui.SectionHeader(list, ctx.T("ui.story.sectionCleared")); header = true; }
+                string id = c.Id;
+                Ui.ListRow(list, "✓", Palette.Good, ctx.T(c.NameKey), ctx.T("ui.story.replay"), () => app.Show(new StepScreen(id)));
             }
+            header = false;
+            foreach (var c in cards)
+            {
+                if (c.IsRescue || c.IsNext || c.State == StepCardState.Cleared) continue;
+                if (!header) { Ui.SectionHeader(list, ctx.T("ui.story.sectionNext")); header = true; }
+                string id = c.Id;
+                if (c.State == StepCardState.Open)
+                    Ui.ListRow(list, "›", Palette.Text, ctx.T(c.NameKey), ctx.T("ui.story.open"), () => app.Show(new StepScreen(id)));
+                else
+                    Ui.ListRow(list, "@lock", Palette.TextDim, ctx.T(c.NameKey), ctx.T("ui.story.lockedHint." + c.LockReason), null, dim: true, height: 84);
+            }
+        }
+
+        private static void Small(RectTransform head, string text, System.Action onClick) =>
+            Ui.Size(Ui.SecondaryButton(head, text, onClick, 72, 26), 72, 170).flexibleWidth = 0;
+
+        /// <summary>다음 도전: 주홍 테두리 카드 — 이름, 요약 한 줄, 첫 클리어 보상, [출진].</summary>
+        private static void NextCard(GameApp app, RectTransform list, StepCard c)
+        {
+            var ctx = app.Context;
+            var card = Ui.FeatureCard(list, ctx.T("ui.story.next"), Palette.ButtonActive);
+            Name(card, ctx.T(c.NameKey));
+            Ui.Label(card, Summary(ctx, c), 30, TextAnchor.MiddleLeft, Palette.TextDim);
+            var rh = Ui.Label(card, ctx.T("ui.story.firstReward"), 30);
+            rh.fontStyle = FontStyle.Bold;
+            Ui.Label(card, Rewards(ctx, c), 30);
+            string id = c.Id;
+            Ui.PrimaryButton(card, ctx.T("ui.story.sortie"), () => app.Show(new StepScreen(id)), 130);
+        }
+
+        /// <summary>구출: 빨간 테두리 카드 — 이름, 갇힌 장수·남은 기한, [출진].</summary>
+        private static void RescueCard(GameApp app, RectTransform list, StepCard c)
+        {
+            var ctx = app.Context;
+            var card = Ui.FeatureCard(list, ctx.T("ui.story.rescue"), Palette.Bad);
+            Name(card, ctx.T(c.NameKey));
+            string line = c.RescueHeld > 0
+                ? ctx.T("ui.rescue.listLine", c.RescueHeld, RescueInfo.Left(ctx, c.RescueDeadlineUnixSeconds))
+                : ctx.T("ui.rescue.none");
+            Ui.Label(card, line, 30, TextAnchor.MiddleLeft, Palette.Bad);
+            string id = c.Id;
+            Ui.PrimaryButton(card, ctx.T("ui.story.sortie"), () => app.Show(new StepScreen(id)), 130);
+        }
+
+        private static void Name(RectTransform card, string text)
+        {
+            var t = Ui.Label(card, text, 54, TextAnchor.MiddleLeft);
+            t.font = Ui.TitleFont;
+            Ui.Size(t, 80);
+        }
+
+        private static string Summary(GameContext ctx, StepCard c)
+        {
+            var parts = new List<string> { ctx.T("battleType." + c.BattleType) };
+            if (c.MaxMinutes > Game.Foundation.Math.Fix.Zero) parts.Add(ctx.T("ui.story.minutes", c.MaxMinutes.FloorToLong()));
+            parts.Add(ctx.T("ui.story.enemyCorps", c.EnemyCorps));
+            return string.Join(" · ", parts);
+        }
+
+        private static string Rewards(GameContext ctx, StepCard c)
+        {
+            var parts = new List<string>();
+            foreach (var kv in c.RewardResources) parts.Add(ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
+            if (c.RewardExp > 0) parts.Add(ctx.T("ui.story.exp", c.RewardExp.ToString("N0")));
+            foreach (var g in c.RewardGenerals) parts.Add(ctx.T("ui.story.joins", ctx.GeneralName(g)));
+            foreach (var s in c.RewardSkills) parts.Add(ctx.Defs.Skills.TryGetValue(s, out var sd) ? ctx.T(sd.NameKey) : s);
+            foreach (var f in c.RewardFormations) parts.Add(ctx.Defs.Formations.TryGetValue(f, out var fd) ? ctx.T(fd.NameKey) : f);
+            return parts.Count == 0 ? ctx.T("ui.common.none") : string.Join(" · ", parts);
         }
     }
 
