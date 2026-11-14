@@ -50,7 +50,7 @@ namespace Game.Unity.Screens
                 var c = ed.Draft[i];
                 long troops = ed.Troops(i), cap = ed.Cap(i);
                 string line = ctx.T("ui.formation.corpsLine", i + 1, ctx.GeneralName(c.GeneralId), FormationName(ctx, c.Formation), ctx.T("role." + c.Role),
-                    Ui.Colored(troops.ToString("N0"), troops > cap ? Palette.Bad : Palette.Text), cap.ToString("N0"), c.Slots.Count);
+                    Ui.Colored(troops.ToString("N0"), troops > cap ? Palette.Bad : Palette.Text), cap.ToString("N0"), c.Picks.Count);
                 var b = Ui.Button(list, line, () => app.Show(new CorpsEditScreen(index)), 130, Palette.Card, 30);
                 b.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleLeft;
             }

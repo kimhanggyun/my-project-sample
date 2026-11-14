@@ -2,8 +2,8 @@
 
 > 규칙: [collab.md](../../collab.md) 7장. 이 폴더 하나만 쓰고, 새 캡처가 오면 **덮어쓴다**. 폭 540px JPG, LFS 밖.
 
-- 캡처: 2026-11-14 13:09 (01~05, 원본 `captures/20261114_130953`), 13:23 (06, 원본 `captures/20261114_132302`) `Game ▸ Capture All Screens`, 에디터 Play 1080×1920
-- 코드 기준: 01~05 = `main` 1e5dc67 (#144), 06 = `desktop/troops-06`
+- 캡처: 2026-11-14 13:09 (01~05, 원본 `captures/20261114_130953`), 13:23 (06, 원본 `captures/20261114_132302`) `Game ▸ Capture All Screens`, 에디터 Play 1080×1920 / 18:40 (06·07 군대 개편 뒤, 원본 `captures/20261114_184026`)
+- 코드 기준: 01~05 = `main` 1e5dc67 (#144), 06·07 = `desktop/army-v2` (군대 개편 PR 1), 06b = #145·#146
 - 비교 기준: [design/mockups/](../../design/mockups/README.md)의 각 화면 `mock_*.jpg`
 - 지난 전투 확인 캡처(pt*)·기록은 PR #141 README(이 폴더의 이전 판)에.
 
@@ -16,7 +16,8 @@
 | 03 약관 | [03_terms](03_terms.jpg) | [mock_default](../../design/mockups/03_terms/mock_default.jpg) | 맞음. 체크 상자 줄, 맨 위 "전체 동의", "보기 ›" → 본문 화면, 진행 안내 + 꺼진 [동의하고 시작] |
 | 04 메인 틀 + 스토리 | [04_main_story](04_main_story.jpg) | [mock_story](../../design/mockups/04_main_story/mock_story.jpg) | 맞음. 자원 칩·가방/톱니 아이콘 버튼, 띠 배너 자리(광고 꺼짐 → 높이 0), 다음 도전 카드, 깬 스텝 ✓ 줄, 잠긴 스텝 자물쇠 줄 |
 | 05 장수 탭 | [05_main_general](05_main_general.jpg) | [mock_default](../../design/mockups/05_generals/mock_default.jpg) | 맞음. 2열 카드(등급 테두리·꼬리표·Lv·능력치·작은 ⓘ), 정렬 ▾·모집·주홍 ⓘ. 초상 그림이 없어 원 안에 이름 첫 글자 |
-| 06 부대 관리 | [06_main_troop](06_main_troop.jpg) | [mock_list](../../design/mockups/06_troops/mock_list.jpg) | 맞음 (지금 규칙 범위). 병종 그림, 병력(+반투명 부상)·훈련도·결속 게이지, [훈련]·[충원] 2단 버튼, 작은 ⓘ, "승급 n가지 ›". 승급 부대 나무 카드는 규칙 변경 뒤 |
+| 06 부대 관리 | [06_main_troop](06_main_troop.jpg) | [mock_list](../../design/mockups/06_troops/mock_list.jpg) | 군대 개편 뒤: **병종 카드 5개** (예전 부대 13개가 세이브를 읽을 때 병종별로 합쳐짐 — 보병 7,149 등). 계급 십부장(최대 3,000)이라 넘친 병종은 [충원] "가득". 탭은 배포 줄 |
+| 07 부대 편성 (임시판) | [07_main_formation](07_main_formation.jpg) | (07 시안 전) | 예전 세이브의 군단 3개·칸 4~5개라 계급(십부장: 군단 1·칸 1) 초과 오류가 빨갛게 보임 — 정책대로 (출진은 넘는 것을 빼고 나감). 군단 줄 "병종 n칸", 병종 줄 이름 중복은 이 캡처 뒤 고침 |
 | 06 승급 화면 | [06b_troop_promote](06b_troop_promote.jpg) | [mock_detail](../../design/mockups/06_troops/mock_detail.jpg) | 조건 체크 줄·꺼진 [승급]은 맞음. **승급할 인원 줄 없음**(규칙 변경 뒤), 위 자원 바·아래 탭 없음(따로 열리는 화면 — 규칙 작업 때 메인 틀 안으로) |
 
 ## 캡처로 못 본 것 (사람이 눌러 확인)
