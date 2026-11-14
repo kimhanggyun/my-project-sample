@@ -303,9 +303,19 @@ namespace Game.Unity.Boot
         /// <summary>그 스텝 출진에 고른 고용 (다른 스텝으로 가면 새로).</summary>
         public HireDraft HiresFor(string stepId)
         {
-            if (_hires == null || _hireStep != stepId) { _hires = new HireDraft(Defs); _hireStep = stepId; }
+            if (_hires == null || _hireStep != stepId)
+            {
+                _hires = new HireDraft(Defs); _hireStep = stepId;
+                // 용병 탭에서 담아 둔 고용을 이 출진으로 (09, hiring-v2.md 3장)
+                if (_next != null) { _hires.Picks.AddRange(_next.Picks); _next = null; }
+            }
             return _hires;
         }
+
+        private HireDraft _next;
+        /// <summary>용병 탭에서 고른, 다음 출진에 넣을 고용 (09).</summary>
+        public HireDraft NextHires => _next ?? (_next = new HireDraft(Defs));
+        public void ClearNextHires() { _next = null; }
 
         public void ClearHires() { _hires = null; _hireStep = null; }
 

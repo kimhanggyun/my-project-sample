@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Game.Campaign.Roster;
 using Game.Economy;
@@ -10,63 +11,146 @@ using UnityEngine;
 namespace Game.Unity.Screens
 {
     /// <summary>
-    /// 고용 탭 (hiring.md 6장): 등록 목록 (장수 / 부대), 내 등록 해제, 등록하기, 우편함.
-    /// 고용 자체는 스토리 출진 화면에서 한다 (편성에 넣어야 하므로). 목록은 서버에서 받아 오므로 받은 뒤 이 탭을 다시 채운다.
+    /// 용병 탭 (09 시안, hiring-v2.md, R-98 · R-99): 위 탭 용병 고용 · 내 용병 등록.
+    /// 용병 고용 = 등록자(유저)마다 카드 하나 (닉네임 장수 + 그 부대), 빌리는 단위 장수+부대 · 장수만 · 부대만 → [고용 ›]은 다음 출진에 넣을 고용으로 담는다 (출진 준비에서 군단 · 인원을 고칠 수 있다).
+    /// 내 용병 등록 = 닉네임 장수 카드 · 내 등록 해제 · 등록(장수 · 내가 이끄는 부대). 영토 깃발에 나가 있으면 등록 불가.
+    /// 배신 · 반간은 전투 규칙(R-99)과 출진 준비가 다룬다 — 이 화면은 배신을 알려 주지 않는다.
     /// </summary>
     public sealed class HiringTabView : ITabView
     {
-        /// <summary>마지막으로 본 종류 (탭을 다시 열어도 유지).</summary>
-        private static string _kind = HireKinds.General;
+        private static string _tab = "hire";
+        private static string _unit = "both";
 
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
-            Ui.Column(root, 12, 16);
             if (!ctx.HiringAvailable)
             {
+                Ui.Column(root, 12, 16);
                 Ui.Label(root, ctx.T("ui.hire.offline"), Ui.FontBody, TextAnchor.MiddleCenter, Palette.TextDim);
                 return;
             }
-            var kinds = Ui.Row(root, "Kinds", 96, 8);
-            foreach (var k in new[] { HireKinds.General, HireKinds.Unit })
-            {
-                string kind = k;
-                Ui.Button(kinds, ctx.T(kind == HireKinds.General ? "ui.hire.generals" : "ui.hire.units"), () => { _kind = kind; app.ShowMain("hiring"); }, 96,
-                    kind == _kind ? Palette.ButtonActive : Palette.Button, 30);
-            }
-            var tools = Ui.Row(root, "Tools", 88, 8);
-            Ui.Button(tools, ctx.T("ui.hire.register"), () => app.Show(new HireRegisterScreen(_kind)), 88, fontSize: 28);
-            Ui.Button(tools, ctx.T("ui.hire.mail"), () => app.Show(new MailScreen()), 88, fontSize: 28);
-            Ui.Button(tools, ctx.T("ui.hire.refresh"), () => app.ShowMain("hiring"), 88, fontSize: 28);
-            InfoButton.Add(root, ctx.T("ui.hire.note"));
-
-            var list = Ui.ScrollList(root, "Listings", 10, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
-            var loading = Ui.Label(list, ctx.T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-            string shown = _kind;
-            ctx.LoadListings(shown, res =>
-            {
-                if (list == null) return; // 다른 화면으로 갔다
-                Object.Destroy(loading.gameObject);
-                if (res == null) { Ui.Label(list, ctx.T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
-                Ui.Label(list, ctx.T("ui.hire.daily", res.DailyUsed, res.DailyMax), 26, TextAnchor.MiddleLeft, Palette.TextDim);
-                if (res.Listings.Count == 0) Ui.Label(list, ctx.T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-                foreach (var l in res.Listings) ListingCard(app, list, l);
-            });
+            var (header, body, _) = Ui.PageLayout(root, 0);
+            Ui.SegmentTabs(header, new[] { ("hire", ctx.T("ui.merc.tab.hire")), ("mine", ctx.T("ui.merc.tab.mine")) }, _tab, id => { _tab = id; app.ShowMain("hiring"); }, 70, 500);
+            InfoButton.Add(root, ctx.T("ui.merc.note"));
+            if (_tab == "hire") BuildHire(app, root, header, body);
+            else BuildMine(app, root, body);
         }
 
-        private static void ListingCard(GameApp app, RectTransform list, HireListing l)
+        private static void BuildHire(GameApp app, RectTransform root, RectTransform header, RectTransform body)
         {
             var ctx = app.Context;
-            var card = Ui.Card(list, l.Id, 20, 6);
-            bool mine = l.OwnerAccountId != null && l.OwnerAccountId == ctx.AccountId;
-            Ui.Label(card, HireText.Line(ctx, l) + (mine ? "   " + Ui.Colored(ctx.T("ui.hire.mine"), Palette.Good) : ""), Ui.FontSmall);
-            Ui.Label(card, HireText.Price(ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Label(card, HireText.Stats(ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
-            if (l.Recent != null && l.Recent.Count > 0) Ui.Label(card, HireText.Recent(ctx, l), 24, TextAnchor.MiddleLeft, Palette.TextDim);
-            if (!mine) return;
-            string id = l.Id;
-            Ui.Button(card, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, _ => app.ShowMain("hiring")), 72, Palette.Danger, 26);
+            Ui.SegmentTabs(header, new[] { ("both", ctx.T("ui.merc.unit.both")), ("general", ctx.T("ui.merc.unit.general")), ("troops", ctx.T("ui.merc.unit.troops")) }, _unit, id => { _unit = id; app.ShowMain("hiring"); }, 58, 220);
+            var next = ctx.NextHires;
+            if (!next.IsEmpty) Ui.Label(header, ctx.T("ui.merc.queued", next.Picks.Count), 22, TextAnchor.MiddleLeft, Palette.Good);
+            var loading = Ui.Label(body, ctx.T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            ctx.LoadListings(HireKinds.General, gres => ctx.LoadListings(HireKinds.Unit, ures =>
+            {
+                if (body == null) return;
+                Object.Destroy(loading.gameObject);
+                if (gres == null || ures == null) { Ui.Label(body, ctx.T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                Ui.Label(body, ctx.T("ui.hire.daily", gres.DailyUsed, gres.DailyMax), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                // 등록자마다 묶기 (내 등록은 빼고)
+                var owners = new List<string>();
+                var gen = new Dictionary<string, HireListing>();
+                var units = new Dictionary<string, List<HireListing>>();
+                foreach (var l in gres.Listings) { if (l.OwnerAccountId == ctx.AccountId) continue; if (!owners.Contains(l.OwnerAccountId)) owners.Add(l.OwnerAccountId); gen[l.OwnerAccountId] = l; }
+                foreach (var l in ures.Listings)
+                {
+                    if (l.OwnerAccountId == ctx.AccountId) continue;
+                    if (!owners.Contains(l.OwnerAccountId)) owners.Add(l.OwnerAccountId);
+                    if (!units.TryGetValue(l.OwnerAccountId, out var ul)) units[l.OwnerAccountId] = ul = new List<HireListing>();
+                    ul.Add(l);
+                }
+                ctx.LoadNames(owners, () => { });
+                int shown = 0;
+                foreach (var owner in owners)
+                {
+                    gen.TryGetValue(owner, out var g);
+                    units.TryGetValue(owner, out var ul);
+                    if (_unit == "both" && (g == null || ul == null)) continue;
+                    if (_unit == "general" && g == null) continue;
+                    if (_unit == "troops" && ul == null) continue;
+                    shown++;
+                    var card = Ui.Card(body, owner, 20, 6);
+                    var top = Ui.Row(card, "Top", 60, 10);
+                    Ui.Size(Ui.Tag(top, ctx.DisplayName(owner).Substring(0, 1), new Color(0.59f, 0.43f, 0.24f), 30, 56), width: 70);
+                    Ui.Size(Ui.Label(top, ctx.DisplayName(owner) + (g != null ? "  " + ctx.T("ui.hire.generalLine", ctx.T("general.avatar_hired"), g.Level) : ""), Ui.FontSmall), flexibleWidth: 1);
+                    if (g != null && _unit != "troops")
+                    {
+                        Ui.Label(card, HireText.Stats(ctx, g), 22, TextAnchor.MiddleLeft, Palette.Good);
+                        Ui.Label(card, HireText.Price(ctx, g), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                    }
+                    if (ul != null && _unit != "general")
+                        foreach (var u in ul) Ui.Label(card, HireText.Line(ctx, u) + "  ·  " + HireText.Price(ctx, u), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                    var gl = g; var uls = ul;
+                    bool queued = (gl != null && next.Has(gl.Id)) || (uls != null && uls.Exists(x => next.Has(x.Id)));
+                    var b = Ui.Button(card, ctx.T(queued ? "ui.merc.queuedOne" : "ui.merc.hire"), () =>
+                    {
+                        int corps = Mathf.Max(0, ctx.State.CompositionsFor(null).Count - 1);
+                        if (gl != null && _unit != "troops" && !next.Has(gl.Id)) next.Picks.Add(new HirePick { Listing = gl, CorpsIndex = corps });
+                        if (uls != null && _unit != "general")
+                        {
+                            var u0 = uls[0];
+                            if (!next.Has(u0.Id)) next.Picks.Add(new HirePick { Listing = u0, CorpsIndex = corps, Count = System.Math.Min(u0.Troops, 1000) });
+                        }
+                        app.ShowMain("hiring");
+                    }, 76, fontSize: 26);
+                    Ui.SetEnabled(b, !queued);
+                }
+                if (shown == 0) Ui.Label(body, ctx.T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+                if (!next.IsEmpty) Ui.Button(body, ctx.T("ui.merc.clearQueued"), () => { ctx.ClearNextHires(); app.ShowMain("hiring"); }, 72, fontSize: 24);
+            }));
+        }
+
+        private static void BuildMine(GameApp app, RectTransform root, RectTransform body)
+        {
+            var ctx = app.Context;
+            var me = ctx.State.FindGeneral(AvatarGeneral.GeneralId);
+            var card = Ui.Card(body, "Me", 20, 8);
+            if (me == null) { Ui.Label(card, ctx.T("ui.merc.noAvatar"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim); return; }
+            Ui.Label(card, ctx.T("ui.hire.generalLine", ctx.GeneralName(me.GeneralId), me.Level), Ui.FontBody);
+            var corps = TerritoryFlags.CorpsOf(ctx.State, me.GeneralId);
+            var myTypes = new List<string>();
+            if (corps != null) foreach (var p in corps.Picks) { var u = ctx.State.FindUnit(p.UnitId); if (u != null && !myTypes.Contains(u.UnitId)) myTypes.Add(u.UnitId); }
+            Ui.Label(card, corps == null ? ctx.T("ui.merc.noCorps") : ctx.T("ui.merc.myCorps", string.Join(" · ", myTypes.ConvertAll(id => FormationTabView.TroopName(ctx, ctx.State.FindUnit(id).TroopType)))), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            bool onFlag = false;
+            if (TerritoryTabView.Owners != null) foreach (var o in TerritoryTabView.Owners.Values) if (o.OwnerAccountId == ctx.AccountId && o.GeneralId == me.GeneralId) onFlag = true;
+            if (onFlag)
+            {
+                Ui.Label(card, Ui.Colored(ctx.T("ui.merc.blocked"), Palette.Bad), Ui.FontSmall);
+                Ui.Button(card, ctx.T("ui.merc.toTerritory"), () => app.ShowMain("territory"), 72, fontSize: 24);
+            }
+            var row = Ui.Row(card, "Register", 80, 10);
+            var rg = Ui.Button(row, ctx.T("ui.merc.registerGeneral"), () => app.Show(new HirePriceScreen(HireKinds.General, me.GeneralId)), 80, fontSize: 24);
+            Ui.SetEnabled(rg, !onFlag && GeneralStatus.CanDeploy(me.Status));
+            foreach (var id in myTypes)
+            {
+                string uid = id;
+                var ru = Ui.Button(row, ctx.T("ui.merc.registerUnit", FormationTabView.TroopName(ctx, ctx.State.FindUnit(uid).TroopType)), () => app.Show(new HirePriceScreen(HireKinds.Unit, uid)), 80, fontSize: 22);
+                Ui.SetEnabled(ru, !onFlag);
+            }
+            Ui.Button(body, ctx.T("ui.hire.mail"), () => app.Show(new MailScreen(null, "hiring")), 72, fontSize: 24);
+            Ui.Label(body, ctx.T("ui.merc.myListings"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            var loading = Ui.Label(body, ctx.T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            ctx.LoadListings(HireKinds.General, gres => ctx.LoadListings(HireKinds.Unit, ures =>
+            {
+                if (body == null) return;
+                Object.Destroy(loading.gameObject);
+                if (gres == null || ures == null) { Ui.Label(body, ctx.T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                int n = 0;
+                foreach (var l in gres.Listings.Concat(ures.Listings))
+                {
+                    if (l.OwnerAccountId != ctx.AccountId) continue;
+                    n++;
+                    var c = Ui.Card(body, l.Id, 20, 6);
+                    Ui.Label(c, HireText.Line(ctx, l), Ui.FontSmall);
+                    Ui.Label(c, HireText.Price(ctx, l) + "  ·  " + HireText.Stats(ctx, l), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                    string id = l.Id;
+                    Ui.Button(c, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, _ => app.ShowMain("hiring")), 64, Palette.Danger, 24);
+                }
+                if (n == 0) Ui.Label(body, ctx.T("ui.merc.noListings"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            }));
         }
     }
 
@@ -117,7 +201,7 @@ namespace Game.Unity.Screens
             if (_kind == HireKinds.General)
                 foreach (var g in Ctx.State.Generals)
                 {
-                    if (!GeneralStatus.CanDeploy(g.Status)) continue;
+                    if (!GeneralStatus.CanDeploy(g.Status) || g.GeneralId != AvatarGeneral.GeneralId) continue; // 닉네임 장수만 (R-98)
                     string id = g.GeneralId;
                     Ui.Button(list, T("ui.hire.generalLine", Ctx.GeneralName(id), g.Level), () => App.Show(new HirePriceScreen(_kind, id)), 100, Palette.Card, 30);
                 }

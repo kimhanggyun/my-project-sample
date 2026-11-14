@@ -494,6 +494,11 @@ namespace Game.Unity.Screens
 
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(false));
             var sortie = Ui.Card(body, "Sortie");
+            if (_hired != null) Ui.Label(sortie, T("ui.merc.inSortie", _hired.Generals.Count + _hired.Units.Count), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
+            // 반간 (R-99, hiring-v2.md 4장): 내 닉네임 장수가 반간을 알면, 이 깃발 주인의 용병이 섞여 있을 때만 낌새를 알린다
+            var me = Ctx.State.FindGeneral(AvatarGeneral.GeneralId);
+            if (_hired != null && _defense?.OwnerAccountId != null && me != null && me.LearnedSkills.Contains("counterIntrigue") && _hired.GeneralOwners.ContainsValue(_defense.OwnerAccountId))
+                Ui.Label(sortie, Ui.Colored(T("ui.merc.hint"), Palette.Bad), Ui.FontSmall);
             Ui.Label(sortie, T("ui.step.supply", plan.SupplyTaken.ToString("N0"), Ctx.Resource(ResourceIds.Supply).ToString("N0")), Ui.FontSmall);
             foreach (var err in plan.Errors) Ui.Label(sortie, Ui.Colored(err, Palette.Bad), Ui.FontSmall);
 
@@ -505,7 +510,17 @@ namespace Game.Unity.Screens
             Ui.SetEnabled(delegated, plan.Ok && Ctx.OnlineEnabled);
         }
 
-        private SortieRequest Request(bool delegate_) => new SortieRequest { StepId = StepId, Seed = Ctx.NewSeed(), Delegate = delegate_, Location = _location, Defense = _defense };
+        private HiredForces _hired;
+        private List<Game.Campaign.Roster.CorpsComposition> _comps;
+
+        private SortieRequest Request(bool delegate_)
+        {
+            // 용병 탭에서 담은 고용도 이 공성전에 (09)
+            var step = Ctx.Flow.LoadStep(StepId);
+            var (comps, hired) = Ctx.HiresFor(StepId).Build(Ctx.State, step.BattleType, Ctx.AccountId, out _);
+            _hired = hired; _comps = hired == null ? null : comps;
+            return new SortieRequest { StepId = StepId, Seed = Ctx.NewSeed(), Delegate = delegate_, Location = _location, Defense = _defense, Hired = _hired, Compositions = _comps };
+        }
 
         private void Sortie(StepDef step, bool delegate_)
         {
