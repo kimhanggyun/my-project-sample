@@ -116,6 +116,20 @@ namespace Game.Unity.Screens
         private readonly List<Button> _orderButtons = new List<Button>();
         private string _skillRowKey;
 
+        // ---- 19 시안: 군단 카드 위 명령 줄 · 여러 군단 고르기 · 대상 고르기 · 작전 시간 (18) ----
+        private RectTransform _cmdBar;
+        private string _cmdMenu = "root";
+        private string _cmdBarKey;
+        private readonly List<string> _multi = new List<string>();
+        /// <summary>대상 고르는 중: enemy / point / ally / path (null = 아님).</summary>
+        private string _pickMode;
+        private string _pickKind;
+        private string _lureTarget;
+        private readonly List<Vec> _path = new List<Vec>();
+        private bool _planning;
+        private Button _advanceAllButton;
+        private readonly Dictionary<CorpsState, (RectTransform troop, RectTransform morale, Text lost, Outline outline)> _cardGauges = new Dictionary<CorpsState, (RectTransform, RectTransform, Text, Outline)>();
+
         /// <summary>녹화 재생 (replay.md 3장): 명령은 기록대로, 화면 입력은 받지 않는다. 끝나면 내 녹화 목록으로.</summary>
         private readonly ReplayPlayback _playback;
         private int _nextCommand;
@@ -338,14 +352,26 @@ namespace Game.Unity.Screens
             _enemyInfo = Ui.Label(_panelBody, "", 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Size(_enemyInfo, 32);
 
-            // ⑤ 하단: 전군 진군 + 군단 카드
-            var bottom = Ui.Row(Root, "Cards", CardHeight, 6);
-            Ui.Size(Ui.Button(bottom, T("ui.cmd.advanceAll"), () => Report(_ctl.AdvanceAll() > 0), CardHeight, Palette.ButtonActive, 26), width: 180);
+            // 19 시안: 명령 버튼 패널은 숨기고 (전장을 덜 가리게) 군단 카드 위 명령 줄로
+            panel.gameObject.SetActive(false);
+            _cmdBar = Ui.Row(Root, "CommandBar", 92, 6);
+            Ui.Background(_cmdBar, Palette.Bar);
+            _cmdBar.gameObject.SetActive(false);
+
+            // ⑤ 하단: 전군 진군(작전 시간엔 전투 시작) + 작은 군단 카드 (병력 게이지 · 잃은 비율 · 사기)
+            var bottom = Ui.Row(Root, "Cards", CardHeight + 40, 6);
+            _advanceAllButton = Ui.Button(bottom, T("ui.cmd.advanceAll"), () => { if (_planning) StartBattle(); else Report(_ctl.AdvanceAll() > 0); }, CardHeight + 40, Palette.ButtonActive, 26);
+            Ui.Size(_advanceAllButton, width: 170);
             foreach (var c in _ctl.OwnCorps())
             {
                 var corps = c;
-                var b = Ui.Button(bottom, "", () => { if (_ctl.Select(corps.Id)) { _field.LookAt(corps); OpenCorpsMenu(corps); } _dirty = true; }, CardHeight, fontSize: 22);
-                _cards.Add((corps, b, b.GetComponentInChildren<Text>()));
+                var b = Ui.Button(bottom, "", () => OnCard(corps), CardHeight + 40, fontSize: 20);
+                var text = b.GetComponentInChildren<Text>();
+                text.alignment = TextAnchor.UpperLeft;
+                text.rectTransform.offsetMin = new Vector2(10, 34);
+                text.rectTransform.offsetMax = new Vector2(-6, -4);
+                _cards.Add((corps, b, text));
+                _cardGauges[corps] = CardGauges((RectTransform)b.transform);
             }
 
             if (IsReplay)
@@ -361,9 +387,16 @@ namespace Game.Unity.Screens
             if (_resumedSim == null && _replaySim == null) _field.Frame(_ctl.OwnCorps());
             else _field.LookAt(_ctl.Selected ?? FirstOfViewTeam());
             ReadNewEvents();
+            // 18 시안: 새 전투는 승패 조건 카드 → 멈춘 채 작전 시간 → [전투 시작]
+            if (!IsReplay && !_autoFinish && _resumedSim == null && _sim.Tick == 0)
+            {
+                _planning = true;
+                _paused = true;
+                ShowConditions();
+            }
             Refresh();
-            // 처음 안내 (R-62): 직접 지휘할 때만, 읽는 동안 멈춘다
-            if (!IsReplay && !_autoFinish && !_paused && GuideOverlay.Show(App, Root, "screen.battle", () => { _paused = false; _dirty = true; }, "ui.guide.continue"))
+            // 처음 안내 (R-62): 직접 지휘할 때만, 읽는 동안 멈춘다 (작전 시간이면 조건 카드를 닫은 뒤)
+            if (!_planning && !IsReplay && !_autoFinish && !_paused && GuideOverlay.Show(App, Root, "screen.battle", () => { _paused = false; _dirty = true; }, "ui.guide.continue"))
             {
                 _paused = true;
                 _dirty = true;
@@ -444,6 +477,7 @@ namespace Game.Unity.Screens
         {
             if (_finished || IsReplay) return;
             if (!_field.ScreenToField(screen, out var point)) { if (_radial.IsOpen) CloseCorpsMenu(); return; }
+            if (_pickMode != null) { PickAt(point); return; } // 19 시안: 명령 줄에서 고른 명령의 대상
             // 이동 지점 고르는 중: 아군 군단이 아니면 그 자리에 방식 고리 (다른 곳을 누르면 그리로 옮김)
             if (_pickingPoint && _ctl.CanCommand(_ctl.Selected))
             {
@@ -457,7 +491,7 @@ namespace Game.Unity.Screens
             if (hitEnemy != null && hitEnemy.Team != _ctl.Team) _inspected = hitEnemy; // 적 정보 줄에 보인다
             var r = _ctl.Tap(point);
             OnTap(r);
-            if (r == TapResult.Selected) OpenCorpsMenu(_ctl.Selected); // 아군 군단을 누르면 원형 메뉴
+            if (r == TapResult.Selected) SelectOnly(_ctl.Selected); // 아군 군단을 누르면 그 군단만 고르고 명령 줄 (19 시안)
         }
 
         private void OnTap(TapResult r)
@@ -848,7 +882,12 @@ namespace Game.Unity.Screens
             return arrows[i];
         }
 
-        private void TogglePause() { _paused = !_paused; _dirty = true; }
+        private void TogglePause()
+        {
+            if (_planning) { StartBattle(); return; }
+            _paused = !_paused;
+            _dirty = true;
+        }
         /// <summary>개발 도구용 (PlayTestTour): 조작·시뮬레이션·배속.</summary>
         internal BattleControl DebugControl => _ctl;
         internal BattleSimulation DebugSim => _sim;
@@ -1184,12 +1223,9 @@ namespace Game.Unity.Screens
             RefreshEnemyInfo(sel);
             RefreshSkills(can);
 
-            foreach (var (corps, button, text) in _cards)
-            {
-                string line = GeneralOf(corps) + "\n" + corps.Troops.ToString("N0") + (corps.Delegated ? " " + T("ui.battle.delegated") : "");
-                text.text = corps.InBattle ? line : Ui.Colored(line + "\n" + T("ui.corps." + StatusKey(corps.Status)), Palette.TextDim);
-                Ui.Recolor(button, corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled);
-            }
+            RefreshCards(sel);
+            RefreshCommandBar();
+            if (_advanceAllButton != null) SetLabel(_advanceAllButton, _planning ? T("ui.battle.startBattle") : T("ui.cmd.advanceAll"));
 
             RefreshAimBar();
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
@@ -1344,6 +1380,346 @@ namespace Game.Unity.Screens
         }
 
         private static void SetLabel(Button b, string text) => b.GetComponentInChildren<Text>().text = text;
+
+        // ======== 18 · 19 시안 ========
+
+        /// <summary>승패 조건 카드 (18 시안): 이기려면 (초록) · 지면 (빨강) · [작전 시작 ›].</summary>
+        private void ShowConditions()
+        {
+            var ctx = _sim.Context;
+            var dim = Ui.Rect(Root, "CondDim");
+            dim.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Ui.Fill(dim);
+            Ui.Background(dim, new Color(0f, 0f, 0f, 0.55f));
+            var box = Ui.Rect(dim, "Cond");
+            box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
+            box.sizeDelta = new Vector2(960, 860);
+            Ui.Round(Ui.Background(box, Palette.Background));
+            Ui.Column(box, 14, 34);
+            Ui.Size(Ui.Label(box, T(_plan?.Step?.NameKey ?? "ui.battle.plan"), 46, TextAnchor.MiddleCenter), 80);
+            var win = new List<string>();
+            var lose = new List<string>();
+            foreach (var id in ctx.Setup.DefeatConditions)
+            {
+                if (id == Game.Battle.Model.Victory.VictoryConditionIds.HoldOut && ctx.Setup.HoldOut != null)
+                {
+                    long min = ctx.Setup.HoldOut.Seconds.CeilToLong() / 60;
+                    if (ctx.Setup.HoldOut.Team == _ctl.Team) win.Add(T("ui.battle.cond.holdOut.win", min)); else lose.Add(T("ui.battle.cond.holdOut.lose", min));
+                    continue;
+                }
+                if (id == Game.Battle.Model.Victory.VictoryConditionIds.Zone)
+                {
+                    foreach (var o in ctx.Objects)
+                        if (o.Setup.Type == Game.Battle.Model.Victory.MapObjectSetup.Zone)
+                        {
+                            if (o.Setup.Team == _ctl.Team) win.Add(T("ui.battle.cond.zone.win", o.Setup.Seconds.FloorToLong())); else lose.Add(T("ui.battle.cond.zone.lose", o.Setup.Seconds.FloorToLong()));
+                        }
+                    continue;
+                }
+                if (Ctx.Defs.Strings.ContainsKey("ui.battle.cond." + id + ".win")) win.Add(T("ui.battle.cond." + id + ".win"));
+                if (Ctx.Defs.Strings.ContainsKey("ui.battle.cond." + id + ".lose")) lose.Add(T("ui.battle.cond." + id + ".lose"));
+            }
+            lose.Add(T("ui.battle.cond.time", (Setup.MaxMinutes).FloorToLong()));
+            CondCard(box, T("ui.battle.cond.win"), win, new Color(0.86f, 0.93f, 0.84f), Palette.Good);
+            CondCard(box, T("ui.battle.cond.lose"), lose, new Color(0.96f, 0.86f, 0.83f), Palette.Bad);
+            Ui.Spacer(box, 0, 1);
+            Ui.Styled(Ui.PrimaryButton(box, T("ui.battle.cond.start"), () =>
+            {
+                Object.Destroy(dim.gameObject);
+                Notice(T("ui.battle.planNote"));
+                GuideOverlay.Show(App, Root, "screen.battle", () => { _dirty = true; }, "ui.guide.continue");
+                _dirty = true;
+            }, 110), "button.primary");
+        }
+
+        private static void CondCard(RectTransform box, string head, List<string> lines, Color back, Color accent)
+        {
+            var card = Ui.Card(box, head, 18, 4);
+            card.GetComponent<Image>().color = back;
+            Ui.Label(card, Ui.Colored(head, accent), 30);
+            foreach (var l in lines) Ui.Label(card, "· " + l, 26, TextAnchor.MiddleLeft, Palette.Text);
+        }
+
+        /// <summary>작전 시간 끝 → 전투 시작 (멈춤 풀기).</summary>
+        private void StartBattle()
+        {
+            _planning = false;
+            _paused = false;
+            Notice(T("ui.battle.started"));
+            _dirty = true;
+        }
+
+        /// <summary>군단 카드 아래 병력 게이지(남은 초록 · 잃은 옅은 빨강) · 사기 막대 · 잃은 비율 글자, 고른 표시 테두리.</summary>
+        private static (RectTransform troop, RectTransform morale, Text lost, Outline outline) CardGauges(RectTransform card)
+        {
+            RectTransform Bar(float y, float h, Color back)
+            {
+                var bar = Ui.Rect(card, "Bar");
+                bar.anchorMin = new Vector2(0f, 0f);
+                bar.anchorMax = new Vector2(1f, 0f);
+                bar.pivot = new Vector2(0.5f, 0f);
+                bar.offsetMin = new Vector2(10, y);
+                bar.offsetMax = new Vector2(-10, y + h);
+                var bg = Ui.Background(bar, back);
+                bg.raycastTarget = false;
+                var fill = Ui.Rect(bar, "Fill");
+                fill.anchorMin = Vector2.zero;
+                fill.anchorMax = Vector2.one;
+                fill.offsetMin = fill.offsetMax = Vector2.zero;
+                return fill;
+            }
+            var troop = Bar(18, 12, new Color(0.85f, 0.45f, 0.4f, 0.55f));
+            Ui.Background(troop, Palette.Good).raycastTarget = false;
+            var morale = Bar(6, 6, new Color(0f, 0f, 0f, 0.35f));
+            Ui.Background(morale, new Color(0.95f, 0.65f, 0.25f)).raycastTarget = false;
+            var lost = Ui.Label(card, "", 18, TextAnchor.LowerRight, Palette.Bad);
+            lost.raycastTarget = false;
+            lost.rectTransform.anchorMin = new Vector2(0f, 0f);
+            lost.rectTransform.anchorMax = new Vector2(1f, 0f);
+            lost.rectTransform.pivot = new Vector2(0.5f, 0f);
+            lost.rectTransform.offsetMin = new Vector2(8, 30);
+            lost.rectTransform.offsetMax = new Vector2(-8, 54);
+            var outline = card.gameObject.AddComponent<Outline>();
+            outline.effectColor = Palette.Bad;
+            outline.effectDistance = new Vector2(4, -4);
+            outline.enabled = false;
+            return (troop, morale, lost, outline);
+        }
+
+        private void RefreshCards(CorpsState sel)
+        {
+            foreach (var (corps, button, text) in _cards)
+            {
+                bool picked = _multi.Contains(corps.Id);
+                string mark = (corps.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander ? "★" : "") + (picked ? "✓ " : "");
+                string line = mark + GeneralOf(corps) + (corps.Delegated ? " " + T("ui.battle.delegated") : "") + "\n" + corps.Troops.ToString("N0") + "/" + corps.StartTroops.ToString("N0");
+                text.text = corps.InBattle ? line : Ui.Colored(line + "\n" + T("ui.corps." + StatusKey(corps.Status)), Palette.TextDim);
+                Ui.Recolor(button, picked || corps == sel ? Palette.ButtonActive : corps.InBattle ? Palette.Button : Palette.ButtonDisabled);
+                if (!_cardGauges.TryGetValue(corps, out var g)) continue;
+                float ratio = corps.StartTroops <= 0 ? 0f : Mathf.Clamp01((float)corps.Troops / corps.StartTroops);
+                g.troop.anchorMax = new Vector2(ratio, 1f);
+                g.morale.anchorMax = new Vector2(Mathf.Clamp01((float)corps.Morale.ToDisplayDouble() / 100f), 1f);
+                long lostN = corps.StartTroops - corps.Troops;
+                g.lost.text = lostN > 0 ? T("ui.battle.lost", lostN.ToString("N0"), corps.StartTroops <= 0 ? 0 : lostN * 100 / corps.StartTroops) : "";
+                g.outline.enabled = picked || (ratio < 0.3f && corps.InBattle); // 고름 = 빨간 테두리, 병력이 적어도 빨간 테두리 (위험)
+            }
+        }
+
+        /// <summary>군단 카드: 누를 때마다 고르기 켜고 끄기 (여러 군단, 19 시안). 엄호 대상 고르는 중이면 그 군단을 대상으로.</summary>
+        private void OnCard(CorpsState corps)
+        {
+            if (IsReplay) return;
+            if (_pickMode == "ally") { FinishAlly(corps); return; }
+            if (_multi.Contains(corps.Id)) _multi.Remove(corps.Id);
+            else if (_ctl.CanCommand(corps)) _multi.Add(corps.Id);
+            if (_multi.Count > 0) { _ctl.Select(_multi[_multi.Count - 1]); _field.LookAt(_ctl.Selected); }
+            else _ctl.ClearSelection();
+            _cmdMenu = "root";
+            CancelPick();
+            _dirty = true;
+        }
+
+        private void SelectOnly(CorpsState corps)
+        {
+            _multi.Clear();
+            if (corps != null && _ctl.CanCommand(corps)) _multi.Add(corps.Id);
+            _cmdMenu = "root";
+            CancelPick();
+            _dirty = true;
+        }
+
+        /// <summary>지금 명령을 받을 군단 (여러 군단 고름, 없으면 고른 군단 하나).</summary>
+        private List<string> Chosen()
+        {
+            var list = new List<string>();
+            foreach (var id in _multi) { var c = _sim.Context.FindCorps(id); if (_ctl.CanCommand(c)) list.Add(id); }
+            if (list.Count == 0 && _ctl.CanCommand(_ctl.Selected)) list.Add(_ctl.Selected.Id);
+            return list;
+        }
+
+        private void CancelPick()
+        {
+            _pickMode = null;
+            _pickKind = null;
+            _lureTarget = null;
+            _path.Clear();
+        }
+
+        private void BeginPick(string mode, string kind, string hintKey)
+        {
+            _pickMode = mode;
+            _pickKind = kind;
+            _path.Clear();
+            Notice(T(hintKey));
+            _dirty = true;
+        }
+
+        private void Done(int n, string kindKey)
+        {
+            Notice(n > 0 ? (n > 1 ? T("ui.battle.together", n) + " · " : "") + T("ui.battle.cmd." + kindKey) : T("ui.cmd.rejected"));
+            CancelPick();
+            _cmdMenu = "root";
+            _dirty = true;
+        }
+
+        /// <summary>대상 고르는 중의 누름 (적 · 땅 · 아군 · 경로 점).</summary>
+        private void PickAt(Vec point)
+        {
+            var ids = Chosen();
+            if (ids.Count == 0) { CancelPick(); _dirty = true; return; }
+            var hit = _ctl.Pick(point);
+            bool enemy = hit != null && hit.Team != _ctl.Team && _ctl.Sees(hit);
+            switch (_pickMode)
+            {
+                case "enemy":
+                    if (!enemy) { Notice(T("ui.battle.pickTarget")); return; }
+                    if (_pickKind == AttackModes.Lure) { _lureTarget = hit.Id; BeginPick("point", "lureBack", "ui.battle.pickBack"); return; }
+                    if (_pickKind == AttackModes.Normal && ids.Count > 1) { Done(_ctl.Volley(ids, hit.Id), "volley"); return; }
+                    string mode = _pickKind;
+                    Done(_ctl.ForEach(ids, () => _ctl.AttackWith(hit.Id, mode)), mode == AttackModes.Normal ? "attack" : mode);
+                    return;
+                case "point":
+                    if (_pickKind == "lureBack") { string t = _lureTarget; Done(_ctl.ForEach(ids, () => _ctl.Lure(t, point)), "lure"); return; }
+                    if (_pickKind == "rally") { Done(_ctl.Rally(ids, point), "rally"); return; }
+                    if (_pickKind == "guard") { Done(_ctl.ForEach(ids, () => _ctl.Guard(point)), "guard"); return; }
+                    string mm = _pickKind;
+                    Done(_ctl.ForEach(ids, () => _ctl.MoveTo(point, mm)), mm == MoveModes.Normal ? "move" : mm);
+                    return;
+                case "ally":
+                    if (hit != null && hit.Team == _ctl.Team) FinishAlly(hit);
+                    else Notice(T("ui.battle.pickAlly"));
+                    return;
+                case "path":
+                    if (enemy) { FinishPath(hit.Id); return; }
+                    if (_path.Count >= _sim.Context.Combat.OrderQueueMax) { Notice(T("ui.battle.pathFull")); return; }
+                    _path.Add(point);
+                    Notice(T("ui.battle.pathPoint", _path.Count));
+                    _dirty = true;
+                    return;
+            }
+        }
+
+        private void FinishAlly(CorpsState ally)
+        {
+            var ids = Chosen();
+            ids.Remove(ally.Id);
+            Done(_ctl.ForEach(ids, () => _ctl.Escort(ally.Id)), "escort");
+        }
+
+        private void FinishPath(string endTarget)
+        {
+            if (_path.Count == 0 && endTarget == null) { CancelPick(); _dirty = true; return; }
+            var pts = new List<Vec>(_path);
+            if (pts.Count == 0 && endTarget != null) { var t = _sim.Context.FindCorps(endTarget); if (t != null) pts.Add(t.Anchor); }
+            string mode = _pickKind ?? MoveModes.Normal;
+            int n = 0;
+            _ctl.ForEach(Chosen().GetRange(0, 1), () => (n = _ctl.Path(pts, mode, endTarget)) > 0);
+            Done(n > 0 ? 1 : 0, "path");
+        }
+
+        /// <summary>명령 줄 (19 시안): 고른 군단에 맞는 것만, 하위는 그 자리에서 바뀜 ([‹] 뒤로), 대상 고르는 중엔 안내 + [취소], 오른쪽 끝 위임 · 예약.</summary>
+        private void RefreshCommandBar()
+        {
+            if (_cmdBar == null) return;
+            var ids = IsReplay ? new List<string>() : Chosen();
+            var corps = new List<CorpsState>();
+            foreach (var id in ids) corps.Add(_sim.Context.FindCorps(id));
+            var key = new StringBuilder(_cmdMenu).Append('|').Append(_pickMode).Append('|').Append(_path.Count).Append('|').Append(_ctl.Queueing).Append('|').Append(_planning);
+            foreach (var c in corps) key.Append('|').Append(c.Id).Append(c.Delegated);
+            if (_cmdMenu == "skill") foreach (var s in _ctl.Skills()) key.Append('|').Append(s.SkillId).Append(s.Affordable);
+            if (key.ToString() == _cmdBarKey) return;
+            _cmdBarKey = key.ToString();
+            Ui.Clear(_cmdBar);
+            _cmdBar.gameObject.SetActive(ids.Count > 0);
+            if (ids.Count == 0) return;
+            bool single = ids.Count == 1;
+            bool delegated = corps.TrueForAll(c => c.Delegated);
+
+            if (_pickMode != null)
+            {
+                string hint = _pickMode == "enemy" ? "ui.battle.pickTarget" : _pickMode == "ally" ? "ui.battle.pickAlly" : _pickMode == "path" ? "ui.battle.drawPath" : _pickKind == "lureBack" ? "ui.battle.pickBack" : "ui.battle.pickPoint";
+                Ui.Size(Ui.Label(_cmdBar, (single ? "" : T("ui.battle.together", ids.Count) + " · ") + T(hint) + (_pickMode == "path" ? "  " + _path.Count : ""), 26, TextAnchor.MiddleLeft, Palette.PromptText), flexibleWidth: 1);
+                if (_pickMode == "path") Ui.Size(Ui.Button(_cmdBar, T("ui.battle.thisPath"), () => FinishPath(null), 80, Palette.ButtonActive, 24), width: 170);
+                Ui.Size(Ui.Button(_cmdBar, T("ui.aim.cancel"), () => { CancelPick(); Notice(T("ui.cmd.cancelled")); _dirty = true; }, 80, fontSize: 24), width: 130);
+                return;
+            }
+
+            var row = Ui.HScrollRow(_cmdBar, "Commands", 92, 6, 4);
+            Ui.Size(row.parent.parent, 92, -1, -1, 1);
+            void Btn(string label, System.Action act, bool enabled = true, bool sub = false)
+            {
+                var b = Ui.Button(row, label + (sub ? " ›" : ""), () => { act(); _dirty = true; }, 84, fontSize: 24);
+                Ui.Size(b, 84, 124);
+                Ui.SetEnabled(b, enabled && !delegated);
+            }
+            void Menu(string m) { _cmdMenu = m; _dirty = true; }
+            if (_cmdMenu != "root") Btn("‹", () => Menu("root"));
+            bool allRanged = corps.TrueForAll(c => c.Units.Exists(u => u.Alive && u.Troop.HasTag("ranged")));
+            switch (_cmdMenu)
+            {
+                case "attack":
+                    Btn(T(single ? "ui.battle.cmd.attack" : "ui.battle.cmd.volley"), () => BeginPick("enemy", AttackModes.Normal, "ui.battle.pickTarget"));
+                    Btn(T("ui.battle.cmd.charge"), () => BeginPick("enemy", AttackModes.Charge, "ui.battle.pickTarget"));
+                    Btn(T("ui.battle.cmd.standoff"), () => BeginPick("enemy", AttackModes.Standoff, "ui.battle.pickTarget"), allRanged);
+                    Btn(T("ui.battle.cmd.lure"), () => BeginPick("enemy", AttackModes.Lure, "ui.battle.pickTarget"), single);
+                    break;
+                case "move":
+                    Btn(T("ui.battle.cmd.move"), () => BeginPick("point", MoveModes.Normal, "ui.battle.pickPoint"));
+                    Btn(T("ui.battle.cmd.forced"), () => BeginPick("point", MoveModes.Forced, "ui.battle.pickPoint"));
+                    Btn(T("ui.battle.cmd.stealth"), () => BeginPick("point", MoveModes.Stealth, "ui.battle.pickPoint"));
+                    Btn(T("ui.battle.cmd.rally"), () => BeginPick("point", "rally", "ui.battle.pickPoint"), !single);
+                    Btn(T("ui.battle.cmd.path"), () => BeginPick("path", MoveModes.Normal, "ui.battle.drawPath"), single);
+                    Btn(T("ui.battle.cmd.pathStealth"), () => BeginPick("path", MoveModes.Stealth, "ui.battle.drawPath"), single);
+                    break;
+                case "skill":
+                    foreach (var sk in _ctl.Skills())
+                    {
+                        string id = sk.SkillId;
+                        Btn(T(sk.NameKey) + " " + sk.Cost.FloorToLong(), () => PressSkill(id), sk.Affordable);
+                    }
+                    break;
+                case "formation":
+                    foreach (var f in _ctl.Formations())
+                    {
+                        string id = f;
+                        bool now = corps.TrueForAll(c => c.Formation.Id == id);
+                        Btn(_sim.Context.Defs.Formations.TryGetValue(id, out var fd) ? T(fd.NameKey) : id, () => Done(_ctl.ForEach(ids, () => _ctl.ChangeFormation(id)), "formation"), !now);
+                    }
+                    break;
+                case "wait":
+                    Btn(T("ui.battle.cmd.hold"), () => Done(_ctl.ForEach(ids, () => _ctl.Hold()), "hold"));
+                    Btn(T("ui.battle.cmd.rest"), () => Done(_ctl.ForEach(ids, () => _ctl.Rest()), "rest"));
+                    Btn(T("ui.battle.cmd.coordinate"), () => Done(_ctl.ForEach(ids, () => _ctl.Coordinate()), "coordinate"));
+                    Btn(T("ui.battle.cmd.guard"), () => BeginPick("point", "guard", "ui.battle.pickPoint"));
+                    Btn(T("ui.battle.cmd.escort"), () => BeginPick("ally", "escort", "ui.battle.pickAlly"), _ctl.OwnCorps().Count > ids.Count);
+                    break;
+                case "retreat":
+                    Btn(T("ui.battle.cmd.fallBack"), () => Done(_ctl.ForEach(ids, () => _ctl.FallBack()), "fallBack"));
+                    Btn(T("ui.battle.cmd.withdraw"), () => Ui.Confirm(Root, T("ui.battle.cmd.withdraw"), T("ui.battle.withdrawConfirm"), T("ui.battle.cmd.withdraw"),
+                        () => Done(_ctl.ForEach(ids, () => _ctl.Retreat()), "withdraw"), (T("ui.common.cancel"), () => { })));
+                    break;
+                default:
+                    Btn(T("ui.battle.cmd.attack"), () => Menu("attack"), true, true);
+                    Btn(T("ui.battle.cmd.move"), () => Menu("move"), true, true);
+                    if (single && _ctl.Skills().Count > 0) Btn(T("ui.battle.cmd.skill"), () => Menu("skill"), true, true);
+                    if (_ctl.Formations().Count > 1) Btn(T("ui.battle.cmd.formation"), () => Menu("formation"), true, true);
+                    Btn(T("ui.battle.cmd.wait"), () => Menu("wait"), true, true);
+                    Btn(T("ui.battle.cmd.retreat"), () => Menu("retreat"), true, true);
+                    break;
+            }
+            // 오른쪽 끝 고정: 위임 · 예약
+            var toggles = Ui.Rect(_cmdBar, "Toggles");
+            Ui.Size(toggles, 92, 136);
+            Ui.Column(toggles, 4, 2);
+            var dlg = Ui.Button(toggles, T("ui.battle.delegateShort"), () =>
+            {
+                bool on = !delegated;
+                _ctl.ForEach(ids, () => _ctl.SetDelegate(on));
+                _dirty = true;
+            }, 42, delegated ? Palette.ButtonActive : (Color?)null, 20);
+            var q = Ui.Button(toggles, T("ui.battle.queueShort", _ctl.QueueCount), () => { _ctl.SetQueueing(!_ctl.Queueing); _dirty = true; }, 42, _ctl.Queueing ? Palette.ButtonActive : (Color?)null, 20);
+            Ui.SetEnabled(q, !delegated);
+        }
 
         private static string StatusKey(CorpsStatus s)
         {
