@@ -72,6 +72,7 @@ namespace Game.Flow
         {
             if (!CanDisband(state, unitId)) return false;
             state.Units.Remove(state.FindUnit(unitId));
+            foreach (var u in state.Units) if (u.ParentUnitId == unitId) u.ParentUnitId = null; // 승급 부대는 기본 부대가 없어지면 맨 위 부대로
             return true;
         }
 
@@ -84,7 +85,7 @@ namespace Game.Flow
         }
 
         /// <summary>"u" + 두 자리 이상 번호. 지금 있는 번호 중 가장 큰 것 + 1.</summary>
-        private static string NextUnitId(CampaignState state)
+        internal static string NextUnitId(CampaignState state)
         {
             int max = 0;
             foreach (var u in state.Units)

@@ -49,7 +49,7 @@ namespace Game.Flow
             Register(new Handler(ActionKinds.UnitDisband, (s, a) => troops.Disband(s, a.UnitId)));
             var growth = new TroopGrowthService(defs);
             Register(new Handler(ActionKinds.UnitTrain, (s, a) => growth.Train(s, a.UnitId)));
-            Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType)));
+            Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType, a.Count)));
             var gacha = new GachaService(defs);
             Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
             var practice = new PracticeService(defs);
@@ -172,7 +172,8 @@ namespace Game.Flow
 
         public static PlayerAction TrainUnit(string unitId) => new PlayerAction { Kind = ActionKinds.UnitTrain, UnitId = unitId };
         public static PlayerAction LimitBreak(string generalId) => new PlayerAction { Kind = ActionKinds.GeneralLimitBreak, GeneralId = generalId };
-        public static PlayerAction PromoteUnit(string unitId, string to) => new PlayerAction { Kind = ActionKinds.UnitPromote, UnitId = unitId, TroopType = to };
+        /// <param name="count">승급할 인원 (0 = 지금 병력 전부, 예전 행동과 같음).</param>
+        public static PlayerAction PromoteUnit(string unitId, string to, long count = 0) => new PlayerAction { Kind = ActionKinds.UnitPromote, UnitId = unitId, TroopType = to, Count = count };
 
         public static PlayerAction DrawGacha(string bannerId, int count, ulong seed) =>
             new PlayerAction { Kind = ActionKinds.GachaDraw, BannerId = bannerId, Count = count, Seed = seed };

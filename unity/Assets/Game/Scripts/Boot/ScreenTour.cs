@@ -41,7 +41,7 @@ namespace Game.Unity.Boot
                 ("09_main_hiring", () => new MainScreen("hiring"), 0f),
                 ("10_step", () => new StepScreen(FirstStep()), 0f),
             };
-            if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => new TroopPromoteScreen(Ctx.State.Units[0].UnitId), 0f)); // 시안 06 승급 화면
+            if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => { TroopGrowthTabView.PreparePromote(Ctx.State.Units[0].UnitId); return new MainScreen("troop"); }, 0f)); // 시안 06 승급 화면
             if (Ctx.State.Generals.Count > 0) shots.Add(("11_general", () => new GeneralScreen(Ctx.State.Generals[0].GeneralId), 0f));
             shots.Add(("12_gacha", () => new GachaScreen(), 0f));
             shots.Add(("13_codex", () => new CodexScreen(), 0f));

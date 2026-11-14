@@ -70,6 +70,8 @@ namespace Game.Campaign.Roster
         public long WoundedRecoverAtUnixSeconds { get; set; }
         public Fix Training { get; set; }
         public Fix Cohesion { get; set; }
+        /// <summary>승급으로 갈라져 나온 부대면 그 기본(위) 부대 id (troop-growth.md 2장, R-52). 기본 부대는 null.</summary>
+        public string ParentUnitId { get; set; }
     }
 
     /// <summary>군단 편성: 장수 1명 + 소부대 칸 6개 (칸 id → 부대 id).</summary>
