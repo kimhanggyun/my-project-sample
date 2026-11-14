@@ -78,6 +78,7 @@
 ## 3. 주의
 
 - 모델은 **메시 하나만** 쓴다 (여러 조각으로 된 모델은 첫 조각만). 조각이 여러 개면 Unity에서 하나로 합치거나 다른 모델을 고른다.
+- **모델 가져오기 설정 Read/Write(`isReadable`)를 켠다** (2026-11-14): #129의 굽기가 `Mesh.CombineMeshes`를 쓰므로, 꺼져 있으면 `Cannot combine mesh that does not allow access`로 그 모델이 통째로 빠진다 (병사·나무가 사라진 원인). 새 모델을 넣으면 `.meta`의 `isReadable: 1` 확인.
 - 폰 성능: 병사 모델은 **삼각형 500개 이하**의 로우폴리를 고른다 (화면 병사 수백 명 × 모델).
 - `Resources` 폴더의 파일은 모두 빌드에 들어간다. 쓰지 않는 모델은 넣지 않는다.
 - 모델 파일은 저장소에 올려도 된다 (CC0). 올리면 라이선스 파일(License.txt)을 같은 폴더에 함께 둔다.
@@ -96,8 +97,9 @@
 | `Art/Models/soldier_scout.obj` | Blocky `character-r` + Mini `weapon-sword`(작게) | 232 | 검은 옷·복면(닌자풍) 네모 사람, 짧은 칼. 정찰병 |
 | `Art/Models/soldier_engineer.obj` | Blocky `character-k` + [Pirate Kit](https://kenney.nl/assets/pirate-kit) `tool-shovel` | 408 | 붉은 웃옷 네모 사람, 오른손에 삽. 공병 |
 | (기병·기본 병사 없음) | — | — | **일부러 비움**: `soldier_cavalry`·`soldier`가 없으면 코드로 만든 말 탄 인형을 그대로 쓴다 (네모 사람은 말이 없어 기병이 사람으로 보이게 됨) |
-| `Art/Models/general.obj` | Mini `character-knight` + `weapon-sword` | 940 | 둥근 꼬마 기사(투구·갑옷, 회색·파랑 계열), 오른손 칼. 걸어 있는 모습(말 없음). 장수 |
-| `Art/Models/general_commander.obj` | 위 기사 + [Castle Kit](https://kenney.nl/assets/castle-kit) `flag-pennant` | 1,176 | 장수와 같고 등 뒤에 삼각 깃발 깃대. 총대장 |
+| `Art/Models/general.fbx` + `knight_texture.png` | [KayKit Adventurers](https://kaylousberg.itch.io/kaykit-adventurers) `Knight` | 5,820 | **(3차, 2026-11-14)** 2.5등신 꼬마 기사: 회색 투구(얼굴 보이는 바이저)·회색 갑옷·붉은 망토·갈색 벨트. 무기 없음. 뼈대 모델(SkinnedMesh 9조각) → `ArtCatalog`가 굳힘. 장수 |
+| `Art/Models/general_commander.fbx` + `barbarian_texture.png` | KayKit Adventurers `Barbarian` | 7,123 | **(3차)** 곰 머리 모자·수염·맨가슴·털 장식 허리띠의 큰 바바리안. 무기 없음. 뼈대 모델. 총대장 |
+| `Art/Models/horse.obj` (`mount.horse`) | [Quaternius Farm Animals](https://opengameart.org/content/lowpoly-animated-farm-animal-pack) `Horse` (OBJ, 뼈대 없음) | 690 | **(3차)** 짙은 갈색 몸·검은 갈기와 꼬리의 저폴리 말, 서 있는 자세. 머리가 +Z. `height` 0.75, `riderY` 0.3 (장수 발이 말 몸통 가운데쯤 → 다리가 몸통에 묻혀 탄 것처럼 보임) |
 | `Art/Models/soldier_catapult.obj` | Castle Kit `siege-catapult` | 1,492 | 나무 바퀴 4개 달린 투석기, 던지는 팔 위로 |
 | `Art/Models/ship.obj` | Pirate Kit `ship-small` | 2,384 | 돛대 하나·흰 돛의 작은 범선(서양 해적선풍). 길이가 Z축. 수군 4종 공통 |
 | `Art/Models/tree_a.obj` | [KayKit Forest Nature Pack](https://kaylousberg.itch.io/kaykit-forest) `Tree_1_A` | 530 | **(2차, KayKit)** 굵고 짧은 주황 줄기 + 크고 둥근 연두 잎 덩어리 하나. 만화풍 |
@@ -110,6 +112,12 @@
 | `Art/Models/reed.obj` | KayKit Forest `Grass_2_C` | 528 | **(2차)** 가늘고 긴 연두 풀잎 여러 가닥 다발 (갈대) |
 | `Art/Models/Textures/*.png` | 위 팩들의 텍스처 (`blocky_*`, `mini_colormap`, `castle_colormap`, `pirate_colormap`, `kaykit_forest`, `kaykit_medieval`) | — | 색 팔레트 그림 |
 | `Art/Models/house.obj` | [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) `building_home_A_red` | 1,011 | **(2차)** 붉은 지붕·흰 벽·나무 기둥의 작은 집, 회색 굴뚝. 귀여운 만화풍 |
+| `Ui/icons/supply.png` | [Board Game Icons](https://kenney.nl/assets/board-game-icons) `resource_wheat` | — | **(3차)** 노란 밀 이삭 두 줄기, 짙은 테두리. 128px. 군량 |
+| `Ui/icons/gold.png` | Board Game Icons `token` | — | **(3차)** 금색 고리(엽전 모양 동전). 돈 |
+| `Ui/icons/gem.png` | Board Game Icons `suit_diamonds` | — | **(3차)** 옥색(초록) 마름모 보석. 옥 |
+| `Ui/icons/leadership.png` | Board Game Icons `flag_triangle` | — | **(3차)** 붉은 삼각 깃발. 통솔 |
+| `Ui/icons/might.png` | Board Game Icons `sword` | — | **(3차)** 회청색 칼. 무력 |
+| `Ui/icons/intellect.png` | Board Game Icons `book_open` | — | **(3차)** 파란 펼친 책. 지력 |
 | `Audio/click.ogg` | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `click_001` | — | 짧은 딸깍 |
 | `Audio/clash.ogg` | [Impact Sounds](https://kenney.nl/assets/impact-sounds) `impactMetal_medium_000` | — | 쇠 부딪히는 소리 |
 | `Audio/gong.ogg` | Impact Sounds `impactBell_heavy_000` | — | 무거운 종 소리 (징 대용) |
@@ -118,6 +126,7 @@
 | (`arrow` `horn` `fire` `cheer` `duel` `battle` 없음) | — | — | 받은 팩에 맞는 소리가 없어 코드 합성 그대로 |
 
 - 라이선스: 모두 CC0 (출처 표시 불필요, 개인·교육·상업 이용 가능). `Art/Models/License.txt`에 정리.
+- **3차 (2026-11-14)**: 장수 = KayKit 캐릭터 FBX 그대로 (#129의 뼈대 굳히기 사용). **삼각형이 2.2 표의 장수 기준 2,000을 넘는다** (5,820·7,123) — 장수는 군단마다 하나라 화면에 몇 명뿐이어서 넣었다. 느리면 알려 달라. KayKit 캐릭터 FBX에는 Idle 동작이 없어(동작은 팩의 `Animations/Rig_Medium` 따로) **T자 자세로 굳을 수 있다**. 아이콘은 흰 실루엣 아이콘에 색·테두리를 입혀 128px로 만들었다 (Sprite로 가져옴). 가마는 무료 모델을 못 찾아 코드 가마 그대로.
 - **화풍 방향 (2026-11-13 사용자 결정): KayKit으로 통일.** 남은 Kenney(병사·장수·투석기·배)도 차례로 KayKit으로 바꾼다. KayKit 캐릭터(Adventurers)는 **뼈대(SkinnedMesh)·삼각형 5,800~8,900**이라 지금 `ArtCatalog`가 못 읽는다 → 원격에 "SkinnedMesh 지원" 요청. 병사는 무거워 보류 (폰 측정 후 기준 조정).
 - [RPG Audio](https://kenney.nl/assets/rpg-audio)도 받았지만 이번에는 쓰지 않았다 (책·문·가죽 소리 위주).
 
