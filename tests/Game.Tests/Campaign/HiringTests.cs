@@ -19,7 +19,7 @@ namespace Game.Tests.Campaign
         private static CampaignState Owner()
         {
             var s = Kit.Veteran();
-            s.Generals.Add(new GeneralState { GeneralId = "enemy_general_04", Level = 3 });
+            s.FindGeneral(AvatarGeneral.GeneralId).Level = 3; // 닉네임 장수 (R-98: 용병 장수는 이것뿐)
             return s;
         }
 
@@ -33,19 +33,20 @@ namespace Game.Tests.Campaign
             return r.Listing;
         }
 
-        [Fact(DisplayName = "R-27 등록: 추천 가격(장수 기본 + 레벨당, 부대 1명당) × 상한 배수까지, 내 것·출전 가능한 것만, 종류별 수 상한")]
+        [Fact(DisplayName = "R-27 등록: 추천 가격(장수 기본 + 레벨당, 부대 1명당) × 상한 배수까지, 내 것·출전 가능한 것만, 장수는 닉네임 장수만(R-98), 종류별 수 상한")]
         public void Register()
         {
             var owner = Owner();
             var rules = Rules();
-            var g = owner.FindGeneral("enemy_general_04");
+            var g = owner.FindGeneral(AvatarGeneral.GeneralId);
             Assert.Equal(200 + 50 * 2, rules.RecommendedPrice(g, ResourceIds.Gold));
             Assert.Equal((200 + 50 * 2) * 5, rules.RecommendedPrice(g, ResourceIds.Supply));
             Assert.Equal(1, rules.RecommendedPrice(owner.FindUnit("infantry"), ResourceIds.Gold)); // 1단계, 훈련도 0
 
             var ok = rules.Register(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = g.GeneralId, Price = 600, PayWith = ResourceIds.Gold }, 0);
             Assert.True(ok.Ok);
-            Assert.Equal(("enemy_general_04", 3, g.GeneralId), (ok.Listing.GeneralId, ok.Listing.Level, ok.Listing.SourceId));
+            Assert.Equal((AvatarGeneral.GeneralId, 3, g.GeneralId), (ok.Listing.GeneralId, ok.Listing.Level, ok.Listing.SourceId));
+            Assert.Equal(HireReasons.NotAvatar, rules.Register(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = "general_a", Price = 100, PayWith = ResourceIds.Gold }, 0).Reason); // 정의 장수는 등록 못 함 (R-98)
             Assert.Equal(HireReasons.BadPrice, rules.Register(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = g.GeneralId, Price = 601, PayWith = ResourceIds.Gold }, 0).Reason);
             Assert.Equal(HireReasons.TooMany, rules.Register(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = g.GeneralId, Price = 100, PayWith = ResourceIds.Gold }, 3).Reason);
             Assert.Equal(HireReasons.NotOwned, rules.Register(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = "enemy_general_01", Price = 1, PayWith = ResourceIds.Gold }, 0).Reason);
@@ -74,7 +75,7 @@ namespace Game.Tests.Campaign
             var listings = new Dictionary<string, HireListing>
             {
                 ["L1"] = Listed(owner, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = ResourceIds.Gold }, "L1"),
-                ["L2"] = Listed(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = "enemy_general_04", Price = 300, PayWith = ResourceIds.Supply }, "L2"),
+                ["L2"] = Listed(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = AvatarGeneral.GeneralId, Price = 300, PayWith = ResourceIds.Supply }, "L2"),
             };
             var hirer = Kit.Veteran();
             var uses = new List<HireUse> { new HireUse { ListingId = "L1", Version = 1, Count = 500 }, new HireUse { ListingId = "L2", Version = 1 } };
@@ -84,12 +85,12 @@ namespace Game.Tests.Campaign
             Assert.Equal(300, hired.Costs[ResourceIds.Supply]);
 
             var flow = new StoryFlow(Kit.D, Kit.Source, Kit.Clock());
-            var plan = flow.Prepare(hirer, new SortieRequest { StepId = "step01", Seed = 2, Delegate = true, Hired = hired, Compositions = HiredComps(hirer, "L1", "enemy_general_04") });
+            var plan = flow.Prepare(hirer, new SortieRequest { StepId = "step01", Seed = 2, Delegate = true, Hired = hired, Compositions = HiredComps(hirer, "L1", AvatarGeneral.HiredId) });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));
-            Assert.Contains(plan.Setup.Corps, c => c.General.Id == "enemy_general_04");
+            Assert.Contains(plan.Setup.Corps, c => c.General.Id == AvatarGeneral.HiredId);
             Assert.Contains(plan.Setup.Corps.SelectMany(c => c.Units), u => StoryFlow.PoolIdOf(u.UnitId) == "hire.L1");
             Assert.Equal(500, plan.Setup.Corps.SelectMany(c => c.Units).Where(u => StoryFlow.PoolIdOf(u.UnitId) == "hire.L1").Sum(u => u.Troops));
-            Assert.Null(hirer.FindGeneral("enemy_general_04")); // 준비는 세이브를 바꾸지 않는다
+            Assert.Null(hirer.FindGeneral(AvatarGeneral.HiredId)); // 준비는 세이브를 바꾸지 않는다
 
             long gold = new Wallet(hirer.Wallet).Get(ResourceIds.Gold), supply = new Wallet(hirer.Wallet).Get(ResourceIds.Supply);
             Assert.True(flow.Confirm(hirer, plan));
@@ -98,17 +99,17 @@ namespace Game.Tests.Campaign
 
             var result = BattleSimulation.Run(plan.Setup, new List<Game.Battle.Model.Commands.BattleCommand>());
             flow.ApplyResult(hirer, plan, result);
-            Assert.Null(hirer.FindGeneral("enemy_general_04"));
+            Assert.Null(hirer.FindGeneral(AvatarGeneral.HiredId));
             Assert.Null(hirer.FindUnit("hire.L1"));
             Assert.Equal(6000, owner.FindUnit("cavalry").Troops); // 원본 그대로
         }
 
-        [Fact(DisplayName = "R-43 고용 해석 거절: 판이 바뀜, 내 등록, 이미 가진 장수, 등록 인원 초과, 같은 등록 두 번, 돈 모자람")]
+        [Fact(DisplayName = "R-43 고용 해석 거절: 판이 바뀜, 내 등록, 등록 인원 초과, 같은 등록 두 번, 돈 모자람")]
         public void ResolveRejects()
         {
             var owner = Owner();
             var unit = Listed(owner, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = ResourceIds.Gold }, "L1");
-            var mine = Listed(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = "general_a", Price = 100, PayWith = ResourceIds.Gold }, "L3");
+            var mine = Listed(owner, new HireListingRequest { Kind = HireKinds.General, GeneralId = AvatarGeneral.GeneralId, Price = 100, PayWith = ResourceIds.Gold }, "L3");
             var all = new Dictionary<string, HireListing> { ["L1"] = unit, ["L3"] = mine };
             HireListing Find(string id) => all.TryGetValue(id, out var l) ? l : null;
             var hirer = Kit.Veteran();
@@ -116,8 +117,10 @@ namespace Game.Tests.Campaign
 
             Assert.Null(rules.Resolve(new[] { new HireUse { ListingId = "L1", Version = 2, Count = 10 } }, Find, "hirer", hirer, out _));
             Assert.Null(rules.Resolve(new[] { new HireUse { ListingId = "L1", Version = 1, Count = 10 } }, Find, "owner", hirer, out _));
-            Assert.Null(rules.Resolve(new[] { new HireUse { ListingId = "L3", Version = 1 } }, Find, "hirer", hirer, out var e1)); // general_a는 이미 있음
-            Assert.Contains("general_a", e1);
+            // 남의 닉네임 장수는 내 닉네임 장수가 있어도 고용된다 (avatar_hired 틀로, R-98)
+            var av = rules.Resolve(new[] { new HireUse { ListingId = "L3", Version = 1 } }, Find, "hirer", hirer, out var e1);
+            Assert.Null(e1);
+            Assert.Equal(AvatarGeneral.HiredId, av.Generals[0].GeneralId);
             Assert.Null(rules.Resolve(new[] { new HireUse { ListingId = "L1", Version = 1, Count = 6001 } }, Find, "hirer", hirer, out _));
             Assert.Null(rules.Resolve(new[] { new HireUse { ListingId = "L1", Version = 1, Count = 1 }, new HireUse { ListingId = "L1", Version = 1, Count = 1 } }, Find, "hirer", hirer, out _));
 

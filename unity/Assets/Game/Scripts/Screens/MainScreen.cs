@@ -59,6 +59,7 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
+            Ctx.EnsureAvatar(); // 닉네임 장수 (R-98, 예전 세이브)
             Ctx.Flow.Tick(Ctx.State); // 화면을 열 때마다 시간 경과 처리 (부상 회복·구출 기한)
             Ui.Column(Root, 0);
 

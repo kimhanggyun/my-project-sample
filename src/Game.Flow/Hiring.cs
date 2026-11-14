@@ -88,6 +88,7 @@ namespace Game.Flow
             {
                 var g = owner.FindGeneral(req.GeneralId);
                 if (g == null) return Fail(HireReasons.NotOwned);
+                if (g.GeneralId != AvatarGeneral.GeneralId) return Fail(HireReasons.NotAvatar); // 정의 장수는 여러 유저가 같이 가져서 닉네임 장수만 (R-98)
                 if (!GeneralStatus.CanDeploy(g.Status)) return Fail(HireReasons.NotAvailable);
                 var snap = Copy(g);
                 snap.Status = GeneralStatus.Available;
@@ -144,6 +145,7 @@ namespace Game.Flow
                 if (l.Kind == HireKinds.General)
                 {
                     var g = Read<GeneralState>(l.SnapshotJson);
+                    if (g != null && g.GeneralId == AvatarGeneral.GeneralId) g.GeneralId = AvatarGeneral.HiredId; // 남의 닉네임 장수는 내 닉네임 장수와 다른 틀로 (R-98)
                     if (g == null || !_defs.Generals.ContainsKey(g.GeneralId ?? "")) { error = "고용 장수 스냅샷을 읽을 수 없습니다."; return null; }
                     if (hirer?.FindGeneral(g.GeneralId) != null) { error = $"이미 가진 장수 '{g.GeneralId}'는 고용할 수 없습니다."; return null; }
                     foreach (var other in forces.Generals)

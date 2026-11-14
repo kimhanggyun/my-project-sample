@@ -456,6 +456,8 @@ namespace Game.Online
         public const string BadPrice = "badPrice";
         public const string TooMany = "tooMany";
         public const string BadRequest = "badRequest";
+        /// <summary>장수는 닉네임 장수만 용병으로 등록 (hiring-v2.md 1장, R-98).</summary>
+        public const string NotAvatar = "notAvatar";
     }
 
     public sealed class HireListingResponse
@@ -625,6 +627,8 @@ namespace Game.Online
         public const string DevGiveGeneral = "dev.giveGeneral";
         /// <summary>계급(계정 레벨) 바꾸기: Count = 더할 양 (음수면 내림), 1 ~ 최대 안으로 (army-v2.md 2장).</summary>
         public const string DevLordLevel = "dev.lordLevel";
+        /// <summary>닉네임 장수 만들기 (hiring-v2.md 2장, R-98): 없으면 avatar 틀로 합류. 예전 세이브용 (새 게임은 처음 지급에 있음).</summary>
+        public const string AvatarCreate = "avatar.create";
 
         public static bool IsDev(string kind) => kind != null && kind.StartsWith(DevPrefix, System.StringComparison.Ordinal);
     }

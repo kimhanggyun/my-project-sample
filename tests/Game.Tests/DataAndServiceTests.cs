@@ -21,12 +21,13 @@ namespace Game.Tests
         [Fact(DisplayName = "실제 데이터 전체가 데이터 검사를 통과한다")]
         public void RealDataIsValid() => Assert.Empty(DataValidator.Validate(Real()));
 
-        [Fact(DisplayName = "새 게임 초기 지급: 장수 3명, 편성이 모두 유효")]
+        [Fact(DisplayName = "새 게임 초기 지급: 장수 3명 + 닉네임 장수(R-98), 편성이 모두 유효")]
         public void StartingKit()
         {
             var d = Real();
             var state = StartingKitService.CreateNewGame(d);
-            Assert.Equal(3, state.Generals.Count);
+            Assert.Equal(4, state.Generals.Count);
+            Assert.NotNull(state.FindGeneral(Game.Flow.AvatarGeneral.GeneralId));
             Assert.Empty(CorpsValidator.Validate(d, state, state.Compositions));
             Assert.True(state.Wallet[ResourceIds.Supply] > 0);
             Assert.All(state.Generals, g => Assert.NotEmpty(g.LearnedSkills));
