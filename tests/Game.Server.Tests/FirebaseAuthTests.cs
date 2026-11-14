@@ -28,12 +28,14 @@ namespace Game.Server.Tests
 
         private static string B64(byte[] b) => Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-        public static string Token(string sub = "user1", string aud = Project, long exp = Now + 3600, string kid = "k1", RSA key = null, string provider = "google.com")
+        public static string Token(string sub = "user1", string aud = Project, long exp = Now + 3600, string kid = "k1", RSA key = null, string provider = "google.com",
+            string email = null, bool emailVerified = true)
         {
             string header = B64(Encoding.UTF8.GetBytes("{\"alg\":\"RS256\",\"kid\":\"" + kid + "\",\"typ\":\"JWT\"}"));
+            string mail = email == null ? "" : ",\"email\":\"" + email + "\",\"email_verified\":" + (emailVerified ? "true" : "false");
             string payload = B64(Encoding.UTF8.GetBytes(
                 "{\"iss\":\"https://securetoken.google.com/" + aud + "\",\"aud\":\"" + aud + "\",\"sub\":\"" + sub + "\",\"iat\":" + (Now - 10) +
-                ",\"auth_time\":" + (Now - 10) + ",\"exp\":" + exp + ",\"firebase\":{\"sign_in_provider\":\"" + provider + "\"}}"));
+                ",\"auth_time\":" + (Now - 10) + ",\"exp\":" + exp + mail + ",\"firebase\":{\"sign_in_provider\":\"" + provider + "\"}}"));
             var sig = (key ?? Key).SignData(Encoding.ASCII.GetBytes(header + "." + payload), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             return header + "." + payload + "." + B64(sig);
         }
@@ -94,6 +96,43 @@ namespace Game.Server.Tests
 
             c.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", a1.Token);
             Assert.Equal(HttpStatusCode.OK, (await c.GetAsync(OnlineRoutes.Me)).StatusCode); // 받은 토큰으로 다른 API
+        }
+
+        [Fact(DisplayName = "R-86 토큰의 이메일: 확인된(email_verified) 이메일만 소문자로, 확인 안 됐으면 무시")]
+        public void ReadsVerifiedEmail()
+        {
+            var v = Verifier();
+            Assert.Equal("me@gmail.com", v.Verify(Token(email: "Me@Gmail.com"), Now).Email);
+            Assert.Null(v.Verify(Token(email: "me@gmail.com", emailVerified: false), Now).Email);
+            Assert.Null(v.Verify(Token(), Now).Email);
+        }
+
+        [Fact(DisplayName = "R-86 마스터: Game:Masters에 계정 id 또는 구글 로그인 이메일 (대소문자 무시), 확인 안 된 이메일·다른 계정은 아님")]
+        public async Task MasterByEmailOrId()
+        {
+            using var f = new WithFirebase();
+            var c = f.CreateClient();
+            async Task<SignInResponse> SignIn(string token) =>
+                OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.FirebaseSignIn, Body(new ExternalSignInRequest { IdToken = token }))).Content.ReadAsStringAsync());
+            async Task<bool> IsMaster(string token)
+            {
+                var req = new HttpRequestMessage(HttpMethod.Get, OnlineRoutes.Me);
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                return OnlineJson.Read<ProfileResponse>(await (await c.SendAsync(req)).Content.ReadAsStringAsync()).IsMaster;
+            }
+            var me = await SignIn(Token("userM", email: "Boss@Gmail.com"));
+            var unverified = await SignIn(Token("userU", email: "boss2@gmail.com", emailVerified: false));
+            var guest = OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.GuestSignIn, null)).Content.ReadAsStringAsync());
+            var masters = f.Services.GetRequiredService<MasterAccounts>();
+            Assert.False(await IsMaster(me.Token));
+            masters.Add("boss@gmail.com");          // 이메일 (대소문자 무시)
+            masters.Add("boss2@gmail.com");
+            masters.Add(guest.AccountId);           // 게스트는 계정 id로 (Unity 에디터 등 이메일 없음)
+            Assert.True(await IsMaster(me.Token));
+            Assert.False(await IsMaster(unverified.Token)); // 확인 안 된 이메일은 남기지 않는다
+            Assert.True(await IsMaster(guest.Token));
+            var other = await SignIn(Token("userO", email: "other@gmail.com"));
+            Assert.False(await IsMaster(other.Token));
         }
 
         private sealed class ClientTransport : IOnlineTransport
