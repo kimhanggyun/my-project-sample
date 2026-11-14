@@ -18,7 +18,12 @@ namespace Game.Battle.Model.Events
     public static class EventKinds
     {
         public const string SkillUsed = "skillUsed";
+        /// <summary>퇴각 시작. 값 = 까닭 (morale·troops·order·rout·other, R-93).</summary>
         public const string RetreatStarted = "retreatStarted";
+        /// <summary>퇴각 조건이 되어 플레이어에게 퇴각/버티기를 묻는다 (R-93). 값 = 까닭.</summary>
+        public const string RetreatAsked = "retreatAsked";
+        /// <summary>버티기로 함 (R-93).</summary>
+        public const string StandFast = "standFast";
         public const string Captured = "captured";
         public const string Destroyed = "destroyed";
         public const string AmbushSprung = "ambushSprung";

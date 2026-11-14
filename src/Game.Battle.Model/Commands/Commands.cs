@@ -56,6 +56,8 @@ namespace Game.Battle.Model.Commands
         public const string DuelAnswer = "duelAnswer";
         /// <summary>마주침 일기토 기회에 답 (R-91): Mode = challenge / pass.</summary>
         public const string DuelChance = "duelChance";
+        /// <summary>퇴각 선택에 답 (R-93): Mode = retreat / hold.</summary>
+        public const string RetreatAnswer = "retreatAnswer";
     }
 
     /// <summary>명령 하나의 처리기. 새 명령은 처리기를 추가하고 등록한다 (기존 분기문을 고치지 않는다).</summary>
@@ -99,7 +101,23 @@ namespace Game.Battle.Model.Commands
             .Register(new EditQueueHandler())
             .Register(new Contests.DuelChoicesHandler())
             .Register(new Contests.DuelAnswerHandler())
-            .Register(new Contests.DuelChanceHandler());
+            .Register(new Contests.DuelChanceHandler())
+            .Register(new RetreatAnswerHandler());
+    }
+
+    /// <summary>명령 retreatAnswer (R-93): 퇴각을 묻는 중인 군단이 retreat(퇴각) / hold(버틴다).</summary>
+    internal sealed class RetreatAnswerHandler : ICommandHandler
+    {
+        public string Kind => CommandKinds.RetreatAnswer;
+        public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
+            corps.Status == CorpsStatus.Active && corps.RetreatAskReason != null && (cmd.Mode == "retreat" || cmd.Mode == "hold");
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            if (cmd.Mode == "retreat") { Systems.RetreatSystem.BeginRetreat(ctx, corps, corps.RetreatAskReason); return; }
+            corps.RetreatAskReason = null;
+            corps.StandFast = true;
+            Events.EventLog.Add(ctx, Events.EventKinds.StandFast, corps.Id);
+        }
     }
 
     internal sealed class EditQueueHandler : ICommandHandler
@@ -192,7 +210,7 @@ namespace Game.Battle.Model.Commands
     {
         public string Kind => CommandKinds.Retreat;
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) => true;
-        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => Systems.RetreatSystem.BeginRetreat(ctx, corps);
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => Systems.RetreatSystem.BeginRetreat(ctx, corps, Systems.RetreatReasons.Order);
     }
 
     /// <summary>위임 켜고 끄기. 켜면 AI가 바로 지휘하고(진행 중인 플레이어 명령은 그대로 둔다), 끄면 지금 명령을 유지한 채 플레이어에게 돌아온다.</summary>
@@ -226,6 +244,7 @@ namespace Game.Battle.Model.Commands
             if (ticks <= 0) { corps.Formation = target; corps.PendingFormation = null; corps.ReformTicksLeft = 0; return; }
             corps.PendingFormation = target;
             corps.ReformTicksLeft = ticks;
+            corps.ReformTotalTicks = ticks;
         }
     }
 }

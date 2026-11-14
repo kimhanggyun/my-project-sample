@@ -40,6 +40,8 @@ namespace Game.Unity.Screens
         private MiniMapView _miniMap;
         private RectTransform _fieldArea;
         private readonly Dictionary<CorpsState, Text> _flagLabels = new Dictionary<CorpsState, Text>();
+        /// <summary>깃발 아래 사기 막대 (R-93 보이기): 채움, 채움 그림, 퇴각 기준 눈금.</summary>
+        private readonly Dictionary<CorpsState, (RectTransform fill, Image img, RectTransform mark)> _moraleBars = new Dictionary<CorpsState, (RectTransform, Image, RectTransform)>();
         private readonly Vector3[] _corners = new Vector3[4];
         private RadialMenu _radial;
         // 경유 표식 (4.3.5, R-70): 번호, 누르면 그 예약 취소, 끌면 옮김
@@ -89,6 +91,8 @@ namespace Game.Unity.Screens
         private Text _duelNoText, _duelYesText;
         /// <summary>true면 지금 창은 마주침 일기토 기회 (R-91: 신청할까?), false면 받은 신청 (응할까?).</summary>
         private bool _duelPromptIsChance;
+        /// <summary>true면 지금 창은 퇴각 선택 (R-93: [버틴다]/[퇴각한다]).</summary>
+        private bool _promptIsRetreat;
         private Text _duelPromptText;
         private string _duelOfferCorps;
         private bool _pausedForOffer;
@@ -234,6 +238,7 @@ namespace Game.Unity.Screens
                 label.rectTransform.sizeDelta = new Vector2(240, 32);
                 label.horizontalOverflow = HorizontalWrapMode.Overflow;
                 _flagLabels[c] = label;
+                _moraleBars[c] = MoraleBar(label.rectTransform);
             }
             _miniMap = new MiniMapView(_fieldArea, _ctl, _field, 220f);
             _radial = new RadialMenu(_fieldArea); // 군단 원형 메뉴 (battle.md 4.3.3)
@@ -900,6 +905,8 @@ namespace Game.Unity.Screens
                         : other != null && _ctl.CanCommand(other) && !other.Delegated ? other : null;
                     if (mine != null) _duelToPlay = Game.Battle.Model.Contests.InBattleDuels.PendingFor(_sim.Context, mine.Id);
                 }
+                if (!IsReplay && !_autoFinish && e.Kind == EventKinds.RetreatAsked && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
+                    ShowRetreatAsk(corps, e.Data);
                 if (!IsReplay && !_autoFinish && e.Kind == EventKinds.DuelChance && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
                 {
                     var target = e.Data == null ? null : _sim.Context.FindCorps(e.Data);
@@ -918,7 +925,13 @@ namespace Game.Unity.Screens
                 if (sp != null && sp.Kind == "warning" && sp.QuickActions.Count > 0 && !IsReplay && !_autoFinish && corps != null && _ctl.CanCommand(corps) && !corps.Delegated)
                     ShowQuick(corps, T(sp.LineKey), sp.QuickActions);
                 string sysKey = "ui.event." + e.Kind;
-                if (Ctx.Defs.Strings.ContainsKey(sysKey)) Add(Ui.Colored(T(sysKey, who), Palette.TextDim));
+                if (e.Data != null && Ctx.Defs.Strings.ContainsKey(sysKey + "." + e.Data)) sysKey += "." + e.Data; // 까닭별 문구 (퇴각 이유 등, R-93)
+                if (Ctx.Defs.Strings.ContainsKey(sysKey))
+                {
+                    // {0} = 이 이벤트의 군단, {1} = 값이 군단 id면 그 군단 (일기토의 상대 등)
+                    string other = e.Data != null && _sim.Context.FindCorps(e.Data) != null ? CorpsName(e.Data) : (e.Data ?? "");
+                    Add(Ui.Colored(T(sysKey, who, other), Palette.TextDim));
+                }
             }
         }
 
@@ -979,6 +992,7 @@ namespace Game.Unity.Screens
                 case EventKinds.HiddenFound:
                 case EventKinds.DuelOffered: Sfx.Play("alert", 0.7f, 0.3f); break;
                 case EventKinds.DuelChance: Sfx.Play("alert", 0.7f, 0.3f); break;
+                case EventKinds.RetreatAsked: Sfx.Play("alert", 0.7f, 0.3f); break;
                 case EventKinds.DuelStarted: Sfx.Play("duel"); break;
                 case EventKinds.DuelEnded: Sfx.Play("clash", 0.9f); break;
                 case EventKinds.TrapSprung:
@@ -1000,11 +1014,26 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>적의 일기토 신청 (R-79): 전투를 멈추고 응함/거절을 묻는다.</summary>
+        /// <summary>퇴각 선택 (R-93): 내 군단이 퇴각 조건. [버틴다]/[퇴각한다]. 답이 없으면 퇴각.</summary>
+        private void ShowRetreatAsk(CorpsState mine, string reason)
+        {
+            _duelOfferCorps = mine.Id;
+            _promptIsRetreat = true;
+            _duelPromptIsChance = false;
+            _duelPromptText.text = T(reason == "troops" ? "ui.retreatAsk.troops" : "ui.retreatAsk.morale", GeneralOf(mine), mine.Troops.ToString("N0"), mine.Morale.FloorToLong());
+            _duelNoText.text = T("ui.retreatAsk.hold");
+            _duelYesText.text = T("ui.retreatAsk.retreat");
+            _duelPrompt.gameObject.SetActive(true);
+            if (!_paused) { _paused = true; _pausedForOffer = true; }
+            _dirty = true;
+        }
+
         /// <summary>마주침 일기토 기회 (R-91): 내 군단이 거는 쪽. [넘어가기]/[일기토 신청].</summary>
         private void ShowDuelChance(CorpsState mine, CorpsState target)
         {
             _duelOfferCorps = mine.Id;
             _duelPromptIsChance = true;
+            _promptIsRetreat = false;
             _duelPromptText.text = T("ui.duel.chance", GeneralOf(mine), GeneralOf(target));
             _duelNoText.text = T("ui.duel.pass");
             _duelYesText.text = T("ui.duel.challenge");
@@ -1017,6 +1046,7 @@ namespace Game.Unity.Screens
         {
             _duelOfferCorps = mine.Id;
             _duelPromptIsChance = false;
+            _promptIsRetreat = false;
             _duelNoText.text = T("ui.duel.refuse");
             _duelYesText.text = T("ui.duel.accept");
             _duelPromptText.text = T("ui.duel.offer", GeneralOf(challenger), GeneralOf(mine));
@@ -1027,7 +1057,9 @@ namespace Game.Unity.Screens
 
         private void AnswerDuel(bool accept)
         {
-            if (_duelOfferCorps != null) Report(_duelPromptIsChance ? _ctl.AnswerDuelChance(_duelOfferCorps, accept) : _ctl.AnswerDuel(_duelOfferCorps, accept));
+            // 퇴각 선택에서 "예"(오른쪽)는 퇴각, "아니오"(왼쪽)는 버틴다
+            if (_duelOfferCorps != null) Report(_promptIsRetreat ? _ctl.AnswerRetreat(_duelOfferCorps, accept)
+                : _duelPromptIsChance ? _ctl.AnswerDuelChance(_duelOfferCorps, accept) : _ctl.AnswerDuel(_duelOfferCorps, accept));
             CloseDuelOffer();
         }
 
@@ -1050,6 +1082,45 @@ namespace Game.Unity.Screens
             _collapsed = !_collapsed;
             _panelBody.gameObject.SetActive(!_collapsed);
             _dirty = true;
+        }
+
+        /// <summary>깃발 이름표 아래(이름표 원점 = 깃발 꼭대기) 가는 사기 막대. 눈금 = 퇴각 기준 사기.</summary>
+        private static (RectTransform fill, Image img, RectTransform mark) MoraleBar(RectTransform label)
+        {
+            var bar = Ui.Rect(label, "Morale");
+            bar.anchorMin = bar.anchorMax = new Vector2(0.5f, 0f);
+            bar.pivot = new Vector2(0.5f, 1f);
+            bar.sizeDelta = new Vector2(84f, 9f);
+            bar.anchoredPosition = new Vector2(0f, -2f);
+            var bg = Ui.Background(bar, new Color(0f, 0f, 0f, 0.55f));
+            bg.raycastTarget = false;
+            var fill = Ui.Rect(bar, "Fill");
+            fill.anchorMin = Vector2.zero;
+            fill.anchorMax = new Vector2(1f, 1f);
+            fill.offsetMin = new Vector2(1f, 1f);
+            fill.offsetMax = new Vector2(-1f, -1f);
+            var img = Ui.Background(fill, Palette.Good);
+            img.raycastTarget = false;
+            var mark = Ui.Rect(bar, "Threshold");
+            mark.anchorMin = new Vector2(0f, 0f);
+            mark.anchorMax = new Vector2(0f, 1f);
+            mark.pivot = new Vector2(0.5f, 0.5f);
+            mark.sizeDelta = new Vector2(2f, 4f);
+            var mi = Ui.Background(mark, Color.white);
+            mi.raycastTarget = false;
+            return (fill, img, mark);
+        }
+
+        private static void UpdateMoraleBar(CorpsState c, (RectTransform fill, Image img, RectTransform mark) mb)
+        {
+            float m = Mathf.Clamp01((float)c.Morale.ToDisplayDouble() / 100f);
+            float thr = c.Temperament != null ? Mathf.Clamp01((float)c.Temperament.RetreatMorale.ToDisplayDouble() / 100f) : 0f;
+            mb.fill.anchorMax = new Vector2(m, 1f);
+            // 기준까지 남은 여유로 색: 넉넉 = 초록, 기준 + 15 안 = 노랑, 기준 밑(버티는 중) = 빨강
+            mb.img.color = m <= thr ? Palette.Bad : m <= thr + 0.15f ? new Color(0.95f, 0.75f, 0.2f) : Palette.Good;
+            mb.mark.anchorMin = new Vector2(thr, 0f);
+            mb.mark.anchorMax = new Vector2(thr, 1f);
+            mb.mark.anchoredPosition = Vector2.zero;
         }
 
         /// <summary>깃발 이름 (D20): 아군은 군단 번호(①②…), 총대장은 ★, 그다음 장수 이름.</summary>
@@ -1119,7 +1190,9 @@ namespace Game.Unity.Screens
             SetLabel(_collapseButton, _collapsed ? T("ui.cmd.expand") : T("ui.cmd.collapse"));
             SetLabel(_queueButton, _ctl.Queueing ? T("ui.cmd.queueOn", _ctl.QueueCount, ctx.Combat.OrderQueueMax) : T("ui.cmd.queueOff", _ctl.QueueCount));
             Ui.Recolor(_queueButton, _ctl.Queueing ? Palette.ButtonActive : Palette.Button);
-            if (_duelOfferCorps != null && (_duelPromptIsChance
+            if (_duelOfferCorps != null && (_promptIsRetreat
+                    ? ctx.FindCorps(_duelOfferCorps)?.RetreatAskReason == null
+                    : _duelPromptIsChance
                     ? Game.Battle.Model.Contests.InBattleDuels.ChanceFor(ctx, _duelOfferCorps) == null
                     : Game.Battle.Model.Contests.InBattleDuels.OfferTo(ctx, _duelOfferCorps) == null)) CloseDuelOffer();
             if (_promptCorps != null)
@@ -1160,6 +1233,7 @@ namespace Game.Unity.Screens
                 }
                 kv.Value.text = name;
                 kv.Value.fontStyle = c == _ctl.Selected ? FontStyle.Bold : FontStyle.Normal;
+                if (_moraleBars.TryGetValue(c, out var mb)) UpdateMoraleBar(c, mb);
             }
         }
 

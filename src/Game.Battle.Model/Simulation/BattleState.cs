@@ -174,6 +174,17 @@ namespace Game.Battle.Model.Simulation
         public FormationDef PendingFormation { get; internal set; }
         /// <summary>진형 전환이 끝나기까지 남은 틱.</summary>
         public long ReformTicksLeft { get; internal set; }
+        /// <summary>퇴각 선택을 묻는 중 (R-93): 까닭(morale·troops)과 기한 틱. 없으면 null.</summary>
+        public string RetreatAskReason { get; internal set; }
+        public long RetreatAskDeadline { get; internal set; }
+        /// <summary>버티기로 했다 (R-93): 무너질 때(병력·사기 바닥)까지 퇴각하지 않는다.</summary>
+        public bool StandFast { get; internal set; }
+        /// <summary>이번 전환의 전체 틱 (R-92: 소부대가 그 비율만큼 새 자리로 옮겨 가 있다).</summary>
+        public long ReformTotalTicks { get; internal set; }
+
+        /// <summary>전환 진행 (0 = 막 시작, 1 = 끝). 전환 중이 아니면 0.</summary>
+        public Fix ReformProgress => PendingFormation == null || ReformTotalTicks <= 0 ? Fix.Zero
+            : Fix.FromInt(ReformTotalTicks - ReformTicksLeft) / Fix.FromInt(ReformTotalTicks);
         public bool Reforming => PendingFormation != null;
         public TemperamentDef Temperament { get; internal set; }
         public Vec Anchor { get; internal set; }

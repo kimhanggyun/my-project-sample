@@ -314,6 +314,47 @@ namespace Game.Unity.Battle3D
             Fallen.Add(p, Quaternion.Euler(0f, (seed * 73) % 360, 0f));
         }
 
+        // ---- 쓰러지는 병사 (2026-11-14): 앞줄에서 넘어지는 동작 뒤 시체가 된다 ----
+        private const float DyingSeconds = 0.45f;
+        private const int DyingMax = 400;
+        private struct Dying { public Vector3 Pos; public Quaternion Rot; public float Start; public string Troop; public int Color; public float Dir; public int Seed; }
+        private readonly List<Dying> _dying = new List<Dying>();
+
+        private void AddDying(Vector3 p, Quaternion rot, string troop, int color, int seed, float clock)
+        {
+            if (_dying.Count >= DyingMax) { AddFallen(p, seed); return; }
+            _dying.Add(new Dying { Pos = p, Rot = rot, Start = clock, Troop = troop, Color = color, Dir = (seed & 1) == 0 ? 1f : -1f, Seed = seed });
+        }
+
+        /// <summary>쓰러지는 병사를 그린다: 뒤(또는 앞)로 넘어가며 가라앉고, 다 넘어지면 시체로.</summary>
+        private void DrawDying(float clock)
+        {
+            for (int i = _dying.Count - 1; i >= 0; i--)
+            {
+                var d = _dying[i];
+                float t = (clock - d.Start) / DyingSeconds;
+                if (t >= 1f) { AddFallen(d.Pos, d.Seed); _dying.RemoveAt(i); continue; }
+                t = Mathf.Clamp01(t);
+                float ease = t * t; // 처음엔 천천히, 끝에 털썩
+                var p = d.Pos;
+                p.y = GroundHeight(p.x, p.z) - ease * 0.05f;
+                var r = d.Rot * Quaternion.Euler(-85f * ease * d.Dir, 0f, 0f);
+                SoldierBatch(d.Troop, d.Color).Add(p, r);
+            }
+        }
+
+        /// <summary>병사 하나의 고정된 작은 흐트러짐 (바둑판처럼 반듯하지 않게).</summary>
+        private static Vector3 Jitter(int seed)
+        {
+            unchecked
+            {
+                uint h = (uint)seed * 2654435761u;
+                float a = ((h & 0xFFFF) / 65535f - 0.5f) * 0.08f;
+                float b = (((h >> 16) & 0xFFFF) / 65535f - 0.5f) * 0.08f;
+                return new Vector3(a, 0f, b);
+            }
+        }
+
         private InstanceBatch CubeBatch(int color)
         {
             if (_cubeBatches[color] != null) return _cubeBatches[color];
@@ -729,15 +770,19 @@ namespace Game.Unity.Battle3D
                 var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
                 foreach (var u in c.Units)
                 {
+                    // 대열 (2026-11-14): 폭은 출진 때 병사 수로 고정, 앞줄 = 적 쪽. 병력이 줄면 앞줄에서 쓰러지고 뒷줄이 메워 깊이가 준다
+                    long n0 = System.Math.Max(1, SoldierRatio.VisibleSoldiers(u.StartTroops, _troopsPerSoldier));
+                    int side = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(n0)));
+                    int rows0 = (int)((n0 + side - 1) / side);
+                    float halfW = (side - 1) * SoldierSpacing / 2f;
+                    float frontZ = (rows0 - 1) * SoldierSpacing / 2f;
+                    int seedBase = u.GetHashCode();
                     if (!u.Alive)
                     {
                         // 방금 전멸한 부대: 남아 있던 화면 병사가 모두 쓰러진다
                         if (_shownSoldiers.TryGetValue(u, out var was) && was > 0 && _unitPos.TryGetValue(u, out var lastPos))
-                        {
-                            int sd = Mathf.CeilToInt(Mathf.Sqrt(was));
-                            float hd = (sd - 1) * SoldierSpacing / 2f;
-                            for (int i = 0; i < was; i++) AddFallen(lastPos.cur + rot * new Vector3(i % sd * SoldierSpacing - hd, 0f, hd - i / sd * SoldierSpacing), i + u.GetHashCode());
-                        }
+                            for (int i = 0; i < was; i++)
+                                AddDying(lastPos.cur + rot * (new Vector3(i % side * SoldierSpacing - halfW, 0f, frontZ - i / side * SoldierSpacing) + Jitter(seedBase + i)), rot, u.Troop.Id, teamColor, seedBase + i, clock);
                         _shownSoldiers[u] = 0;
                         continue;
                     }
@@ -746,38 +791,46 @@ namespace Game.Unity.Battle3D
                     bool isCube = batch.Mesh == _cube;
                     var hitBatch = isCube ? CubeBatch(Hit) : batch;
                     long n = SoldierRatio.VisibleSoldiers(u.Troops, _troopsPerSoldier);
-                    int side = Mathf.CeilToInt(Mathf.Sqrt(n));
                     var (prev, cur) = _unitPos.TryGetValue(u, out var pc) ? pc : (ToWorld(u.Position), ToWorld(u.Position));
                     var center = Vector3.Lerp(prev, cur, alpha);
                     bool walking = (cur - prev).sqrMagnitude > 1e-5f;
-                    // 근접 공격: 대상 쪽으로 찌르기 (병사마다 박자를 어긋나게)
+                    // 근접 공격: 대상 쪽으로 찌르기 (병사마다 박자를 어긋나게). 앞줄일수록 크게
                     Vector3 lunge = Vector3.zero;
-                    if (u.AttackTarget != null && u.Troop.HasTag("melee") && _unitPos.TryGetValue(u.AttackTarget, out var tp))
+                    bool melee = u.AttackTarget != null && u.Troop.HasTag("melee") && _unitPos.TryGetValue(u.AttackTarget, out var tp) && (lunge = tp.cur - cur) != Vector3.zero;
+                    if (melee)
                     {
-                        lunge = tp.cur - cur;
                         lunge.y = 0f;
-                        lunge = lunge.sqrMagnitude > 1e-6f ? lunge.normalized * 0.12f : Vector3.zero;
+                        lunge = lunge.sqrMagnitude > 1e-6f ? lunge.normalized * 0.14f : Vector3.zero;
                     }
-                    float half = (side - 1) * SoldierSpacing / 2f;
-                    // 병력이 줄어 화면 병사가 빠지면 그 자리에 쓰러진 병사를 남긴다 (손실이 눈에 보이게)
+                    // 병력이 줄어 화면 병사가 빠지면 앞줄 자리에서 쓰러진다 (쓰러지는 동작 → 시체). 뒷줄은 앞으로 메운다
                     if (_shownSoldiers.TryGetValue(u, out var before) && before > n)
                     {
-                        int sb = Mathf.CeilToInt(Mathf.Sqrt(before));
-                        float hb = (sb - 1) * SoldierSpacing / 2f;
-                        for (long i = n; i < before; i++) AddFallen(cur + rot * new Vector3(i % sb * SoldierSpacing - hb, 0f, hb - i / sb * SoldierSpacing), (int)i + u.GetHashCode());
+                        for (long k = n; k < before; k++)
+                        {
+                            int s = seedBase + (int)k * 31 + _flashFrame;
+                            int col = (int)((uint)(s * 2654435761u) % (uint)side);
+                            var local = new Vector3(col * SoldierSpacing - halfW, 0f, frontZ + 0.05f) + Jitter(s);
+                            AddDying(cur + rot * local, rot, u.Troop.Id, teamColor, s, clock);
+                        }
                     }
                     _shownSoldiers[u] = n;
+                    int rowsNow = (int)((n + side - 1) / side);
                     for (int i = 0; i < n; i++)
                     {
-                        var p = center + rot * new Vector3(i % side * SoldierSpacing - half, 0f, half - i / side * SoldierSpacing);
-                        float phase = i * 1.7f + u.GetHashCode() % 7;
-                        p += lunge * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
+                        int row = i / side, col = i % side;
+                        // 맨 뒷줄이 덜 찼으면 가운데로 모은다
+                        float rowOffset = row == rowsNow - 1 ? (side - (int)(n - row * side)) * SoldierSpacing / 2f : 0f;
+                        var local = new Vector3(col * SoldierSpacing - halfW + rowOffset, 0f, frontZ - row * SoldierSpacing) + Jitter(seedBase + i);
+                        var p = center + rot * local;
+                        float phase = i * 1.7f + seedBase % 7;
+                        float frontWeight = row == 0 ? 1f : row == 1 ? 0.5f : 0.15f; // 찌르기는 앞줄 위주
+                        p += lunge * frontWeight * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
                         float bob = walking ? Mathf.Abs(Mathf.Sin(clock * 12f + phase)) * 0.06f : 0f;
                         if (hidden && i % 2 == 1) continue; // 숨은 군단: 반만 그려 흐릿하게
                         if (u.Confused) p += new Vector3(Mathf.Sin(clock * 23f + phase) * 0.07f, 0f, Mathf.Cos(clock * 19f + phase * 1.3f) * 0.07f); // 혼란: 갈팡질팡
                         else if (shaken) p += new Vector3(Mathf.Sin(clock * 31f + phase) * 0.025f, 0f, 0f); // 사기 바닥: 떨림
-                        // 맞고 있는 군단: 몇 명씩 번갈아 깜빡인다
-                        bool flash = c.LostThisTick > 0 && (i + _flashFrame / 3) % 6 == 0;
+                        // 맞고 있는 군단: 앞줄 몇 명씩 번갈아 깜빡인다
+                        bool flash = c.LostThisTick > 0 && row <= 1 && (i + _flashFrame / 3) % 4 == 0;
                         p.y = GroundHeight(p.x, p.z) + bob + (flash && !isCube ? 0.08f : 0f);
                         (flash ? hitBatch : batch).Add(p, rot);
                     }
@@ -796,6 +849,7 @@ namespace Game.Unity.Battle3D
                     foreach (var gb in GeneralBatches(c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander, teamColor, mount)) gb.Add(gp, rot);
                 }
             }
+            DrawDying(clock);
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
             _fallen?.Draw(Rig.Camera);
             foreach (var b in _allPropBatches) b.Draw(Rig.Camera);

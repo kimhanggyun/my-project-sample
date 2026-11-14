@@ -416,7 +416,7 @@ namespace Game.Battle.Model.Skills
                     var endMorale = c.Statuses[i].EndMorale; // 강행군 피로 (R-82)
                     c.Statuses.RemoveAt(i);
                     if (endMorale != Fix.Zero && c.InBattle) c.Morale = Fix.Clamp(c.Morale + endMorale, Fix.Zero, Fix.Hundred);
-                    if (rout && c.Status == CorpsStatus.Active) Systems.RetreatSystem.BeginRetreat(ctx, c);
+                    if (rout && c.Status == CorpsStatus.Active) Systems.RetreatSystem.BeginRetreat(ctx, c, Systems.RetreatReasons.Rout);
                 }
                 foreach (var u in c.Units) if (u.ConfusedTicks > 0) u.ConfusedTicks--;
                 if (c.InBattle)
