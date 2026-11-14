@@ -254,9 +254,11 @@ namespace Game.Flow
                 {
                     Id = id,
                     Team = PlayerTeam,
-                    // 대장은 첫 군단. 편성의 역할(선봉·측면·후위)은 진군 역할로 (battle.md 4.3.2)
-                    Role = n == 1 ? CorpsRoles.Commander : null,
-                    AdvanceRole = AdvanceRoles.IsValid(comp.Role) ? comp.Role : null,
+                    // 총대장 = ★ 군단 (없으면 첫 군단). 역할(선봉·측면·후위)은 포진판 줄에서, 없으면 편성의 역할 (battle.md 4.3.2)
+                    Role = (comps.Exists(x => x.Commander) ? comp.Commander : n == 1) ? CorpsRoles.Commander : null,
+                    AdvanceRole = AdvanceRoles.IsValid(Army.RoleOf(comp)) ? Army.RoleOf(comp) : null,
+                    SlotRow = comp.BoardRow,
+                    SlotCol = comp.BoardCol,
                     Controller = Controllers.Player,
                     General = Snapshot(g),
                     Formation = comp.Formation,

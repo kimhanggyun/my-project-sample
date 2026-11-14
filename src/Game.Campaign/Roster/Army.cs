@@ -34,6 +34,58 @@ namespace Game.Campaign.Roster
         /// <summary>계급의 칸 수에 드는 칸 (고용 부대 칸 빼고).</summary>
         public static int OwnPicks(CorpsComposition c) => c.Picks.FindAll(p => !p.Hired).Count;
 
+        /// <summary>포진판 줄 → 진군 역할 (앞 선봉 · 가운데 측면 · 뒤 후위). 자리가 없으면 편성의 역할 그대로.</summary>
+        public static string RoleOf(CorpsComposition c)
+        {
+            if (!c.BoardRow.HasValue) return c.Role;
+            switch (c.BoardRow.Value) { case 0: return "vanguard"; case 1: return "flank"; default: return "rear"; }
+        }
+
+        /// <summary>
+        /// 자동 편성 (07 시안 [자동 편성]): 계급의 군단 수까지 출전 가능한 장수를 통솔 한도 큰 순으로 세우고(이미 있는 군단은 그대로),
+        /// 군단마다 병종 칸을 비운 뒤 남은 병력이 많은 병종부터 칸 수까지 넣는다 (통솔 한도 안에서, 군단 차례대로). 포진판 자리가 없으면 앞 가운데부터 채운다.
+        /// 장수 한도 계산은 부르는 쪽이 준다 (generalCap: 장수 id → 통솔 한도).
+        /// </summary>
+        public static void AutoFill(DefinitionSet defs, CampaignState s, List<CorpsComposition> comps, System.Func<string, long> generalCap, IEnumerable<string> availableGenerals, string defaultFormation)
+        {
+            var rank = Rank(defs, s);
+            var used = new HashSet<string>();
+            foreach (var c in comps) used.Add(c.GeneralId);
+            var free = new List<string>();
+            foreach (var g in availableGenerals) if (!used.Contains(g)) free.Add(g);
+            free.Sort((a, b) => generalCap(b).CompareTo(generalCap(a)) != 0 ? generalCap(b).CompareTo(generalCap(a)) : string.CompareOrdinal(a, b));
+            while (comps.Count < rank.Corps && free.Count > 0)
+            {
+                comps.Add(new CorpsComposition { GeneralId = free[0], Formation = defaultFormation });
+                free.RemoveAt(0);
+            }
+            while (comps.Count > rank.Corps) comps.RemoveAt(comps.Count - 1);
+            var left = new Dictionary<string, long>();
+            foreach (var u in s.Units) left[u.UnitId] = u.Troops;
+            var spots = new[] { (0, 1), (1, 0), (1, 2), (0, 0), (0, 2), (2, 1), (1, 1), (2, 0), (2, 2) };
+            var taken = new HashSet<(int, int)>();
+            foreach (var c in comps) if (c.BoardRow.HasValue && c.BoardCol.HasValue) taken.Add((c.BoardRow.Value, c.BoardCol.Value));
+            foreach (var c in comps)
+            {
+                c.Picks.RemoveAll(p => !p.Hired);
+                long room = generalCap(c.GeneralId);
+                for (int k = 0; k < rank.Slots && room > 0; k++)
+                {
+                    string best = null;
+                    foreach (var kv in left) if (kv.Value > 0 && !c.Picks.Exists(p => p.UnitId == kv.Key) && (best == null || kv.Value > left[best] || (kv.Value == left[best] && string.CompareOrdinal(kv.Key, best) < 0))) best = kv.Key;
+                    if (best == null) break;
+                    long n = System.Math.Min(left[best], room);
+                    c.Picks.Add(new TroopPick { UnitId = best, Troops = n });
+                    left[best] -= n;
+                    room -= n;
+                }
+                if (!c.BoardRow.HasValue)
+                    foreach (var sp in spots) if (taken.Add(sp)) { c.BoardRow = sp.Item1; c.BoardCol = sp.Item2; break; }
+                c.Role = RoleOf(c);
+            }
+            if (comps.Count > 0 && !comps.Exists(c => c.Commander)) comps[0].Commander = true;
+        }
+
         /// <summary>근접 병종이 서는 진형 칸 (앞에서부터), 원거리 병종 칸.</summary>
         public static readonly IReadOnlyList<string> MeleeSlots = new[] { SlotIds.Vanguard, SlotIds.LeftWing, SlotIds.RightWing, SlotIds.Center };
         public static readonly IReadOnlyList<string> RangedSlots = new[] { SlotIds.LeftGuard, SlotIds.RightGuard };
@@ -93,7 +145,7 @@ namespace Game.Campaign.Roster
             for (int i = 0; i < comps.Count && list.Count < rank.Corps; i++)
             {
                 var c = comps[i];
-                var copy = new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role };
+                var copy = new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = RoleOf(c), BoardRow = c.BoardRow, BoardCol = c.BoardCol, Commander = c.Commander };
                 int own = 0;
                 foreach (var p in c.Picks)
                 {

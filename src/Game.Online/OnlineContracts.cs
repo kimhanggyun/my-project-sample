@@ -596,6 +596,9 @@ namespace Game.Online
         public Dictionary<string, string> Slots { get; set; } = new Dictionary<string, string>();
         /// <summary>병종 칸: 병종 묶음 id → 인원 (차례대로).</summary>
         public List<ActionPick> Picks { get; set; } = new List<ActionPick>();
+        public int? BoardRow { get; set; }
+        public int? BoardCol { get; set; }
+        public bool Commander { get; set; }
     }
 
     /// <summary>편성 행동의 병종 칸 하나.</summary>

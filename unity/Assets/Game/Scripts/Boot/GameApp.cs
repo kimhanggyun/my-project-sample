@@ -140,6 +140,8 @@ namespace Game.Unity.Boot
 
         /// <summary>지금 보이는 화면 (개발 도구용).</summary>
         public GameScreen CurrentScreen => _current;
+        /// <summary>지금 화면의 뿌리 (확인 창 같은 겹침을 올릴 곳).</summary>
+        public RectTransform CurrentRoot => _screenRoot;
 
         /// <summary>개발용: 확인 목록을 버튼을 눌러 가며 해 보고 캡처·기록을 남긴다 (<see cref="PlayTestTour"/>).</summary>
         public PlayTestTour StartPlayTest(string folder, bool battleOnly = false)

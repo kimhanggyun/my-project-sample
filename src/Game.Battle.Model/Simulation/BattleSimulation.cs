@@ -212,6 +212,12 @@ namespace Game.Battle.Model.Simulation
                 setup.Map.Spawns.TryGetValue(cs.Team, out var spawn);
                 facing = Facing.Parse(cs.Facing ?? spawn.Facing);
                 if (cs.X.HasValue && cs.Y.HasValue) anchor = new Vec(cs.X.Value, cs.Y.Value);
+                else if (cs.SlotRow.HasValue && cs.SlotCol.HasValue)
+                {
+                    // 포진판: 앞 줄은 진영 앞으로, 뒤 줄은 뒤로 한 칸 간격, 칸은 옆으로 (07 군단 편성)
+                    var center = new Cell((int)spawn.X.FloorToLong(), (int)spawn.Y.FloorToLong()).Center;
+                    anchor = center + facing * (setup.Combat.SpawnSpacingCells * (1 - cs.SlotRow.Value)) + facing.RightOf() * (setup.Combat.SpawnSpacingCells * (cs.SlotCol.Value - 1));
+                }
                 else
                 {
                     var center = new Cell((int)spawn.X.FloorToLong(), (int)spawn.Y.FloorToLong()).Center;

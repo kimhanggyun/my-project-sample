@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Game.Unity.Boot;
 using UnityEngine;
 using UnityEngine.UI;
@@ -765,11 +766,368 @@ namespace Game.Unity.UI
 
         private static Button Small(Transform row, string text, long target, bool enabled, Action<long> onChange, float width)
         {
-            var b = Button(row, text, () => onChange?.Invoke(target), 56, Palette.Button, 34);
+            var b = Styled(Button(row, text, () => onChange?.Invoke(target), 56, Palette.Button, 34), "button.small");
             Size(b, 56, width).flexibleWidth = 0;
             b.interactable = enabled;
             if (!enabled) b.GetComponentInChildren<Text>().color = Palette.TextDim;
             return b;
+        }
+
+        // ================= 07 부대 편성에서 나온 부품 (공통부품.md 0장: 역할로 부르고 모양은 스타일 데이터) =================
+
+        /// <summary>스타일 데이터의 역할 모양을 버튼에 입힌다 (색·글자색·높이·글자 크기, 정한 것만). 페이지 덮어쓰기는 <see cref="UiStyle.Page"/>.</summary>
+        public static Button Styled(Button b, string role)
+        {
+            var st = UiStyle.Part(role);
+            if (st == null) return b;
+            if (st.Color.HasValue && b.targetGraphic != null) b.targetGraphic.color = st.Color.Value;
+            var t = b.GetComponentInChildren<Text>();
+            if (t != null && st.TextColor.HasValue) t.color = st.TextColor.Value;
+            if (t != null && st.FontSize > 0) t.fontSize = Mathf.RoundToInt(st.FontSize * UiStyle.FontScale);
+            if (st.Height > 0) { var le = b.GetComponent<LayoutElement>(); if (le != null) { le.minHeight = le.preferredHeight = st.Height; } }
+            return b;
+        }
+
+        /// <summary>가로 스크롤 줄 오른쪽 끝의 "›" 표시 (끝까지 밀면 숨김). 메인 탭 바·편성 보유 병력 줄.</summary>
+        public static void MoreHint(RectTransform bar, float h, Color back)
+        {
+            var hint = Rect(bar, "MoreHint");
+            hint.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            hint.anchorMin = new Vector2(1f, 0f);
+            hint.anchorMax = new Vector2(1f, 1f);
+            hint.pivot = new Vector2(1f, 0.5f);
+            hint.sizeDelta = new Vector2(40f, 0f);
+            Background(hint, new Color(back.r, back.g, back.b, 0.9f)).raycastTarget = false;
+            var t = Label(hint, "›", Mathf.RoundToInt(Mathf.Min(48, h * 0.6f)), TextAnchor.MiddleCenter, Palette.TextDim);
+            Fill(t.rectTransform);
+            var scroll = bar.GetComponentInChildren<ScrollRect>();
+            if (scroll != null) scroll.onValueChanged.AddListener(v => hint.gameObject.SetActive(v.x < 0.98f));
+        }
+
+        /// <summary>세그먼트 탭: 나란한 보조 버튼, 고른 것은 주홍·밝은 글자 (역할 tabs.segment).</summary>
+        public static RectTransform SegmentTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, float height = 58, float width = 150)
+        {
+            var row = Row(parent, "SegmentTabs", height, 8);
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            h.childForceExpandWidth = false;
+            h.childAlignment = TextAnchor.MiddleLeft;
+            foreach (var it in items)
+            {
+                var item = it;
+                bool on = item.id == selected;
+                var b = Button(row, item.label, () => onSelect?.Invoke(item.id), height, on ? Palette.ButtonActive : Palette.Button, 24);
+                Size(b, height, width).flexibleWidth = 0;
+                if (on) b.GetComponentInChildren<Text>().color = OnAccent;
+                Styled(b, on ? "tabs.segment.on" : "tabs.segment");
+            }
+            return row;
+        }
+
+        /// <summary>미니 카드 상태: 보통 / 흐림(다 씀·놓임) / 경고(넘침).</summary>
+        public enum MiniState { Normal, Dim, Warn }
+
+        /// <summary>
+        /// 미니 카드 (역할 card.mini): 정사각 그림(병종 그림 또는 장수 원) · 이름 · 한 줄 값. 꼬리표("제1군")·상태 띠(경상 등) 선택.
+        /// troopType이 있으면 병종 그림, 없으면 장수(generalId·이름 첫 글자).
+        /// </summary>
+        public static Button MiniCard(GameContext ctx, Transform parent, string troopType, string generalId, string name, string value, MiniState state,
+            Action onClick, string tag = null, string status = null, Color statusColor = default, float width = 138, float height = 158)
+        {
+            var card = Rect(parent, "MiniCard");
+            Size(card, height, width).flexibleWidth = 0;
+            var bg = Background(card, state == MiniState.Dim ? new Color(Palette.Card.r * 0.93f, Palette.Card.g * 0.93f, Palette.Card.b * 0.93f) : Palette.Card);
+            Round(bg);
+            var b = card.gameObject.AddComponent<Button>();
+            b.targetGraphic = bg;
+            if (onClick != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onClick(); });
+            if (state == MiniState.Warn)
+            {
+                var o = card.gameObject.AddComponent<Outline>();
+                o.effectColor = Palette.Bad;
+                o.effectDistance = new Vector2(3, -3);
+            }
+            float pic = Mathf.Min(width - 50, height - 76);
+            var picHolder = Place(Rect(card, "Pic"), (width - pic) / 2, 8, pic, pic);
+            if (troopType != null) Fill(TroopPicture(ctx, picHolder, troopType, pic));
+            else
+            {
+                var p = new Portrait(picHolder, pic);
+                p.Rect.anchorMin = p.Rect.anchorMax = new Vector2(0.5f, 0.5f);
+                p.Show(generalId, name, Palette.Ally);
+            }
+            foreach (var g in card.GetComponentsInChildren<Graphic>()) if (g != bg) g.raycastTarget = false;
+            if (state == MiniState.Dim) picHolder.gameObject.AddComponent<CanvasGroup>().alpha = 0.5f;
+            var dimText = state == MiniState.Dim ? Palette.TextDim : Palette.Text;
+            var n = Label(Place(Rect(card, "Name"), 0, pic + 10, width, 30), name, 22, TextAnchor.MiddleCenter, dimText);
+            n.fontStyle = FontStyle.Bold;
+            Fill(n.rectTransform);
+            var v = Label(Place(Rect(card, "Value"), 0, pic + 38, width, 26), value, 19, TextAnchor.MiddleCenter, state == MiniState.Warn ? Palette.Bad : dimText);
+            Fill(v.rectTransform);
+            if (status != null)
+            {
+                var band = Place(Rect(card, "Status"), 0, pic + 8 - 30, width, 30);
+                Background(band, statusColor).raycastTarget = false;
+                var st = Label(band, status, 19, TextAnchor.MiddleCenter, OnAccent);
+                st.fontStyle = FontStyle.Bold;
+                Fill(st.rectTransform);
+            }
+            if (tag != null)
+            {
+                var tg = Place(Rect(card, "Tag"), width / 2 - 45, height - 28, 90, 24);
+                var ti = Background(tg, Palette.TextDim);
+                ti.sprite = UiShapes.Rounded(8);
+                ti.type = Image.Type.Sliced;
+                ti.raycastTarget = false;
+                var tt = Label(tg, tag, 17, TextAnchor.MiddleCenter, OnAccent);
+                Fill(tt.rectTransform);
+            }
+            return b;
+        }
+
+        /// <summary>
+        /// 접는 카드 (역할 card.collapsible): 머리 줄(▾/▸ + 내용, 누르면 접기·펴기) + 몸통(펼쳤을 때만). warn이면 빨간 테두리.
+        /// 돌려주는 머리·몸통에 내용을 넣는다.
+        /// </summary>
+        public static (RectTransform header, RectTransform body) CollapsibleCard(Transform parent, string name, bool expanded, Action onToggle, bool warn = false)
+        {
+            var card = Rect(parent, name);
+            Round(Background(card, Palette.Card));
+            if (warn)
+            {
+                var o = card.gameObject.AddComponent<Outline>();
+                o.effectColor = Palette.Bad;
+                o.effectDistance = new Vector2(4, -4);
+            }
+            var col = Column(card, 10, 18);
+            var header = Rect(card, "Header");
+            var hh = header.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hh.spacing = 12;
+            hh.childAlignment = TextAnchor.MiddleLeft;
+            hh.childControlWidth = hh.childControlHeight = true;
+            hh.childForceExpandWidth = hh.childForceExpandHeight = false;
+            var hit = Background(header, new Color(0, 0, 0, 0));
+            var tb = header.gameObject.AddComponent<Button>();
+            tb.targetGraphic = hit;
+            tb.transition = Selectable.Transition.None;
+            if (onToggle != null) tb.onClick.AddListener(() => { Sfx.Play("click", 0.4f); onToggle(); });
+            var arrow = Label(header, expanded ? "▾" : "▸", 30, TextAnchor.MiddleCenter, Palette.TextDim);
+            Size(arrow, 50, 34).flexibleWidth = 0;
+            var body = Rect(card, "Body");
+            Column(body, 10, 0);
+            body.gameObject.SetActive(expanded);
+            return (header, body);
+        }
+
+        /// <summary>
+        /// 계급 띠 (역할 band.rank): 계급 표식 · 계급 이름 · Lv · 작은 ⓘ(말풍선: 지금 계급·다음 계급) · 군단·칸·병종 최대 · 다음 계급.
+        /// </summary>
+        public static RectTransform RankBar(GameContext ctx, Transform parent, RectTransform overlayRoot, int usedCorps, int usedPicks)
+        {
+            var c = ctx.Defs.Campaign;
+            int lv = ctx.State.LordLevel;
+            var rank = c.RankFor(lv);
+            var next = c.NextRank(lv);
+            var bar = Rect(parent, "RankBar");
+            Size(bar, 84);
+            Round(Background(bar, Palette.Card));
+            var emblem = Place(Rect(bar, "Emblem"), 14, 10, 64, 64);
+            var ei = Background(emblem, new Color(0.788f, 0.588f, 0.169f));
+            ei.sprite = UiShapes.Circle;
+            string rankName = ctx.T("rank." + rank.Id);
+            var et = Label(emblem, rankName.Substring(0, 1), 34, TextAnchor.MiddleCenter, OnAccent);
+            et.font = TitleFont;
+            Fill(et.rectTransform);
+            var title = Label(Place(Rect(bar, "Name"), 92, 2, 220, 50), rankName, 40, TextAnchor.MiddleLeft);
+            title.font = TitleFont;
+            title.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Fill(title.rectTransform);
+            float nameW = title.preferredWidth;
+            var lvT = Label(Place(Rect(bar, "Lv"), 100 + nameW, 10, 90, 40), "Lv." + lv, 26, TextAnchor.MiddleLeft, Palette.TextDim);
+            Fill(lvT.rectTransform);
+            var info = Place(Rect(bar, "Info"), 100 + nameW + 80, 12, 40, 40);
+            Fill((RectTransform)SmallInfo(info, anchor =>
+            {
+                var lines = new List<(string iconId, string name, string value)>
+                {
+                    (null, ctx.T("ui.rank.now", rankName, rank.MinLevel), ""),
+                    (null, ctx.T("ui.rank.limits", rank.Corps, rank.Slots), ""),
+                    (null, ctx.T("ui.rank.troopMax", rank.TroopMax.ToString("N0"), c.RecruitQuality(lv)), ""),
+                };
+                if (next != null)
+                {
+                    lines.Add((null, ctx.T("ui.rank.next", ctx.T("rank." + next.Id), next.MinLevel), ""));
+                    lines.Add((null, ctx.T("ui.rank.nextLimits", next.Corps, next.Slots, next.TroopMax.ToString("N0"), c.RecruitQuality(next.MinLevel)), ""));
+                }
+                StatTip(ctx, overlayRoot, anchor, lines.ToArray());
+            }, 40).transform);
+            var sum = Label(Place(Rect(bar, "Summary"), 92, 46, 640, 34), ctx.T("ui.rank.summary", usedCorps, rank.Corps, usedPicks, rank.Slots, rank.TroopMax.ToString("N0")), 22, TextAnchor.MiddleLeft);
+            Fill(sum.rectTransform);
+            if (next != null)
+            {
+                var nt = Label(Place(Rect(bar, "Next"), 640, 10, 370, 40), ctx.T("ui.rank.nextShort", ctx.T("rank." + next.Id), next.MinLevel, next.Slots), 22, TextAnchor.MiddleRight, Palette.TextDim);
+                Fill(nt.rectTransform);
+            }
+            return bar;
+        }
+
+        /// <summary>
+        /// 아래에서 올라오는 판 (역할 pop.sheet): 뒤를 어둡게(누르면 닫힘) + 아래 둥근 판 + 제목. 돌려주는 내용 묶음에 넣고, close로 닫는다.
+        /// </summary>
+        public static (RectTransform content, Action close) BottomSheet(RectTransform overlayRoot, string title, float height)
+        {
+            var dim = Rect(overlayRoot, "SheetDim");
+            dim.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Fill(dim);
+            var di = Background(dim, new Color(0.08f, 0.06f, 0.05f, 0.5f));
+            var db = dim.gameObject.AddComponent<Button>();
+            db.targetGraphic = di;
+            db.transition = Selectable.Transition.None;
+            Action close = () => { if (dim != null) UnityEngine.Object.Destroy(dim.gameObject); };
+            db.onClick.AddListener(() => close());
+            dim.SetAsLastSibling();
+            var panel = Rect(dim, "Sheet");
+            panel.anchorMin = new Vector2(0, 0);
+            panel.anchorMax = new Vector2(1, 0);
+            panel.pivot = new Vector2(0.5f, 0);
+            panel.sizeDelta = new Vector2(0, height);
+            var pi = Background(panel, Palette.Background);
+            pi.sprite = UiArt.Frame(22f);
+            pi.type = Image.Type.Sliced;
+            panel.gameObject.AddComponent<Button>().transition = Selectable.Transition.None; // 판 누름이 뒤로 새지 않게
+            Column(panel, 12, 28);
+            var t = Label(panel, title, 30, TextAnchor.MiddleLeft);
+            t.fontStyle = FontStyle.Bold;
+            Size(t, 56);
+            var content = Rect(panel, "Content");
+            Size(content, flexibleHeight: 1);
+            return (content, close);
+        }
+
+        /// <summary>확인 창 (역할 pop.confirm): 가운데 창 — 제목 · 설명 · 주요 버튼 1 + 보조 버튼들. 아무 버튼이나 누르면 닫는다.</summary>
+        public static RectTransform Confirm(RectTransform overlayRoot, string title, string body, string primary, Action onPrimary, params (string label, Action act)[] others)
+        {
+            var dim = Rect(overlayRoot, "ConfirmDim");
+            dim.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Fill(dim);
+            Background(dim, new Color(0.08f, 0.06f, 0.05f, 0.55f));
+            dim.SetAsLastSibling();
+            var box = Rect(dim, "Confirm");
+            box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
+            box.sizeDelta = new Vector2(900, 470);
+            var bi = Background(box, Palette.Background);
+            bi.sprite = UiArt.Frame(20f);
+            bi.type = Image.Type.Sliced;
+            Column(box, 16, 34);
+            var t = Label(box, title, 44, TextAnchor.MiddleCenter);
+            t.font = TitleFont;
+            Size(t, 80);
+            Size(Label(box, body, 26, TextAnchor.MiddleCenter, Palette.TextDim), 70);
+            void Close() { if (dim != null) UnityEngine.Object.Destroy(dim.gameObject); }
+            PrimaryButton(box, primary, () => { Close(); onPrimary?.Invoke(); }, 92, 32);
+            var row = Row(box, "Others", 92, 16);
+            foreach (var o in others) { var x = o; SecondaryButton(row, x.label, () => { Close(); x.act?.Invoke(); }, 92, 28); }
+            return box;
+        }
+
+        /// <summary>병종 태그로 고른 미리보기 색 (보병 파랑 · 창병 초록 · 궁병 금색 · 기병 빨강 · 그 밖 회색).</summary>
+        public static Color TroopColor(GameContext ctx, string troopType)
+        {
+            if (!ctx.Defs.TroopTypes.TryGetValue(troopType ?? "", out var t)) return Palette.TextDim;
+            if (t.HasTag("ranged")) return new Color(0.788f, 0.588f, 0.169f);
+            if (t.HasTag("mounted")) return new Color(0.69f, 0.227f, 0.18f);
+            if (t.HasTag("polearm")) return new Color(0.243f, 0.478f, 0.251f);
+            if (t.HasTag("infantry")) return new Color(0.247f, 0.435f, 0.69f);
+            return new Color(0.44f, 0.41f, 0.36f);
+        }
+
+        /// <summary>
+        /// 진형 미리보기 (역할 diagram.formation): 진형 칸 6개를 진형 좌표대로, 칸마다 병종 색 + 인원, 위에 "▲ 앞". 누르면 onClick (진형 고르기).
+        /// </summary>
+        public static Button FormationPreview(GameContext ctx, Transform parent, string formationId, IReadOnlyList<Game.Campaign.Roster.SlotTroops> slots, float w, float h, Action onClick)
+        {
+            var box = Rect(parent, "FormationPreview");
+            Size(box, h, w).flexibleWidth = 0;
+            var bg = Background(box, new Color(0.894f, 0.859f, 0.776f));
+            bg.sprite = UiShapes.Rounded(12);
+            bg.type = Image.Type.Sliced;
+            var b = box.gameObject.AddComponent<Button>();
+            b.targetGraphic = bg;
+            if (onClick != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onClick(); });
+            var front = Label(Place(Rect(box, "Front"), 8, 2, 100, 26), ctx.T("ui.formation.front"), 18, TextAnchor.MiddleLeft, Palette.TextDim);
+            Fill(front.rectTransform);
+            if (!ctx.Defs.Formations.TryGetValue(formationId ?? "", out var f)) return b;
+            float minX = 0, maxX = 0, minY = 0, maxY = 0;
+            foreach (var kv in f.Slots)
+            {
+                float x = kv.Value.X.Raw / (float)Game.Foundation.Math.Fix.OneValue.Raw, y = kv.Value.Y.Raw / (float)Game.Foundation.Math.Fix.OneValue.Raw;
+                minX = Mathf.Min(minX, x); maxX = Mathf.Max(maxX, x); minY = Mathf.Min(minY, y); maxY = Mathf.Max(maxY, y);
+            }
+            float bw = Mathf.Min(92, w / 4.2f), bh = 40;
+            float sx = (w - bw - 20) / Mathf.Max(1f, maxX - minX), sy = (h - bh - 44) / Mathf.Max(1f, maxY - minY);
+            foreach (var st in slots)
+            {
+                if (!f.Slots.TryGetValue(st.Slot, out var off)) continue;
+                float x = off.X.Raw / (float)Game.Foundation.Math.Fix.OneValue.Raw, y = off.Y.Raw / (float)Game.Foundation.Math.Fix.OneValue.Raw;
+                float cx = 10 + (x - minX) * sx, cy = 30 + (maxY - y) * sy;
+                var u = ctx.State.FindUnit(st.UnitId);
+                var cell = Place(Rect(box, "Slot_" + st.Slot), cx, cy, bw, bh);
+                var ci = Background(cell, TroopColor(ctx, u?.TroopType));
+                ci.sprite = UiShapes.Rounded(8);
+                ci.type = Image.Type.Sliced;
+                ci.raycastTarget = false;
+                var n = Label(cell, st.Troops.ToString("N0"), 19, TextAnchor.MiddleCenter, OnAccent);
+                n.fontStyle = FontStyle.Bold;
+                Fill(n.rectTransform);
+            }
+            return b;
+        }
+
+        /// <summary>
+        /// 페이지 틀 (역할 page.default): 고정 머리(아래 그림자) · 스크롤 몸통 · 고정 아래 버튼 줄. root는 탭·화면 전체.
+        /// </summary>
+        public static (RectTransform header, RectTransform body, RectTransform footer) PageLayout(RectTransform root, float footerHeight = 120)
+        {
+            Column(root, 0, 0);
+            var header = Rect(root, "PageHeader");
+            var hc = Column(header, 10, 0);
+            hc.padding = new RectOffset(25, 25, 12, 12);
+            Background(header, Palette.Background).raycastTarget = false;
+            var shadow = Rect(root, "HeaderShadow");
+            Size(shadow, 8);
+            Background(shadow, new Color(0.16f, 0.13f, 0.1f, 0.12f)).raycastTarget = false;
+            var body = ScrollList(root, "PageBody", 14, 25);
+            Size(body.parent.parent, flexibleHeight: 1);
+            var footer = Row(root, "PageFooter", footerHeight, 12);
+            footer.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(25, 25, 14, 14);
+            Background(footer, Palette.Background).raycastTarget = false;
+            return (header, body, footer);
+        }
+
+        /// <summary>놓기 판 (역할 board.drop): rows × cols 점선 칸. 칸 RectTransform 배열을 돌려준다 (놓을 곳 등록·카드 넣기는 화면이).</summary>
+        public static RectTransform[,] DropGrid(Transform parent, int rows, int cols, float cellW, float cellH, string header = null)
+        {
+            var board = Rect(parent, "DropGrid");
+            float hh = header == null ? 0 : 50;
+            Size(board, rows * cellH + hh + 20, cols * cellW + 20).flexibleWidth = 0;
+            var bg = Background(board, new Color(0.84f, 0.8f, 0.7f));
+            Round(bg);
+            if (header != null)
+            {
+                var t = Label(Place(Rect(board, "Header"), 0, 4, cols * cellW + 20, 44), header, 26, TextAnchor.MiddleCenter);
+                t.fontStyle = FontStyle.Bold;
+                Fill(t.rectTransform);
+            }
+            var cells = new RectTransform[rows, cols];
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = Place(Rect(board, "Cell_" + r + "_" + c), 10 + c * cellW + 6, hh + 10 + r * cellH + 6, cellW - 12, cellH - 12);
+                    var ci = Background(cell, new Color(1, 1, 1, 0.18f));
+                    ci.sprite = UiShapes.Rounded(12);
+                    ci.type = Image.Type.Sliced;
+                    cells[r, c] = cell;
+                }
+            return cells;
         }
     }
 }

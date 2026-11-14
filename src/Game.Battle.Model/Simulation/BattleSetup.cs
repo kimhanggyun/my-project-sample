@@ -202,5 +202,8 @@ namespace Game.Battle.Model.Simulation
         public Fix? X { get; set; }
         public Fix? Y { get; set; }
         public string Facing { get; set; }
+        /// <summary>포진판 자리 (07, 3×3): 줄 0 앞 · 1 가운데 · 2 뒤, 칸 0 왼 · 1 가운데 · 2 오른. X·Y가 없을 때 팀 시작 위치에서 앞뒤·좌우로 spawnSpacingCells씩.</summary>
+        public int? SlotRow { get; set; }
+        public int? SlotCol { get; set; }
     }
 }

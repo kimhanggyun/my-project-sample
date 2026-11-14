@@ -83,6 +83,15 @@ namespace Game.Campaign.Roster
             return c;
         }
 
+        /// <summary>그 장수로 군단 추가 (군단 편성 판에 장수를 놓을 때). 자리가 없거나 이미 편성된 장수·출전 불가면 null.</summary>
+        public CorpsComposition AddCorps(string generalId)
+        {
+            if (Draft.Count >= MaxCorps || !FreeGenerals().Contains(generalId) || _state.LearnedFormations.Count == 0) return null;
+            var c = new CorpsComposition { GeneralId = generalId, Formation = _state.LearnedFormations[0], Role = Roles[Draft.Count % Roles.Count] };
+            Draft.Add(c);
+            return c;
+        }
+
         public void RemoveCorps(int index)
         {
             if (index >= 0 && index < Draft.Count) Draft.RemoveAt(index);
@@ -98,6 +107,46 @@ namespace Game.Campaign.Roster
         }
 
         public void SetFormation(int index, string formationId) => Draft[index].Formation = formationId;
+
+        /// <summary>군단을 포진판 자리에 놓는다 (다른 군단이 있으면 서로 맞바꾼다). 역할은 줄에서 (앞 선봉 · 가운데 측면 · 뒤 후위).</summary>
+        public void SetBoard(int index, int row, int col)
+        {
+            var c = Draft[index];
+            foreach (var other in Draft)
+                if (other != c && other.BoardRow == row && other.BoardCol == col) { other.BoardRow = c.BoardRow; other.BoardCol = c.BoardCol; other.Role = Army.RoleOf(other); }
+            c.BoardRow = row;
+            c.BoardCol = col;
+            c.Role = Army.RoleOf(c);
+        }
+
+        /// <summary>총대장 ★ 정하기 (하나만).</summary>
+        public void SetCommander(int index)
+        {
+            for (int i = 0; i < Draft.Count; i++) Draft[i].Commander = i == index;
+        }
+
+        /// <summary>자동 편성 (<see cref="Army.AutoFill"/>): 남은 병력을 열린 군단·칸에.</summary>
+        public void AutoFill()
+        {
+            var gens = new List<string>();
+            foreach (var g in _state.Generals) if (GeneralStatus.CanDeploy(g.Status)) gens.Add(g.GeneralId);
+            Army.AutoFill(_defs, _state, Draft, id =>
+            {
+                var g = _state.FindGeneral(id);
+                return g == null ? 0 : TroopCapCalculator.Cap(_defs.Balance, CorpsValidator.EffectiveStat(_defs, g, "leadership"));
+            }, gens, _state.LearnedFormations.Count > 0 ? _state.LearnedFormations[0] : null);
+        }
+
+        /// <summary>이 편성(사본)을 다른 상황(null = 기본)의 저장된 편성으로 복사한다. 검사를 통과해야 한다.</summary>
+        public bool CopyTo(string situation)
+        {
+            if (situation == Situation || Errors().Count > 0) return false;
+            var copy = new List<CorpsComposition>();
+            foreach (var c in Draft) copy.Add(Copy(c));
+            if (situation == null) _state.Compositions = copy;
+            else _state.CompositionPresets[situation] = copy;
+            return true;
+        }
         public void SetRole(int index, string role) => Draft[index].Role = role;
 
         /// <summary>
@@ -166,14 +215,15 @@ namespace Game.Campaign.Roster
 
         public static CorpsComposition Copy(CorpsComposition c)
         {
-            var copy = new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role };
+            var copy = new CorpsComposition { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, BoardRow = c.BoardRow, BoardCol = c.BoardCol, Commander = c.Commander };
             foreach (var p in c.Picks) copy.Picks.Add(new TroopPick { UnitId = p.UnitId, Troops = p.Troops, Hired = p.Hired });
             return copy;
         }
 
         private static bool Same(CorpsComposition a, CorpsComposition b)
         {
-            if (a.GeneralId != b.GeneralId || a.Formation != b.Formation || a.Role != b.Role || a.Picks.Count != b.Picks.Count) return false;
+            if (a.GeneralId != b.GeneralId || a.Formation != b.Formation || a.Role != b.Role || a.Picks.Count != b.Picks.Count
+                || a.BoardRow != b.BoardRow || a.BoardCol != b.BoardCol || a.Commander != b.Commander) return false;
             for (int i = 0; i < a.Picks.Count; i++) if (a.Picks[i].UnitId != b.Picks[i].UnitId || a.Picks[i].Troops != b.Picks[i].Troops) return false;
             return true;
         }

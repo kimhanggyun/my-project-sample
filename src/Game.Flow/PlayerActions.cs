@@ -135,7 +135,7 @@ namespace Game.Flow
             var list = new List<ActionCorps>();
             foreach (var c in comps)
             {
-                var ac = new ActionCorps { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role };
+                var ac = new ActionCorps { GeneralId = c.GeneralId, Formation = c.Formation, Role = c.Role, BoardRow = c.BoardRow, BoardCol = c.BoardCol, Commander = c.Commander };
                 foreach (var p in c.Picks) ac.Picks.Add(new ActionPick { UnitId = p.UnitId, Troops = p.Troops, Hired = p.Hired });
                 list.Add(ac);
             }
@@ -147,7 +147,7 @@ namespace Game.Flow
             var list = new List<CorpsComposition>();
             foreach (var c in corps)
             {
-                var cc = new CorpsComposition { GeneralId = c?.GeneralId, Formation = c?.Formation, Role = c?.Role };
+                var cc = new CorpsComposition { GeneralId = c?.GeneralId, Formation = c?.Formation, Role = c?.Role, BoardRow = c?.BoardRow, BoardCol = c?.BoardCol, Commander = c?.Commander ?? false };
                 if (c?.Picks != null) foreach (var p in c.Picks) if (p != null) cc.Picks.Add(new TroopPick { UnitId = p.UnitId, Troops = p.Troops, Hired = p.Hired });
                 list.Add(cc);
             }
