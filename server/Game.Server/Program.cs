@@ -29,8 +29,13 @@ builder.Services.AddSingleton<IExternalTokenVerifier>(sp =>
     var project = builder.Configuration["Game:Firebase:ProjectId"];
     return string.IsNullOrEmpty(project) ? null : new FirebaseTokenVerifier(project, FirebaseTokenVerifier.GoogleCerts(new System.Net.Http.HttpClient()));
 });
-// 마스터 계정 (R-86): Game:Masters = 쉼표로 나눈 계정 id
-builder.Services.AddSingleton(sp => MasterAccounts.Parse(builder.Configuration["Game:Masters"]));
+// 마스터 계정 (R-86): Game:Masters = 쉼표로 나눈 계정 id 또는 구글 로그인 이메일 (섞어도 됨)
+builder.Services.AddSingleton(sp =>
+{
+    var masters = MasterAccounts.Parse(builder.Configuration["Game:Masters"]);
+    masters.EmailOf = id => sp.GetRequiredService<IPlatformStore>().EmailOf(id);
+    return masters;
+});
 builder.Services.AddSingleton(sp => ServerSetup.Registry(builder.Configuration, sp.GetRequiredService<ITimeProvider>(), sp.GetRequiredService<IGameStore>(), sp.GetRequiredService<MasterAccounts>()));
 
 var app = builder.Build();
@@ -45,7 +50,7 @@ app.MapPost(OnlineRoutes.FirebaseSignIn, async (HttpRequest req, IPlatformStore 
     if (verifier == null) return Results.NotFound();
     var body = await Body<ExternalSignInRequest>(req);
     var who = verifier.Verify(body?.IdToken, Now());
-    return who == null ? Results.Unauthorized() : Json(p.SignInExternal(who.Provider, who.Subject));
+    return who == null ? Results.Unauthorized() : Json(p.SignInExternal(who.Provider, who.Subject, who.Email));
 });
 app.MapGet(OnlineRoutes.Time, () => Json(new ServerTimeResponse { UnixSeconds = Now() }));
 app.MapGet(OnlineRoutes.Games, (GameRegistry r) => Json(new GameListResponse { Games = new List<string>(r.Codes) }));
@@ -234,11 +239,19 @@ namespace Game.Server
         }
     }
 
-    /// <summary>마스터 계정 목록 (R-86). 실행 중에 더할 수 있다 (테스트·운영 도구).</summary>
+    /// <summary>
+    /// 마스터 계정 목록 (R-86). 항목은 계정 id(acct-…) 또는 이메일("@"가 있으면 이메일, 대소문자 무시).
+    /// 이메일은 구글(Firebase) 로그인 때 확인된 이메일이 남은 계정에만 맞는다 (<see cref="EmailOf"/>).
+    /// 게스트(Unity 에디터 등)는 이메일이 없으니 계정 id로 적는다. 실행 중에 더할 수 있다 (테스트·운영 도구).
+    /// </summary>
     public sealed class MasterAccounts
     {
         private readonly HashSet<string> _ids = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _emails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _lock = new object();
+
+        /// <summary>계정 id → 확인된 이메일 (없으면 null). 정하지 않으면 이메일 항목은 맞지 않는다.</summary>
+        public Func<string, string> EmailOf { get; set; }
 
         public static MasterAccounts Parse(string csv)
         {
@@ -248,8 +261,29 @@ namespace Game.Server
             return m;
         }
 
-        public void Add(string accountId) { if (!string.IsNullOrEmpty(accountId)) lock (_lock) _ids.Add(accountId); }
-        public bool Contains(string accountId) { if (accountId == null) return false; lock (_lock) return _ids.Contains(accountId); }
+        /// <summary>계정 id 또는 이메일을 더한다.</summary>
+        public void Add(string idOrEmail)
+        {
+            if (string.IsNullOrEmpty(idOrEmail)) return;
+            lock (_lock)
+            {
+                if (idOrEmail.Contains('@')) _emails.Add(idOrEmail.Trim());
+                else _ids.Add(idOrEmail);
+            }
+        }
+
+        public bool Contains(string accountId)
+        {
+            if (accountId == null) return false;
+            lock (_lock)
+            {
+                if (_ids.Contains(accountId)) return true;
+                if (_emails.Count == 0) return false;
+            }
+            string email = EmailOf?.Invoke(accountId);
+            if (string.IsNullOrEmpty(email)) return false;
+            lock (_lock) return _emails.Contains(email);
+        }
     }
 
     public static class ServerPaths

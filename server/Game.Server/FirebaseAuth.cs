@@ -13,6 +13,8 @@ namespace Game.Server
     {
         public string Provider { get; set; }
         public string Subject { get; set; }
+        /// <summary>확인된 이메일 (소문자, 토큰의 email_verified가 true일 때만). 없으면 null. 마스터 계정 확인에 쓴다 (R-86).</summary>
+        public string Email { get; set; }
     }
 
     /// <summary>외부 로그인 토큰 확인 (docs/impl/deploy-cloudrun.md 3장). 틀리면 null.</summary>
@@ -65,7 +67,9 @@ namespace Game.Server
                 string sub = Str(p, "sub");
                 if (string.IsNullOrEmpty(sub) || sub.Length > 128) return null;
                 string provider = p.TryGetProperty("firebase", out var fb) ? Str(fb, "sign_in_provider") : null;
-                return new ExternalIdentity { Provider = provider ?? "firebase", Subject = sub };
+                string email = Str(p, "email");
+                bool verified = p.TryGetProperty("email_verified", out var ev) && ev.ValueKind == JsonValueKind.True;
+                return new ExternalIdentity { Provider = provider ?? "firebase", Subject = sub, Email = verified && !string.IsNullOrWhiteSpace(email) ? email.Trim().ToLowerInvariant() : null };
             }
             catch (Exception) { return null; }
         }

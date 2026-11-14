@@ -16,7 +16,10 @@ namespace Game.Server
     {
         SignInResponse CreateGuest();
         /// <summary>외부 로그인(제공자 + 사용자 id)으로: 처음이면 새 계정, 아니면 그 계정에 새 토큰.</summary>
-        SignInResponse SignInExternal(string provider, string subject);
+        /// <param name="email">확인된 이메일 (있으면 계정에 남긴다, 마스터 확인용). 없으면 null.</param>
+        SignInResponse SignInExternal(string provider, string subject, string email = null);
+        /// <summary>계정에 남은 확인된 이메일 (외부 로그인만, 소문자). 없으면 null.</summary>
+        string EmailOf(string accountId);
         /// <summary>토큰 → 계정 id (없으면 null).</summary>
         string AccountOf(string token);
         /// <summary>그 게임에 처음 들어오면 가입 기록을 남긴다. 처음이면 true.</summary>
@@ -84,6 +87,8 @@ namespace Game.Server
             public Dictionary<string, string> External { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → (게임 코드 → 가입 시각).</summary>
             public Dictionary<string, Dictionary<string, long>> Memberships { get; set; } = new Dictionary<string, Dictionary<string, long>>();
+            /// <summary>계정 → 확인된 이메일 (외부 로그인, 마스터 확인용).</summary>
+            public Dictionary<string, string> Emails { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → 닉네임.</summary>
             public Dictionary<string, string> Nicknames { get; set; } = new Dictionary<string, string>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
@@ -116,7 +121,7 @@ namespace Game.Server
             return r;
         }
 
-        public SignInResponse SignInExternal(string provider, string subject)
+        public SignInResponse SignInExternal(string provider, string subject, string email = null)
         {
             string key = provider + ":" + subject;
             lock (_lock)
@@ -127,6 +132,8 @@ namespace Game.Server
                     Data.External[key] = accountId;
                     Data.Memberships[accountId] = new Dictionary<string, long>();
                 }
+                if (Data.Emails == null) Data.Emails = new Dictionary<string, string>(); // 예전 저장 파일
+                if (!string.IsNullOrEmpty(email)) Data.Emails[accountId] = email.Trim().ToLowerInvariant();
                 var r = new SignInResponse { AccountId = accountId, Token = NewId(24) };
                 Data.Tokens[r.Token] = accountId;
                 Persist();
@@ -176,6 +183,11 @@ namespace Game.Server
                 Persist();
                 return new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n };
             }
+        }
+
+        public string EmailOf(string accountId)
+        {
+            lock (_lock) return Data.Emails != null && accountId != null && Data.Emails.TryGetValue(accountId, out var e) ? e : null;
         }
 
         public string NicknameOf(string accountId)
