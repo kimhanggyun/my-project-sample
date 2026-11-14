@@ -17,8 +17,7 @@ namespace Game.Flow
         public static void Capture(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string regionId, string accountId, long at, Action<string, Mail> sendMail)
         {
             if (owners.TryGetValue(regionId, out var old) && old.OwnerAccountId == accountId) return; // 이미 내 지역: 그대로 (수입도 이어서)
-            if (old != null && defs != null && defs.Regions.TryGetValue(regionId, out var r))
-                foreach (var m in MailsFor(defs, r, old, at)) sendMail(old.OwnerAccountId, m);
+            if (old != null) foreach (var m in MailsFor(defs, regionId, old, at)) sendMail(old.OwnerAccountId, m);
             owners[regionId] = new TerritoryOwner { RegionId = regionId, OwnerAccountId = accountId, SinceUnixSeconds = at, CollectedUnixSeconds = at };
         }
 
@@ -43,8 +42,8 @@ namespace Game.Flow
             if (defs == null) return sent;
             foreach (var o in owners.Values)
             {
-                if (o.OwnerAccountId != accountId || !defs.Regions.TryGetValue(o.RegionId, out var r)) continue;
-                foreach (var m in MailsFor(defs, r, o, now)) { sendMail(accountId, m); sent.Add(m); }
+                if (o.OwnerAccountId != accountId || AccruedOf(defs, o.RegionId, o.CollectedUnixSeconds, now) == null) continue;
+                foreach (var m in MailsFor(defs, o.RegionId, o, now)) { sendMail(accountId, m); sent.Add(m); }
                 o.CollectedUnixSeconds = now;
             }
             return sent;
@@ -57,22 +56,30 @@ namespace Game.Flow
             var r = new TerritoryResponse();
             foreach (var o in owners.Values)
             {
-                var copy = new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds, CollectedUnixSeconds = o.CollectedUnixSeconds, Defense = o.Defense };
+                var copy = new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds, CollectedUnixSeconds = o.CollectedUnixSeconds, Defense = o.Defense,
+                    GeneralId = o.GeneralId, RadiusM = o.RadiusM, ProtectedUntilUnixSeconds = o.ProtectedUntilUnixSeconds };
                 var al = allianceOf?.Invoke(o.OwnerAccountId);
                 copy.OwnerAllianceId = al?.Id;
                 copy.OwnerAllianceName = al?.Name;
-                if (o.OwnerAccountId == accountId && defs != null && defs.Regions.TryGetValue(o.RegionId, out var region))
-                    copy.Pending = defs.Accrued(region, o.CollectedUnixSeconds, now);
+                if (o.OwnerAccountId == accountId) copy.Pending = AccruedOf(defs, o.RegionId, o.CollectedUnixSeconds, now);
                 r.Owners.Add(copy);
             }
             r.Owners.Sort((a, b) => string.CompareOrdinal(a.RegionId, b.RegionId));
             return r;
         }
 
-        private static IEnumerable<Mail> MailsFor(TerritoryDefs defs, RegionDef r, TerritoryOwner o, long now)
+        /// <summary>지역 또는 깃발("flag:" 키, R-97)의 쌓인 수입. 모르는 키면 null.</summary>
+        public static Dictionary<string, long> AccruedOf(TerritoryDefs defs, string key, long since, long now)
         {
-            foreach (var kv in defs.Accrued(r, o.CollectedUnixSeconds, now))
-                yield return new Mail { Kind = MailKinds.TerritoryIncome, Resource = kv.Key, Amount = kv.Value, RegionId = r.Id, CreatedAtUnixSeconds = now };
+            if (defs == null || key == null) return null;
+            if (FlagDefs.IsFlagKey(key)) return defs.Flags?.Accrued(since, now);
+            return defs.Regions.TryGetValue(key, out var r) ? defs.Accrued(r, since, now) : null;
+        }
+
+        private static IEnumerable<Mail> MailsFor(TerritoryDefs defs, string key, TerritoryOwner o, long now)
+        {
+            foreach (var kv in AccruedOf(defs, key, o.CollectedUnixSeconds, now) ?? new Dictionary<string, long>())
+                yield return new Mail { Kind = MailKinds.TerritoryIncome, Resource = kv.Key, Amount = kv.Value, RegionId = key, CreatedAtUnixSeconds = now };
         }
     }
 }

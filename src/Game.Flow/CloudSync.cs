@@ -331,10 +331,18 @@ namespace Game.Flow
             LoadSave(_ => { });
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
             _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
+            string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
+            if (flagKey != null && TerritoryFlags.CheckSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, flagKey, s.Location, Now) != null)
+            { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = Copy(_save) }); return; }
             var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog,
                 region => TerritoryLedger.DefenseOf(_owners, region));
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
-            if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
+            if (v.Valid && flagKey != null)
+            {
+                var after = SaveJson.Read(json);
+                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail);
+            }
+            else if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
             if (v.Valid && hired != null)
             {
                 foreach (var u in hired.Uses) _hireLog.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
@@ -491,6 +499,16 @@ namespace Game.Flow
             var r = TerritoryLedger.RegisterDefense(_owners, req.RegionId, AccountId, d, Now);
             done?.Invoke(r == null ? new DefenseResponse { Ok = false, Reason = TerritoryDefenses.NotOwner } : new DefenseResponse { Ok = true, Reason = "ok", Defense = r });
         }
+
+        /// <summary>깃발 꽂기 (R-96): 내 서버 세이브의 장수 · 기본 편성으로.</summary>
+        public void PlantFlag(PlantRequest req, Action<PlantResponse> done)
+        {
+            LoadSave(_ => { });
+            done?.Invoke(TerritoryFlags.Plant(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, a => AllianceBook.Of(_alliances, a)?.Id, _owners, req, Now));
+        }
+
+        /// <summary>개발 · 시험용: 다른 유저의 깃발을 장부에 넣는다 (가짜 서버에는 나 말고 유저가 없으므로).</summary>
+        public void SeedFlag(TerritoryOwner flag) { if (flag?.RegionId != null) _owners[flag.RegionId] = flag; }
 
         private void SendMail(string account, Mail m)
         {

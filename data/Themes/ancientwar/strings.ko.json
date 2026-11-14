@@ -200,6 +200,7 @@
   "ui.nickname.badName": "2~10자의 글자·숫자·밑줄(_)로 정해 주세요.",
   "ui.nickname.taken": "이미 쓰는 사람이 있는 이름입니다.",
   "ui.territory.othersNamed": "{0}의 지역",
+  "ui.territory.siege": "깃발 공성전",
   "general.general_d": "장수 D",
   "general.general_e": "장수 E",
   "general.general_f": "장수 F",

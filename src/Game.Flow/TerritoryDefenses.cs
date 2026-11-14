@@ -21,7 +21,20 @@ namespace Game.Flow
         public static TerritoryDefense Snapshot(DefinitionSet defs, CampaignState owner, string situation, out string error)
         {
             error = null;
-            var comps = owner == null ? null : Army.ForSortie(defs, owner, owner.CompositionsFor(situation));
+            return SnapshotOf(defs, owner, owner == null ? null : owner.CompositionsFor(situation), out error);
+        }
+
+        /// <summary>깃발 수비 (territory-v2.md 2.1, R-96): 기본 편성에서 그 장수가 이끄는 군단 하나만 스냅샷.</summary>
+        public static TerritoryDefense SnapshotGeneral(DefinitionSet defs, CampaignState owner, string generalId, out string error)
+        {
+            var c = TerritoryFlags.CorpsOf(owner, generalId);
+            return SnapshotOf(defs, owner, c == null ? null : new List<CorpsComposition> { c }, out error);
+        }
+
+        private static TerritoryDefense SnapshotOf(DefinitionSet defs, CampaignState owner, List<CorpsComposition> source, out string error)
+        {
+            error = null;
+            var comps = owner == null || source == null ? null : Army.ForSortie(defs, owner, source);
             if (comps == null || comps.Count == 0 || CorpsValidator.Validate(defs, owner, comps).Count > 0) { error = BadFormation; return null; }
             var d = new TerritoryDefense();
             foreach (var c in comps)

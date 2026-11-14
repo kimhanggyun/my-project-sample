@@ -21,7 +21,18 @@ namespace Game.Flow
         /// <summary>지역 → 스텝 (없는 지역이면 null).</summary>
         public static StepDef StepFor(TerritoryDefs defs, string regionId)
         {
-            if (defs == null || regionId == null || !defs.Regions.TryGetValue(regionId, out var region)) return null;
+            if (defs == null || regionId == null) return null;
+            if (FlagDefs.IsFlagKey(regionId))
+            {
+                // 깃발 공성전 (R-97): 틀은 flags.json battle, 적은 깃발 주인의 수비 스냅샷으로 바뀐다
+                if (defs.Flags == null || !FlagDefs.TryParseKey(regionId, out _)) return null;
+                var f = (JObject)defs.Flags.Battle.DeepClone();
+                f["id"] = StepIdOf(regionId);
+                f["kind"] = StepDef.TerritoryKind;
+                f["nameKey"] = "ui.territory.siege";
+                return StepDef.From(f);
+            }
+            if (!defs.Regions.TryGetValue(regionId, out var region)) return null;
             var o = defs.DefenseFor(region);
             o["id"] = StepIdOf(regionId);
             o["kind"] = StepDef.TerritoryKind;
@@ -33,8 +44,10 @@ namespace Game.Flow
         /// 영토 출진 검사 (기기·서버 같은 코드): 지역이 있고, 혼자 차지할 수 있는 단계(필요 군단 1)이며, 위치에서 공격할 수 있는 지역이어야 한다.
         /// 되면 null, 아니면 까닭.
         /// </summary>
-        public static string CheckSortie(TerritoryDefs defs, string regionId, string location)
+        public static string CheckSortie(TerritoryDefs defs, string regionId, string location, DefinitionSet d = null, Game.Campaign.CampaignState state = null)
         {
+            if (FlagDefs.IsFlagKey(regionId))
+                return d == null ? "깃발 공성전은 계급을 알아야 합니다." : TerritoryFlags.CheckSiege(defs, d, state, null, null, regionId, location, 0);
             if (defs == null || regionId == null || !defs.Regions.TryGetValue(regionId, out var region)) return $"없는 지역 '{regionId}'.";
             if (defs.RequiredLegions(region) > 1) return $"'{regionId}'은 연합(군단 {defs.RequiredLegions(region)}개)이 있어야 공격할 수 있습니다.";
             if (defs.Levels[region.Level].SeasonOnly) return $"'{regionId}'은 시즌 행사에서만 공격할 수 있습니다.";

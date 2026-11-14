@@ -40,6 +40,8 @@ namespace Game.Server
         MailListResponse CollectTerritory(string accountId);
         /// <summary>내 지역에 수비 편성 등록 (R-48).</summary>
         DefenseResponse RegisterDefense(string accountId, DefenseRequest request);
+        /// <summary>깃발 꽂기 (R-96).</summary>
+        PlantResponse PlantFlag(string accountId, PlantRequest request);
 
         // ---- 연합 (R-49) ----
         AllianceListResponse Alliances(string accountId);
@@ -177,12 +179,21 @@ namespace Game.Server
             var save = LoadOrCreate(accountId);
             if (s == null || s.BaseRevision != save.Revision)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
+            // 깃발 공성전 (R-97): 깃발 · 보호 · 범위 검사
+            string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
+            if (flagKey != null && _store.WithTerritory(Code, owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)) != null)
+                return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = save };
             var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
                 _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, owners => TerritoryLedger.DefenseOf(owners, region)));
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
-            if (TerritoryBattles.Captures(s, verdict))
+            if (flagKey != null)
+            {
+                var after = FromJson(json);
+                _store.WithTerritory(Code, owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
+            }
+            else if (TerritoryBattles.Captures(s, verdict))
                 _store.WithTerritory(Code, owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
             // 고용 보상: 등록자 우편으로 (등록자 세이브는 직접 고치지 않는다 — 받을 때 행동 mail.claim)
             if (hired != null)
@@ -275,6 +286,13 @@ namespace Game.Server
             if (d == null) return new DefenseResponse { Ok = false, Reason = error };
             var r = _store.WithTerritory(Code, owners => TerritoryLedger.RegisterDefense(owners, req.RegionId, accountId, d, Now));
             return r == null ? new DefenseResponse { Ok = false, Reason = TerritoryDefenses.NotOwner } : new DefenseResponse { Ok = true, Reason = "ok", Defense = r };
+        }
+
+        public PlantResponse PlantFlag(string accountId, PlantRequest req)
+        {
+            var state = FromJson(LoadOrCreate(accountId).Json);
+            var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
+            return _store.WithTerritory(Code, owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
         }
 
         public MailListResponse CollectTerritory(string accountId) =>

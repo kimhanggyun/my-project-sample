@@ -73,6 +73,8 @@ namespace Game.Territory
         public int AllianceMemberMax { get; private set; } = 30;
         public int AllianceNameMin { get; private set; } = 2;
         public int AllianceNameMax { get; private set; } = 12;
+        /// <summary>영토 깃발 (territory-v2.md, R-96·R-97). flags.json이 없으면 null.</summary>
+        public FlagDefs Flags { get; private set; }
 
         private static Dictionary<string, long> ReadIncome(JObject o, string ctx)
         {
@@ -163,6 +165,7 @@ namespace Game.Territory
             var al = root["alliance"] as JObject ?? new JObject();
             var result = new TerritoryDefs { Levels = levels, Regions = regions, Ordered = ordered, IncomeCapHours = cap,
                 AllianceMemberMax = al.Value<int?>("memberMax") ?? 30, AllianceNameMin = al.Value<int?>("nameMin") ?? 2, AllianceNameMax = al.Value<int?>("nameMax") ?? 12 };
+            result.Flags = source.Exists(FlagDefs.File) ? FlagDefs.Load(source) : null;
             if (result.AllianceMemberMax < 1 || result.AllianceNameMin < 1 || result.AllianceNameMax < result.AllianceNameMin) throw new DataException($"{File}.alliance: 인원 상한·이름 길이가 잘못되었습니다.");
             return result;
         }
