@@ -45,6 +45,7 @@ namespace Game.Unity.Screens
             { "alliance", () => new ScreenTabView(() => new AllianceScreen()) },
             { "settings", () => new ScreenTabView(() => new SettingsScreen()) },
             { "master", () => new MasterTabView() },
+            { "parts", () => new PartsTabView() }, // 부품 미리보기 (공통부품.md 0장)
             { "sampleBattle", () => new SampleBattleTabView() },
             { "map", () => new MapTabView() },
         };
@@ -110,7 +111,7 @@ namespace Game.Unity.Screens
                     _tabButtons[t.Id] = b;
                     if (alerts.Contains(t.Id) && t.Status == MainTabEntry.Active) Dot(b); // 할 일이 있는 탭 (E21)
                 }
-                if (rowTabs.Count > visible) MoreHint(barBg, h, small ? Palette.Card : Palette.Bar); // 넘치는 줄: 밀어서 더 본다는 표시
+                if (rowTabs.Count > visible) Ui.MoreHint(barBg, h, small ? Palette.Card : Palette.Bar); // 넘치는 줄: 밀어서 더 본다는 표시
             }
 
             MainTabEntry first = null;
@@ -120,25 +121,6 @@ namespace Game.Unity.Screens
                 if (first == null && t.Status == MainTabEntry.Active) first = t;
             }
             if (first != null) Select(first);
-        }
-
-        /// <summary>가로 스크롤 줄 오른쪽 끝의 "›" 표시 (누름은 막지 않는다).</summary>
-        private static void MoreHint(RectTransform bar, float h, Color back)
-        {
-            var hint = Ui.Rect(bar, "MoreHint");
-            hint.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            hint.anchorMin = new Vector2(1f, 0f);
-            hint.anchorMax = new Vector2(1f, 1f);
-            hint.pivot = new Vector2(1f, 0.5f);
-            hint.sizeDelta = new Vector2(34f, 0f);
-            var bg = Ui.Background(hint, new Color(back.r, back.g, back.b, 0.9f));
-            bg.raycastTarget = false;
-            var t = Ui.Label(hint, "›", Mathf.RoundToInt(h * 0.6f), TextAnchor.MiddleCenter, Palette.TextDim);
-            t.raycastTarget = false;
-            Ui.Fill(t.rectTransform);
-            // 끝까지 밀면 "›"를 숨긴다 (데스크탑 플레이 테스트 2026-11-14: 끝에서도 남아 있었다)
-            var scroll = bar.GetComponentInChildren<ScrollRect>();
-            if (scroll != null) scroll.onValueChanged.AddListener(v => hint.gameObject.SetActive(v.x < 0.98f));
         }
 
         /// <summary>탭 버튼 오른쪽 위 빨간 점.</summary>
@@ -156,15 +138,39 @@ namespace Game.Unity.Screens
             le.ignoreLayout = true;
         }
 
+        private ITabView _view;
+        private string _viewId;
+
+        /// <summary>저장 안 한 것을 버리게 되면 먼저 묻는다 (확인 창: 저장하고 나가기 · 저장 안 하고 나가기 · 취소).</summary>
+        public static void AskLeave(GameApp app, ILeaveGuard guard, System.Action go)
+        {
+            var ctx = app.Context;
+            var root = app.CurrentRoot;
+            Ui.Confirm(root, ctx.T("ui.leave.title"), ctx.T("ui.leave.body"), ctx.T("ui.leave.save"), () => { guard.SaveForLeave(app); go(); },
+                (ctx.T("ui.leave.discard"), () => { guard.Discard(app); go(); }), (ctx.T("ui.common.cancel"), null));
+        }
+
         private void Select(MainTabEntry tab)
         {
+            if (_view is ILeaveGuard g && _viewId != tab.Id && g.HasUnsaved(App)) { AskLeave(App, g, () => { _view = null; Select(tab); }); return; }
+            UiStyle.Page = null;
             Ui.Clear(_content);
             foreach (var kv in _tabButtons) Ui.Recolor(kv.Value, kv.Key == tab.Id ? Palette.ButtonActive : Palette.Button);
             var root = Ui.Panel(_content, tab.Id);
             ITabView view = tab.Status == MainTabEntry.Active && Views.TryGetValue(tab.Id, out var make) ? make() : new ComingSoonTabView(tab);
+            _view = view;
+            _viewId = tab.Id;
             view.Build(App, root);
             if (tab.Status == MainTabEntry.Active) GuideOverlay.Show(App, Root, "tab." + tab.Id); // 처음 안내 (R-62)
         }
+    }
+
+    /// <summary>저장 안 한 것이 있는 탭 (편성): 다른 탭으로 갈 때 묻는다.</summary>
+    public interface ILeaveGuard
+    {
+        bool HasUnsaved(GameApp app);
+        void SaveForLeave(GameApp app);
+        void Discard(GameApp app);
     }
 
     /// <summary>메인 화면의 탭 내용 하나.</summary>

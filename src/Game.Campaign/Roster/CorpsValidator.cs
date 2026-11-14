@@ -45,6 +45,17 @@ namespace Game.Campaign.Roster
                 long cap = TroopCapCalculator.Cap(defs.Balance, EffectiveStat(defs, general, "leadership"));
                 if (total > cap) errors.Add($"장수 '{c.GeneralId}' 군단 병력 {total}이 한도 {cap}를 넘음 ({total - cap} 초과).");
             }
+            var spots = new HashSet<(int, int)>();
+            int commanders = 0;
+            foreach (var c in compositions)
+            {
+                if (c.Commander) commanders++;
+                if (!c.BoardRow.HasValue && !c.BoardCol.HasValue) continue;
+                int r = c.BoardRow ?? -1, k = c.BoardCol ?? -1;
+                if (r < 0 || r > 2 || k < 0 || k > 2) errors.Add($"장수 '{c.GeneralId}' 군단: 포진판 자리 ({r}, {k})가 3×3 밖.");
+                else if (!spots.Add((r, k))) errors.Add($"장수 '{c.GeneralId}' 군단: 포진판 자리 ({r}, {k})에 다른 군단이 있음.");
+            }
+            if (commanders > 1) errors.Add($"총대장이 {commanders}명 (하나만).");
             foreach (var kv in asked)
             {
                 var u = state.FindUnit(kv.Key);

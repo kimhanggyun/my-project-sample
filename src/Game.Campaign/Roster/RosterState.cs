@@ -82,6 +82,11 @@ namespace Game.Campaign.Roster
         public string Role { get; set; }
         /// <summary>병종 칸: 병종 묶음(보유 부대 id)에서 데려갈 인원. 계급의 칸 수까지.</summary>
         public List<TroopPick> Picks { get; set; } = new List<TroopPick>();
+        /// <summary>군단 편성 포진판 자리 (07 시안, 3×3): 줄 0 = 앞(선봉) · 1 = 가운데(측면) · 2 = 뒤(후위), 칸 0 = 왼 · 1 = 가운데 · 2 = 오른. 없으면 예전처럼 역할(Role)·차례.</summary>
+        public int? BoardRow { get; set; }
+        public int? BoardCol { get; set; }
+        /// <summary>총대장 군단 (★). 아무도 아니면 첫 군단.</summary>
+        public bool Commander { get; set; }
         /// <summary>예전 세이브의 칸 편성 (칸 id → 부대 id). 읽을 때 <see cref="Army.Normalize"/>가 Picks로 바꾸고 비운다.</summary>
         public Dictionary<string, string> Slots { get; set; } = new Dictionary<string, string>();
     }

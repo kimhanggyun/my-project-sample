@@ -80,6 +80,12 @@
       "row": "dev"
     },
     {
+      "id": "parts",
+      "nameKey": "ui.tab.parts",
+      "status": "active",
+      "row": "dev"
+    },
+    {
       "id": "prisoner",
       "nameKey": "ui.tab.prisoner",
       "status": "active",
