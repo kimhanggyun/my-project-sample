@@ -29,17 +29,14 @@ namespace Game.Unity.Screens
             Ctx.Defs.Generals.TryGetValue(_generalId, out var gdef);
             var (header, body, _) = Ui.PageLayout(Root, 0);
 
-            // ---- 머리 ----
-            var nav = Ui.Row(header, "Nav", 84, 10);
-            Ui.Size(Ui.Button(nav, "‹", () => App.ShowMain("general"), 84, fontSize: 40), width: 90);
+            // ---- 머리: 공통 타이틀 "장수 카드" (오른쪽에 쪽 번호), 장수 영역 좌우에 ◀ ▶ ----
             var gs = Ctx.State.Generals;
             int at = gs.FindIndex(x => x.GeneralId == _generalId);
-            Ui.Size(Ui.Label(nav, (at + 1) + " / " + gs.Count, 22, TextAnchor.MiddleRight, Palette.TextDim), flexibleWidth: 1);
-            Ui.Size(Ui.Button(nav, "◀", () => App.Show(new GeneralScreen(gs[(at - 1 + gs.Count) % gs.Count].GeneralId)), 84, fontSize: 30), width: 110);
-            Ui.Size(Ui.Button(nav, "▶", () => App.Show(new GeneralScreen(gs[(at + 1) % gs.Count].GeneralId)), 84, fontSize: 30), width: 110);
-            Ui.Size(Ui.Rect(nav, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
+            var right = Ui.TitleBar(header, T("ui.general.cardTitle"), () => App.ShowMain("general"));
+            Ui.Label(right, (at + 1) + " / " + gs.Count, 24, TextAnchor.MiddleRight, Palette.TextDim);
 
-            var who = Ui.Row(header, "Who", 200, 18);
+            var who = Ui.Row(header, "Who", 200, 14);
+            Ui.Size(Ui.Button(who, "◀", () => App.Show(new GeneralScreen(gs[(at - 1 + gs.Count) % gs.Count].GeneralId)), 200, fontSize: 30), 200, 64);
             var pic = Ui.Rect(who, "Portrait");
             Ui.Size(pic, 190, 190);
             new Portrait(pic, 190, true).Show(_generalId, Ctx.GeneralName(_generalId), GradeColor(gdef?.Grade));
@@ -55,6 +52,7 @@ namespace Game.Unity.Screens
             var exp = Ui.Gauge(id, Palette.Ally, 22);
             Ui.SetGauge(exp, need <= 0 ? 1f : Mathf.Clamp01((float)g.Exp / need));
             Ui.Label(id, g.Exp.ToString("N0") + " / " + need.ToString("N0") + "   " + T("ui.generals." + g.Status), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Size(Ui.Button(who, "▶", () => App.Show(new GeneralScreen(gs[(at + 1) % gs.Count].GeneralId)), 200, fontSize: 30), 200, 64);
 
             // 능력치 타일 (아이콘 + 큰 숫자 + 레벨마다 성장)
             var statRow = Ui.Row(header, "Stats", 100, 10);

@@ -190,5 +190,38 @@ namespace Game.Tests.Battle
             }
             Assert.Equal(sim.Result.StateHash, again.Result.StateHash);
         }
+
+        [Fact(DisplayName = "R-107 근접 공격: 상대를 누르지 않고 가장 가까운 보이는 적 군단을 바로 공격")]
+        public void AttackNearest()
+        {
+            var (sim, ctl) = Make();
+            var own = ctl.OwnCorps().Where(ctl.CanCommand).ToList();
+            ctl.Select(own[0].Id);
+            var nearest = sim.Context.NearestEnemy(own[0]);
+            Assert.NotNull(nearest);
+            Assert.True(ctl.AttackNearest());
+            sim.Step();
+            Assert.Equal(OrderKinds.Attack, own[0].Order.Kind);
+            Assert.Equal(nearest.Id, own[0].Order.TargetCorpsId);
+        }
+
+        [Fact(DisplayName = "R-106 위임 켜기: 진행 중인 플레이어 이동 · 예약을 AI에게 넘겨 바로 AI가 지휘한다")]
+        public void DelegateTakesOver()
+        {
+            var (sim, ctl) = Make();
+            var a = ctl.OwnCorps().Where(ctl.CanCommand).First();
+            ctl.Select(a.Id);
+            var p = a.Anchor + sim.Context.Forward(a) * Fix.FromInt(2);
+            Assert.True(ctl.MoveTo(p));
+            Assert.True(ctl.MoveTo(p + sim.Context.Forward(a) * Fix.FromInt(2), MoveModes.Normal, true));
+            sim.Step();
+            Assert.False(a.AiInCharge);
+            Assert.Single(a.Queue);
+            Assert.True(ctl.SetDelegate(true));
+            sim.Step();
+            Assert.True(a.Delegated);
+            Assert.True(a.AiInCharge);
+            Assert.Empty(a.Queue);
+        }
     }
 }

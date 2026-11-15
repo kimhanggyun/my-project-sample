@@ -4,8 +4,8 @@ using UnityEngine;
 namespace Game.Unity.Battle3D
 {
     /// <summary>
-    /// 임시 병사 모양 (외부 모델이 없을 때, docs/impl/unity/art.md 1장): 기본 도형을 합쳐 병종별 작은 인형을 만든다.
-    /// 머리·몸통 + 보병 방패 / 창병 긴 창 / 궁병 활 / 기병 말 / 정찰병 가벼운 차림. 높이 약 0.42 (전장 1칸 = 1), 원점은 발밑.
+    /// 병사 모양 (art.md 1장): 기본 도형을 합쳐 병종별 인형을 만든다. 사람 병사는 아트 목록에 모델을 두지 않아 늘 이것 (가는 실루엣, 2026-11-15).
+    /// 가는 몸 + 보병 방패 / 창병 긴 창 / 궁병 활 / 기병 말 / 정찰병 가벼운 차림. 높이 약 0.36 (창 끝 0.54, 전장 1칸 = 1), 원점은 발밑.
     /// 부위별 색은 하위 메시(submesh)로 나눈다: 0 = 갑옷·투구(팀 색), 1 = 얼굴(살색), 2 = 무기(쇠·나무), 3 = 다리·말(갈색).
     /// 최종 아트(수묵 방향)는 나중에 모델로 바꾼다.
     /// </summary>
@@ -80,62 +80,80 @@ namespace Game.Unity.Battle3D
             return Built[baseType ?? ""] = m;
         }
 
+        /// <summary>
+        /// 병사 = 가는 실루엣 (2026-11-15 사용자 시안 C): 사람 비율의 가는 몸이라 병사 사이에 틈이 보이고 움직임이 또렷하다.
+        /// 몸통 · 팔만 팀 색, 얼굴 살색(위에서도 보이게 크게), 가는 다리 · 투구 챙 · 방패 · 활 · 말은 갈색, 칼 · 창은 쇠. 병종은 들고 있는 것으로 구분:
+        /// 보병 = 둥근 방패 + 칼, 창병 = 몸보다 긴 창, 궁병 = 활 + 등 화살통, 기병 = 가는 말 + 앞으로 든 창, 정찰병 = 투구 없이 짧은 칼, 공병 = 도끼 + 등 나무.
+        /// </summary>
         private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder)
         {
             int part = Team;
             void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
                 parts[part].Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(pos, Quaternion.Euler(euler), scale) });
             bool mounted = baseType == "cavalry";
-            float lift = mounted ? 0.16f : 0f;
+            float lift = mounted ? 0.15f : 0f;
             if (mounted)
             {
+                // 가는 말: 몸 · 목 · 머리 · 다리 넷 · 꼬리
                 part = Dark;
-                Add(cube, new Vector3(0f, 0.13f, 0f), new Vector3(0.12f, 0.11f, 0.30f));              // 말 몸
-                Add(cube, new Vector3(0f, 0.22f, 0.17f), new Vector3(0.07f, 0.12f, 0.08f), new Vector3(-30f, 0f, 0f)); // 말 목·머리
+                Add(capsule, new Vector3(0f, 0.13f, 0f), new Vector3(0.07f, 0.12f, 0.07f), new Vector3(90f, 0f, 0f));
+                Add(cube, new Vector3(0f, 0.2f, 0.12f), new Vector3(0.035f, 0.11f, 0.045f), new Vector3(-35f, 0f, 0f));
+                Add(cube, new Vector3(0f, 0.245f, 0.17f), new Vector3(0.035f, 0.035f, 0.075f), new Vector3(10f, 0f, 0f));
                 for (int i = 0; i < 4; i++)
-                    Add(cube, new Vector3(i % 2 == 0 ? -0.04f : 0.04f, 0.04f, i < 2 ? 0.11f : -0.11f), new Vector3(0.03f, 0.08f, 0.03f)); // 다리
+                    Add(cylinder, new Vector3(i % 2 == 0 ? -0.022f : 0.022f, 0.045f, i < 2 ? 0.08f : -0.08f), new Vector3(0.016f, 0.045f, 0.016f));
+                Add(cube, new Vector3(0f, 0.13f, -0.135f), new Vector3(0.015f, 0.07f, 0.015f), new Vector3(25f, 0f, 0f));
             }
-            float bodyH = baseType == "scout" ? 0.11f : 0.13f;
+            bool light = baseType == "scout";
             part = Dark;
             if (!mounted)
             {
-                Add(cube, new Vector3(-0.025f, 0.06f, 0f), new Vector3(0.035f, 0.12f, 0.04f));      // 다리
-                Add(cube, new Vector3(0.025f, 0.06f, 0f), new Vector3(0.035f, 0.12f, 0.04f));
+                Add(cylinder, new Vector3(-0.02f, 0.065f, 0f), new Vector3(0.028f, 0.065f, 0.028f)); // 가는 다리
+                Add(cylinder, new Vector3(0.02f, 0.065f, 0f), new Vector3(0.028f, 0.065f, 0.028f));
+            }
+            else
+            {
+                Add(cylinder, new Vector3(-0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, 30f)); // 말 탄 다리
+                Add(cylinder, new Vector3(0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, -30f));
             }
             part = Team;
-            Add(capsule, new Vector3(0f, lift + 0.17f, 0f), new Vector3(0.11f, bodyH * 0.85f, 0.09f)); // 몸통(갑옷)
-            Add(cube, new Vector3(0f, lift + 0.375f, 0f), new Vector3(0.1f, 0.035f, 0.1f));           // 투구
+            Add(capsule, new Vector3(0f, lift + 0.205f, 0f), new Vector3(0.062f, light ? 0.065f : 0.07f, 0.045f));   // 가는 몸통
+            Add(cylinder, new Vector3(-0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, 12f)); // 팔
+            Add(cylinder, new Vector3(0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, -12f));
+            part = Dark;
+            if (!light) Add(cylinder, new Vector3(0f, lift + 0.37f, 0f), new Vector3(0.074f, 0.01f, 0.074f));        // 투구 챙 (짙은 색: 위에서 봐도 머리가 보이게)
             part = Skin;
-            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.085f, 0.085f, 0.085f));       // 얼굴
+            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.068f, 0.07f, 0.068f));                        // 얼굴
             part = Metal;
             switch (baseType)
             {
                 case "spearman":
-                    Add(cylinder, new Vector3(0.07f, lift + 0.30f, 0.03f), new Vector3(0.015f, 0.27f, 0.015f)); // 긴 창 (세움)
+                    Add(cylinder, new Vector3(0.05f, lift + 0.25f, 0.025f), new Vector3(0.009f, 0.25f, 0.009f));          // 몸보다 긴 창
+                    Add(cube, new Vector3(0.05f, lift + 0.515f, 0.025f), new Vector3(0.016f, 0.04f, 0.006f));             // 창날
                     break;
                 case "archer":
-                    Add(cube, new Vector3(0.075f, lift + 0.22f, 0.04f), new Vector3(0.012f, 0.24f, 0.03f), new Vector3(0f, 0f, 8f)); // 활
-                    Add(cube, new Vector3(-0.04f, lift + 0.22f, -0.06f), new Vector3(0.04f, 0.12f, 0.03f));                     // 화살통
+                    part = Dark;
+                    Add(cube, new Vector3(0.055f, lift + 0.27f, 0.03f), new Vector3(0.008f, 0.1f, 0.012f), new Vector3(-22f, 0f, 0f)); // 활 위
+                    Add(cube, new Vector3(0.055f, lift + 0.15f, 0.03f), new Vector3(0.008f, 0.1f, 0.012f), new Vector3(22f, 0f, 0f));  // 활 아래
+                    Add(cube, new Vector3(-0.012f, lift + 0.24f, -0.04f), new Vector3(0.025f, 0.09f, 0.02f), new Vector3(0f, 0f, 20f)); // 등 화살통
                     break;
                 case "cavalry":
-                    Add(cylinder, new Vector3(0.07f, lift + 0.22f, 0.12f), new Vector3(0.012f, 0.2f, 0.012f), new Vector3(60f, 0f, 0f)); // 앞으로 든 창
+                    Add(cylinder, new Vector3(0.045f, lift + 0.2f, 0.1f), new Vector3(0.008f, 0.17f, 0.008f), new Vector3(70f, 0f, 0f)); // 앞으로 든 창
                     break;
                 case "scout":
-                    Add(cube, new Vector3(0.06f, lift + 0.16f, 0.03f), new Vector3(0.015f, 0.1f, 0.015f)); // 짧은 칼
+                    Add(cube, new Vector3(0.05f, lift + 0.15f, 0.03f), new Vector3(0.01f, 0.07f, 0.01f));                // 짧은 칼
                     break;
                 case "engineer":
-                    // 공병 (R-83): 등에 진 나무 기둥 + 손에 든 도끼
                     part = Dark;
-                    Add(cylinder, new Vector3(-0.02f, lift + 0.24f, -0.07f), new Vector3(0.02f, 0.16f, 0.02f), new Vector3(0f, 0f, 70f));
+                    Add(cylinder, new Vector3(-0.01f, lift + 0.24f, -0.05f), new Vector3(0.016f, 0.12f, 0.016f), new Vector3(0f, 0f, 70f)); // 등 나무
                     part = Metal;
-                    Add(cube, new Vector3(0.07f, lift + 0.2f, 0.04f), new Vector3(0.012f, 0.12f, 0.012f));
-                    Add(cube, new Vector3(0.07f, lift + 0.26f, 0.06f), new Vector3(0.012f, 0.04f, 0.05f));
+                    Add(cube, new Vector3(0.05f, lift + 0.18f, 0.03f), new Vector3(0.008f, 0.1f, 0.008f));               // 도끼 자루
+                    Add(cube, new Vector3(0.05f, lift + 0.23f, 0.05f), new Vector3(0.008f, 0.035f, 0.035f));             // 도끼 날
                     break;
-                default: // 보병: 방패(팀 색) + 칼
-                    part = Team;
-                    Add(cube, new Vector3(-0.07f, lift + 0.18f, 0.05f), new Vector3(0.02f, 0.14f, 0.11f));
+                default: // 보병: 둥근 방패(나무) + 칼
+                    part = Dark;
+                    Add(cylinder, new Vector3(-0.05f, lift + 0.19f, 0.03f), new Vector3(0.085f, 0.006f, 0.085f), new Vector3(90f, 0f, 0f)); // 앞(+Z)을 보는 원판
                     part = Metal;
-                    Add(cube, new Vector3(0.07f, lift + 0.2f, 0.04f), new Vector3(0.015f, 0.13f, 0.015f));
+                    Add(cube, new Vector3(0.05f, lift + 0.2f, 0.035f), new Vector3(0.01f, 0.1f, 0.01f), new Vector3(20f, 0f, 0f));
                     break;
             }
         }

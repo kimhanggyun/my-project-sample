@@ -26,15 +26,12 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             var (header, body, _) = Ui.PageLayout(Root, 0);
-            var top = Ui.Row(header, "Title", 90, 12);
-            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain("story"), 84, fontSize: 40), width: 90);
-            Ui.Size(Ui.Label(top, T("ui.replay.head"), Ui.FontTitle - 6), flexibleWidth: 1);
+            var top = Ui.TitleBar(header, T("ui.replay.head"), () => App.ShowMain());
             int n = Ctx.Replays.Items.Count, max = Ctx.ReplayRules.MaxSaved;
             var bar = Ui.Gauge(top, Palette.Ally, 24);
             Ui.Size(bar.parent, width: 240);
             Ui.SetGauge(bar, max <= 0 ? 0f : Mathf.Clamp01((float)n / max));
             Ui.Size(Ui.Label(top, n + " / " + max, 24, TextAnchor.MiddleRight), width: 110);
-            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T("ui.replay.note"));
             if (!Ctx.OnlineEnabled) _tab = "mine";
             if (Ctx.OnlineEnabled)
@@ -234,16 +231,12 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 12, 32);
             string stepName;
             try { stepName = T(Ctx.Flow.LoadStep(_stepId).NameKey); } catch (Exception) { stepName = _stepId; }
-            Ui.Size(Ui.Label(Root, T("ui.shared.title", stepName), Ui.FontTitle), 110);
+            var (header, list, _, _) = Ui.TitledPage(Root, T("ui.shared.title", stepName), () => App.Show(new StepScreen(_stepId)));
             InfoButton.Add(Root, T("ui.shared.note"));
-            if (_message != null) Ui.Label(Root, _message, 26, TextAnchor.MiddleLeft, Palette.Bad);
-            var list = Ui.ScrollList(Root, "Shared", 8, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            if (_message != null) Ui.Label(header, _message, 26, TextAnchor.MiddleLeft, Palette.Bad);
             var loading = Ui.Label(list, T("ui.shared.loading"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Button(Root, T("ui.common.back"), () => App.Show(new StepScreen(_stepId)));
 
             Ctx.Online.GetSharedReplays(_stepId, res =>
             {

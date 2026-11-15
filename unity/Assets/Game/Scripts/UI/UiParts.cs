@@ -1108,6 +1108,56 @@ namespace Game.Unity.UI
             return b;
         }
 
+        // ---------------- 화면 타이틀 (공통 규격, 2026-11-15 사용자 요청) ----------------
+
+        /// <summary>타이틀 줄 높이 · 뒤로 버튼 크기 · 제목 글자 · 오른쪽 ⓘ 자리 너비. 바꾸면 모든 화면이 같이 바뀐다.</summary>
+        public const float TitleHeight = 90f, TitleBackSize = 84f, TitleInfoGap = 70f;
+        public const int TitleFontSize = FontTitle - 6;
+
+        /// <summary>
+        /// 화면 타이틀 줄: [‹ 뒤로](onBack이 있을 때) · 제목 · 오른쪽 칸 · ⓘ 자리 (infoGap). 모든 화면 · 탭은 이것(또는 NoTitle)으로 맨 위를 만든다.
+        /// 돌려주는 것은 오른쪽 칸 (화면마다 버튼 · 칩 · 쪽 번호를 넣는다, 오른쪽 정렬).
+        /// </summary>
+        public static RectTransform TitleBar(RectTransform header, string title, Action onBack = null, bool infoGap = true)
+        {
+            var row = Row(header, "TitleBar", TitleHeight, 12);
+            row.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            if (onBack != null) Size(Button(row, "‹", onBack, TitleBackSize, fontSize: 40), TitleBackSize, TitleBackSize + 6);
+            var t = Label(row, title ?? "", TitleFontSize, TextAnchor.MiddleLeft);
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Size(t, TitleHeight, -1, -1, 1);
+            var right = Rect(row, "Right");
+            var rh = right.gameObject.AddComponent<HorizontalLayoutGroup>();
+            rh.spacing = 10;
+            rh.childAlignment = TextAnchor.MiddleRight;
+            rh.childControlWidth = rh.childControlHeight = true;
+            rh.childForceExpandWidth = false;
+            rh.childForceExpandHeight = false;
+            var rl = right.GetComponent<LayoutElement>() ?? right.gameObject.AddComponent<LayoutElement>();
+            rl.flexibleWidth = 0;
+            if (infoGap) Size(Rect(row, "InfoGap"), TitleHeight, TitleInfoGap);
+            rl.flexibleWidth = 0; // 줄의 FixedSizeLayout이 늘려 놓았어도 내용 너비만
+            return right;
+        }
+
+        /// <summary>타이틀이 없는 화면 · 탭: 같은 자리에 높이 0 틀만 (나중에 타이틀을 넣거나 바꿀 때 같은 자리).</summary>
+        public static RectTransform NoTitle(RectTransform header)
+        {
+            var row = Rect(header, "TitleBar");
+            var le = row.gameObject.AddComponent<LayoutElement>();
+            le.minHeight = le.preferredHeight = 0;
+            return row;
+        }
+
+        /// <summary>페이지 틀 + 타이틀 줄을 한 번에 (가장 흔한 꼴). right = 타이틀 오른쪽 칸.</summary>
+        public static (RectTransform header, RectTransform body, RectTransform footer, RectTransform right) TitledPage(RectTransform root, string title, Action onBack, float footerHeight = 0, bool infoGap = true)
+        {
+            var (header, body, footer) = PageLayout(root, footerHeight);
+            var right = TitleBar(header, title, onBack, infoGap);
+            if (footerHeight <= 0) footer.gameObject.SetActive(false);
+            return (header, body, footer, right);
+        }
+
         /// <summary>
         /// 페이지 틀 (역할 page.default): 고정 머리(아래 그림자) · 스크롤 몸통 · 고정 아래 버튼 줄. root는 탭·화면 전체.
         /// </summary>

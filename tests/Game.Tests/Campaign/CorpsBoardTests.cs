@@ -74,6 +74,22 @@ namespace Game.Tests.Campaign
             foreach (var u in s.Units) Assert.True(ed.Draft.SelectMany(c => c.Picks).Where(p => p.UnitId == u.UnitId).Sum(p => p.Troops) <= u.Troops);
         }
 
+        [Fact(DisplayName = "R-95 군단 하나만 자동 편성: 그 군단만 칸 수 · 한도까지 다시 채우고, 다른 군단 인원은 그대로, 보유를 넘지 않는다")]
+        public void AutoFillCorps()
+        {
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            s.LordLevel = 6; // 천부장: 군단 2 · 칸 2
+            var ed = new FormationEditor(Kit.D, s);
+            ed.AutoFill();
+            var other = ed.Draft[1].Picks.Select(p => (p.UnitId, p.Troops)).ToList();
+            ed.Draft[0].Picks.Clear();
+            ed.AutoFillCorps(0);
+            Assert.Equal(2, ed.Draft[0].Picks.Count);
+            Assert.True(ed.Troops(0) <= ed.Cap(0));
+            Assert.Equal(other, ed.Draft[1].Picks.Select(p => (p.UnitId, p.Troops)).ToList());
+            foreach (var u in s.Units) Assert.True(ed.Draft.SelectMany(c => c.Picks).Where(p => p.UnitId == u.UnitId).Sum(p => p.Troops) <= u.Troops);
+        }
+
         [Fact(DisplayName = "R-95 편성 복사: 지금 편성(검사 통과)을 다른 상황의 편성으로")]
         public void CopyTo()
         {

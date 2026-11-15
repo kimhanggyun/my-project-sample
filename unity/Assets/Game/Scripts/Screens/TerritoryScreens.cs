@@ -75,6 +75,17 @@ namespace Game.Unity.Screens
             Vector2 Pos(GeoPoint p) => new Vector2(
                 (p.LonE6 - center.LonE6) * flags.MetersPerDegreeLon / (float)GeoPoint.Scale * ppm,
                 (p.LatE6 - center.LatE6) * flags.MetersPerDegreeLat / (float)GeoPoint.Scale * ppm);
+            // 바탕 지도 (Natural Earth 1:10m: 바다 · 육지 · 호수 · 강, 수묵 색) — 칸 줄 아래
+            var geo = GeoBackdrop.Get(ctx, center, ViewMeters[Zoom], MapHeight / widthPx, flags.MetersPerDegreeLat, flags.MetersPerDegreeLon);
+            if (geo != null)
+            {
+                var raw = new GameObject("GeoBackdrop", typeof(RectTransform)).AddComponent<RawImage>();
+                raw.transform.SetParent(layer, false);
+                raw.rectTransform.anchorMin = raw.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                raw.rectTransform.sizeDelta = new Vector2(widthPx, MapHeight);
+                raw.texture = geo;
+                raw.raycastTarget = false;
+            }
             // 칸 줄
             float step = GridMeters[Zoom] * ppm;
             var lineC = new Color(0.44f, 0.38f, 0.27f, Zoom == 0 ? 0.16f : 0.28f);
@@ -376,12 +387,10 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 12, 32);
-            Ui.Size(Ui.Label(Root, T("ui.alliance.title"), Ui.FontTitle), 110);
+            // [연합] 탭 (공통 타이틀, 탭이라 뒤로 없음)
+            var (header, list, _, _) = Ui.TitledPage(Root, T("ui.alliance.title"), null);
             InfoButton.Add(Root, T("ui.alliance.note"));
-            if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
-            var list = Ui.ScrollList(Root, "Alliances", 10, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            if (_notice != null) Ui.Label(header, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadAlliances(res =>
             {
@@ -446,7 +455,6 @@ namespace Game.Unity.Screens
                 }
                 if (shown == 0) Ui.Label(list, T("ui.alliance.none"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             });
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("territory"));
         }
 
         private string Short(string accountId) => Ctx.DisplayName(accountId);
@@ -476,11 +484,9 @@ namespace Game.Unity.Screens
         {
             var step = Ctx.Flow.LoadStep(StepId);
             var (header, body, footer) = Ui.PageLayout(Root, 130);
-            var top = Ui.Row(header, "Title", 100, 12);
-            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain("territory"), 90, fontSize: 40), width: 90);
             string owner = null;
             if (TerritoryTabView.Owners != null && TerritoryTabView.Owners.TryGetValue(_regionId, out var flag)) owner = flag.OwnerAccountId;
-            Ui.Size(Ui.Label(top, owner != null ? T("ui.sortie.siegeOf", Ctx.DisplayName(owner)) : T(step.NameKey), Ui.FontTitle), flexibleWidth: 1);
+            Ui.TitleBar(header, owner != null ? T("ui.sortie.siegeOf", Ctx.DisplayName(owner)) : T(step.NameKey), () => App.ShowMain("territory"));
             SortiePrep.Tiles(Ctx, header, step);
             InfoButton.Add(Root, T("ui.sortie.siegeNote"));
 
@@ -513,7 +519,6 @@ namespace Game.Unity.Screens
             Ui.Tag(result, T("ui.sortie.win", Ctx.Territory.Flags.IncomePerHour.TryGetValue(ResourceIds.Supply, out var inc) ? inc * 24 : 0), Palette.Good, 22, 56);
             Ui.Tag(result, T("ui.sortie.lose", Ctx.Territory.Flags.ProtectSeconds / 60), Palette.Bad, 22, 56);
 
-            Ui.Size(Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("territory"), 100), width: 200);
             var delegated = Ui.Button(footer, T("ui.sortie.delegate"), () => Sortie(step, true), 100);
             Ui.Size(delegated, width: 240);
             var direct = Ui.PrimaryButton(footer, T("ui.sortie.attack"), () => Sortie(step, false), 100);
@@ -540,6 +545,107 @@ namespace Game.Unity.Screens
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(delegate_));
             if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new TerritorySortieScreen(_regionId, _location, _defense)); return; }
             App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start", !delegate_));
+        }
+    }
+
+    /// <summary>
+    /// 영토 지도 바탕 그림 (Natural Earth 타일, Game.Territory.GeoTiles): 보이는 범위를 텍스처로 그린다 — 바다 · 육지(짝홀 채우기) · 호수 · 강 선.
+    /// 가운데 · 축척이 같으면 다시 그리지 않는다. 그림만 (규칙과 무관), 지도 좌표는 영토 탭과 같은 평면 근사(위도 · 경도마다 미터).
+    /// </summary>
+    internal static class GeoBackdrop
+    {
+        private const int TexWidth = 512;
+        // 육지는 예전 빈 지도 바탕(0.89, 0.85, 0.75)과 구분되게 조금 짙게, 바다 · 강은 수묵 청회색
+        private static readonly Color32 Sea = new Color32(178, 199, 203, 255);
+        private static readonly Color32 Land = new Color32(222, 210, 176, 255);
+        private static readonly Color32 River = new Color32(120, 156, 170, 255);
+        private static string _key;
+        private static Texture2D _tex;
+
+        public static Texture2D Get(GameContext ctx, GeoPoint center, long viewMeters, float aspect, long mPerDegLat, long mPerDegLon)
+        {
+            string key = center.LatE6 + "," + center.LonE6 + "," + viewMeters;
+            if (_key == key && _tex != null) return _tex;
+            try
+            {
+                int w = TexWidth, h = Mathf.Max(8, Mathf.RoundToInt(TexWidth * aspect));
+                double halfLonDeg = viewMeters / 2.0 / mPerDegLon, halfLatDeg = viewMeters * aspect / 2.0 / mPerDegLat;
+                double cLon = center.LonE6 / 1e6, cLat = center.LatE6 / 1e6;
+                double minLon = cLon - halfLonDeg, maxLon = cLon + halfLonDeg, minLat = cLat - halfLatDeg, maxLat = cLat + halfLatDeg;
+                var tiles = GeoTiles.ForView(ctx.Data, (long)(minLat * 1e6), (long)(minLon * 1e6), (long)(maxLat * 1e6), (long)(maxLon * 1e6));
+                var px = new Color32[w * h];
+                for (int k = 0; k < px.Length; k++) px[k] = Sea;
+                // 1e-4도 → 그림 칸 (x 오른쪽, y 위)
+                double sx = w / (maxLon - minLon) / GeoTiles.Scale, sy = h / (maxLat - minLat) / GeoTiles.Scale;
+                double ox = minLon * GeoTiles.Scale, oy = minLat * GeoTiles.Scale;
+                var land = new List<int[]>(); var lakes = new List<int[]>(); var rivers = new List<int[]>();
+                foreach (var t in tiles) { land.AddRange(t.Land); lakes.AddRange(t.Lake); rivers.AddRange(t.River); }
+                Fill(px, w, h, land, Land, sx, sy, ox, oy);
+                Fill(px, w, h, lakes, Sea, sx, sy, ox, oy);
+                foreach (var r in rivers) Line(px, w, h, r, River, sx, sy, ox, oy);
+                if (_tex == null) _tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+                else if (_tex.width != w || _tex.height != h) _tex.Reinitialize(w, h);
+                _tex.SetPixels32(px);
+                _tex.Apply(false);
+                _key = key;
+                return _tex;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("지도 바탕: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>고리들을 짝홀 규칙으로 칠한다 (줄마다 교차점).</summary>
+        private static void Fill(Color32[] px, int w, int h, List<int[]> rings, Color32 c, double sx, double sy, double ox, double oy)
+        {
+            var edges = new List<(double x0, double y0, double x1, double y1)>();
+            foreach (var r in rings)
+            {
+                int n = r.Length / 2;
+                for (int i = 0, j = n - 1; i < n; j = i++)
+                {
+                    double y0 = (r[2 * j + 1] - oy) * sy, y1 = (r[2 * i + 1] - oy) * sy;
+                    if ((y0 < 0 && y1 < 0) || (y0 >= h && y1 >= h) || y0 == y1) continue;
+                    edges.Add(((r[2 * j] - ox) * sx, y0, (r[2 * i] - ox) * sx, y1));
+                }
+            }
+            if (edges.Count == 0) return;
+            var xs = new List<double>();
+            for (int row = 0; row < h; row++)
+            {
+                double y = row + 0.5;
+                xs.Clear();
+                foreach (var e in edges)
+                    if ((e.y0 > y) != (e.y1 > y)) xs.Add(e.x0 + (y - e.y0) * (e.x1 - e.x0) / (e.y1 - e.y0));
+                xs.Sort();
+                for (int k = 0; k + 1 < xs.Count; k += 2)
+                {
+                    int a = Mathf.Max(0, (int)System.Math.Ceiling(xs[k] - 0.5)), b = Mathf.Min(w - 1, (int)System.Math.Floor(xs[k + 1] - 0.5));
+                    for (int x = a; x <= b; x++) px[row * w + x] = c;
+                }
+            }
+        }
+
+        private static void Line(Color32[] px, int w, int h, int[] pts, Color32 c, double sx, double sy, double ox, double oy)
+        {
+            for (int i = 2; i + 1 < pts.Length; i += 2)
+            {
+                double x0 = (pts[i - 2] - ox) * sx, y0 = (pts[i - 1] - oy) * sy, x1 = (pts[i] - ox) * sx, y1 = (pts[i + 1] - oy) * sy;
+                int steps = Mathf.Max(1, (int)System.Math.Ceiling(System.Math.Max(System.Math.Abs(x1 - x0), System.Math.Abs(y1 - y0))));
+                if (steps > 4 * (w + h)) continue; // 화면 밖 먼 선분
+                for (int k = 0; k <= steps; k++)
+                {
+                    int x = (int)(x0 + (x1 - x0) * k / steps), y = (int)(y0 + (y1 - y0) * k / steps);
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int xx = x + dx, yy = y + dy;
+                            if (xx >= 0 && yy >= 0 && xx < w && yy < h) px[yy * w + xx] = c;
+                        }
+                }
+            }
         }
     }
 }

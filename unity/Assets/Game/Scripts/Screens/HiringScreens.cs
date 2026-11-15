@@ -193,11 +193,8 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 12, 32);
-            Ui.Size(Ui.Label(Root, T("ui.hire.registerTitle"), Ui.FontTitle), 110);
+            var (_, list, _, _) = Ui.TitledPage(Root, T("ui.hire.registerTitle"), () => App.ShowMain("hiring"));
             InfoButton.Add(Root, T("ui.hire.registerNote"));
-            var list = Ui.ScrollList(Root, "Choices", 10, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
             if (_kind == HireKinds.General)
                 foreach (var g in Ctx.State.Generals)
                 {
@@ -213,7 +210,6 @@ namespace Game.Unity.Screens
                     Ui.Button(list, u.UnitId + "  " + T("ui.hire.unitLine", FormationTabView.TroopName(Ctx, u.TroopType), u.Troops.ToString("N0"), u.Training.ToDisplayDouble().ToString("0.##")),
                         () => App.Show(new HirePriceScreen(_kind, id)), 100, Palette.Card, 28);
                 }
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("hiring"));
         }
     }
 
@@ -239,7 +235,7 @@ namespace Game.Unity.Screens
             long step = System.Math.Max(1, rec / 10);
 
             Ui.Column(Root, 16, 32);
-            Ui.Size(Ui.Label(Root, T("ui.hire.priceTitle"), Ui.FontTitle), 110);
+            Ui.TitleBar(Root, T("ui.hire.priceTitle"), () => App.Show(new HireRegisterScreen(_kind)), infoGap: false);
             Ui.Label(Root, _kind == HireKinds.General ? Ctx.GeneralName(_id) : _id, Ui.FontBody);
             Ui.Label(Root, T("ui.hire.recommended", rec.ToString("N0"), max.ToString("N0")), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Size(Ui.Label(Root, T(_kind == HireKinds.General ? "ui.hire.price" : "ui.hire.pricePerSoldier", price.ToString("N0"), T("resource." + _payWith)), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
@@ -250,7 +246,6 @@ namespace Game.Unity.Screens
             if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Text);
             Ui.Size(Ui.Label(Root, "", Ui.FontSmall), flexibleHeight: 1);
             var buttons = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(buttons, T("ui.common.back"), () => App.Show(new HireRegisterScreen(_kind)));
             Ui.Button(buttons, T("ui.hire.submit"), () =>
             {
                 var req = new HireListingRequest { Kind = _kind, Price = price, PayWith = _payWith };
@@ -283,11 +278,8 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 12, 32);
-            Ui.Size(Ui.Label(Root, T("ui.hire.mailTitle"), Ui.FontTitle), 110);
-            if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
-            var list = Ui.ScrollList(Root, "Mail", 10, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            var (header, list, _, _) = Ui.TitledPage(Root, T("ui.hire.mailTitle"), () => App.ShowMain(_backTab), infoGap: false);
+            if (_notice != null) Ui.Label(header, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadMail(mail =>
             {
@@ -305,7 +297,6 @@ namespace Game.Unity.Screens
                     Ui.Button(card, T("ui.hire.claim"), () => App.Show(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
                 }
             });
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain(_backTab));
         }
     }
 
@@ -327,19 +318,16 @@ namespace Game.Unity.Screens
             var step = Game.Data.Defs.StepDef.Load(Ctx.Data, _stepId);
             var draft = Ctx.HiresFor(_stepId);
             var comps = Ctx.State.CompositionsFor(step.BattleType);
-            Ui.Column(Root, 12, 32);
-            Ui.Size(Ui.Label(Root, T("ui.hire.pickTitle"), Ui.FontTitle), 110);
+            var (header, list, _, _) = Ui.TitledPage(Root, T("ui.hire.pickTitle"), () => App.Show(new StepScreen(_stepId)), infoGap: false);
             if (_kind == HireKinds.Unit)
             {
-                var pct = Ui.Row(Root, "Percent", 80, 8);
+                var pct = Ui.Row(header, "Percent", 80, 8);
                 foreach (var f in Fractions)
                 {
                     int p = f;
                     Ui.Button(pct, T("ui.hire.percent", p), () => { _percent = p; App.Show(new HirePickScreen(_stepId, _kind)); }, 80, p == _percent ? Palette.ButtonActive : Palette.Button, 28);
                 }
             }
-            var list = Ui.ScrollList(Root, "Listings", 10, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadListings(_kind, res =>
             {
@@ -381,7 +369,6 @@ namespace Game.Unity.Screens
                 }
                 if (shown == 0) Ui.Label(list, T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             });
-            Ui.Button(Root, T("ui.common.back"), () => App.Show(new StepScreen(_stepId)));
         }
     }
 }

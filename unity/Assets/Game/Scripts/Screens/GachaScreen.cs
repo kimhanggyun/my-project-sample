@@ -42,12 +42,9 @@ namespace Game.Unity.Screens
             if (!g.Banners.TryGetValue(_bannerId, out var b)) { App.ShowMain("general"); return; }
             var (header, body, footer) = Ui.PageLayout(Root, 170);
 
-            var top = Ui.Row(header, "Title", 90, 12);
-            if (Embedded && _mode == Mode.Main) top.gameObject.SetActive(false);
-            Ui.Size(Ui.Button(top, "‹", Back, 84, fontSize: 40), width: 90);
-            Ui.Size(Ui.Label(top, T(_mode == Mode.Result ? "ui.gacha.result" : _mode == Mode.Rates ? "ui.gacha.ratesHead" : "ui.gacha.title"), Ui.FontTitle - 6), flexibleWidth: 1);
-            Ui.Size(Ui.ResourceChip(Ctx, top, b.Currency, Ctx.Resource(b.Currency), () => App.ShowMain("shop"), 74), width: 280);
-            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
+            // 공통 타이틀: 모집 본 화면은 [모집] 탭 안이라 타이틀 없음(틀만), 확률 판 · 결과는 [‹] 제목 (보석은 위 막대 · 결과 버튼에 있어 뺌)
+            if (_mode == Mode.Main) Ui.NoTitle(header);
+            else Ui.TitleBar(header, T(_mode == Mode.Result ? "ui.gacha.result" : "ui.gacha.ratesHead"), Back);
             InfoButton.Add(Root, T("ui.gacha.note"));
             if (_notice != null) Ui.Label(header, Ui.Colored(_notice, Palette.Bad), 24);
 
@@ -293,7 +290,7 @@ namespace Game.Unity.Screens
             if (b.TenGuarantee != null && b.PityGrade != null)
                 Ui.Label(rules, T("ui.gacha.rules", T("grade." + b.TenGuarantee), T("grade." + b.PityGrade), b.PityCount, Ctx.State.GachaPity.TryGetValue(b.Id, out var s) ? s : 0), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(rules, T("ui.gacha.shardRule"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Size(Ui.Button(footer, T("ui.common.close"), () => App.ShowMain("gacha"), 150, fontSize: 30), flexibleWidth: 1);
+            footer.gameObject.SetActive(false); // 뒤로는 타이틀의 [‹] (닫기 버튼 없음)
         }
 
         private int Rank(string generalId)

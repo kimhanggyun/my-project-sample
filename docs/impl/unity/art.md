@@ -21,7 +21,7 @@
 
 | 키 | 쓰는 곳 | 비고 |
 |---|---|---|
-| `soldier.<병종 id>` | 그 병종의 병사 (infantry, spearman, archer, cavalry, scout) | 없으면 `soldier.default` → 상자. `tint` = 팀 색 섞는 비율 (0~1) |
+| `soldier.<병종 id>` | 그 병종의 병사 (infantry, spearman, archer, cavalry, scout) | **2026-11-15부터 사람 병사(보병 · 창병 · 궁병 · 기병 · 정찰병 · 공병)는 목록에서 뺐다** → 코드로 만든 **가는 실루엣** (`SoldierMeshes`, 사용자 시안 C: Kenney 블록 캐릭터를 통째로 팀 색으로 칠하니 두껍고 어두워 뭉쳐 보이고 움직임이 안 보였음). 모델을 다시 쓰려면 이 키를 넣는다. 없으면 `soldier.default` → 상자. `tint` = 팀 색 섞는 비율 (0~1) |
 | `soldier.default` | 모델이 없는 병종 | |
 | `prop.<지형 id>` | 그 지형 칸마다 소품 (forest, burnt, grass, hill, mountain, marsh, building …) | `models`로 변형 여러 개, `perCell` = 칸마다 수(소수면 확률), `jitter` = 크기 흔들림. 자리는 칸 번호로 정해져 늘 같다. 숲이 타면 `prop.burnt`로 바뀐다 |
 
