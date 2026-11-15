@@ -31,6 +31,8 @@ namespace Game.Flow
             if (!_defs.Products.TryGetValue(a.ProductId, out var p) || !p.PriceKrw.HasValue) return false;
             var wallet = new Wallet(state.Wallet);
             foreach (var kv in p.Grants) wallet.Add(kv.Key, kv.Value);
+            // 치장 상품 (R-111): 얻고, 이미 가졌으면 엽전 (보상 중복과 같다)
+            if (p.CosmeticId != null && new CosmeticService(_defs).GrantOrRefund(state, p.CosmeticId) < 0) return false;
             if (p.AdFreeDays.HasValue)
             {
                 if (p.AdFreeDays.Value <= 0) state.AdFreeForever = true;

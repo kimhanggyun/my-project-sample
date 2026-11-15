@@ -1628,5 +1628,9 @@
   "ui.sync.reverted.body": "방금 한 일을 서버가 받지 않아 서버에 저장된 상태로 되돌렸습니다. 계속되면 앱 · 서버 버전이 맞는지 확인해 주세요.",
   "ui.hire.result.notAvatar": "용병 장수는 닉네임 장수만 등록할 수 있습니다.",
   "ui.hire.result.onFlag": "닉네임 장수가 영토 깃발에 나가 있어 등록할 수 없습니다. 깃발에서 회수한 뒤 등록하세요.",
-  "ui.hire.result.notAvatarCorps": "닉네임 장수가 기본 편성에서 직접 이끄는 병종만 등록할 수 있습니다."
+  "ui.hire.result.notAvatarCorps": "닉네임 장수가 기본 편성에서 직접 이끄는 병종만 등록할 수 있습니다.",
+  "cos.armor_iron": "무쇠 갑옷",
+  "cos.armor_crimson": "진홍 갑옷",
+  "cos.armor_gold": "황금 갑옷",
+  "product.cosmetic_armor_gold": "치장: 황금 갑옷"
 }

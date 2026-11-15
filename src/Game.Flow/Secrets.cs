@@ -44,6 +44,9 @@ namespace Game.Flow
         public string Skill { get; internal set; }
         public string Trait { get; internal set; }
         public bool StoredAsBook { get; internal set; }
+        /// <summary>얻은 치장 id (R-111). 이미 가졌으면 CosmeticRefundGold만큼 엽전으로.</summary>
+        public string Cosmetic { get; internal set; }
+        public long CosmeticRefundGold { get; internal set; }
     }
 
     public sealed class CodexEntry
@@ -141,6 +144,11 @@ namespace Game.Flow
                 f.Trait = s.RewardTrait;
                 if (!g.LearnedTraits.Contains(s.RewardTrait)) g.LearnedTraits.Add(s.RewardTrait);
                 else { Add(c.State.TraitBooks, s.RewardTrait); f.StoredAsBook = true; }
+            }
+            if (s.RewardCosmetic != null) // 치장 (R-111): 계정이 얻고, 이미 가졌으면 엽전
+            {
+                f.Cosmetic = s.RewardCosmetic;
+                f.CosmeticRefundGold = System.Math.Max(0, new CosmeticService(c.Defs).GrantOrRefund(c.State, s.RewardCosmetic));
             }
             return f;
         }

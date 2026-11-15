@@ -162,7 +162,10 @@ namespace Game.Data.Defs
                     PlayPaths = JsonUtil.StringList(pr, "playPaths"),
                     PriceKrw = pr.Value<long?>("priceKRW"),
                     AdFreeDays = pr.Value<int?>("adFreeDays"),
+                    CosmeticId = pr.Value<string>("cosmeticId"),
                 };
+                if (def.Kind == ProductDef.KindCosmetic && string.IsNullOrEmpty(def.CosmeticId))
+                    throw new DataException($"products.json '{def.Id}': 치장 상품(kind cosmetic)은 cosmeticId가 필요합니다.");
                 if (pr["grants"] is JObject grants)
                 {
                     var g = new Dictionary<string, long>();

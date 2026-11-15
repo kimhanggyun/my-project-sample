@@ -56,7 +56,7 @@ namespace Game.Tests.Campaign
             {
                 Assert.True(p.PriceKrw > 0, p.Id);
                 Assert.True(Kit.D.Strings.ContainsKey("product." + p.Id), p.Id);
-                Assert.True(p.Grants.Count > 0 || p.AdFreeDays.HasValue, p.Id);
+                Assert.True(p.Grants.Count > 0 || p.AdFreeDays.HasValue || p.CosmeticId != null, p.Id); // 치장 상품은 치장을 준다 (R-111)
             }
         }
 

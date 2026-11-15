@@ -351,6 +351,9 @@ namespace Game.Online
         public string Slot { get; set; }
         /// <summary>부대 상태 JSON (부상병 없이).</summary>
         public string UnitJson { get; set; }
+        /// <summary>주인이 그 병종 계열에 입힌 갑옷 · 말 색 (겉모습만, R-111). 예전 스냅샷은 null = 기본 모습.</summary>
+        public string Armor { get; set; }
+        public string Horse { get; set; }
     }
 
     /// <summary>수비 편성 등록: 내 지역에, 내 서버 세이브의 편성(상황, null = 기본)으로.</summary>
@@ -474,6 +477,9 @@ namespace Game.Online
         public string TroopType { get; set; }
         public long Troops { get; set; }
         public long TrainingRaw { get; set; }
+        /// <summary>부대 등록: 주인이 그 병종 계열에 입힌 갑옷 · 말 색 (겉모습만, R-111). 없으면 기본 모습.</summary>
+        public string Armor { get; set; }
+        public string Horse { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
         /// <summary>이력 (hiring.md 4장): 서버가 재현해 확정한 전투로만 쌓인다. 다시 등록해도 이어진다.</summary>
         public HireStats Stats { get; set; } = new HireStats();

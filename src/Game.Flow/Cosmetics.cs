@@ -129,7 +129,23 @@ namespace Game.Flow
             return true;
         }
 
-        /// <summary>얻기 (보상 · 결제): 이미 가졌으면 false (중복 보상 바꾸기는 나중).</summary>
+        /// <summary>보상 중복 때 대신 주는 엽전 (cosmetics.json duplicateGold, 임시값, R-111).</summary>
+        public long DuplicateGold => _defs?.CosmeticsDoc?["duplicateGold"]?.Type == JTokenType.Integer ? (long)_defs.CosmeticsDoc["duplicateGold"] : 0;
+
+        /// <summary>
+        /// 보상으로 얻기 (스텝 · 숨은 보상, R-111): 없으면 얻고 0, 이미 가졌으면 엽전 <see cref="DuplicateGold"/>를 지갑에 넣고 그 양.
+        /// 모르는 id면 −1 (아무것도 안 함).
+        /// </summary>
+        public long GrantOrRefund(CampaignState s, string id)
+        {
+            if (Find(id) == null) return -1;
+            if (Grant(s, id)) return 0;
+            long g = DuplicateGold;
+            if (g > 0) new Wallet(s.Wallet).Add(ResourceIds.Gold, g);
+            return g;
+        }
+
+        /// <summary>얻기 (보상 · 결제): 이미 가졌으면 false.</summary>
         public bool Grant(CampaignState s, string id)
         {
             if (Find(id) == null || Owns(s, id)) return false;
@@ -183,6 +199,52 @@ namespace Game.Flow
                 if (d.Kind == CosmeticKinds.Armor && d.Lines == null && d.PlayObtainable) playArmor = true;
             }
             if (!playArmor) errors.Add("치장: 플레이로 얻는(엽전 · 보상) 공용 갑옷이 하나 이상 있어야 함");
+            return errors;
+        }
+
+        /// <summary>
+        /// 얻는 길 맞춤 검사 (R-111): 스텝 보상·숨은 보상·치장 상품의 치장 id가 있는지, 치장의 playPaths(story:스텝 · secret:id)가
+        /// 실제 보상과 맞는지, 결제 치장(priceKRW)에 치장 상품이 있는지.
+        /// </summary>
+        public List<string> ValidateRewards(System.Func<string, StepDef> loadStep)
+        {
+            var errors = new List<string>();
+            if (_defs == null) return errors;
+            var fromSteps = new HashSet<string>();
+            foreach (var id in _defs.StepIndex.Order)
+            {
+                StepDef step;
+                try { step = loadStep(id); } catch (System.Exception) { continue; }
+                if (step == null) continue;
+                foreach (var c in step.RewardCosmetics)
+                {
+                    if (Find(c) == null) errors.Add($"스텝 '{id}' 보상: 없는 치장 '{c}'");
+                    fromSteps.Add("story:" + id + "|" + c);
+                }
+            }
+            var fromSecrets = new HashSet<string>();
+            foreach (var sc in _defs.Secrets)
+                if (sc.RewardCosmetic != null)
+                {
+                    if (Find(sc.RewardCosmetic) == null) errors.Add($"숨은 보상 '{sc.Id}': 없는 치장 '{sc.RewardCosmetic}'");
+                    fromSecrets.Add("secret:" + sc.Id + "|" + sc.RewardCosmetic);
+                }
+            var sold = new HashSet<string>();
+            foreach (var p in _defs.Products.Values)
+                if (p.CosmeticId != null)
+                {
+                    if (Find(p.CosmeticId) == null) errors.Add($"상품 '{p.Id}': 없는 치장 '{p.CosmeticId}'");
+                    sold.Add(p.CosmeticId);
+                }
+            foreach (var d in _order)
+            {
+                foreach (var path in d.PlayPaths)
+                {
+                    if (path.StartsWith("story:") && !fromSteps.Contains(path + "|" + d.Id)) errors.Add($"치장 '{d.Id}': {path} 보상에 없음");
+                    if (path.StartsWith("secret:") && !fromSecrets.Contains(path + "|" + d.Id)) errors.Add($"치장 '{d.Id}': {path} 보상에 없음");
+                }
+                if (d.PriceKRW != null && !sold.Contains(d.Id)) errors.Add($"치장 '{d.Id}': 결제 가격이 있는데 치장 상품(products.json kind cosmetic)이 없음");
+            }
             return errors;
         }
 
