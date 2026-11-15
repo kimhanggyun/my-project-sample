@@ -58,8 +58,14 @@ namespace Game.Unity.Screens
             {
                 var map = m;
                 if (m.BattleType == "siege") siege = true;
+                // 카드 (맵 탭을 합침, 2026-11-15): 제목 · [맵 그림 | 쓰는 스텝] · [샘플전투] [맵 보기]
                 var card = Ui.Card(list, m.MapId);
                 Ui.Label(card, MapName(ctx, m) + "  " + Ui.Colored(ctx.T("battleType." + m.BattleType), Palette.TextDim), Ui.FontBody);
+                var mid = Ui.Row(card, "Map", 150, 16);
+                SampleUi.Picture(mid, MapDef.Load(ctx.Data, m.MapId), 150);
+                var names = new List<string>();
+                foreach (var s in m.Steps) names.Add(ctx.T(ctx.Flow.LoadStep(s).NameKey));
+                Ui.Size(Ui.Label(mid, ctx.T("ui.map.usedBy", string.Join(", ", names)), 22, TextAnchor.MiddleLeft, Palette.TextDim), flexibleWidth: 1);
                 var row = Ui.Row(card, "Buttons", 96);
                 Ui.Size(Ui.Button(row, ctx.T("ui.sample.fight"), () => error.text = SampleUi.Start(app, map) ?? "", 96, Palette.ButtonActive), flexibleWidth: 1);
                 Ui.Size(Ui.Button(row, ctx.T("ui.sample.viewMap"), () => app.Show(new MapDetailScreen(map.MapId, "sampleBattle")), 96), flexibleWidth: 1);

@@ -49,6 +49,8 @@ namespace Game.Unity.Screens
     public sealed class CodexScreen : GameScreen
     {
         private static string _tab = "secrets";
+        /// <summary>캡처 도구: 처음 열 탭 (secrets / generals).</summary>
+        public static string Tab { set => _tab = value; }
         private static string _cat = "all";
         private static string _grade = "all";
         private readonly string _hint;

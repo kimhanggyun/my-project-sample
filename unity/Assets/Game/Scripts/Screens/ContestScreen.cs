@@ -20,6 +20,9 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class ContestScreen : GameScreen
     {
+        /// <summary>뒤로 키: 대결 중엔 아무것도 하지 않는다.</summary>
+        public override bool OnBack() => true;
+
         private const float ChooseSeconds = 3f;   // 설계 2.7.1: 3·2·1
         private const float RevealSeconds = 2.4f; // 행동 + 맞음 연출
         private const float Dash = 150f;

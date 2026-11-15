@@ -107,12 +107,53 @@ namespace Game.Unity.Boot
         private void Update()
         {
             if (_current == null) return;
+            Context?.AddPlayTime(Time.unscaledDeltaTime);
+            var kb = UnityEngine.InputSystem.Keyboard.current; // 안드로이드 뒤로 키 = Escape
+            if (kb != null && kb.escapeKey.wasPressedThisFrame) HandleBack();
             try { _current.Tick(Time.unscaledDeltaTime); }
             catch (Exception e)
             {
                 Debug.LogException(e);
                 Show(new ErrorScreen("화면 처리 중 오류가 났습니다.\n" + e.Message));
             }
+        }
+
+        /// <summary>뒤로 키에 닫는 판 (이름): 작은 메뉴 · 말풍선, 확인 창, 아래에서 올라오는 판, 삭제 확인, 승패 조건 카드.</summary>
+        private static readonly string[] Overlays = { "Popover", "ConfirmDim", "SheetDim", "DeleteDim", "CondDim", "QuitDim" };
+
+        /// <summary>
+        /// 안드로이드 뒤로 키: 열린 판(가장 나중 것)을 닫고, 없으면 화면이 처리(OnBack), 화면이 처리하지 않으면 종료 확인 창.
+        /// </summary>
+        private void HandleBack()
+        {
+            if (CloseTopOverlay()) return;
+            bool handled;
+            try { handled = _current.OnBack(); }
+            catch (Exception e) { Debug.LogException(e); handled = false; }
+            if (!handled) ConfirmQuit();
+        }
+
+        private bool CloseTopOverlay()
+        {
+            Transform top = null;
+            foreach (var t in _screenRoot.GetComponentsInChildren<Transform>(false))
+                if (System.Array.IndexOf(Overlays, t.name) >= 0) top = t; // 깊이 우선 순서라 마지막 = 가장 나중에 연 판
+            if (top == null) return false;
+            if (top.name == "CondDim" && _current is Game.Unity.Screens.BattleScreen battle) battle.CloseConditionsForTour(); // 작전 시간으로
+            else Destroy(top.gameObject);
+            return true;
+        }
+
+        /// <summary>종료 확인 창: [취소] [종료]. 열려 있는데 다시 뒤로 키면 닫는다.</summary>
+        private void ConfirmQuit()
+        {
+            var ctx = Context;
+            string T(string k) => ctx != null ? ctx.T(k) : k;
+            var box = Ui.Confirm(_screenRoot, T("ui.quit.title"), T("ui.quit.body"), T("ui.quit.yes"), () =>
+            {
+                Application.Quit();
+            }, (T("ui.common.cancel"), () => { }));
+            box.parent.name = "QuitDim";
         }
 
         /// <summary>지금 화면을 닫고 새 화면을 연다.</summary>

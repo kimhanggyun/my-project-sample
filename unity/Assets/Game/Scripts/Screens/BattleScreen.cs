@@ -1442,6 +1442,13 @@ namespace Game.Unity.Screens
             foreach (var l in lines) Ui.Label(card, "· " + l, 26, TextAnchor.MiddleLeft, Palette.Text);
         }
 
+        /// <summary>뒤로 키: 전투를 나가지 않고 멈춤 / 계속 (작전 시간이면 그대로).</summary>
+        public override bool OnBack()
+        {
+            if (!_planning && !_finished) TogglePause();
+            return true;
+        }
+
         /// <summary>캡처 도구 (ScreenTour): 승패 조건 카드를 닫고 작전 시간 화면으로.</summary>
         public void CloseConditionsForTour()
         {

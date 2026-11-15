@@ -57,4 +57,71 @@ namespace Game.Unity.UI
             _letter.text = sprite == null && !string.IsNullOrEmpty(name) ? name.Substring(0, 1) : "";
         }
     }
+
+    /// <summary>
+    /// 내 프로필 사진 (좌상단 · 내 정보): 구글 사진 주소가 있으면 그 사진을 동그랗게, 없으면(게스트 등) 닉네임 장수 "나" 초상.
+    /// 사진은 한 번 받아 앱이 켜져 있는 동안 기억한다 (기기에만, 다른 사람에게 보이지 않음).
+    /// </summary>
+    public static class ProfilePhoto
+    {
+        private static string _url;
+        private static Texture2D _tex;
+        private static bool _loading;
+        private static readonly System.Collections.Generic.List<System.Action> Waiting = new System.Collections.Generic.List<System.Action>();
+
+        public static RectTransform Make(Game.Unity.Boot.GameContext ctx, Transform parent, float size)
+        {
+            var holder = Ui.Rect(parent, "ProfilePhoto");
+            Ui.Size(holder, size, size).flexibleWidth = 0;
+            new Portrait(holder, size, true).Show(Game.Flow.AvatarGeneral.GeneralId, ctx.GeneralName(Game.Flow.AvatarGeneral.GeneralId), Palette.Seal);
+            string url = ctx.PhotoUrl;
+            if (url == null) return holder;
+            // 동그란 가림 + 사진
+            var mask = Ui.Rect(holder, "Mask");
+            mask.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Ui.Fill(mask);
+            var mi = Ui.Background(mask, Color.white);
+            mi.sprite = UiShapes.Circle;
+            mask.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            var pic = new GameObject("Photo", typeof(RectTransform)).AddComponent<RawImage>();
+            pic.transform.SetParent(mask, false);
+            Ui.Fill(pic.rectTransform);
+            pic.raycastTarget = false;
+            mask.gameObject.SetActive(false);
+            Load(url, () =>
+            {
+                if (pic == null || _tex == null) return;
+                pic.texture = _tex;
+                mask.gameObject.SetActive(true);
+            });
+            return holder;
+        }
+
+        private static void Load(string url, System.Action done)
+        {
+            if (_url == url && _tex != null) { done(); return; }
+            Waiting.Add(done);
+            if (_loading && _url == url) return;
+            _url = url;
+            _loading = true;
+            var req = UnityEngine.Networking.UnityWebRequestTexture.GetTexture(url);
+            req.timeout = 10;
+            req.SendWebRequest().completed += _ =>
+            {
+                try
+                {
+                    if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                        _tex = UnityEngine.Networking.DownloadHandlerTexture.GetContent(req);
+                }
+                finally
+                {
+                    req.Dispose();
+                    _loading = false;
+                    var list = new System.Collections.Generic.List<System.Action>(Waiting);
+                    Waiting.Clear();
+                    foreach (var a in list) a();
+                }
+            };
+        }
+    }
 }

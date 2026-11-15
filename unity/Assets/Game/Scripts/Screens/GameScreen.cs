@@ -25,6 +25,16 @@ namespace Game.Unity.Screens
         /// <summary>매 프레임 (필요한 화면만). deltaTime은 화면 진행용이며 규칙 계산에는 쓰지 않는다.</summary>
         public virtual void Tick(float deltaTime) { }
 
+        /// <summary>
+        /// 안드로이드 뒤로 키 (열린 판이 없을 때): 처리했으면 true. 기본 = 메인 화면으로.
+        /// false면 앱 종료 확인 창 (메인 화면 · 시작 화면).
+        /// </summary>
+        public virtual bool OnBack()
+        {
+            App.ShowMain();
+            return true;
+        }
+
         /// <summary>앱이 뒤로 가거나(true) 다시 앞으로 올 때(false). 전투 화면은 멈추고 이어하기 기록을 남긴다.</summary>
         public virtual void OnAppPause(bool paused) { }
 

@@ -15,6 +15,8 @@ namespace Game.Unity.Screens
     public sealed class ReplayListScreen : GameScreen
     {
         private static string _tab = "mine";
+        /// <summary>캡처 도구: 처음 열 탭 (mine / shared).</summary>
+        public static string Tab { set => _tab = value; }
         private static string _cat = "all";
         private static string _sharedStep;
         private static string _sort = "won";

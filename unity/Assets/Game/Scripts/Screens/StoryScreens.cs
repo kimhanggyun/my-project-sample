@@ -452,6 +452,9 @@ namespace Game.Unity.Screens
         protected abstract void Finish();
         protected virtual bool ShowChapter => false;
 
+        /// <summary>뒤로 키: 장면 중엔 아무것도 하지 않는다 ([건너뛰기]로).</summary>
+        public override bool OnBack() => true;
+
         private List<DialogueLine> _lines;
         private int _index;
         private float _chars, _wait, _chapterLeft;

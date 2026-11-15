@@ -211,6 +211,42 @@ namespace Game.Unity.Boot
             StartupFlow.WriteRecord(_saveStore, StartupRecord);
         }
 
+        private const string PhotoKey = "prefs.photoUrl", PlayKey = "prefs.playSeconds";
+
+        /// <summary>프로필 사진 주소 (구글 로그인 · 연동 때 받아 이 기기에만 둔다). 없으면 null → "나" 초상.</summary>
+        public string PhotoUrl => _saveStore.Exists(PhotoKey) ? NullIfEmpty(_saveStore.Read(PhotoKey)) : null;
+
+        private static string NullIfEmpty(string s) => string.IsNullOrEmpty(s) ? null : s;
+
+        private void KeepPhoto(IAuthService provider)
+        {
+            if (provider is Game.Unity.Online.GoogleFirebaseAuthService g) _saveStore.Write(PhotoKey, g.PhotoUrl ?? "");
+        }
+
+        private long _playSaved = -1;
+        private float _playPending;
+
+        /// <summary>이 기기에서 플레이한 시간 (초, 기기에만).</summary>
+        public long PlaySeconds
+        {
+            get
+            {
+                if (_playSaved < 0) _playSaved = _saveStore.Exists(PlayKey) && long.TryParse(_saveStore.Read(PlayKey), out var v) ? v : 0;
+                return _playSaved + (long)_playPending;
+            }
+        }
+
+        /// <summary>매 프레임 더한다 (30초마다 · 앱이 뒤로 갈 때 기록).</summary>
+        public void AddPlayTime(float seconds, bool flush = false)
+        {
+            _playPending += seconds;
+            if (!flush && _playPending < 30f) return;
+            long total = PlaySeconds;
+            _playSaved = total;
+            _playPending = 0f;
+            _saveStore.Write(PlayKey, total.ToString());
+        }
+
         /// <summary>서버 계정에 구글 등 외부 로그인이 붙어 있다 (R-105, 내 계정 불러올 때 갱신).</summary>
         public bool Linked { get; private set; }
 
@@ -231,6 +267,7 @@ namespace Game.Unity.Boot
                 ClearSuspendedBattle();
                 ResetSave(); // 새 게임 상태 + 연결 기록(토큰 · 리비전 · 남은 기록) 비움
                 Linked = false;
+                _saveStore.Write(PhotoKey, "");
                 Nickname = null;
                 IsMaster = false;
                 SignOut();
@@ -257,6 +294,7 @@ namespace Game.Unity.Boot
                     {
                         Linked = true;
                         Auth = google;
+                        KeepPhoto(google);
                         if (StartupRecord != null) { StartupRecord.SignInMethod = ServiceIds.SignInGoogle; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
                     }
                     done?.Invoke(r.Reason ?? (r.Ok ? LinkReasons.Ok : "failed"));
@@ -476,6 +514,7 @@ namespace Game.Unity.Boot
                 void Finish()
                 {
                     Auth = provider;
+                    KeepPhoto(provider);
                     StartupRecord.SignInMethod = method;
                     StartupFlow.WriteRecord(_saveStore, StartupRecord);
                     done?.Invoke(true);
