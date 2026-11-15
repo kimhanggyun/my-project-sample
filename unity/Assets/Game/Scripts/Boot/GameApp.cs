@@ -58,7 +58,7 @@ namespace Game.Unity.Boot
                     this);
                 Game.Unity.UI.Sfx.Init(gameObject); // 임시 합성 효과음
                 Context.ApplyVolumes(); // 설정의 배경음 · 효과음 (15)
-                Context.Reverted += _ => OnReverted();
+                Context.Reverted += r => OnReverted(r);
             }
             catch (Exception e)
             {
@@ -78,7 +78,7 @@ namespace Game.Unity.Boot
             var ctx = Context;
             string step = ctx.Startup.Next(finished, ctx.StartupRecord, false); // 버전 확인 서버는 아직 없다
             if (step != Game.Flow.StartupSteps.SignIn && ctx.StartupRecord.SignInMethod != null && !ctx.Auth.IsSignedIn)
-                ctx.SignIn(ctx.StartupRecord.SignInMethod, ok => Debug.Log("자동 로그인: " + (ok ? ctx.Auth.AccountId : "실패")));
+                ctx.AutoSignIn(ctx.StartupRecord.SignInMethod); // 타이틀의 서버 동기화는 이것이 끝난 뒤 (StartSync가 기다림)
             switch (step)
             {
                 case Game.Flow.StartupSteps.Splash: Show(new SplashScreen()); break;
@@ -162,10 +162,10 @@ namespace Game.Unity.Boot
         /// 서버가 행동을 받지 않아 서버 세이브로 되돌렸을 때 (2026-11-15: 훈련이 "라디오 버튼"처럼 하나만 남던 것):
         /// 메인 화면이면 되돌린 세이브로 다시 그리고, 확인 창으로 알린다.
         /// </summary>
-        private void OnReverted()
+        private void OnReverted(Game.Flow.SyncResult r)
         {
             if (_current is Game.Unity.Screens.MainScreen) Show(_current);
-            if (_screenRoot != null) Ui.Confirm(_screenRoot, Context.T("ui.sync.reverted.title"), Context.T("ui.sync.reverted.body"), Context.T("ui.common.ok"), () => { });
+            if (_screenRoot != null) Ui.Confirm(_screenRoot, Context.T("ui.sync.reverted.title"), Context.T("ui.sync.reverted.body") + (r?.RejectReason != null ? "\n\n(" + r.RejectReason + ")" : ""), Context.T("ui.common.ok"), () => { });
         }
 
         /// <summary>지금 화면을 닫고 새 화면을 연다.</summary>

@@ -71,6 +71,8 @@ namespace Game.Flow
         /// <summary>서버 Revision (Offline이면 그대로).</summary>
         public long Revision { get; internal set; }
         public BattleVerdict Verdict { get; internal set; }
+        /// <summary>거절됐을 때 까닭 (진단용, 화면의 "서버가 받지 않았습니다"에 보임): 행동이면 "까닭 · 순번 · 행동 종류", 전투면 판정 까닭.</summary>
+        public string RejectReason { get; internal set; }
     }
 
     /// <summary>
@@ -178,6 +180,8 @@ namespace Game.Flow
             CampaignState lastServer = null;
             BattleVerdict lastBattle = null;
 
+            string rejectReason = null;
+
             void Handle(int count, bool valid, CloudSave save, BattleVerdict battle)
             {
                 if (battle != null) lastBattle = battle;
@@ -185,13 +189,13 @@ namespace Game.Flow
                 if (!valid)
                 {
                     link.Journal.Clear();
-                    if (server != null) { done(new SyncResult { Outcome = SyncOutcomes.Rejected, State = server, Revision = save.Revision, Verdict = lastBattle }); return; }
+                    if (server != null) { done(new SyncResult { Outcome = SyncOutcomes.Rejected, State = server, Revision = save.Revision, Verdict = lastBattle, RejectReason = rejectReason }); return; }
                     _online.LoadSave(s =>
                     {
                         var st = s == null ? null : SaveJson.Read(s.Json);
                         done(st == null
                             ? new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }
-                            : new SyncResult { Outcome = SyncOutcomes.Rejected, State = st, Revision = s.Revision, Verdict = lastBattle });
+                            : new SyncResult { Outcome = SyncOutcomes.Rejected, State = st, Revision = s.Revision, Verdict = lastBattle, RejectReason = rejectReason });
                     });
                     return;
                 }
@@ -216,6 +220,7 @@ namespace Game.Flow
                     _online.SubmitBattle(head.Battle, v =>
                     {
                         if (v == null) { done(new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }); return; }
+                        if (!v.Valid) rejectReason = "battle " + v.Reason;
                         Handle(1, v.Valid, v.Save, v);
                     });
                     return;
@@ -227,6 +232,7 @@ namespace Game.Flow
                 _online.SubmitActions(new ActionSubmission { BaseRevision = link.Revision, Actions = actions }, v =>
                 {
                     if (v == null) { done(new SyncResult { Outcome = SyncOutcomes.Queued, State = local, Revision = link.Revision, Verdict = lastBattle }); return; }
+                    if (!v.Valid) rejectReason = v.Reason + (v.FailedIndex >= 0 && v.FailedIndex < actions.Count ? " #" + v.FailedIndex + " " + actions[v.FailedIndex].Kind : "") + " (rev " + link.Revision + ")";
                     Handle(n, v.Valid, v.Save, null);
                 });
             }
