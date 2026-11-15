@@ -37,6 +37,8 @@ namespace Game.Unity.Online
         public string AccountId { get; private set; }
         public bool IsGuest => false;
         public string IdToken { get; private set; }
+        /// <summary>구글 계정 사진 주소 (없으면 null). 이 기기 프로필 사진으로만 쓴다.</summary>
+        public string PhotoUrl { get; private set; }
         /// <summary>마지막 실패 이유 (화면·로그용).</summary>
         public string LastError { get; private set; }
 
@@ -114,6 +116,7 @@ namespace Game.Unity.Online
                     var r = JObject.Parse(req.downloadHandler.text);
                     IdToken = r.Value<string>("idToken");
                     AccountId = r.Value<string>("localId");
+                    PhotoUrl = r.Value<string>("photoUrl");
                     IsSignedIn = IdToken != null;
                     if (!IsSignedIn) { Fail("firebase: idToken 없음", done); return; }
                     done?.Invoke(true);

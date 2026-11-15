@@ -10,6 +10,9 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class TitleScreen : GameScreen
     {
+        /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
+        public override bool OnBack() => false;
+
         private bool _ready;
 
         public override void Build()
@@ -61,6 +64,9 @@ namespace Game.Unity.Screens
     /// <summary>부팅·화면 오류. 규칙 데이터가 잘못되었을 때 원인을 화면에 보여준다.</summary>
     public sealed class ErrorScreen : GameScreen
     {
+        /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
+        public override bool OnBack() => false;
+
         private readonly string _message;
         public ErrorScreen(string message) { _message = message; }
 

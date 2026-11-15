@@ -115,7 +115,14 @@ namespace Game.Unity.UI
             var le = c.GetComponent<LayoutElement>();
             if (le == null) le = c.gameObject.AddComponent<LayoutElement>();
             if (height > 0) { le.minHeight = height; le.preferredHeight = height; }
-            if (width > 0) { le.minWidth = width; le.preferredWidth = width; }
+            if (width > 0)
+            {
+                le.minWidth = width;
+                le.preferredWidth = width;
+                // 정한 너비 그대로 (줄의 남는 너비를 나눠 받지 않게): 그 줄은 FixedSizeLayout으로
+                if (flexibleWidth <= 0) le.flexibleWidth = 0;
+                FixedSizeLayout.Attach(c.transform.parent);
+            }
             if (flexibleHeight > 0) le.flexibleHeight = flexibleHeight;
             if (flexibleWidth > 0) le.flexibleWidth = flexibleWidth;
             return le;
@@ -209,6 +216,8 @@ namespace Game.Unity.UI
         public static RectTransform Gauge(Transform parent, Color color, float height)
         {
             var back = Rect(parent, "Gauge");
+            var row = parent.GetComponent<HorizontalLayoutGroup>();
+            if (row != null) { row.childForceExpandHeight = false; row.childAlignment = TextAnchor.MiddleLeft; } // 줄 높이로 늘지 않게
             Background(back, Palette.IsLight ? new Color(0.17f, 0.15f, 0.12f, 0.25f) : new Color(0f, 0f, 0f, 0.5f)).raycastTarget = false;
             Size(back, height);
             var fill = Rect(back, "Fill");

@@ -211,6 +211,97 @@ namespace Game.Unity.Boot
             StartupFlow.WriteRecord(_saveStore, StartupRecord);
         }
 
+        private const string PhotoKey = "prefs.photoUrl", PlayKey = "prefs.playSeconds";
+
+        /// <summary>프로필 사진 주소 (구글 로그인 · 연동 때 받아 이 기기에만 둔다). 없으면 null → "나" 초상.</summary>
+        public string PhotoUrl => _saveStore.Exists(PhotoKey) ? NullIfEmpty(_saveStore.Read(PhotoKey)) : null;
+
+        private static string NullIfEmpty(string s) => string.IsNullOrEmpty(s) ? null : s;
+
+        private void KeepPhoto(IAuthService provider)
+        {
+            if (provider is Game.Unity.Online.GoogleFirebaseAuthService g) _saveStore.Write(PhotoKey, g.PhotoUrl ?? "");
+        }
+
+        private long _playSaved = -1;
+        private float _playPending;
+
+        /// <summary>이 기기에서 플레이한 시간 (초, 기기에만).</summary>
+        public long PlaySeconds
+        {
+            get
+            {
+                if (_playSaved < 0) _playSaved = _saveStore.Exists(PlayKey) && long.TryParse(_saveStore.Read(PlayKey), out var v) ? v : 0;
+                return _playSaved + (long)_playPending;
+            }
+        }
+
+        /// <summary>매 프레임 더한다 (30초마다 · 앱이 뒤로 갈 때 기록).</summary>
+        public void AddPlayTime(float seconds, bool flush = false)
+        {
+            _playPending += seconds;
+            if (!flush && _playPending < 30f) return;
+            long total = PlaySeconds;
+            _playSaved = total;
+            _playPending = 0f;
+            _saveStore.Write(PlayKey, total.ToString());
+        }
+
+        /// <summary>서버 계정에 구글 등 외부 로그인이 붙어 있다 (R-105, 내 계정 불러올 때 갱신).</summary>
+        public bool Linked { get; private set; }
+
+        /// <summary>게스트 (이 기기에만 묶인 계정): 외부 로그인이 붙지 않았다.</summary>
+        public bool IsGuestAccount => !Linked && (StartupRecord?.SignInMethod ?? "guest") == "guest";
+
+        /// <summary>
+        /// 진짜 로그아웃 (R-105): 남은 기록을 먼저 올리고, 이 기기의 계정 토큰 · 세이브 · 로그인 수단을 지운다.
+        /// 다음 게스트 로그인은 새 계정, 같은 구글 로그인은 그 계정의 서버 세이브를 받는다 (기기 진행이 다른 계정에 섞이지 않게).
+        /// force가 아니면 올리지 못한 기록이 있을 때 지우지 않고 false.
+        /// </summary>
+        public void LogOut(bool force, Action<bool> done)
+        {
+            Flush(_ =>
+            {
+                if (!force && OnlineEnabled && Link.Journal.Count > 0) { done?.Invoke(false); return; }
+                if (Online is HttpOnlineService http) http.Forget();
+                ClearSuspendedBattle();
+                ResetSave(); // 새 게임 상태 + 연결 기록(토큰 · 리비전 · 남은 기록) 비움
+                Linked = false;
+                _saveStore.Write(PhotoKey, "");
+                Nickname = null;
+                IsMaster = false;
+                SignOut();
+                done?.Invoke(true);
+            });
+        }
+
+        /// <summary>
+        /// 구글 연동 (R-105): 지금 계정(게스트)에 구글 로그인을 붙인다 — 계정 번호 · 진행 그대로, 다른 기기에서도 구글로 이어서.
+        /// 그 구글이 이미 다른 계정 것이면 연동하지 않는다 (LinkReasons.Taken, 진행이 섞이지 않게). 구글 로그인을 쓸 수 없으면 "unavailable".
+        /// </summary>
+        public void LinkGoogle(Action<string> done)
+        {
+            IAuthService google;
+            try { google = _services.Create<IAuthService>(ServiceIds.AuthFor(ServiceIds.SignInGoogle), _serviceConfig); }
+            catch (Exception) { done?.Invoke("unavailable"); return; }
+            google.SignInAutomatically(ok =>
+            {
+                if (!ok || google.IdToken == null || Online == null) { done?.Invoke("unavailable"); return; }
+                Online.LinkFirebase(google.IdToken, r =>
+                {
+                    if (r == null) { done?.Invoke("failed"); return; }
+                    if (r.Ok)
+                    {
+                        Linked = true;
+                        Auth = google;
+                        KeepPhoto(google);
+                        if (StartupRecord != null) { StartupRecord.SignInMethod = ServiceIds.SignInGoogle; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
+                    }
+                    done?.Invoke(r.Reason ?? (r.Ok ? LinkReasons.Ok : "failed"));
+                });
+            });
+        }
+
         /// <summary>계정 삭제 요청 (R-102): 서버에 요청 후 이 기기의 로그인 기록을 지운다 (7일 안에 다시 로그인하면 취소).</summary>
         public void RequestAccountDeletion(System.Action<Game.Online.DeleteAccountResponse> done)
         {
@@ -373,7 +464,7 @@ namespace Game.Unity.Boot
 
         public void LoadProfile(Action<ProfileResponse> done) => Online.GetProfile(p =>
         {
-            if (p != null) { Nickname = p.Nickname; IsMaster = p.IsMaster; }
+            if (p != null) { Nickname = p.Nickname; IsMaster = p.IsMaster; Linked = p.Linked; }
             EnsureAvatar();
             done?.Invoke(p);
         });
@@ -423,6 +514,7 @@ namespace Game.Unity.Boot
                 void Finish()
                 {
                     Auth = provider;
+                    KeepPhoto(provider);
                     StartupRecord.SignInMethod = method;
                     StartupFlow.WriteRecord(_saveStore, StartupRecord);
                     done?.Invoke(true);

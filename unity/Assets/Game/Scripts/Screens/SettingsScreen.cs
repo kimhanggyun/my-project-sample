@@ -109,7 +109,7 @@ namespace Game.Unity.Screens
             var pic = Ui.Rect(row, "Pic");
             Ui.Size(pic, 140, 140);
             var me = Ctx.State.FindGeneral(Game.Flow.AvatarGeneral.GeneralId);
-            new Portrait(pic, 140).Show(Game.Flow.AvatarGeneral.GeneralId, Ctx.GeneralName(Game.Flow.AvatarGeneral.GeneralId), Palette.Seal);
+            new Portrait(pic, 140, true).Show(Game.Flow.AvatarGeneral.GeneralId, Ctx.GeneralName(Game.Flow.AvatarGeneral.GeneralId), Palette.Seal);
             var col = Ui.Rect(row, "Name");
             Ui.Size(col, flexibleWidth: 1);
             Ui.Column(col, 6, 0).childAlignment = TextAnchor.MiddleLeft;
@@ -128,17 +128,52 @@ namespace Game.Unity.Screens
         {
             var card = Section(body, "account");
             string method = Ctx.StartupRecord?.SignInMethod ?? "guest";
-            var signIn = Line(card, method == "google" ? "G" : method == "apple" ? "A" : "客", T("ui.signIn.method." + method));
-            Ui.Size(Ui.Tag(signIn, method == "guest" ? T("ui.settings.guest") : T("ui.settings.linked"), method == "guest" ? Palette.TextDim : Palette.Good, 20, 44), width: 160);
+            bool guest = Ctx.IsGuestAccount;
+            var signIn = Line(card, guest ? "客" : method == "apple" ? "A" : "G", T(guest ? "ui.signIn.method.guest" : "ui.signIn.method." + (method == "guest" ? "google" : method)), guest ? T("ui.settings.guestNote") : null);
+            Ui.Size(Ui.Tag(signIn, guest ? T("ui.settings.guest") : T("ui.settings.linked"), guest ? Palette.TextDim : Palette.Good, 20, 44), width: 160);
+            if (guest && Ctx.OnlineEnabled)
+            {
+                // 구글 연동 (R-105): 기기를 바꾸거나 앱을 지워도 이어서 할 수 있게 (추천)
+                var link = Line(card, "連", T("ui.settings.linkGoogle"), T("ui.settings.linkGoogleSub"), Palette.Good);
+                Arrow(link, T("ui.settings.recommend"), LinkGoogle);
+            }
             if (Ctx.OnlineEnabled && Ctx.AccountId != null)
             {
                 var id = Line(card, "番", T("ui.settings.accountId"), Ctx.AccountId);
                 Arrow(id, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Ctx.AccountId; App.Show(new SettingsScreen(T("ui.settings.copied"))); });
             }
             var logout = Line(card, "出", T("ui.settings.logout"));
-            Arrow(logout, "›", () => Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutBody"), T("ui.settings.logout"), () => { Ctx.SignOut(); App.Reboot(); }, (T("ui.common.cancel"), () => { })));
+            Arrow(logout, "›", ConfirmLogout);
             var del = Line(card, "削", T("ui.settings.deleteAccount"), T("ui.settings.irreversible"), Palette.Bad);
             Arrow(del, "›", DeleteDialog, Ctx.OnlineEnabled);
+        }
+
+        /// <summary>
+        /// 로그아웃 (R-105): 게스트는 경고 + 구글 연동 추천 ("이 기기에만 저장돼 다시 찾을 수 없음"), 연동된 계정은 확인만.
+        /// 로그아웃하면 이 기기의 계정 · 세이브를 지우고 처음 화면으로.
+        /// </summary>
+        private void ConfirmLogout()
+        {
+            if (Ctx.IsGuestAccount && Ctx.OnlineEnabled)
+                Ui.Confirm(Root, T("ui.settings.guestLogoutTitle"), T("ui.settings.guestLogoutBody"), T("ui.settings.linkGoogleFirst"), LinkGoogle,
+                    (T("ui.settings.logoutAnyway"), () => DoLogout(false)), (T("ui.common.cancel"), () => { }));
+            else
+                Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutBody"), T("ui.settings.logout"), () => DoLogout(false), (T("ui.common.cancel"), () => { }));
+        }
+
+        private void DoLogout(bool force)
+        {
+            Ctx.LogOut(force, ok =>
+            {
+                if (ok) { App.Reboot(); return; }
+                // 올리지 못한 기록이 있다: 그래도 지울지 묻는다
+                Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutPending"), T("ui.settings.logoutAnyway"), () => DoLogout(true), (T("ui.common.cancel"), () => { }));
+            });
+        }
+
+        private void LinkGoogle()
+        {
+            Ctx.LinkGoogle(reason => App.Show(new SettingsScreen(T("ui.settings.link." + reason))));
         }
 
         /// <summary>계정 삭제 확인 창: 사라지는 것 · 7일 유예 · "삭제"를 입력해야 [삭제] 켜짐 (R-102).</summary>
@@ -169,8 +204,7 @@ namespace Game.Unity.Screens
                 Ctx.RequestAccountDeletion(r =>
                 {
                     if (r == null || !r.Ok) { App.Show(new SettingsScreen(T("ui.hire.failed"))); return; }
-                    Ctx.SignOut();
-                    App.Reboot();
+                    Ctx.LogOut(true, _ => App.Reboot()); // 토큰까지 지워야 다시 시작할 때 /me가 삭제를 취소하지 않는다 (7일 안에 직접 로그인해야 취소)
                 });
             }, 96, Palette.Danger, 28);
             Ui.SetEnabled(go, false);
@@ -210,8 +244,8 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(row, name, 26), width: 140);
             Ui.Size(Ui.Button(row, "−", () => { set(value - 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             var g = Ui.Gauge(row, Palette.Ally, 22);
-            Ui.Size(g, flexibleWidth: 1);
-            Ui.SetGauge((RectTransform)g.GetChild(0), value / 100f);
+            Ui.Size(g.parent, flexibleWidth: 1);
+            Ui.SetGauge(g, value / 100f);
             Ui.Size(Ui.Button(row, "+", () => { set(value + 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             Ui.Size(Ui.Label(row, value.ToString(), 24, TextAnchor.MiddleRight), width: 60);
         }
@@ -338,6 +372,76 @@ namespace Game.Unity.Screens
             Ctx.ResetSave();
             _confirmReset = false;
             _resetNote.text = T("ui.settings.resetDone");
+        }
+    }
+
+    /// <summary>
+    /// 내 정보 (좌상단 사진을 누름): 사진 · 닉네임 [바꾸기] · 계급 · Lv · 계정 번호 [복사] · 로그인(게스트면 [구글 계정 연동 · 추천]) ·
+    /// 기록(장수 수 · 깬 스텝 · 이 기기 플레이 시간 · 처음 시작) · [설정 ›].
+    /// </summary>
+    public sealed class ProfileScreen : GameScreen
+    {
+        private readonly string _notice;
+        public ProfileScreen(string notice = null) { _notice = notice; }
+
+        public override void Build()
+        {
+            Ctx.EnsureAvatar(); // 닉네임 장수 (장수 수 · Lv)
+            var (header, body, _) = Ui.PageLayout(Root, 0);
+            var top = Ui.Row(header, "Title", 90, 12);
+            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain(), 84, fontSize: 40), width: 90);
+            Ui.Size(Ui.Label(top, T("ui.profile.title"), Ui.FontTitle - 6), flexibleWidth: 1);
+            if (_notice != null) Ui.Label(header, _notice, 24, TextAnchor.MiddleLeft, Palette.Good);
+
+            var card = Ui.Card(body, "Me", 24, 10);
+            var row = Ui.Row(card, "Row", 180, 20);
+            ProfilePhoto.Make(Ctx, row, 170);
+            var col = Ui.Rect(row, "Info");
+            Ui.Size(col, flexibleWidth: 1);
+            Ui.Column(col, 8, 0).childAlignment = TextAnchor.MiddleLeft;
+            var name = Ui.Label(col, Ctx.Nickname ?? T("ui.settings.noNickname"), 44);
+            var tags = Ui.Row(col, "Tags", 44, 8);
+            Ui.Size(Ui.Tag(tags, T("ui.settings.rank", Ctx.State.LordLevel), Palette.Ally, 20, 40), width: 150);
+            var me = Ctx.State.FindGeneral(Game.Flow.AvatarGeneral.GeneralId);
+            if (me != null) Ui.Size(Ui.Tag(tags, "Lv." + me.Level, new Color(0.16f, 0.13f, 0.1f), 20, 40), width: 110);
+            var change = Ui.Button(col, T("ui.profile.changeNickname"), () => App.Show(new NicknameScreen()), 64, fontSize: 24);
+            Ui.SetEnabled(change, Ctx.OnlineEnabled);
+            if (Ctx.OnlineEnabled) Ctx.LoadProfile(p => { if (name != null && p?.Nickname != null) name.text = p.Nickname; });
+
+            // 계정
+            var acc = Ui.Card(body, "Account", 18, 8);
+            bool guest = Ctx.IsGuestAccount;
+            Ui.Label(acc, T("ui.profile.login") + "  " + Ui.Colored(T(guest ? "ui.settings.guest" : "ui.settings.linked"), guest ? Palette.TextDim : Palette.Good), 26);
+            if (guest)
+            {
+                Ui.Label(acc, T("ui.profile.guestNote"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                if (Ctx.OnlineEnabled)
+                    Ui.Button(acc, T("ui.settings.linkGoogleFirst"), () => Ctx.LinkGoogle(r => App.Show(new ProfileScreen(T("ui.settings.link." + r)))), 76, Palette.Good, 26);
+            }
+            if (Ctx.AccountId != null)
+            {
+                var id = Ui.Row(acc, "Id", 64, 10);
+                Ui.Size(Ui.Label(id, T("ui.settings.accountId") + "  " + Ui.Colored(Ctx.AccountId, Palette.TextDim), 22), flexibleWidth: 1);
+                Ui.Size(Ui.Button(id, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Ctx.AccountId; App.Show(new ProfileScreen(T("ui.settings.copied"))); }, 60, fontSize: 22), width: 140);
+            }
+
+            // 기록
+            var rec = Ui.Card(body, "Records", 18, 6);
+            Ui.Label(rec, T("ui.profile.records"), 26);
+            long play = Ctx.PlaySeconds;
+            void Line(string key, string value)
+            {
+                var r = Ui.Row(rec, key, 48, 10);
+                Ui.Size(Ui.Label(r, T(key), 24, TextAnchor.MiddleLeft, Palette.TextDim), flexibleWidth: 1);
+                Ui.Size(Ui.Label(r, value, 26, TextAnchor.MiddleRight), width: 300);
+            }
+            Line("ui.profile.generals", Ctx.State.Generals.Count.ToString());
+            Line("ui.profile.cleared", Ctx.State.ClearedSteps.Count.ToString());
+            Line("ui.profile.playTime", T("ui.profile.hoursMinutes", play / 3600, play % 3600 / 60));
+            long since = Ctx.StartupRecord?.TermsAcceptedAtUnixSeconds ?? 0;
+            if (since > 0) Line("ui.profile.since", System.DateTimeOffset.FromUnixTimeSeconds(since).ToLocalTime().ToString("yyyy.MM.dd"));
+
+            Ui.Button(body, T("ui.profile.toSettings"), () => App.Show(new SettingsScreen()), 76, fontSize: 26);
         }
     }
 }

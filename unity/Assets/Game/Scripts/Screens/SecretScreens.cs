@@ -49,6 +49,8 @@ namespace Game.Unity.Screens
     public sealed class CodexScreen : GameScreen
     {
         private static string _tab = "secrets";
+        /// <summary>캡처 도구: 처음 열 탭 (secrets / generals).</summary>
+        public static string Tab { set => _tab = value; }
         private static string _cat = "all";
         private static string _grade = "all";
         private readonly string _hint;
@@ -73,6 +75,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(top, T("ui.codex.head"), Ui.FontTitle - 6), flexibleWidth: 1);
             bool sec = _tab == "secrets";
             Ring(top, sec ? found : owned, sec ? codex.Count : gens.Count);
+            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T(sec ? "ui.codex.note" : "ui.codex.noteGenerals"));
             Ui.SegmentTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets")), ("generals", T("ui.codex.tab.generals")) }, _tab, id => { _tab = id; App.Show(new CodexScreen()); }, 70, 500);
 
@@ -140,7 +143,7 @@ namespace Game.Unity.Screens
                 col++;
                 var def = defs[i];
                 var tile = Ui.Card(row, def.Id, 12, 4);
-                Ui.Size(tile, 340, -1, -1, 1);
+                Ui.Size(tile, 340, 300, -1, 1);
                 tile.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
                 Ui.Label(tile, Ui.Colored(CatIcon(e.Category), Palette.TextDim), 22, TextAnchor.MiddleLeft).font = Ui.TitleFont;
                 var stamp = Ui.Rect(tile, "Stamp");
@@ -167,7 +170,7 @@ namespace Game.Unity.Screens
                     tile.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new CodexScreen(open ? null : id)));
                 }
             }
-            if (row != null) for (; col % 3 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 340, -1, -1, 1);
+            if (row != null) for (; col % 3 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 340, 300, -1, 1);
             if (_cat == "all" || _cat == "land" || _cat == "merc")
             {
                 var later = Ui.Card(body, "Later", 16, 4);
@@ -231,14 +234,14 @@ namespace Game.Unity.Screens
                 col++;
                 var color = GradeLabel.ColorOf(g.Grade);
                 var card = Ui.Card(row, g.GeneralId, 8, 4);
-                Ui.Size(card, 330, -1, -1, 1);
+                Ui.Size(card, 330, 220, -1, 1);
                 card.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
                 var outline = card.gameObject.AddComponent<Outline>();
                 outline.effectColor = color;
                 outline.effectDistance = new Vector2(4, -4);
                 var pic = Ui.Rect(card, "Pic");
                 Ui.Size(pic, 160, 160);
-                if (g.Owned) new Portrait(pic, 160).Show(g.GeneralId, Ctx.GeneralName(g.GeneralId), color);
+                if (g.Owned) new Portrait(pic, 160, true).Show(g.GeneralId, Ctx.GeneralName(g.GeneralId), color);
                 else
                 {
                     Ui.Background(pic, Dark).sprite = UiShapes.Circle;
@@ -254,7 +257,7 @@ namespace Game.Unity.Screens
                     card.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new GeneralScreen(gid)));
                 }
             }
-            if (row != null) for (; col % 4 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 330, -1, -1, 1);
+            if (row != null) for (; col % 4 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 330, 220, -1, 1);
             var more = Ui.Card(body, "More", 16, 6);
             Ui.Label(more, T("ui.codex.missing"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Button(more, T("ui.codex.toGacha"), () => App.Show(new GachaScreen()), 76, fontSize: 26);

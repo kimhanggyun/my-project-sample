@@ -9,6 +9,9 @@ namespace Game.Unity.Screens
     /// <summary>스플래시 (startup.md ①): 로고 글자, 정해진 시간이 지나거나 누르면 다음.</summary>
     public sealed class SplashScreen : GameScreen
     {
+        /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
+        public override bool OnBack() => false;
+
         private float _elapsed;
         private bool _done;
 
@@ -43,6 +46,9 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class SignInScreen : GameScreen
     {
+        /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
+        public override bool OnBack() => false;
+
         private readonly string _notice;
         private readonly List<(Button button, SignInOption option)> _buttons = new List<(Button, SignInOption)>();
         public SignInScreen(string notice = null) { _notice = notice; }
@@ -127,6 +133,9 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class TermsScreen : GameScreen
     {
+        /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
+        public override bool OnBack() => false;
+
         internal bool Terms, Privacy;
 
         public override void Build()
@@ -165,6 +174,12 @@ namespace Game.Unity.Screens
         private readonly string _id;
         private readonly bool _terms, _privacy;
         public TermsBodyScreen(string id, bool terms, bool privacy) { _id = id; _terms = terms; _privacy = privacy; }
+
+        public override bool OnBack()
+        {
+            App.Show(new TermsScreen { Terms = _terms, Privacy = _privacy });
+            return true;
+        }
 
         public override void Build()
         {

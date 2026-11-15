@@ -202,6 +202,17 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.MyNickname, OnlineJson.Write(new NicknameRequest { Nickname = nickname }), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<NicknameResponse>(body) : null));
 
+        public void LinkFirebase(string idToken, Action<LinkResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.LinkFirebase, OnlineJson.Write(new ExternalSignInRequest { IdToken = idToken }), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 409 ? Parse<LinkResponse>(body) : null));
+
+        /// <summary>로그아웃 (R-105): 이 기기에서 계정 토큰을 잊는다 (다음 게스트 로그인은 새 계정).</summary>
+        public void Forget()
+        {
+            AccountId = null;
+            Token = null;
+        }
+
         public void DeleteAccount(Action<DeleteAccountResponse> done) =>
             _transport.Send("POST", OnlineRoutes.MyDelete, null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<DeleteAccountResponse>(body) : null));
 

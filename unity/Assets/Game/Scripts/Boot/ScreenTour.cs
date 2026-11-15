@@ -49,8 +49,23 @@ namespace Game.Unity.Boot
             shots.Add(("13_codex", () => new CodexScreen(), 0f));
             shots.Add(("14_replays", () => new ReplayListScreen(), 0f));
             shots.Add(("15_settings", () => new SettingsScreen(), 0f));
+            // 캡처에 없던 화면 (2026-11-15 사용자 요청)
+            shots.Add(("12b_gacha_rates", () => new GachaScreen("standard", null, true), 0f));
+            shots.Add(("13b_codex_generals", () => { CodexScreen.Tab = "generals"; return new CodexScreen(); }, 0f));
+            shots.Add(("14b_replays_shared", () => { ReplayListScreen.Tab = "shared"; return new ReplayListScreen(); }, 1f));
+            shots.Add(("15b_profile", () => new ProfileScreen(), 0.5f));
+            shots.Add(("21_main_recruit", () => new MainScreen("gacha"), 0f));
+            shots.Add(("22_main_practice", () => new MainScreen("practice"), 0f));
+            shots.Add(("23_main_sample", () => new MainScreen("sampleBattle"), 0f));
+            shots.Add(("24_main_prisoner", () => new MainScreen("prisoner"), 0f));
+            shots.Add(("25_mail", () => new MailScreen(null, null), 1f));
+            shots.Add(("26_main_alliance", () => new MainScreen("alliance"), 1f));
+            shots.Add(("27_main_shop", () => new MainScreen("shop"), 0f));
+            shots.Add(("28_main_pvp", () => new MainScreen("pvp"), 0f));
 
             foreach (var s in shots) yield return Shot(s.name, s.make, s.wait);
+            CodexScreen.Tab = "secrets";
+            ReplayListScreen.Tab = "mine";
 
             // 전투: 세이브는 그대로 두고 출진 준비만 해서 몇 초 돌린 화면
             var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = FirstStep(), Seed = 5 });
@@ -60,7 +75,11 @@ namespace Game.Unity.Boot
                 yield return Shot("17_dialogue", () => new DialogueScreen(plan, "dialogue." + plan.Step.Id + ".start"), 0f);
                 // 안내 팝업을 띄우지 않고 (전투가 멈추지 않게) 시작·진행 중을 찍는다. 세이브의 "본 안내"는 그대로
                 Game.Unity.UI.GuideOverlay.Suppressed = true;
-                yield return Shot("18_battle_start", () => new BattleScreen(plan), 0.5f);
+                var battle = new BattleScreen(plan);
+                yield return Shot("18_battle_start", () => battle, 0.5f); // 승패 조건 카드
+                battle.CloseConditionsForTour();
+                yield return Shot("18b_battle_plan", null, 0.3f); // 멈춘 채 작전 시간 (명령 줄)
+                battle.BeginBattleForTour();
                 yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더 (진행 중)
                 Game.Unity.UI.GuideOverlay.Suppressed = false;
                 Ctx.ClearSuspendedBattle();
@@ -73,6 +92,18 @@ namespace Game.Unity.Boot
                     var result = BattleSimulation.Run(plan2.Setup);
                     var report = Ctx.Flow.ApplyResult(copy, plan2, result);
                     yield return Shot("20_result", () => new ResultScreen(plan2, result, report), 0f);
+                }
+                // 이긴 결과도 (시드를 바꿔 몇 번, 세이브 사본)
+                for (ulong seed = 1; seed <= 12; seed++)
+                {
+                    var c = SaveJson.Read(SaveJson.Write(Ctx.State));
+                    var p = Ctx.Flow.Prepare(c, new SortieRequest { StepId = FirstStep(), Seed = seed, Delegate = true });
+                    if (!p.Ok) break;
+                    var res = BattleSimulation.Run(p.Setup);
+                    if (res.Winner != StoryFlow.PlayerTeam) continue;
+                    var rep = Ctx.Flow.ApplyResult(c, p, res);
+                    yield return Shot("20b_result_win", () => new ResultScreen(p, res, rep), 0f);
+                    break;
                 }
             }
 

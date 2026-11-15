@@ -15,6 +15,8 @@ namespace Game.Unity.Screens
     public sealed class ReplayListScreen : GameScreen
     {
         private static string _tab = "mine";
+        /// <summary>캡처 도구: 처음 열 탭 (mine / shared).</summary>
+        public static string Tab { set => _tab = value; }
         private static string _cat = "all";
         private static string _sharedStep;
         private static string _sort = "won";
@@ -29,9 +31,10 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(top, T("ui.replay.head"), Ui.FontTitle - 6), flexibleWidth: 1);
             int n = Ctx.Replays.Items.Count, max = Ctx.ReplayRules.MaxSaved;
             var bar = Ui.Gauge(top, Palette.Ally, 24);
-            Ui.Size(bar, width: 240);
-            Ui.SetGauge((RectTransform)bar.GetChild(0), max <= 0 ? 0f : Mathf.Clamp01((float)n / max));
+            Ui.Size(bar.parent, width: 240);
+            Ui.SetGauge(bar, max <= 0 ? 0f : Mathf.Clamp01((float)n / max));
             Ui.Size(Ui.Label(top, n + " / " + max, 24, TextAnchor.MiddleRight), width: 110);
+            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T("ui.replay.note"));
             if (!Ctx.OnlineEnabled) _tab = "mine";
             if (Ctx.OnlineEnabled)

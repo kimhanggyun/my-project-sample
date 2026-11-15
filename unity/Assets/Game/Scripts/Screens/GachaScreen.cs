@@ -31,6 +31,9 @@ namespace Game.Unity.Screens
             _notice = notice ?? (last != null && !last.Ok ? Reason(last.Reason) : null);
         }
 
+        /// <summary>모집 탭 안 (2026-11-15): 위 막대에 보석 · 탭이 있으니 자기 머리 줄([‹] · 제목 · 보석)을 그리지 않는다.</summary>
+        public bool Embedded { get; set; }
+
         private string Reason(string r) => r == GachaService.NoFree ? T("ui.gacha.noFree") : T("ui.gacha.notEnough");
 
         public override void Build()
@@ -40,9 +43,11 @@ namespace Game.Unity.Screens
             var (header, body, footer) = Ui.PageLayout(Root, 170);
 
             var top = Ui.Row(header, "Title", 90, 12);
+            if (Embedded && _mode == Mode.Main) top.gameObject.SetActive(false);
             Ui.Size(Ui.Button(top, "‹", Back, 84, fontSize: 40), width: 90);
             Ui.Size(Ui.Label(top, T(_mode == Mode.Result ? "ui.gacha.result" : _mode == Mode.Rates ? "ui.gacha.ratesHead" : "ui.gacha.title"), Ui.FontTitle - 6), flexibleWidth: 1);
             Ui.Size(Ui.ResourceChip(Ctx, top, b.Currency, Ctx.Resource(b.Currency), () => App.ShowMain("shop"), 74), width: 280);
+            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T("ui.gacha.note"));
             if (_notice != null) Ui.Label(header, Ui.Colored(_notice, Palette.Bad), 24);
 
@@ -53,8 +58,8 @@ namespace Game.Unity.Screens
 
         private void Back()
         {
-            if (_mode == Mode.Main) App.ShowMain("general");
-            else App.Show(new GachaScreen(_bannerId));
+            if (_mode == Mode.Main) App.ShowMain("gacha");
+            else App.ShowMain("gacha");
         }
 
         // ---- 모집 ----
@@ -69,8 +74,8 @@ namespace Game.Unity.Screens
             var pool = new List<string>(b.Pool);
             pool.Sort((x, y) => Rank(y).CompareTo(Rank(x)));
             var art = Ui.Card(body, "Banner", 16, 8);
-            Ui.Round(Ui.Background(art, new Color(0.16f, 0.15f, 0.14f)));
-            var faces = Ui.Row(art, "Faces", 300, 16);
+            art.GetComponent<Image>().color = new Color(0.16f, 0.15f, 0.14f);
+            var faces = Ui.Row(art, "Faces", 340, 16);
             Ui.Spacer(faces, 0, 1);
             int[] order = { 1, 0, 2 };
             foreach (int i in order)
@@ -79,12 +84,12 @@ namespace Game.Unity.Screens
                 string id = pool[i];
                 float size = i == 0 ? 280 : 190;
                 var col = Ui.Rect(faces, "Face");
-                Ui.Size(col, 300, size);
+                Ui.Size(col, 340, size);
                 Ui.Column(col, 4, 0).childAlignment = TextAnchor.MiddleCenter;
                 var pic = Ui.Rect(col, "Pic");
                 Ui.Size(pic, size, size);
                 string grade = Ctx.Defs.Generals[id].Grade;
-                new Portrait(pic, size).Show(id, Ctx.GeneralName(id), GradeLabel.ColorOf(grade));
+                new Portrait(pic, size, true).Show(id, Ctx.GeneralName(id), GradeLabel.ColorOf(grade));
                 Ui.Tag(col, T("grade." + grade), GradeLabel.ColorOf(grade), 20, 36);
             }
             Ui.Spacer(faces, 0, 1);
@@ -98,8 +103,8 @@ namespace Game.Unity.Screens
                 Ctx.State.GachaPity.TryGetValue(b.Id, out int since);
                 Ui.Size(Ui.Label(pity, Ui.Colored("★", GradeLabel.ColorOf(b.PityGrade)), 40, TextAnchor.MiddleCenter), width: 50);
                 var gauge = Ui.Gauge(pity, GradeLabel.ColorOf(b.PityGrade), 24);
-                Ui.Size(gauge, flexibleWidth: 1);
-                Ui.SetGauge((RectTransform)gauge.GetChild(0), b.PityCount <= 0 ? 0f : Mathf.Clamp01((float)since / b.PityCount));
+                Ui.Size(gauge.parent, flexibleWidth: 1);
+                Ui.SetGauge(gauge, b.PityCount <= 0 ? 0f : Mathf.Clamp01((float)since / b.PityCount));
                 Ui.Size(Ui.Label(pity, since + " / " + b.PityCount, 24, TextAnchor.MiddleRight), width: 140);
             }
 
@@ -125,7 +130,7 @@ namespace Game.Unity.Screens
                 long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
                 int left = GachaService.FreeLeft(Ctx.State, b, now);
                 var free = Ui.Card(body, "Free", 14, 4);
-                Ui.Round(Ui.Background(free, new Color(0.88f, 0.94f, 0.86f)));
+                free.GetComponent<Image>().color = new Color(0.88f, 0.94f, 0.86f);
                 var row = Ui.Row(free, "Row", 70, 10);
                 Ui.Size(Ui.Label(row, "▶", 34, TextAnchor.MiddleCenter, Palette.Good), width: 50);
                 string sub = left > 0 ? T(AdFree(now) ? "ui.gacha.freeNoteNoAd" : "ui.gacha.freeNote") : T("ui.gacha.freeNext", Until(now));
@@ -193,20 +198,21 @@ namespace Game.Unity.Screens
                     if (!_open[at])
                     {
                         var back = Ui.Button(line, "?", () => Flip(at), 400, new Color(0.18f, 0.17f, 0.16f), 72);
+                        Ui.Size(back, 400, 180, -1, 1);
                         var outline = back.gameObject.AddComponent<Outline>();
                         outline.effectColor = color;
                         outline.effectDistance = new Vector2(6, -6);
                         continue;
                     }
                     var card = Ui.Card(line, "Card" + i, 8, 4);
-                    Ui.Size(card, 400, -1, -1, 1);
+                    Ui.Size(card, 400, 180, -1, 1);
                     card.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
                     var outl = card.gameObject.AddComponent<Outline>();
                     outl.effectColor = color;
                     outl.effectDistance = new Vector2(5, -5);
                     var pic = Ui.Rect(card, "Pic");
                     Ui.Size(pic, 170, 170);
-                    new Portrait(pic, 170).Show(p.GeneralId, Ctx.GeneralName(p.GeneralId), color);
+                    new Portrait(pic, 170, true).Show(p.GeneralId, Ctx.GeneralName(p.GeneralId), color);
                     Ui.Label(card, Ctx.GeneralName(p.GeneralId), 24, TextAnchor.MiddleCenter);
                     Ui.Tag(card, T("grade." + p.Grade), color, 20, 36);
                     Ui.Label(card, p.Duplicate ? Ui.Colored(T("ui.gacha.shard"), Palette.TextDim) : Ui.Colored(T("ui.gacha.newTag"), Palette.Seal), 22, TextAnchor.MiddleCenter);
@@ -241,7 +247,7 @@ namespace Game.Unity.Screens
                 Ui.Label(sum, string.Join("  ", parts), 24);
                 Ui.Label(sum, T("ui.gacha.summary", fresh, shards), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             }
-            Ui.Size(Ui.Button(footer, T("ui.common.ok"), () => App.Show(new GachaScreen(_bannerId)), 150, fontSize: 30), width: 420);
+            Ui.Size(Ui.Button(footer, T("ui.common.ok"), () => App.ShowMain("gacha"), 150, fontSize: 30), width: 420);
             DrawButtons(footer, b, true);
         }
 
@@ -266,8 +272,8 @@ namespace Game.Unity.Screens
                 var row = Ui.Row(grades, gr.Id, 44, 10);
                 Ui.Size(Ui.Tag(row, T("grade." + gr.Id), GradeLabel.ColorOf(gr.Id), 20, 40), width: 120);
                 var gauge = Ui.Gauge(row, GradeLabel.ColorOf(gr.Id), 20);
-                Ui.Size(gauge, flexibleWidth: 1);
-                Ui.SetGauge((RectTransform)gauge.GetChild(0), gr.Rate.Raw / 10000f);
+                Ui.Size(gauge.parent, flexibleWidth: 1);
+                Ui.SetGauge(gauge, gr.Rate.Raw / 10000f);
                 Ui.Size(Ui.Label(row, Percent(gr.Rate.Raw) + "%  ×" + n, 22, TextAnchor.MiddleRight), width: 200);
             }
             var table = Ui.Card(body, "Generals", 16, 4);
@@ -278,7 +284,7 @@ namespace Game.Unity.Screens
                     var row = Ui.Row(table, r.GeneralId, 64, 10);
                     var pic = Ui.Rect(row, "Pic");
                     Ui.Size(pic, 56, 56);
-                    new Portrait(pic, 56).Show(r.GeneralId, Ctx.GeneralName(r.GeneralId), GradeLabel.ColorOf(r.Grade));
+                    new Portrait(pic, 56, true).Show(r.GeneralId, Ctx.GeneralName(r.GeneralId), GradeLabel.ColorOf(r.Grade));
                     Ui.Size(Ui.Label(row, Ctx.GeneralName(r.GeneralId), 24), flexibleWidth: 1);
                     Ui.Size(Ui.Tag(row, T("grade." + r.Grade), GradeLabel.ColorOf(r.Grade), 18, 36), width: 100);
                     Ui.Size(Ui.Label(row, Percent(r.Rate.Raw) + "%", 22, TextAnchor.MiddleRight), width: 120);
@@ -287,7 +293,7 @@ namespace Game.Unity.Screens
             if (b.TenGuarantee != null && b.PityGrade != null)
                 Ui.Label(rules, T("ui.gacha.rules", T("grade." + b.TenGuarantee), T("grade." + b.PityGrade), b.PityCount, Ctx.State.GachaPity.TryGetValue(b.Id, out var s) ? s : 0), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(rules, T("ui.gacha.shardRule"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Size(Ui.Button(footer, T("ui.common.close"), () => App.Show(new GachaScreen(_bannerId)), 150, fontSize: 30), flexibleWidth: 1);
+            Ui.Size(Ui.Button(footer, T("ui.common.close"), () => App.ShowMain("gacha"), 150, fontSize: 30), flexibleWidth: 1);
         }
 
         private int Rank(string generalId)

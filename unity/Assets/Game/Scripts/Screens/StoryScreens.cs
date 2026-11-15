@@ -206,8 +206,8 @@ namespace Game.Unity.Screens
             var row = Ui.Row(card, "Bar", 52, 10);
             Ui.Size(Ui.Label(row, Ui.Colored(mine.ToString("N0"), Palette.Ally), 28), width: 170);
             var g = Ui.Gauge(row, Palette.Ally, 26);
-            Ui.Size(g, flexibleWidth: 1);
-            Ui.SetGauge((RectTransform)g.GetChild(0), mine + enemy <= 0 ? 0.5f : (float)mine / (mine + enemy));
+            Ui.Size(g.parent, flexibleWidth: 1);
+            Ui.SetGauge(g, mine + enemy <= 0 ? 0.5f : (float)mine / (mine + enemy));
             Ui.Size(Ui.Label(row, Ui.Colored("~" + SortieAdvice.Rough(enemy).ToString("N0"), Palette.Enemy), 28, TextAnchor.MiddleRight), width: 170);
         }
 
@@ -452,6 +452,9 @@ namespace Game.Unity.Screens
         protected abstract void Finish();
         protected virtual bool ShowChapter => false;
 
+        /// <summary>뒤로 키: 장면 중엔 아무것도 하지 않는다 ([건너뛰기]로).</summary>
+        public override bool OnBack() => true;
+
         private List<DialogueLine> _lines;
         private int _index;
         private float _chars, _wait, _chapterLeft;
@@ -568,6 +571,7 @@ namespace Game.Unity.Screens
             var group = slot.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             pic = new Portrait(slot, 440);
+            Ui.Fill(pic.Rect); // 레이아웃 없는 자리라 크기를 직접
             return group;
         }
 
@@ -711,7 +715,7 @@ namespace Game.Unity.Screens
                 var row = Ui.Row(list, "Line" + i, 130, 14);
                 var pic = Ui.Rect(row, "Pic");
                 Ui.Size(pic, 96, 96);
-                if (l.Speaker != null) new Portrait(pic, 96).Show(l.Speaker, NameOf(l), SideColor(side));
+                if (l.Speaker != null) new Portrait(pic, 96, true).Show(l.Speaker, NameOf(l), SideColor(side));
                 var col = Ui.Rect(row, "Text");
                 Ui.Size(col, flexibleWidth: 1);
                 Ui.Column(col, 2, 0);

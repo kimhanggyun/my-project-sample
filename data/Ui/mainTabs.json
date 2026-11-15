@@ -1,9 +1,15 @@
 {
-  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포에 들어갈 탭 — 사용자가 지목한 것만: 부대 관리·대전연습·상점, 2026-11-14 / 부대 정비·편성(드래그)은 군대 개편으로 숨김) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임). 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 탭이 많으면 줄마다 가로 스크롤.",
+  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포 탭) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임). 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 2026-11-15 사용자 결정: 배포 줄 = 영토 · 군대(장수 · 병력 · 편성) · 대전연습 · 모집(장수 · 용병) · 연합. 상점은 우상단 아이콘이 있어 개발 줄로, 맵은 샘플전투 카드에 합침. 묶음 안 탭(general · troop · formation · gacha · hiring)은 탭 줄에서 숨기고 묶음 세그먼트로 연다.",
   "tabs": [
     {
-      "id": "troop",
-      "nameKey": "ui.tab.troop",
+      "id": "territory",
+      "nameKey": "ui.tab.territory",
+      "status": "active",
+      "row": "release"
+    },
+    {
+      "id": "army",
+      "nameKey": "ui.tab.army",
       "status": "active",
       "row": "release"
     },
@@ -14,8 +20,14 @@
       "row": "release"
     },
     {
-      "id": "shop",
-      "nameKey": "ui.tab.shop",
+      "id": "recruit",
+      "nameKey": "ui.tab.recruit",
+      "status": "active",
+      "row": "release"
+    },
+    {
+      "id": "alliance",
+      "nameKey": "ui.tab.alliance",
       "status": "active",
       "row": "release"
     },
@@ -26,32 +38,14 @@
       "row": "dev"
     },
     {
-      "id": "general",
-      "nameKey": "ui.tab.general",
+      "id": "shop",
+      "nameKey": "ui.tab.shop",
       "status": "active",
       "row": "dev"
     },
     {
       "id": "sampleBattle",
       "nameKey": "ui.tab.sampleBattle",
-      "status": "active",
-      "row": "dev"
-    },
-    {
-      "id": "map",
-      "nameKey": "ui.tab.map",
-      "status": "active",
-      "row": "dev"
-    },
-    {
-      "id": "territory",
-      "nameKey": "ui.tab.territory",
-      "status": "active",
-      "row": "dev"
-    },
-    {
-      "id": "hiring",
-      "nameKey": "ui.tab.hiring",
       "status": "active",
       "row": "dev"
     },
@@ -74,6 +68,18 @@
       "row": "dev"
     },
     {
+      "id": "prisoner",
+      "nameKey": "ui.tab.prisoner",
+      "status": "active",
+      "row": "dev"
+    },
+    {
+      "id": "settings",
+      "nameKey": "ui.tab.settings",
+      "status": "active",
+      "row": "dev"
+    },
+    {
       "id": "master",
       "nameKey": "ui.tab.master",
       "status": "active",
@@ -86,9 +92,45 @@
       "row": "dev"
     },
     {
-      "id": "prisoner",
-      "nameKey": "ui.tab.prisoner",
-      "status": "active",
+      "id": "pvp",
+      "nameKey": "ui.tab.pvp",
+      "status": "tobe",
+      "row": "dev"
+    },
+    {
+      "id": "general",
+      "nameKey": "ui.tab.general",
+      "status": "hidden",
+      "row": "dev"
+    },
+    {
+      "id": "troop",
+      "nameKey": "ui.tab.troop",
+      "status": "hidden",
+      "row": "dev"
+    },
+    {
+      "id": "formation",
+      "nameKey": "ui.tab.formation",
+      "status": "hidden",
+      "row": "dev"
+    },
+    {
+      "id": "gacha",
+      "nameKey": "ui.tab.gacha",
+      "status": "hidden",
+      "row": "dev"
+    },
+    {
+      "id": "hiring",
+      "nameKey": "ui.tab.hiring",
+      "status": "hidden",
+      "row": "dev"
+    },
+    {
+      "id": "map",
+      "nameKey": "ui.tab.map",
+      "status": "hidden",
       "row": "dev"
     },
     {
@@ -98,39 +140,9 @@
       "row": "dev"
     },
     {
-      "id": "formation",
-      "nameKey": "ui.tab.formation",
-      "status": "active",
-      "row": "dev"
-    },
-    {
       "id": "formationDrag",
       "nameKey": "ui.tab.formationDrag",
       "status": "hidden",
-      "row": "dev"
-    },
-    {
-      "id": "gacha",
-      "nameKey": "ui.tab.gacha",
-      "status": "active",
-      "row": "dev"
-    },
-    {
-      "id": "alliance",
-      "nameKey": "ui.tab.alliance",
-      "status": "active",
-      "row": "dev"
-    },
-    {
-      "id": "settings",
-      "nameKey": "ui.tab.settings",
-      "status": "active",
-      "row": "dev"
-    },
-    {
-      "id": "pvp",
-      "nameKey": "ui.tab.pvp",
-      "status": "tobe",
       "row": "dev"
     }
   ]

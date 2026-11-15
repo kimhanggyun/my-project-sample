@@ -204,6 +204,19 @@ namespace Game.Unity.UI
         // ---------------- 메인 틀 ----------------
 
         /// <summary>자원 칩: 둥근 칩 안에 아이콘 + 숫자 + 작은 주홍 원 [+].</summary>
+        /// <summary>큰 수 줄여 쓰기: 9,999까지 그대로, 그 위 12.3K · 482K · 1.1M · 25M · 3.4B (내림, 소수 한 자리는 100 아래에서만).</summary>
+        public static string Compact(long v)
+        {
+            if (v < 0) return "-" + Compact(-v);
+            if (v < 10_000) return v.ToString("N0");
+            string[] units = { "K", "M", "B", "T" };
+            double x = v;
+            int u = -1;
+            while (x >= 1000 && u < units.Length - 1) { x /= 1000; u++; }
+            double shown = x < 100 ? System.Math.Floor(x * 10) / 10 : System.Math.Floor(x);
+            return shown.ToString(x < 100 ? "0.#" : "0") + units[u];
+        }
+
         public static RectTransform ResourceChip(GameContext ctx, Transform parent, string id, long value, Action onPlus, float height = 66)
         {
             var chip = Rect(parent, "Chip_" + id);
@@ -220,9 +233,21 @@ namespace Game.Unity.UI
             h.childControlWidth = h.childControlHeight = true;
             h.childForceExpandWidth = h.childForceExpandHeight = false;
             Icons.Make(ctx, chip, id, height - 14);
-            var num = Label(chip, value.ToString("N0"), 28, TextAnchor.MiddleLeft);
+            var num = Label(chip, Compact(value), 28, TextAnchor.MiddleLeft); // 482K · 1.1M (누르면 정확한 수)
             num.horizontalOverflow = HorizontalWrapMode.Overflow;
             Size(num, height - 14, -1, -1, 1);
+            if (value >= 10_000)
+            {
+                num.raycastTarget = true;
+                var tap = num.gameObject.AddComponent<Button>();
+                tap.targetGraphic = num;
+                tap.transition = Selectable.Transition.None;
+                tap.onClick.AddListener(() =>
+                {
+                    var overlay = chip.GetComponentInParent<Canvas>()?.rootCanvas.transform as RectTransform;
+                    if (overlay != null) StatTip(ctx, overlay, chip, (id, ctx.T("resource." + id), value.ToString("N0")));
+                });
+            }
             var plus = Rect(chip, "Plus");
             Size(plus, 44, 44).flexibleWidth = 0;
             var plusImg = Background(plus, Palette.ButtonActive);
@@ -278,13 +303,14 @@ namespace Game.Unity.UI
         public static RectTransform Tag(Transform parent, string text, Color color, int fontSize = 26, float height = 48)
         {
             var line = Rect(parent, "TagLine");
-            Size(line, height);
+            Size(line, height).flexibleHeight = 0; // 안의 레이아웃이 세로로 늘어나겠다고 알려 묶음에서 키가 커지던 것 (캡처 2026-11-15)
             var lh = line.gameObject.AddComponent<HorizontalLayoutGroup>();
             lh.childControlWidth = lh.childControlHeight = true;
             lh.childForceExpandWidth = false;
-            lh.childForceExpandHeight = true;
+            lh.childForceExpandHeight = false; // 줄이 늘어나도 꼬리표는 제 높이로 가운데에 (캡처 2026-11-15)
             lh.childAlignment = TextAnchor.MiddleLeft;
             var tag = Rect(line, "Tag");
+            Size(tag, height).flexibleHeight = 0; // 안쪽 레이아웃이 늘어나겠다고 알려도 제 높이
             var img = Background(tag, color);
             img.sprite = UiShapes.Rounded(10);
             img.type = Image.Type.Sliced;

@@ -32,6 +32,12 @@ namespace Game.Server
         string NicknameOf(string accountId);
         Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds);
 
+        // ---- 구글 연동 (R-105) ----
+        /// <summary>지금 계정에 외부 로그인을 붙인다. 그 외부 로그인이 이미 다른 계정 것이면 Taken (섞지 않음), 이 계정에 다른 외부 로그인이 있으면 AlreadyLinked.</summary>
+        string LinkExternal(string accountId, string provider, string subject, string email = null);
+        /// <summary>외부 로그인이 하나라도 붙어 있으면 true (게스트가 아님).</summary>
+        bool IsLinked(string accountId);
+
         // ---- 계정 삭제 (R-102) ----
         /// <summary>삭제 요청 (이미 요청 중이면 그 시각 그대로). 영구 삭제 시각을 돌려준다.</summary>
         long RequestDeletion(string accountId, long nowUnixSeconds);
@@ -148,6 +154,31 @@ namespace Game.Server
                 Data.Tokens[r.Token] = accountId;
                 Persist();
                 return r;
+            }
+        }
+
+        public string LinkExternal(string accountId, string provider, string subject, string email = null)
+        {
+            string key = provider + ":" + subject;
+            lock (_lock)
+            {
+                if (Data.External.TryGetValue(key, out var owner)) return owner == accountId ? LinkReasons.Ok : LinkReasons.Taken;
+                foreach (var kv in Data.External)
+                    if (kv.Value == accountId && kv.Key.StartsWith(provider + ":", StringComparison.Ordinal)) return LinkReasons.AlreadyLinked;
+                Data.External[key] = accountId;
+                if (Data.Emails == null) Data.Emails = new Dictionary<string, string>();
+                if (!string.IsNullOrEmpty(email)) Data.Emails[accountId] = email.Trim().ToLowerInvariant();
+                Persist();
+                return LinkReasons.Ok;
+            }
+        }
+
+        public bool IsLinked(string accountId)
+        {
+            lock (_lock)
+            {
+                foreach (var v in Data.External.Values) if (v == accountId) return true;
+                return false;
             }
         }
 
