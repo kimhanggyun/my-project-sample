@@ -94,7 +94,7 @@ namespace Game.Unity.UI
             float half = Mathf.Max(b.extents.y, b.extents.x * 1.1f, b.extents.z * 0.9f) * 1.12f;
             cam.orthographic = true;
             cam.orthographicSize = half;
-            cam.transform.position = center + new Vector3(0.9f, 0.4f, 0.75f).normalized * 3f; // 비스듬히 옆 · 위 (사람은 얼굴 쪽, 말은 옆모습)
+            cam.transform.position = center + new Vector3(-0.75f, 0.4f, 0.85f).normalized * 3f; // 앞 왼쪽 위에서 (방패 쪽이 보이게, 말은 비스듬한 옆모습)
             cam.transform.LookAt(center);
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 10f;
