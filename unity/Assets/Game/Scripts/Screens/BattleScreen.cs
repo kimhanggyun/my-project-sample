@@ -120,6 +120,8 @@ namespace Game.Unity.Screens
         private RectTransform _cmdBar;
         /// <summary>하위 명령 줄: 명령 줄(카테고리) 바로 위에 뜬다 (19 시안, 2026-11-15 사용자: 카테고리를 그대로 두어 다른 카테고리를 바로 누를 수 있게).</summary>
         private RectTransform _subBar;
+        /// <summary>하위 명령 동그라미 지름.</summary>
+        private const float SubRoundSize = 104f;
         /// <summary>경로 그리기 중 손가락 자취 (놓으면 예약 상한만큼 고르게 골라 _path로).</summary>
         private readonly List<Vec> _dragTrail = new List<Vec>();
         private readonly List<Image> _pathDots = new List<Image>();
@@ -1794,6 +1796,7 @@ namespace Game.Unity.Screens
             if (_pickMode != null)
             {
                 _subBar.gameObject.SetActive(true);
+                Ui.Size(_subBar, 92);
                 string hint = _pickMode == "enemy" ? "ui.battle.pickTarget" : _pickMode == "ally" ? "ui.battle.pickAlly" : _pickMode == "path" ? "ui.battle.drawPath" : _pickKind == "lureBack" ? "ui.battle.pickBack" : "ui.battle.pickPoint";
                 Ui.Size(Ui.Label(_subBar, (single ? "" : T("ui.battle.together", ids.Count) + " · ") + T(hint) + (_pickMode == "path" && _path.Count > 0 ? "  " + _path.Count : ""), 26, TextAnchor.MiddleLeft, Palette.PromptText), flexibleWidth: 1);
                 if (_pickMode == "path")
@@ -1807,15 +1810,30 @@ namespace Game.Unity.Screens
             }
             if (_cmdMenu == "root") return;
 
-            // ---- 위 줄: 고른 카테고리의 하위 명령 ----
+            // ---- 위 줄: 고른 카테고리의 하위 명령 = 흰 동그라미 버튼 (2026-11-15 사용자: 카테고리 네모 버튼과 모양을 달리) ----
             _subBar.gameObject.SetActive(true);
-            var row = Ui.HScrollRow(_subBar, "Commands", 92, 6, 4);
-            Ui.Size(row.parent.parent, 92, -1, -1, 1);
+            Ui.Size(_subBar, SubRoundSize + 14);
+            var row = Ui.HScrollRow(_subBar, "Commands", SubRoundSize + 8, 14, 4);
+            Ui.Size(row.parent.parent, SubRoundSize + 8, -1, -1, 1);
             void Btn(string label, System.Action act, bool enabled = true)
             {
-                var b = Ui.Button(row, label, () => { act(); _dirty = true; }, 84, fontSize: 24);
-                Ui.Size(b, 84, 124);
-                Ui.SetEnabled(b, enabled);
+                var b = Ui.Button(row, label, () => { act(); _dirty = true; }, SubRoundSize, new Color(0.36f, 0.27f, 0.18f), 21);
+                Ui.Size(b, SubRoundSize, SubRoundSize).flexibleWidth = 0;
+                var ring = (Image)b.targetGraphic;          // 짙은 테두리 원
+                ring.sprite = UiShapes.Circle;
+                ring.type = Image.Type.Simple;
+                var face = Ui.Background(Ui.Rect(b.transform, "Face"), enabled ? Color.white : new Color(1f, 1f, 1f, 0.5f)); // 흰 바탕 원
+                face.sprite = UiShapes.Circle;
+                face.raycastTarget = false;
+                Ui.Fill(face.rectTransform);
+                face.rectTransform.offsetMin = new Vector2(3, 3);
+                face.rectTransform.offsetMax = new Vector2(-3, -3);
+                face.transform.SetSiblingIndex(0);           // 글자보다 뒤
+                var text = b.GetComponentInChildren<Text>();
+                text.color = enabled ? new Color(0.16f, 0.12f, 0.08f) : new Color(0.16f, 0.12f, 0.08f, 0.45f);
+                text.rectTransform.offsetMin = new Vector2(10, 8);
+                text.rectTransform.offsetMax = new Vector2(-10, -8);
+                b.interactable = enabled; // Ui.SetEnabled는 테두리 · 글자 색을 기본 버튼 색으로 바꾼다
             }
             bool allRanged = corps.TrueForAll(c => c.Units.Exists(u => u.Alive && u.Troop.HasTag("ranged")));
             switch (_cmdMenu)
