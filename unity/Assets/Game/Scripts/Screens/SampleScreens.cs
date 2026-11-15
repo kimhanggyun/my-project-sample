@@ -109,9 +109,7 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 0);
-            var list = Ui.ScrollList(Root, "List");
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            var (_, list, _, _) = Ui.TitledPage(Root, SampleUi.MapName(Ctx, _mapId), () => App.ShowMain(_backTab), infoGap: false);
             var def = MapDef.Load(Ctx.Data, _mapId);
             SampleMapEntry entry = null;
             foreach (var m in SampleBattles.Catalog(Ctx.Defs, Ctx.Flow)) if (m.MapId == _mapId) entry = m;
@@ -152,7 +150,6 @@ namespace Game.Unity.Screens
                 var error = Ui.Label(list, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
                 Ui.Button(list, T("ui.sample.fight"), () => error.text = SampleUi.Start(App, entry) ?? "", 110, Palette.ButtonActive);
             }
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain(_backTab), 110);
         }
     }
 

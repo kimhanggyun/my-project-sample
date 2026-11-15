@@ -45,7 +45,7 @@ namespace Game.Unity.Boot
             };
             if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => { TroopGrowthTabView.PreparePromote(Ctx.State.Units[0].UnitId); return new MainScreen("troop"); }, 0f)); // 시안 06 승급 화면
             if (Ctx.State.Generals.Count > 0) shots.Add(("11_general", () => new GeneralScreen(Ctx.State.Generals[0].GeneralId), 0f));
-            shots.Add(("12_gacha", () => new GachaScreen(), 0f));
+            shots.Add(("12_gacha", () => new MainScreen("gacha"), 0f)); // 모집 탭 (따로 열던 모집 화면은 없앰)
             shots.Add(("13_codex", () => new CodexScreen(), 0f));
             shots.Add(("14_replays", () => new ReplayListScreen(), 0f));
             shots.Add(("15_settings", () => new SettingsScreen(), 0f));
@@ -54,7 +54,6 @@ namespace Game.Unity.Boot
             shots.Add(("13b_codex_generals", () => { CodexScreen.Tab = "generals"; return new CodexScreen(); }, 0f));
             shots.Add(("14b_replays_shared", () => { ReplayListScreen.Tab = "shared"; return new ReplayListScreen(); }, 1f));
             shots.Add(("15b_profile", () => new ProfileScreen(), 0.5f));
-            shots.Add(("21_main_recruit", () => new MainScreen("gacha"), 0f));
             shots.Add(("22_main_practice", () => new MainScreen("practice"), 0f));
             shots.Add(("23_main_sample", () => new MainScreen("sampleBattle"), 0f));
             shots.Add(("24_main_prisoner", () => new MainScreen("prisoner"), 0f));

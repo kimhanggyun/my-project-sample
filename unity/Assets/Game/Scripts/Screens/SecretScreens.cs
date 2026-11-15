@@ -70,12 +70,9 @@ namespace Game.Unity.Screens
             foreach (var e in codex) if (e.Found) found++;
             foreach (var g in gens) if (g.Owned) owned++;
 
-            var top = Ui.Row(header, "Title", 100, 12);
-            Ui.Size(Ui.Button(top, "‹", () => { if (_detail != null) App.Show(new CodexScreen()); else App.ShowMain("story"); }, 84, fontSize: 40), width: 90);
-            Ui.Size(Ui.Label(top, T("ui.codex.head"), Ui.FontTitle - 6), flexibleWidth: 1);
+            var top = Ui.TitleBar(header, T("ui.codex.head"), () => { if (_detail != null) App.Show(new CodexScreen()); else App.ShowMain("general"); });
             bool sec = _tab == "secrets";
             Ring(top, sec ? found : owned, sec ? codex.Count : gens.Count);
-            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T(sec ? "ui.codex.note" : "ui.codex.noteGenerals"));
             Ui.SegmentTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets")), ("generals", T("ui.codex.tab.generals")) }, _tab, id => { _tab = id; App.Show(new CodexScreen()); }, 70, 500);
 
@@ -260,7 +257,7 @@ namespace Game.Unity.Screens
             if (row != null) for (; col % 4 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 330, 220, -1, 1);
             var more = Ui.Card(body, "More", 16, 6);
             Ui.Label(more, T("ui.codex.missing"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Button(more, T("ui.codex.toGacha"), () => App.Show(new GachaScreen()), 76, fontSize: 26);
+            Ui.Button(more, T("ui.codex.toGacha"), () => App.ShowMain("gacha"), 76, fontSize: 26);
         }
     }
 }

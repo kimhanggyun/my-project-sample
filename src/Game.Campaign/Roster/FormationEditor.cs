@@ -137,6 +137,32 @@ namespace Game.Campaign.Roster
             }, gens, _state.LearnedFormations.Count > 0 ? _state.LearnedFormations[0] : null);
         }
 
+        /// <summary>
+        /// 군단 하나만 자동 편성 (07 카드별 [자동], 2026-11-15): 고용 칸은 두고 그 군단의 병종 칸을 비운 뒤, 다른 군단이 쓰고 남은 병력이 많은 병종부터
+        /// 계급의 칸 수 · 그 군단 한도까지 채운다. 장수 · 진형 · 자리는 그대로.
+        /// </summary>
+        public void AutoFillCorps(int index)
+        {
+            if (index < 0 || index >= Draft.Count) return;
+            var c = Draft[index];
+            c.Picks.RemoveAll(p => !p.Hired);
+            long room = Cap(index) - Troops(index);
+            int slots = Army.Rank(_defs, _state).Slots - c.Picks.Count;
+            var left = new Dictionary<string, long>();
+            foreach (var u in _state.Units) left[u.UnitId] = System.Math.Max(0, u.Troops - UsedElsewhere(index, u.UnitId));
+            for (int k = 0; k < slots && room > 0; k++)
+            {
+                string best = null;
+                foreach (var kv in left)
+                    if (kv.Value > 0 && !c.Picks.Exists(p => p.UnitId == kv.Key) && (best == null || kv.Value > left[best] || (kv.Value == left[best] && string.CompareOrdinal(kv.Key, best) < 0))) best = kv.Key;
+                if (best == null) break;
+                long n = System.Math.Min(left[best], room);
+                c.Picks.Add(new TroopPick { UnitId = best, Troops = n });
+                left[best] -= n;
+                room -= n;
+            }
+        }
+
         /// <summary>이 편성(사본)을 다른 상황(null = 기본)의 저장된 편성으로 복사한다. 검사를 통과해야 한다.</summary>
         public bool CopyTo(string situation)
         {

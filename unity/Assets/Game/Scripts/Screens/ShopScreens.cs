@@ -18,8 +18,7 @@ namespace Game.Unity.Screens
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
-            var list = Ui.ScrollList(root, "List", 12, 16);
-            Ui.Fill((RectTransform)list.parent.parent);
+            var (_, list, _, _) = Ui.TitledPage(root, ctx.T("ui.tab.shop"), null); // 공통 타이틀 (탭이라 뒤로 없음)
             InfoButton.Add(root, ctx.T("ui.shop.note"));
             long now = ctx.Time.UtcNow.ToUnixTimeSeconds();
             if (PurchaseService.AdFree(ctx.State, now))

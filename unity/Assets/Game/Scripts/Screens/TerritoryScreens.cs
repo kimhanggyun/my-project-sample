@@ -376,12 +376,10 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 12, 32);
-            Ui.Size(Ui.Label(Root, T("ui.alliance.title"), Ui.FontTitle), 110);
+            // [연합] 탭 (공통 타이틀, 탭이라 뒤로 없음)
+            var (header, list, _, _) = Ui.TitledPage(Root, T("ui.alliance.title"), null);
             InfoButton.Add(Root, T("ui.alliance.note"));
-            if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
-            var list = Ui.ScrollList(Root, "Alliances", 10, 8);
-            Ui.Size(list.parent.parent, flexibleHeight: 1);
+            if (_notice != null) Ui.Label(header, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadAlliances(res =>
             {
@@ -446,7 +444,6 @@ namespace Game.Unity.Screens
                 }
                 if (shown == 0) Ui.Label(list, T("ui.alliance.none"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             });
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("territory"));
         }
 
         private string Short(string accountId) => Ctx.DisplayName(accountId);
@@ -476,11 +473,9 @@ namespace Game.Unity.Screens
         {
             var step = Ctx.Flow.LoadStep(StepId);
             var (header, body, footer) = Ui.PageLayout(Root, 130);
-            var top = Ui.Row(header, "Title", 100, 12);
-            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain("territory"), 90, fontSize: 40), width: 90);
             string owner = null;
             if (TerritoryTabView.Owners != null && TerritoryTabView.Owners.TryGetValue(_regionId, out var flag)) owner = flag.OwnerAccountId;
-            Ui.Size(Ui.Label(top, owner != null ? T("ui.sortie.siegeOf", Ctx.DisplayName(owner)) : T(step.NameKey), Ui.FontTitle), flexibleWidth: 1);
+            Ui.TitleBar(header, owner != null ? T("ui.sortie.siegeOf", Ctx.DisplayName(owner)) : T(step.NameKey), () => App.ShowMain("territory"));
             SortiePrep.Tiles(Ctx, header, step);
             InfoButton.Add(Root, T("ui.sortie.siegeNote"));
 
@@ -513,7 +508,6 @@ namespace Game.Unity.Screens
             Ui.Tag(result, T("ui.sortie.win", Ctx.Territory.Flags.IncomePerHour.TryGetValue(ResourceIds.Supply, out var inc) ? inc * 24 : 0), Palette.Good, 22, 56);
             Ui.Tag(result, T("ui.sortie.lose", Ctx.Territory.Flags.ProtectSeconds / 60), Palette.Bad, 22, 56);
 
-            Ui.Size(Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("territory"), 100), width: 200);
             var delegated = Ui.Button(footer, T("ui.sortie.delegate"), () => Sortie(step, true), 100);
             Ui.Size(delegated, width: 240);
             var direct = Ui.PrimaryButton(footer, T("ui.sortie.attack"), () => Sortie(step, false), 100);

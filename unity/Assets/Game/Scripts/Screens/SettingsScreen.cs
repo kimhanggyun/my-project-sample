@@ -13,14 +13,13 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 16, 48);
-            Ui.Size(Ui.Label(Root, T("ui.nickname.title"), Ui.FontTitle), 120);
+            Ui.Column(Root, 16, 32);
+            Ui.TitleBar(Root, T("ui.nickname.title"), () => App.Show(new SettingsScreen()), infoGap: false);
             Ui.Label(Root, T("ui.nickname.note"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
             var input = Ui.TextInput(Root, Ctx.Nickname ?? T("ui.nickname.placeholder"), Game.Online.NicknameRules.Max, 110, 34);
             Ui.Size(Ui.Label(Root, "", Ui.FontSmall), flexibleHeight: 1);
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(row, T("ui.common.back"), () => App.Show(new SettingsScreen()));
             Ui.Button(row, T("ui.nickname.save"), () => Ctx.SetNickname(input.text, r =>
             {
                 if (Root == null) return;
@@ -47,9 +46,7 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             var (header, body, _) = Ui.PageLayout(Root, 0);
-            var top = Ui.Row(header, "Title", 90, 12);
-            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain(), 84, fontSize: 40), width: 90);
-            Ui.Size(Ui.Label(top, T("ui.settings.header"), Ui.FontTitle - 6), flexibleWidth: 1);
+            Ui.TitleBar(header, T("ui.settings.header"), () => App.ShowMain(), infoGap: false);
             if (_notice != null) Ui.Label(header, _notice, 24, TextAnchor.MiddleLeft, Palette.Good);
 
             BuildMe(body);
@@ -385,9 +382,7 @@ namespace Game.Unity.Screens
         {
             Ctx.EnsureAvatar(); // 닉네임 장수 (장수 수 · Lv)
             var (header, body, _) = Ui.PageLayout(Root, 0);
-            var top = Ui.Row(header, "Title", 90, 12);
-            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain(), 84, fontSize: 40), width: 90);
-            Ui.Size(Ui.Label(top, T("ui.profile.title"), Ui.FontTitle - 6), flexibleWidth: 1);
+            Ui.TitleBar(header, T("ui.profile.title"), () => App.ShowMain(), infoGap: false);
             if (_notice != null) Ui.Label(header, _notice, 24, TextAnchor.MiddleLeft, Palette.Good);
 
             var card = Ui.Card(body, "Me", 24, 10);

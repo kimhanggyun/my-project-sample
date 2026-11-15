@@ -243,9 +243,7 @@ namespace Game.Unity.Screens
         {
             var step = StepDef.Load(Ctx.Data, _stepId);
             var (header, body, footer) = Ui.PageLayout(Root, 130);
-            var top = Ui.Row(header, "Title", 100, 12);
-            Ui.Size(Ui.Button(top, "‹", () => App.ShowMain("story"), 90, fontSize: 40), width: 90);
-            Ui.Size(Ui.Label(top, T(step.NameKey), Ui.FontTitle), flexibleWidth: 1);
+            Ui.TitleBar(header, T(step.NameKey), () => App.ShowMain("story"));
             SortiePrep.Tiles(Ctx, header, step);
             InfoButton.Add(Root, T("ui.sortie.note"));
 
@@ -321,7 +319,6 @@ namespace Game.Unity.Screens
             }
             foreach (var err in plan.Errors) Ui.Label(sortie, Ui.Colored(err, Palette.Bad), Ui.FontSmall);
 
-            Ui.Size(Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("story"), 100), width: 200);
             var delegated = Ui.Button(footer, T("ui.sortie.delegate"), () => Sortie(step, true), 100);
             Ui.Size(delegated, width: 240);
             var direct = Ui.PrimaryButton(footer, T("ui.sortie.go"), () => Sortie(step, false), 100);
