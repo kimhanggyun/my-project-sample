@@ -60,6 +60,7 @@
 | main | 직접 push 금지. 브랜치 → PR → 테스트 통과 → 합치기 ([dev-rules.md](dev-rules.md) 7장) |
 | 시작 전 | `git fetch` 후 최신 `main`에서 브랜치를 만든다. 열린 PR 목록을 보고 겹치는 파일이 있는지 확인 |
 | 올리기 | 데스크탑은 push·PR 만들기 전에 사용자 확인을 받는다 |
+| 서버 배포 | **main에 합치면 서버 자동 배포** (2026-11-15): 서버에 영향 있는 경로(`server/` · `src/` · `data/` · `config/` · `GameCore.sln` · `deploy-cloudrun.yml`)가 바뀐 커밋만, 테스트가 통과해야 배포 ([impl/deploy-cloudrun.md](impl/deploy-cloudrun.md) 1장). PR 설명에 "머지 뒤 서버 배포 필요"는 더 쓰지 않는다. 합치기가 곧 배포이므로 서버 · 규칙 · 데이터를 바꾼 PR은 합치기 전에 사용자 확인 |
 
 ## 4. 인계: PR 설명이 메시지다
 
