@@ -1,11 +1,11 @@
 {
-  "_comment": "영토 깃발 (territory-v2.md 2장, 2026-11-14 확정). 깃발 = 장수 1명 + 병력, 원 반지름 = 계정 계급(campaign.json lord.ranks[].flagRadiusM). 좌표는 칸(cellLatE6 × cellLonE6, 백만분의 1도) 가운데로 맞춘다 (약 100m, 실제 위치를 숨김). 거리는 위도·경도 1도당 미터(metersPerDegreeLat·Lon, 한국 근처 값)로 정수 계산. protectMinutes = 공성전이 끝난 깃발은 이만큼 다시 공격받지 않음. incomePerHour = 깃발마다 시간당 수입, incomeCapHours = 받지 않고 쌓이는 최대 시간. siegePrepSeconds = 공성전 준비 시간 (초, territory-v2.md 2.3, R-113): 서버가 준비 시작 시각을 기록하고 그 전에 낸 공성전은 거절, 0이면 준비 없음. siegeWindowMinutes = 준비가 끝난 뒤 이 안에 공성전을 내야 함 (지나면 준비가 풀림). battle = 공성전 전투 틀 (스텝 형식, 적은 깃발 주인의 수비 스냅샷으로 바뀜, enemy는 스냅샷이 없을 때만). 수치는 예시",
+  "_comment": "영토 깃발 (territory-v2.md 2장, 2026-11-14 확정). 깃발 = 장수 1명 + 병력, 원 반지름 = 계정 계급(campaign.json lord.ranks[].flagRadiusM). 좌표는 칸(cellLatE6 × cellLonE6, 백만분의 1도) 가운데로 맞춘다 (약 100m, 실제 위치를 숨김). 거리는 위도·경도 1도당 미터(metersPerDegreeLat·Lon, 한국 근처 값)로 정수 계산. protectMinutes = 공성전이 끝난 깃발은 이만큼 다시 공격받지 않음. incomePerHour = 깃발마다 시간당 수입, incomeCapHours = 받지 않고 쌓이는 최대 시간. siegePrepSeconds = 공성전 준비 시간 (초, territory-v2.md 2.3, R-113): 서버가 준비 시작 시각을 기록하고 그 전에 낸 공성전은 거절, 0이면 준비 없음 — 설계 값은 60, 기기 카운트다운 화면이 들어올 때까지 0 (2026-11-15 사용자). siegeWindowMinutes = 준비가 끝난 뒤 이 안에 공성전을 내야 함 (지나면 준비가 풀림). battle = 공성전 전투 틀 (스텝 형식, 적은 깃발 주인의 수비 스냅샷으로 바뀜, enemy는 스냅샷이 없을 때만). 수치는 예시",
   "cellLatE6": 900,
   "cellLonE6": 1130,
   "metersPerDegreeLat": 111320,
   "metersPerDegreeLon": 88800,
   "protectMinutes": 30,
-  "siegePrepSeconds": 60,
+  "siegePrepSeconds": 0,
   "siegeWindowMinutes": 30,
   "incomeCapHours": 24,
   "incomePerHour": {
