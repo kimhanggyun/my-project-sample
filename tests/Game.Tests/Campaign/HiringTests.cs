@@ -201,7 +201,7 @@ namespace Game.Tests.Campaign
             var a = PlayerActionRunner.ClaimMail(new Mail { Id = "m1", Resource = ResourceIds.Gold, Amount = 70 });
             Assert.True(new PlayerActionRunner(Kit.D).Apply(state, a));
             Assert.Equal(gold + 70, new Wallet(state.Wallet).Get(ResourceIds.Gold));
-            Assert.False(new PlayerActionRunner(Kit.D).Apply(state, PlayerActionRunner.ClaimMail(new Mail { Id = "m2", Resource = "gem", Amount = 5 })));
+            Assert.False(new PlayerActionRunner(Kit.D).Apply(state, PlayerActionRunner.ClaimMail(new Mail { Id = "m2", Resource = "wood", Amount = 5 }))); // 모르는 자원 (금괴는 출석 우편으로 받는다, R-112)
 
             var save = new CloudSave { Revision = 1, Json = SaveJson.Write(Kit.Veteran()) };
             var v = ActionVerifier.Apply(new PlayerActionRunner(Kit.D), save, new ActionSubmission { BaseRevision = 1, Actions = { a } }, 0, out _, out _, x => false);

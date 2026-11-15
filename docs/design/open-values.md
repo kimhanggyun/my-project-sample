@@ -211,6 +211,7 @@
 | 부대 키우기: 훈련 +0.1·상한 1.0·1,000명당 돈 20, 훈련도 1의 공격·방어 +10%p, 승급 조건(2단계: 훈련도 0.5~0.6, 스텝 2~4 클리어, 돈 400~700 · 3단계: 훈련도 0.8~0.9, 스텝 5~6, 돈 1,200~1,800), 2·3단계 병종 8종 능력치 — `troopGrowth.json`, `combat.json` training, `troopTypes.json` | troop-growth.md, troops.md |
 | 연합 인원 상한(지금 30)·이름 길이(2~12) — `data/Territory/regions.json` alliance | territory.md 미결 4 |
 | 녹화 저장 개수, 영상 화질 | replay.md |
+| **출석 · 교환 · 스킬 해금 (임시, 2026-11-15 원격, R-112)** — `data/Rules/economy.json`: 하루 기준 한국 자정(`dayStartUtcOffsetHours` 9), 출석 7일 차례(곡식 10만 · 엽전 300 · 곡식 15만 · 엽전 500 · 곡식 20만 · 엽전 800 · 금괴 30, 빠져도 이어서), 교환(금괴 1 → 엽전 100 · 곡식 5만, 엽전 1 ↔ 곡식 500 손실 10% · 하루 엽전 5,000 / 곡식 250만까지), 스킬 얻기 해금 금괴(초급 30 · 중급 60 · 고급 120) | economy.md 1장 · 1.0장 · 3.1장 |
 | **치장 (임시, 2026-11-15 원격, R-111)**: 보상 중복이면 엽전 200 (`cosmetics.json` `duplicateGold`), 결제 치장 황금 갑옷 3,300원 (`products.json` `cosmetic_armor_gold`, `cosmetics.json` `armor_gold`), 보상 치장 예시: step06 첫 클리어 무쇠 갑옷 · 숨은 보상 '들판의 철벽' 진홍 갑옷 | cosmetics.md 5장 |
 
 ---

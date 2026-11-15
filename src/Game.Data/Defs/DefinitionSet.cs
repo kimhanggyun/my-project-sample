@@ -27,6 +27,8 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, ProductDef> Products { get; private set; }
         /// <summary>치장 원본 (Rules/cosmetics.json, 없으면 null). 겉모습만이라 해석은 Game.Flow.CosmeticService가 한다.</summary>
         public JObject CosmeticsDoc { get; private set; }
+        /// <summary>출석 · 교환 · 금괴 해금 (Rules/economy.json, R-112). 없으면 null (그 기능 꺼짐).</summary>
+        public JObject EconomyDoc { get; private set; }
         public StartingKitDef StartingKit { get; private set; }
         public IReadOnlyDictionary<string, string> Strings { get; private set; }
         public JObject RuleFlagDefinitions { get; private set; }
@@ -181,6 +183,7 @@ namespace Game.Data.Defs
             }
             set.Products = products;
             if (source.Exists(RulesDir + "cosmetics.json")) set.CosmeticsDoc = Read(RulesDir + "cosmetics.json");
+            if (source.Exists(RulesDir + "economy.json")) set.EconomyDoc = Read(RulesDir + "economy.json");
 
             set.RuleFlagDefinitions = JsonUtil.RequireObject(Read(RulesDir + "ruleFlags.json"), "flags", "ruleFlags.json");
             set.BalanceCommon = Read(RulesDir + "balance.json");

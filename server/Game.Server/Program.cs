@@ -165,6 +165,9 @@ app.MapGet("/v1/games/{game}/replays/{replay}", (string game, string replay, Htt
     InGame(req, p, r, game, Now(), (id, g) => { var res = g.SharedReplay(replay); return res == null ? Results.NotFound() : Json(res); }));
 app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.MailOf(id))));
+// 출석 (R-112): 하루 한 번, 서버 시각. 보상은 우편
+app.MapPost("/v1/games/{game}/attendance", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.CheckIn(id))));
 
 // 영토 (R-46)
 app.MapGet("/v1/games/{game}/territory", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>

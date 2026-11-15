@@ -79,3 +79,4 @@
 - 2026-11-15 [데스크탑] desktop/flag-view-generals — 영토 목록 보기에 깃발 장수들 복사 (3명 꽂아도 1명만 보이던 것)
 - 2026-11-15 [원격] claude/mercenary-checks — 용병 등록 서버 검사 R-110: 깃발에 나간 닉네임 장수 거절(onFlag), 부대는 닉네임 장수 군단 병종 칸만(notAvatarCorps)
 - 2026-11-15 [원격] claude/cosmetics-2 — 치장 2단계 R-111: 스텝·숨은 보상 치장(중복이면 엽전), 치장 상품(결제 전용 허용), 용병·수비 스냅샷에 주인 겉모습
+- 2026-11-15 [원격] claude/economy-daily — 출석·교환·금괴 해금 R-112 (economy.json 임시값): 출석 우편(서버 시각, POST /attendance), economy.exchange(손실·하루 한도), skill.unlockLearn, 선호 구매는 미결 · 머지 뒤 서버 배포 필요

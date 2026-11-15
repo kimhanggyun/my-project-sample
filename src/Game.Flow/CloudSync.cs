@@ -544,6 +544,12 @@ namespace Game.Flow
         /// <summary>우편: 영토 수입만 (가짜 시장의 등록자는 내 등록을 고용하지 않는다).</summary>
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse { Mail = new List<Mail>(_mail) });
 
+        /// <summary>출석 기록 (가짜: 메모리, 서버와 같은 규칙 · 서버 시각, R-112).</summary>
+        private readonly AttendanceRecord _attendance = new AttendanceRecord();
+
+        public void CheckIn(Action<AttendanceResponse> done) =>
+            done?.Invoke(new DailyEconomy(_defs).CheckIn(_attendance, Now, m => SendMail(AccountId, m)));
+
         // ---- 녹화 공유 (R-81): 기기 안 메모리. 서버와 같은 검사·고르기 ----
         private readonly List<(SharedReplaySummary summary, string json)> _shared = new List<(SharedReplaySummary, string)>();
         private ReplayService _replayService;

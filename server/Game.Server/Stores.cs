@@ -86,6 +86,10 @@ namespace Game.Server
         List<Mail> MailOf(string gameCode, string accountId);
         /// <summary>우편을 지운다 (받음). 없으면 false.</summary>
         bool TakeMail(string gameCode, string accountId, string mailId);
+
+        // ---- 출석 (게임별, R-112) ----
+        /// <summary>계정의 출석 기록을 잠근 채 읽거나 고친다 (고친 뒤 저장, 없으면 새 기록). 우편을 보내도 된다.</summary>
+        T WithAttendance<T>(string gameCode, string accountId, Func<Game.Flow.AttendanceRecord, T> use);
     }
 
     /// <summary>개발용 메모리 저장소 (공통 + 게임별을 한 객체에). 테스트·로컬 실행용.</summary>
@@ -121,6 +125,8 @@ namespace Game.Server
             public Dictionary<string, Dictionary<string, Alliance>> Alliances { get; set; } = new Dictionary<string, Dictionary<string, Alliance>>();
             /// <summary>게임 코드 → 공유 녹화 (올린 순서).</summary>
             public Dictionary<string, List<SharedReplayEntry>> SharedReplays { get; set; } = new Dictionary<string, List<SharedReplayEntry>>();
+            /// <summary>게임 코드 → (계정 → 출석 기록, R-112).</summary>
+            public Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>> Attendance { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -219,6 +225,7 @@ namespace Game.Server
                 foreach (var g in Data.Saves.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Mail.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.HireLogs.Values) Drop(g, (k, v) => gone.Contains(k));
+                if (Data.Attendance != null) foreach (var g in Data.Attendance.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Territory.Values) Drop(g, (k, v) => v != null && gone.Contains(v.OwnerAccountId));
                 foreach (var l in Data.Listings.Values) l.RemoveAll(x => gone.Contains(x.OwnerAccountId));
                 foreach (var l in Data.SharedReplays.Values) l.RemoveAll(x => x.Summary != null && gone.Contains(x.Summary.OwnerAccountId));
@@ -425,6 +432,19 @@ namespace Game.Server
         }
 
         public string NewKey(string prefix) => prefix + NewId(6);
+
+        public T WithAttendance<T>(string gameCode, string accountId, Func<Game.Flow.AttendanceRecord, T> use)
+        {
+            lock (_lock)
+            {
+                if (Data.Attendance == null) Data.Attendance = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>(); // 예전 저장 파일
+                if (!Data.Attendance.TryGetValue(gameCode, out var g)) Data.Attendance[gameCode] = g = new Dictionary<string, Game.Flow.AttendanceRecord>();
+                if (!g.TryGetValue(accountId, out var rec)) g[accountId] = rec = new Game.Flow.AttendanceRecord();
+                var r = use(rec);
+                Persist();
+                return r;
+            }
+        }
 
         public T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use)
         {

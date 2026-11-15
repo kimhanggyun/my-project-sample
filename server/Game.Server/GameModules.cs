@@ -33,6 +33,8 @@ namespace Game.Server
         HireListResponse Listings(string kind, string accountId);
         bool Unregister(string accountId, string listingId);
         MailListResponse MailOf(string accountId);
+        /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편.</summary>
+        AttendanceResponse CheckIn(string accountId);
 
         /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
         TerritoryResponse Territory(string accountId);
@@ -263,6 +265,9 @@ namespace Game.Server
         }
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
+
+        public AttendanceResponse CheckIn(string accountId) =>
+            _store.WithAttendance(Code, accountId, rec => new DailyEconomy(_defs).CheckIn(rec, Now, m => _store.AddMail(Code, accountId, m)));
         public TerritoryResponse Territory(string accountId)
         {
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));

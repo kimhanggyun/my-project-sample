@@ -52,6 +52,7 @@
 | `GET /v1/games/{game}/replays?step=` | 그 스텝의 공유 녹화 요약 (고르기 R-81) | `SharedReplayListResponse` |
 | `GET /v1/games/{game}/replays/{id}` | 공유 녹화 하나 (녹화 JSON), 없으면 404 | `SharedReplayResponse` |
 | `GET /v1/games/{game}/mail` | 내 우편 (고용 보상). 받기는 행동 `mail.claim` | `MailListResponse` |
+| `POST /v1/games/{game}/attendance` | 출석 (하루 한 번, 서버 시각, R-112). 받으면 보상 우편(`attendance`). 기록은 저장소 `WithAttendance` (세이브 밖) | `AttendanceResponse` (`ok` / `already` / `off`) |
 | `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
 | `POST /v1/games/{game}/territory/collect` | 내 지역의 쌓인 수입을 우편으로 (받은 시각 = 지금, R-47) | `MailListResponse` (보낸 우편) |
 | `POST /v1/games/{game}/territory/defense` | 내 지역에 수비 편성 등록 (서버 세이브의 기본 편성 스냅샷, 판 +1, R-48). 내 지역이 아니거나 편성에 문제가 있으면 422 | `DefenseResponse` |

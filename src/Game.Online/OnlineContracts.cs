@@ -54,6 +54,8 @@ namespace Game.Online
         public static string SharedReplays(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/replays";
         public static string SharedReplay(string game, string id) => SharedReplays(game) + "/" + Uri.EscapeDataString(id);
         public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
+        /// <summary>출석 (POST, R-112).</summary>
+        public static string Attendance(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/attendance";
         /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
         public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
         /// <summary>내 지역의 쌓인 수입을 우편으로 받기 (POST).</summary>
@@ -596,6 +598,27 @@ namespace Game.Online
         public const string HireReward = "hireReward";
         /// <summary>영토 수입 (차지한 지역에서 쌓인 자원, R-47). ListingId 칸 대신 RegionId.</summary>
         public const string TerritoryIncome = "territoryIncome";
+        /// <summary>출석 보상 (하루 한 번, 서버 시각, R-112).</summary>
+        public const string Attendance = "attendance";
+    }
+
+    /// <summary>출석 결과 (R-112). 받았으면 Mail이 우편함에 들어가 있다.</summary>
+    public sealed class AttendanceResponse
+    {
+        /// <summary>받음 / already(오늘 이미) / off(출석 없음).</summary>
+        public string Result { get; set; }
+        /// <summary>받은 날의 차례 (0부터), 보낸 우편 (받기는 우편 목록에서: 서버는 Id를 우편함에 넣을 때 정한다).</summary>
+        public int Index { get; set; }
+        public Mail Mail { get; set; }
+        /// <summary>다음 하루가 시작하는 시각 (unix 초, 화면 남은 시간용).</summary>
+        public long NextDayAtUnixSeconds { get; set; }
+    }
+
+    public static class AttendanceResults
+    {
+        public const string Ok = "ok";
+        public const string Already = "already";
+        public const string Off = "off";
     }
 
     /// <summary>공유한 녹화 하나의 요약 (목록에 보이는 것, R-81).</summary>
@@ -725,6 +748,11 @@ namespace Game.Online
         /// <summary>치장 입히기 (TroopType = 계열 id, Situation = 종류 armor/horse, CosmeticId = 치장 id, 없으면 벗기, R-108).</summary>
         public const string CosmeticEquip = "cosmetic.equip";
 
+        /// <summary>자원 교환 (R-112): PayWith = 내는 자원, Situation = 받는 자원, Count = 내는 양. 하루 한도는 DoneAtUnixSeconds의 날로 센다.</summary>
+        public const string Exchange = "economy.exchange";
+        /// <summary>금괴로 스킬 얻기 조건 해금 (SkillId, R-112).</summary>
+        public const string SkillUnlockLearn = "skill.unlockLearn";
+
         public static bool IsDev(string kind) => kind != null && kind.StartsWith(DevPrefix, System.StringComparison.Ordinal);
     }
 
@@ -836,6 +864,8 @@ namespace Game.Online
         /// <summary>해제: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
         void Unregister(string listingId, Action<bool?> done);
         void GetMail(Action<MailListResponse> done);
+        /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편. 닿지 않으면 null.</summary>
+        void CheckIn(Action<AttendanceResponse> done);
 
         // ---- 계정 (닿지 않으면 null) ----
         void GetProfile(Action<ProfileResponse> done);
@@ -883,6 +913,7 @@ namespace Game.Online
         public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => done?.Invoke(null);
         public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
+        public void CheckIn(Action<AttendanceResponse> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
