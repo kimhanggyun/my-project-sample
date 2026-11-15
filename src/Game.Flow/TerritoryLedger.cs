@@ -70,7 +70,7 @@ namespace Game.Flow
             foreach (var o in owners.Values)
             {
                 var copy = new TerritoryOwner { RegionId = o.RegionId, OwnerAccountId = o.OwnerAccountId, SinceUnixSeconds = o.SinceUnixSeconds, CollectedUnixSeconds = o.CollectedUnixSeconds, Defense = o.Defense,
-                    GeneralId = o.GeneralId, RadiusM = o.RadiusM, ProtectedUntilUnixSeconds = o.ProtectedUntilUnixSeconds };
+                    GeneralId = o.GeneralId, GeneralIds = o.GeneralIds == null ? null : new List<string>(o.GeneralIds), RadiusM = o.RadiusM, ProtectedUntilUnixSeconds = o.ProtectedUntilUnixSeconds };
                 var al = allianceOf?.Invoke(o.OwnerAccountId);
                 copy.OwnerAllianceId = al?.Id;
                 copy.OwnerAllianceName = al?.Name;
