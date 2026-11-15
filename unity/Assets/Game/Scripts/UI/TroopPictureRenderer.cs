@@ -94,7 +94,7 @@ namespace Game.Unity.UI
             float half = Mathf.Max(b.extents.y, b.extents.x * 1.1f, b.extents.z * 0.9f) * 1.12f;
             cam.orthographic = true;
             cam.orthographicSize = half;
-            cam.transform.position = center + new Vector3(0.55f, 0.35f, 1f).normalized * 3f; // 앞(+Z)에서 비스듬히 위
+            cam.transform.position = center + new Vector3(0.9f, 0.4f, 0.75f).normalized * 3f; // 비스듬히 옆 · 위 (사람은 얼굴 쪽, 말은 옆모습)
             cam.transform.LookAt(center);
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 10f;
@@ -115,7 +115,8 @@ namespace Game.Unity.UI
             RenderTexture.active = prev;
             cam.targetTexture = null;
             RenderTexture.ReleaseTemporary(rt);
-            foreach (var o in made) if (o != null) Object.Destroy(o);
+            // 바로 지운다: 한 프레임에 여러 장을 찍으면 Destroy(프레임 끝)로는 앞 인형이 남아 겹쳐 찍힌다
+            foreach (var o in made) if (o != null) Object.DestroyImmediate(o);
             return Sprite.Create(tex, new Rect(0, 0, Size, Size), new Vector2(0.5f, 0.5f), 100f);
         }
     }
