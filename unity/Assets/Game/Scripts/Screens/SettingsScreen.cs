@@ -109,7 +109,7 @@ namespace Game.Unity.Screens
             var pic = Ui.Rect(row, "Pic");
             Ui.Size(pic, 140, 140);
             var me = Ctx.State.FindGeneral(Game.Flow.AvatarGeneral.GeneralId);
-            new Portrait(pic, 140).Show(Game.Flow.AvatarGeneral.GeneralId, Ctx.GeneralName(Game.Flow.AvatarGeneral.GeneralId), Palette.Seal);
+            new Portrait(pic, 140, true).Show(Game.Flow.AvatarGeneral.GeneralId, Ctx.GeneralName(Game.Flow.AvatarGeneral.GeneralId), Palette.Seal);
             var col = Ui.Rect(row, "Name");
             Ui.Size(col, flexibleWidth: 1);
             Ui.Column(col, 6, 0).childAlignment = TextAnchor.MiddleLeft;

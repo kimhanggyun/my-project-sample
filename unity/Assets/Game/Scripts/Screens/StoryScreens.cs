@@ -712,7 +712,7 @@ namespace Game.Unity.Screens
                 var row = Ui.Row(list, "Line" + i, 130, 14);
                 var pic = Ui.Rect(row, "Pic");
                 Ui.Size(pic, 96, 96);
-                if (l.Speaker != null) new Portrait(pic, 96).Show(l.Speaker, NameOf(l), SideColor(side));
+                if (l.Speaker != null) new Portrait(pic, 96, true).Show(l.Speaker, NameOf(l), SideColor(side));
                 var col = Ui.Rect(row, "Text");
                 Ui.Size(col, flexibleWidth: 1);
                 Ui.Column(col, 2, 0);

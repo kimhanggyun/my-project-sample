@@ -239,7 +239,7 @@ namespace Game.Unity.Screens
                 outline.effectDistance = new Vector2(4, -4);
                 var pic = Ui.Rect(card, "Pic");
                 Ui.Size(pic, 160, 160);
-                if (g.Owned) new Portrait(pic, 160).Show(g.GeneralId, Ctx.GeneralName(g.GeneralId), color);
+                if (g.Owned) new Portrait(pic, 160, true).Show(g.GeneralId, Ctx.GeneralName(g.GeneralId), color);
                 else
                 {
                     Ui.Background(pic, Dark).sprite = UiShapes.Circle;

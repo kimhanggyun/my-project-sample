@@ -42,7 +42,7 @@ namespace Game.Unity.Screens
             var who = Ui.Row(header, "Who", 200, 18);
             var pic = Ui.Rect(who, "Portrait");
             Ui.Size(pic, 190, 190);
-            new Portrait(pic, 190).Show(_generalId, Ctx.GeneralName(_generalId), GradeColor(gdef?.Grade));
+            new Portrait(pic, 190, true).Show(_generalId, Ctx.GeneralName(_generalId), GradeColor(gdef?.Grade));
             var id = Ui.Rect(who, "Id");
             Ui.Size(id, flexibleWidth: 1);
             Ui.Column(id, 6, 0);

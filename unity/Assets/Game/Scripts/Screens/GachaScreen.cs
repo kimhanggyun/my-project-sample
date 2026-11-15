@@ -71,7 +71,7 @@ namespace Game.Unity.Screens
             pool.Sort((x, y) => Rank(y).CompareTo(Rank(x)));
             var art = Ui.Card(body, "Banner", 16, 8);
             art.GetComponent<Image>().color = new Color(0.16f, 0.15f, 0.14f);
-            var faces = Ui.Row(art, "Faces", 300, 16);
+            var faces = Ui.Row(art, "Faces", 340, 16);
             Ui.Spacer(faces, 0, 1);
             int[] order = { 1, 0, 2 };
             foreach (int i in order)
@@ -80,12 +80,12 @@ namespace Game.Unity.Screens
                 string id = pool[i];
                 float size = i == 0 ? 280 : 190;
                 var col = Ui.Rect(faces, "Face");
-                Ui.Size(col, 300, size);
+                Ui.Size(col, 340, size);
                 Ui.Column(col, 4, 0).childAlignment = TextAnchor.MiddleCenter;
                 var pic = Ui.Rect(col, "Pic");
                 Ui.Size(pic, size, size);
                 string grade = Ctx.Defs.Generals[id].Grade;
-                new Portrait(pic, size).Show(id, Ctx.GeneralName(id), GradeLabel.ColorOf(grade));
+                new Portrait(pic, size, true).Show(id, Ctx.GeneralName(id), GradeLabel.ColorOf(grade));
                 Ui.Tag(col, T("grade." + grade), GradeLabel.ColorOf(grade), 20, 36);
             }
             Ui.Spacer(faces, 0, 1);
@@ -208,7 +208,7 @@ namespace Game.Unity.Screens
                     outl.effectDistance = new Vector2(5, -5);
                     var pic = Ui.Rect(card, "Pic");
                     Ui.Size(pic, 170, 170);
-                    new Portrait(pic, 170).Show(p.GeneralId, Ctx.GeneralName(p.GeneralId), color);
+                    new Portrait(pic, 170, true).Show(p.GeneralId, Ctx.GeneralName(p.GeneralId), color);
                     Ui.Label(card, Ctx.GeneralName(p.GeneralId), 24, TextAnchor.MiddleCenter);
                     Ui.Tag(card, T("grade." + p.Grade), color, 20, 36);
                     Ui.Label(card, p.Duplicate ? Ui.Colored(T("ui.gacha.shard"), Palette.TextDim) : Ui.Colored(T("ui.gacha.newTag"), Palette.Seal), 22, TextAnchor.MiddleCenter);
@@ -280,7 +280,7 @@ namespace Game.Unity.Screens
                     var row = Ui.Row(table, r.GeneralId, 64, 10);
                     var pic = Ui.Rect(row, "Pic");
                     Ui.Size(pic, 56, 56);
-                    new Portrait(pic, 56).Show(r.GeneralId, Ctx.GeneralName(r.GeneralId), GradeLabel.ColorOf(r.Grade));
+                    new Portrait(pic, 56, true).Show(r.GeneralId, Ctx.GeneralName(r.GeneralId), GradeLabel.ColorOf(r.Grade));
                     Ui.Size(Ui.Label(row, Ctx.GeneralName(r.GeneralId), 24), flexibleWidth: 1);
                     Ui.Size(Ui.Tag(row, T("grade." + r.Grade), GradeLabel.ColorOf(r.Grade), 18, 36), width: 100);
                     Ui.Size(Ui.Label(row, Percent(r.Rate.Raw) + "%", 22, TextAnchor.MiddleRight), width: 120);
