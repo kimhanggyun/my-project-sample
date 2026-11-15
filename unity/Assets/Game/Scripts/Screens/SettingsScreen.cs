@@ -386,6 +386,7 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
+            Ctx.EnsureAvatar(); // 닉네임 장수 (장수 수 · Lv)
             var (header, body, _) = Ui.PageLayout(Root, 0);
             var top = Ui.Row(header, "Title", 90, 12);
             Ui.Size(Ui.Button(top, "‹", () => App.ShowMain(), 84, fontSize: 40), width: 90);

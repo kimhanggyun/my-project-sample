@@ -307,9 +307,10 @@ namespace Game.Unity.UI
             var lh = line.gameObject.AddComponent<HorizontalLayoutGroup>();
             lh.childControlWidth = lh.childControlHeight = true;
             lh.childForceExpandWidth = false;
-            lh.childForceExpandHeight = true;
+            lh.childForceExpandHeight = false; // 줄이 늘어나도 꼬리표는 제 높이로 가운데에 (캡처 2026-11-15)
             lh.childAlignment = TextAnchor.MiddleLeft;
             var tag = Rect(line, "Tag");
+            Size(tag, height);
             var img = Background(tag, color);
             img.sprite = UiShapes.Rounded(10);
             img.type = Image.Type.Sliced;

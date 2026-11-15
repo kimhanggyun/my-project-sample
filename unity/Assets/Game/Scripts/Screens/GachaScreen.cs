@@ -31,6 +31,9 @@ namespace Game.Unity.Screens
             _notice = notice ?? (last != null && !last.Ok ? Reason(last.Reason) : null);
         }
 
+        /// <summary>모집 탭 안 (2026-11-15): 위 막대에 보석 · 탭이 있으니 자기 머리 줄([‹] · 제목 · 보석)을 그리지 않는다.</summary>
+        public bool Embedded { get; set; }
+
         private string Reason(string r) => r == GachaService.NoFree ? T("ui.gacha.noFree") : T("ui.gacha.notEnough");
 
         public override void Build()
@@ -40,6 +43,7 @@ namespace Game.Unity.Screens
             var (header, body, footer) = Ui.PageLayout(Root, 170);
 
             var top = Ui.Row(header, "Title", 90, 12);
+            if (Embedded && _mode == Mode.Main) top.gameObject.SetActive(false);
             Ui.Size(Ui.Button(top, "‹", Back, 84, fontSize: 40), width: 90);
             Ui.Size(Ui.Label(top, T(_mode == Mode.Result ? "ui.gacha.result" : _mode == Mode.Rates ? "ui.gacha.ratesHead" : "ui.gacha.title"), Ui.FontTitle - 6), flexibleWidth: 1);
             Ui.Size(Ui.ResourceChip(Ctx, top, b.Currency, Ctx.Resource(b.Currency), () => App.ShowMain("shop"), 74), width: 280);
@@ -54,8 +58,8 @@ namespace Game.Unity.Screens
 
         private void Back()
         {
-            if (_mode == Mode.Main) App.ShowMain("general");
-            else App.Show(new GachaScreen(_bannerId));
+            if (_mode == Mode.Main) App.ShowMain("gacha");
+            else App.ShowMain("gacha");
         }
 
         // ---- 모집 ----
@@ -243,7 +247,7 @@ namespace Game.Unity.Screens
                 Ui.Label(sum, string.Join("  ", parts), 24);
                 Ui.Label(sum, T("ui.gacha.summary", fresh, shards), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             }
-            Ui.Size(Ui.Button(footer, T("ui.common.ok"), () => App.Show(new GachaScreen(_bannerId)), 150, fontSize: 30), width: 420);
+            Ui.Size(Ui.Button(footer, T("ui.common.ok"), () => App.ShowMain("gacha"), 150, fontSize: 30), width: 420);
             DrawButtons(footer, b, true);
         }
 
@@ -289,7 +293,7 @@ namespace Game.Unity.Screens
             if (b.TenGuarantee != null && b.PityGrade != null)
                 Ui.Label(rules, T("ui.gacha.rules", T("grade." + b.TenGuarantee), T("grade." + b.PityGrade), b.PityCount, Ctx.State.GachaPity.TryGetValue(b.Id, out var s) ? s : 0), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(rules, T("ui.gacha.shardRule"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Size(Ui.Button(footer, T("ui.common.close"), () => App.Show(new GachaScreen(_bannerId)), 150, fontSize: 30), flexibleWidth: 1);
+            Ui.Size(Ui.Button(footer, T("ui.common.close"), () => App.ShowMain("gacha"), 150, fontSize: 30), flexibleWidth: 1);
         }
 
         private int Rank(string generalId)

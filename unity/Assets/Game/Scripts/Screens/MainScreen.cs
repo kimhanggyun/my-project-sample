@@ -41,7 +41,7 @@ namespace Game.Unity.Screens
             { "care", () => new TroopCareTabView() },
             { "formationDrag", () => new FormationDragTabView() },
             { "shop", () => new ShopTabView() },
-            { "gacha", () => new ScreenTabView(() => new GachaScreen()) },
+            { "gacha", () => new ScreenTabView(() => new GachaScreen { Embedded = true }) },
             { "codex", () => new ScreenTabView(() => new CodexScreen()) },
             { "replay", () => new ScreenTabView(() => new ReplayListScreen()) },
             { "mail", () => new ScreenTabView(() => new MailScreen()) },
