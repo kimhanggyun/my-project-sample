@@ -82,7 +82,7 @@ namespace Game.Unity.Battle3D
 
         /// <summary>
         /// 병사 = 가는 실루엣 (2026-11-15 사용자 시안 C): 사람 비율의 가는 몸이라 병사 사이에 틈이 보이고 움직임이 또렷하다.
-        /// 몸통 · 팔 · 작은 투구만 팀 색, 얼굴 살색, 가는 다리 · 방패 · 활 · 말은 갈색, 칼 · 창은 쇠. 병종은 들고 있는 것으로 구분:
+        /// 몸통 · 팔만 팀 색, 얼굴 살색(위에서도 보이게 크게), 가는 다리 · 투구 챙 · 방패 · 활 · 말은 갈색, 칼 · 창은 쇠. 병종은 들고 있는 것으로 구분:
         /// 보병 = 둥근 방패 + 칼, 창병 = 몸보다 긴 창, 궁병 = 활 + 등 화살통, 기병 = 가는 말 + 앞으로 든 창, 정찰병 = 투구 없이 짧은 칼, 공병 = 도끼 + 등 나무.
         /// </summary>
         private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder)
@@ -107,8 +107,8 @@ namespace Game.Unity.Battle3D
             part = Dark;
             if (!mounted)
             {
-                Add(cylinder, new Vector3(-0.018f, 0.065f, 0f), new Vector3(0.022f, 0.065f, 0.022f)); // 가는 다리
-                Add(cylinder, new Vector3(0.018f, 0.065f, 0f), new Vector3(0.022f, 0.065f, 0.022f));
+                Add(cylinder, new Vector3(-0.02f, 0.065f, 0f), new Vector3(0.028f, 0.065f, 0.028f)); // 가는 다리
+                Add(cylinder, new Vector3(0.02f, 0.065f, 0f), new Vector3(0.028f, 0.065f, 0.028f));
             }
             else
             {
@@ -116,12 +116,13 @@ namespace Game.Unity.Battle3D
                 Add(cylinder, new Vector3(0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, -30f));
             }
             part = Team;
-            Add(capsule, new Vector3(0f, lift + 0.2f, 0f), new Vector3(0.062f, light ? 0.075f : 0.08f, 0.045f));   // 가는 몸통
+            Add(capsule, new Vector3(0f, lift + 0.205f, 0f), new Vector3(0.062f, light ? 0.065f : 0.07f, 0.045f));   // 가는 몸통
             Add(cylinder, new Vector3(-0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, 12f)); // 팔
             Add(cylinder, new Vector3(0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, -12f));
-            if (!light) Add(cylinder, new Vector3(0f, lift + 0.348f, 0f), new Vector3(0.056f, 0.008f, 0.056f));      // 작은 투구 챙
+            part = Dark;
+            if (!light) Add(cylinder, new Vector3(0f, lift + 0.37f, 0f), new Vector3(0.074f, 0.01f, 0.074f));        // 투구 챙 (짙은 색: 위에서 봐도 머리가 보이게)
             part = Skin;
-            Add(sphere, new Vector3(0f, lift + 0.32f, 0f), new Vector3(0.052f, 0.056f, 0.052f));                        // 얼굴
+            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.068f, 0.07f, 0.068f));                        // 얼굴
             part = Metal;
             switch (baseType)
             {
