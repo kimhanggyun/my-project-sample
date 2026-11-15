@@ -344,6 +344,9 @@ namespace Game.Unity.Boot
         public void StartSync(Action done)
         {
             if (!OnlineEnabled) { done?.Invoke(); return; }
+            // 자동 로그인(구글 등)이 아직이면 끝난 뒤에: 먼저 동기화하면 토큰이 없어 새 게스트 계정으로 들어가 새 게임 세이브를 받고,
+            // 그 뒤 구글 계정으로 바뀌어 다음 행동이 staleSave로 거절된다 (2026-11-15 폰: 계정 바꾼 뒤 부대가 새 게임으로 보임)
+            if (_autoSigningIn) { _afterAutoSignIn.Add(() => StartSync(done)); return; }
             Sync.Start(State, Link.Revision, r =>
             {
                 OnlineStatus = r.Outcome;
@@ -551,6 +554,23 @@ namespace Game.Unity.Boot
                     KeepAccount();
                     Finish();
                 });
+            });
+        }
+
+        private bool _autoSigningIn;
+        private readonly List<Action> _afterAutoSignIn = new List<Action>();
+
+        /// <summary>시작할 때 기록된 수단으로 자동 로그인. 끝날 때까지 <see cref="StartSync"/>는 기다린다.</summary>
+        public void AutoSignIn(string method)
+        {
+            _autoSigningIn = true;
+            SignIn(method, ok =>
+            {
+                Debug.Log("자동 로그인: " + (ok ? Auth.AccountId : "실패"));
+                _autoSigningIn = false;
+                var waiting = new List<Action>(_afterAutoSignIn);
+                _afterAutoSignIn.Clear();
+                foreach (var a in waiting) a?.Invoke();
             });
         }
 

@@ -78,7 +78,7 @@ namespace Game.Unity.Boot
             var ctx = Context;
             string step = ctx.Startup.Next(finished, ctx.StartupRecord, false); // 버전 확인 서버는 아직 없다
             if (step != Game.Flow.StartupSteps.SignIn && ctx.StartupRecord.SignInMethod != null && !ctx.Auth.IsSignedIn)
-                ctx.SignIn(ctx.StartupRecord.SignInMethod, ok => Debug.Log("자동 로그인: " + (ok ? ctx.Auth.AccountId : "실패")));
+                ctx.AutoSignIn(ctx.StartupRecord.SignInMethod); // 타이틀의 서버 동기화는 이것이 끝난 뒤 (StartSync가 기다림)
             switch (step)
             {
                 case Game.Flow.StartupSteps.Splash: Show(new SplashScreen()); break;
