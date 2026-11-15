@@ -93,6 +93,7 @@ namespace Game.Unity.Boot
 
         private void ForwardPause(bool paused)
         {
+            FitScaler();
             if (_current == null) return;
             try { _current.OnAppPause(paused); } catch (Exception e) { Debug.LogException(e); }
         }
@@ -203,6 +204,23 @@ namespace Game.Unity.Boot
         public void ShowTitle() => Show(new TitleScreen());
         public void ShowMain(string tabId = null) => Show(new MainScreen(tabId));
 
+        private CanvasScaler _scaler;
+        private Vector2 _scaledFor;
+
+        /// <summary>
+        /// 화면 비율에 맞춰 캔버스 기준을 고른다: 1080×1920보다 세로로 긴 폰(대부분)은 너비를 맞춰 캔버스 너비가 늘 1080 (오른쪽이 잘리지 않게, 폰 캡처 2026-11-15),
+        /// 더 넓은 화면(태블릿 등)은 높이를 맞춘다. 화면 크기가 바뀌면 다시.
+        /// </summary>
+        private void FitScaler()
+        {
+            if (_scaler == null) return;
+            var size = new Vector2(Screen.width, Screen.height);
+            if (size == _scaledFor) return;
+            _scaledFor = size;
+            float aspect = size.y > 0 ? size.x / size.y : ReferenceWidth / ReferenceHeight;
+            _scaler.matchWidthOrHeight = aspect <= ReferenceWidth / ReferenceHeight ? 0f : 1f;
+        }
+
         private void BuildCanvas()
         {
             var canvasGo = new GameObject("Canvas", typeof(RectTransform));
@@ -214,7 +232,8 @@ namespace Game.Unity.Boot
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(ReferenceWidth, ReferenceHeight);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            _scaler = scaler;
+            FitScaler();
             canvasGo.AddComponent<GraphicRaycaster>();
 
             var bg = Ui.Panel(canvasGo.transform, "Background", Palette.Background);

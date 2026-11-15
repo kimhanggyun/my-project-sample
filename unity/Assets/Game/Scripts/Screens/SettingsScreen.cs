@@ -171,10 +171,7 @@ namespace Game.Unity.Screens
             });
         }
 
-        private void LinkGoogle()
-        {
-            Ctx.LinkGoogle(reason => App.Show(new SettingsScreen(T("ui.settings.link." + reason))));
-        }
+        private void LinkGoogle() => LinkFlow.Run(App, Ctx, () => Root, reason => new SettingsScreen(T("ui.settings.link." + reason)));
 
         /// <summary>계정 삭제 확인 창: 사라지는 것 · 7일 유예 · "삭제"를 입력해야 [삭제] 켜짐 (R-102).</summary>
         private void DeleteDialog()
@@ -416,7 +413,7 @@ namespace Game.Unity.Screens
             {
                 Ui.Label(acc, T("ui.profile.guestNote"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
                 if (Ctx.OnlineEnabled)
-                    Ui.Button(acc, T("ui.settings.linkGoogleFirst"), () => Ctx.LinkGoogle(r => App.Show(new ProfileScreen(T("ui.settings.link." + r)))), 76, Palette.Good, 26);
+                    Ui.Button(acc, T("ui.settings.linkGoogleFirst"), () => LinkFlow.Run(App, Ctx, () => Root, r => new ProfileScreen(T("ui.settings.link." + r))), 76, Palette.Good, 26);
             }
             if (Ctx.AccountId != null)
             {
@@ -442,6 +439,23 @@ namespace Game.Unity.Screens
             if (since > 0) Line("ui.profile.since", System.DateTimeOffset.FromUnixTimeSeconds(since).ToLocalTime().ToString("yyyy.MM.dd"));
 
             Ui.Button(body, T("ui.profile.toSettings"), () => App.Show(new SettingsScreen()), 76, fontSize: 26);
+        }
+    }
+
+    /// <summary>
+    /// 구글 연동 흐름 (R-105): 연동 → 결과 화면. 그 구글에 이미 진행이 있으면(taken) "그 계정으로 바꿀까요?" — 바꾸면 이 기기의 게스트 진행을 지우고
+    /// 구글로 다시 시작해 그 계정의 진행을 받는다 (두 진행을 섞지 않는다, 2026-11-15 폰 확인).
+    /// </summary>
+    internal static class LinkFlow
+    {
+        public static void Run(Game.Unity.Boot.GameApp app, Game.Unity.Boot.GameContext ctx, System.Func<RectTransform> root, System.Func<string, GameScreen> result)
+        {
+            ctx.LinkGoogle(reason =>
+            {
+                if (reason != Game.Online.LinkReasons.Taken) { app.Show(result(reason)); return; }
+                Ui.Confirm(root(), ctx.T("ui.settings.switch.title"), ctx.T("ui.settings.switch.body"), ctx.T("ui.settings.switch.yes"),
+                    () => ctx.SwitchToGoogle(() => app.Reboot()), (ctx.T("ui.common.cancel"), () => { }));
+            });
         }
     }
 }

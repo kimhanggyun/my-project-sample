@@ -276,6 +276,19 @@ namespace Game.Unity.Boot
         }
 
         /// <summary>
+        /// 그 구글 계정으로 바꾸기 (연동하려던 구글에 이미 진행이 있을 때): 지금 계정 · 세이브를 이 기기에서 지우고(로그아웃과 같이),
+        /// 다음 시작에 구글로 자동 로그인 → 그 계정의 서버 진행을 받는다. 지금 게스트 진행은 다시 찾을 수 없다.
+        /// </summary>
+        public void SwitchToGoogle(Action done)
+        {
+            LogOut(true, _ =>
+            {
+                if (StartupRecord != null) { StartupRecord.SignInMethod = ServiceIds.SignInGoogle; StartupFlow.WriteRecord(_saveStore, StartupRecord); }
+                done?.Invoke();
+            });
+        }
+
+        /// <summary>
         /// 구글 연동 (R-105): 지금 계정(게스트)에 구글 로그인을 붙인다 — 계정 번호 · 진행 그대로, 다른 기기에서도 구글로 이어서.
         /// 그 구글이 이미 다른 계정 것이면 연동하지 않는다 (LinkReasons.Taken, 진행이 섞이지 않게). 구글 로그인을 쓸 수 없으면 "unavailable".
         /// </summary>
