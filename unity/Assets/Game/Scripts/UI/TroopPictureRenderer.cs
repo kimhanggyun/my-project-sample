@@ -91,10 +91,10 @@ namespace Game.Unity.UI
             var cam = camGo.GetComponent<Camera>();
             var b = mesh.bounds;
             Vector3 center = origin + b.center;
-            float half = Mathf.Max(b.extents.y, b.extents.x * 1.1f, b.extents.z * 0.9f) * 1.12f;
+            float half = Mathf.Max(b.extents.y, b.extents.x * 1.1f, b.extents.z * 0.9f) * 1.18f;
             cam.orthographic = true;
             cam.orthographicSize = half;
-            cam.transform.position = center + new Vector3(-0.75f, 0.4f, 0.85f).normalized * 3f; // 앞 왼쪽 위에서 (방패 쪽이 보이게, 말은 비스듬한 옆모습)
+            cam.transform.position = center + (line == "cavalry" ? new Vector3(-1f, 0.25f, 0.35f) : new Vector3(-0.22f, 0.12f, 1f)).normalized * 3f; // 사람 = 거의 앞모습 (병종 그림 PNG처럼), 말 = 옆모습
             cam.transform.LookAt(center);
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 10f;

@@ -97,12 +97,7 @@
 
 | 경로 | 출처 | 삼각형 | 생김새·용도 |
 |---|---|---|---|
-| `Art/Models/soldier_infantry.obj` | [Blocky Characters](https://kenney.nl/assets/blocky-characters) `character-m` + [Mini Characters](https://kenney.nl/assets/mini-characters) `weapon-sword`·`shield-rectangle` | 500 | 마인크래프트풍 네모 사람(초록 웃옷·갈색 끈), 오른손 칼, 왼팔 앞 네모 방패. 보병 |
-| `Art/Models/soldier_spearman.obj` | Blocky `character-a` + Mini `weapon-spear` | 188 | 네모 사람(맨살·수염), 오른손에 키보다 조금 짧은 창을 세워 듦. 창병 |
-| `Art/Models/soldier_archer.obj` | Blocky `character-f` + Mini `weapon-bow` | 232 | 네모 사람(짙은 초록 옷), 왼손에 활. 궁병 |
-| `Art/Models/soldier_scout.obj` | Blocky `character-r` + Mini `weapon-sword`(작게) | 232 | 검은 옷·복면(닌자풍) 네모 사람, 짧은 칼. 정찰병 |
-| `Art/Models/soldier_engineer.obj` | Blocky `character-k` + [Pirate Kit](https://kenney.nl/assets/pirate-kit) `tool-shovel` | 408 | 붉은 웃옷 네모 사람, 오른손에 삽. 공병 |
-| (기병·기본 병사 없음) | — | — | **일부러 비움**: `soldier_cavalry`·`soldier`가 없으면 코드로 만든 말 탄 인형을 그대로 쓴다 (네모 사람은 말이 없어 기병이 사람으로 보이게 됨) |
+| (사람 병사 모델 없음) | — | — | **2026-11-15 지움**: 블록 사람 모델 5개(보병 · 창병 · 궁병 · 정찰병 · 공병)와 그 텍스처(blocky_* · mini_colormap)는 쓰지 않아 지웠다. 사람 병사는 코드 인형(SoldierMeshes, 병종 그림 PNG 비율의 가는 실루엣) |
 | `Art/Models/general.fbx` + `knight_texture.png` | [KayKit Adventurers](https://kaylousberg.itch.io/kaykit-adventurers) `Knight` | 5,820 | **(3차, 2026-11-14)** 2.5등신 꼬마 기사: 회색 투구(얼굴 보이는 바이저)·회색 갑옷·붉은 망토·갈색 벨트. 무기 없음. 뼈대 모델(SkinnedMesh 9조각) → `ArtCatalog`가 굳힘. 장수 |
 | `Art/Models/general_commander.fbx` + `barbarian_texture.png` | KayKit Adventurers `Barbarian` | 7,123 | **(3차)** 곰 머리 모자·수염·맨가슴·털 장식 허리띠의 큰 바바리안. 무기 없음. 뼈대 모델. 총대장 |
 | `Art/Models/horse.obj` (`mount.horse`) | [Quaternius Farm Animals](https://opengameart.org/content/lowpoly-animated-farm-animal-pack) `Horse` (OBJ, 뼈대 없음) | 690 | **(3차)** 짙은 갈색 몸·검은 갈기와 꼬리의 저폴리 말, 서 있는 자세. 머리가 +Z. `height` 0.75, `riderY` 0.3 (장수 발이 말 몸통 가운데쯤 → 다리가 몸통에 묻혀 탄 것처럼 보임) |

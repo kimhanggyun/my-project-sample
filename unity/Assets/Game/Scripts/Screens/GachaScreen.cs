@@ -31,9 +31,6 @@ namespace Game.Unity.Screens
             _notice = notice ?? (last != null && !last.Ok ? Reason(last.Reason) : null);
         }
 
-        /// <summary>모집 탭 안 (2026-11-15): 위 막대에 보석 · 탭이 있으니 자기 머리 줄([‹] · 제목 · 보석)을 그리지 않는다.</summary>
-        public bool Embedded { get; set; }
-
         private string Reason(string r) => r == GachaService.NoFree ? T("ui.gacha.noFree") : T("ui.gacha.notEnough");
 
         public override void Build()
