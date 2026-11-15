@@ -1,3 +1,2 @@
-Pictures in this folder are flat renders of the soldier models in Resources/Art/Models
-(made by the desktop Claude with a small drawing script, 2026-11-14). Same licenses as those models:
-see Resources/Art/Models/License.txt (Kenney / KayKit / Quaternius, CC0).
+infantry, spearman, archer, cavalry, scout, engineer: drawn by tools/troop_pictures.js (2026-11-15, slim silhouette style = battle soldiers, SoldierMeshes.cs). Own work, no outside assets.
+catapult.png: flat render of Resources/Art/Models/soldier_catapult (desktop Claude drawing script, 2026-11-14). Same license as that model: see Resources/Art/Models/License.txt (Kenney / KayKit / Quaternius, CC0).
