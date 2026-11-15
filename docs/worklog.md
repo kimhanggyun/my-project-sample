@@ -62,3 +62,4 @@
 - 2026-11-15 [데스크탑] desktop/capture-fixes — 뒤로 키 · 종료 확인, 자원 K/M, 우편 종 + 수, 좌상단 사진 · 닉네임 → 내 정보(구글 사진 · 플레이 시간), 탭 묶기(군대 · 모집, 상점 개발 줄, 맵 → 샘플전투), 캡처 화면 추가
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 폰 오른쪽 잘림(세로로 긴 화면은 너비 맞춤), 이미 진행이 있는 구글로 연동하면 그 계정으로 바꾸기
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 공통 타이틀(Ui.TitleBar · NoTitle · TitledPage)로 화면 정리, 아래 [뒤로] 제거, 편성 빼기 = 그림 위 −, 카드별 자동 편성(AutoFillCorps), 장수 카드 ◀ ▶ 좌우, 장수 탭 [모집] → 모집 탭 · [도감]
+- 2026-11-15 [데스크탑] desktop/phone-fixes — 영토 지도 바탕: Natural Earth 1:10m 육지 · 호수 · 강 타일(data/Territory/geo, tools/naturalearth_tiles.js) + GeoTiles + 지도 그림
