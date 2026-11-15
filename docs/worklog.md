@@ -67,3 +67,4 @@
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 병사 = 가는 실루엣(시안 C, 코드 인형) + 병종 그림 다시 그림(tools/troop_pictures.js), 지도 바탕 색 구분 · 캡처 08b/08c
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 치장 설계 초안(cosmetics.md: 갑옷 한 벌 · 말 색, 첫 목록), 구매 정책 세 단(결제 전용 · 금괴 · 엽전) · 교환, 재화 이름 곡식 · 엽전 · 금괴 + 아이콘(tools/resource_icons.js)
 - 2026-11-15 [데스크탑] desktop/backlog-sync — 할 일 목록 G, 치장 1단계(R-108): cosmetics.json · 사기/입히기 행동 · 출진 설정 겉모습(해시 제외) · 병사 갑옷/말 색 · 병종 그림 런타임 렌더 · 꾸미기 화면
+- 2026-11-15 [데스크탑] desktop/battle-subcmd-round — 전투 하위 명령 = 흰 동그라미 버튼, 캡처 18c, 병종 그림 빛 · 각도
