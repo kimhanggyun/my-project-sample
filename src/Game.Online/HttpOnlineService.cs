@@ -172,6 +172,10 @@ namespace Game.Online
                 done?.Invoke(status == 200 || status == 422 ? Parse<DefenseResponse>(body) : null));
 
         /// <summary>200 = 꽂음, 422 = 못 꽂음(까닭 · 공성전 대상). 그 밖은 null.</summary>
+        public void RecallFlag(RecallRequest request, Action<RecallResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryRecall(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<RecallResponse>(body) : null));
+
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryPlant(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<PlantResponse>(body) : null));

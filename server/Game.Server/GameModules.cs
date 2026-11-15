@@ -42,6 +42,8 @@ namespace Game.Server
         DefenseResponse RegisterDefense(string accountId, DefenseRequest request);
         /// <summary>깃발 꽂기 (R-96).</summary>
         PlantResponse PlantFlag(string accountId, PlantRequest request);
+        /// <summary>깃발에서 장수 회수 (R-109).</summary>
+        RecallResponse RecallFlag(string accountId, RecallRequest request);
 
         // ---- 연합 (R-49) ----
         AllianceListResponse Alliances(string accountId);
@@ -294,6 +296,12 @@ namespace Game.Server
             var state = FromJson(LoadOrCreate(accountId).Json);
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
             return _store.WithTerritory(Code, owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
+        }
+
+        public RecallResponse RecallFlag(string accountId, RecallRequest req)
+        {
+            var state = FromJson(LoadOrCreate(accountId).Json);
+            return _store.WithTerritory(Code, owners => TerritoryFlags.Recall(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
         }
 
         public MailListResponse CollectTerritory(string accountId) =>

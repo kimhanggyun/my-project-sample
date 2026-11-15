@@ -195,6 +195,24 @@ namespace Game.Unity.Screens
             Disc(layer, mePos, 26, MeBlue);
             // 손가락으로: 한 손가락 끌기 = 지도 옮기기, 두 손가락 (휠) = 확대 · 축소 (2026-11-15 사용자)
             var gestures = map.gameObject.AddComponent<GestureArea>();
+            gestures.Tapped += screen =>
+            {
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(layer, screen, null, out var lp)) return;
+                // 내 깃발을 눌렀나 (가까이 볼 때 깃발 표식 둘레)
+                if (Owners != null)
+                    foreach (var o in Owners.Values)
+                        if (o.OwnerAccountId == ctx.AccountId && FlagDefs.TryParseKey(o.RegionId, out var fc) && (Pos(fc) - lp).sqrMagnitude <= 44f * 44f)
+                        {
+                            OpenFlagSheet(app, root, o);
+                            return;
+                        }
+                if (Last == null || !Last.Ok) { Notice = ctx.T("ui.terr.plant.badLocation"); app.ShowMain("territory"); return; }
+                var target = new GeoPoint(
+                    center.LatE6 + (long)(lp.y / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLat),
+                    center.LonE6 + (long)(lp.x / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLon));
+                if (!flags.Within(here, flags.CellOf(target), myRadius)) { Notice = ctx.T("ui.terr.plant.outOfRange"); app.ShowMain("territory"); return; }
+                OpenPlantSheet(app, root, here, target, myRadius);
+            };
             gestures.Dragged += (a, b) =>
             {
                 if (RectTransformUtility.ScreenPointToLocalPointInRectangle(map, a, null, out var la) && RectTransformUtility.ScreenPointToLocalPointInRectangle(map, b, null, out var lb))
@@ -251,28 +269,8 @@ namespace Game.Unity.Screens
 
             if (Tab == "near")
             {
-                var plantCard = Ui.Card(body, "Plant", 20, 8);
-                Ui.Label(plantCard, ctx.T("ui.terr.plantTitle"), Ui.FontBody);
-                Ui.Label(plantCard, ctx.T("ui.terr.plantNote", FormatKm(myRadius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-                var plantBtn = Ui.Button(plantCard, ctx.T("ui.terr.plant"), null, 80, fontSize: 28);
-                Ui.SetEnabled(plantBtn, loc != null);
-                plantBtn.onClick.AddListener(() =>
-                {
-                    var items = new List<(string, string, bool, System.Action)>();
-                    foreach (var c in ctx.State.CompositionsFor(null))
-                    {
-                        string gid = c.GeneralId;
-                        bool busy = false;
-                        if (Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId && o.GeneralId == gid) busy = true;
-                        items.Add((ctx.GeneralName(gid), busy ? ctx.T("ui.terr.onFlag") : "", !busy, () => ctx.PlantFlag(new PlantRequest { Location = loc, GeneralId = gid }, r =>
-                        {
-                            Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.plant." + r.Reason);
-                            NamesFetched = false;
-                            if (root != null) app.ShowMain("territory");
-                        })));
-                    }
-                    Ui.PickMenu(root, (RectTransform)plantBtn.transform, 460, items.ToArray());
-                });
+                // 깃발 꽂기 = 지도에서 파란 원 안을 누름 (2026-11-15 사용자: 아래 꽂기 칸 없앰), 내 깃발을 누르면 장수 회수
+                Ui.Label(body, ctx.T(loc != null ? "ui.terr.tapHint" : "ui.terr.tapHintNoLoc"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
                 if (ctx.Online is LocalOnlineService fake && loc != null)
                     Ui.Button(body, ctx.T("ui.terr.seed"), () => { SeedNearby(ctx, fake, center); app.ShowMain("territory"); }, 72, fontSize: 24);
             }
@@ -315,7 +313,7 @@ namespace Game.Unity.Screens
                         Ui.Size(Ui.Tag(top, RankLetter(ctx, o.RadiusM), Rel(o), 26, 48), width: 64);
                         string owner = ctx.DisplayName(o.OwnerAccountId) + (o.OwnerAllianceName != null ? "  [" + o.OwnerAllianceName + "]" : "");
                         Ui.Size(Ui.Label(top, owner, Ui.FontSmall), flexibleWidth: 1);
-                        Ui.Label(card, ctx.T("ui.terr.flagLine", ctx.GeneralName(o.GeneralId), Troops(o).ToString("N0"), FormatKm((long)Mathf.Sqrt(d2))), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                        Ui.Label(card, ctx.T("ui.terr.flagLine", GeneralNames(ctx, o), Troops(o).ToString("N0"), FormatKm((long)Mathf.Sqrt(d2))), 22, TextAnchor.MiddleLeft, Palette.TextDim);
                         bool friendly = myAlliance != null && o.OwnerAllianceId == myAlliance;
                         string err = friendly ? ctx.T("ui.terr.ally") : loc == null ? ctx.T("ui.terr.noLocation")
                             : TerritoryFlags.CheckSiege(ctx.Territory, ctx.Defs, ctx.State, ctx.AccountId, owners, o.RegionId, loc, now);
@@ -343,7 +341,9 @@ namespace Game.Unity.Screens
                         var card = Ui.Card(list, o.RegionId, 20, 6);
                         var top = Ui.Row(card, "Top", 52, 10);
                         Ui.Size(Ui.Tag(top, RankLetter(ctx, o.RadiusM), SealRed, 26, 48), width: 64);
-                        Ui.Size(Ui.Label(top, ctx.T("ui.terr.myFlag", ctx.GeneralName(o.GeneralId)), Ui.FontSmall), flexibleWidth: 1);
+                        Ui.Size(Ui.Label(top, ctx.T("ui.terr.myFlag", GeneralNames(ctx, o)), Ui.FontSmall), flexibleWidth: 1);
+                        var flagOwner = o;
+                        Ui.Size(Ui.SecondaryButton(top, ctx.T("ui.terr.manage"), () => OpenFlagSheet(app, root, flagOwner), 52, 22), 52, 150).flexibleWidth = 0;
                         Ui.Label(card, ctx.T("ui.terr.myFlagLine", Troops(o).ToString("N0"), FormatKm(o.RadiusM), (now - o.SinceUnixSeconds) / 86400, FormatKm((long)Mathf.Sqrt(d2))), 22, TextAnchor.MiddleLeft, Palette.TextDim);
                         Ui.Label(card, Pending(ctx, o), 22, TextAnchor.MiddleLeft, Palette.Good);
                         if (o.ProtectedUntilUnixSeconds > now) Ui.Label(card, ctx.T("ui.terr.protected", (o.ProtectedUntilUnixSeconds - now + 59) / 60), 22, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -420,6 +420,87 @@ namespace Game.Unity.Screens
         {
             var rt = Box(parent, pos, new Vector2(diameter, diameter), c);
             rt.GetComponent<Image>().sprite = UiShapes.Circle;
+        }
+
+        /// <summary>깃발에 나간 장수 이름들 (R-109, 여럿이면 " · "로).</summary>
+        private static string GeneralNames(GameContext ctx, TerritoryOwner o) => string.Join(" · ", TerritoryFlags.GeneralsOf(o).ConvertAll(id => ctx.GeneralName(id)));
+
+        /// <summary>꽂기 판에서 고른 장수들 (판을 다시 그려도 유지).</summary>
+        private static readonly List<string> _plantPick = new List<string>();
+
+        /// <summary>
+        /// 지도에서 누른 자리에 깃발 꽂기 (R-96 · R-109): 기본 편성의 장수마다 체크 줄 (다른 깃발에 나간 · 출전 못 하는 장수는 못 고름), 1명 이상 → [깃발 꽂기].
+        /// </summary>
+        private static void OpenPlantSheet(GameApp app, RectTransform root, GeoPoint here, GeoPoint target, long radius)
+        {
+            var ctx = app.Context;
+            var comps = ctx.State.CompositionsFor(null);
+            var busyIds = new List<string>();
+            if (Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId) busyIds.AddRange(TerritoryFlags.GeneralsOf(o));
+            _plantPick.RemoveAll(id => busyIds.Contains(id) || !comps.Exists(c => c.GeneralId == id));
+            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.plantHere"), 220 + 100 * Mathf.Max(1, comps.Count) + 120);
+            Ui.Column(content, 6, 0);
+            Ui.Label(content, ctx.T("ui.terr.plantHereNote", FormatKm(radius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            foreach (var c in comps)
+            {
+                string gid = c.GeneralId;
+                var g = ctx.State.FindGeneral(gid);
+                bool busy = busyIds.Contains(gid) || g == null || !Game.Campaign.Roster.GeneralStatus.CanDeploy(g.Status);
+                long troops = 0;
+                foreach (var p in c.Picks) troops += p.Troops;
+                string label = ctx.GeneralName(gid) + "  " + Ui.Colored(busy ? ctx.T("ui.terr.onFlag") : ctx.T("ui.terr.troops", troops.ToString("N0")), Palette.TextDim);
+                var row = Ui.CheckRow(content, label, _plantPick.Contains(gid), busy ? (System.Action)null : () =>
+                {
+                    if (_plantPick.Contains(gid)) _plantPick.Remove(gid); else _plantPick.Add(gid);
+                    close();
+                    OpenPlantSheet(app, root, here, target, radius);
+                });
+                if (busy) row.interactable = false;
+            }
+            var go = Ui.Button(content, ctx.T("ui.terr.plantGo", _plantPick.Count), () =>
+            {
+                var req = new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick) };
+                close();
+                ctx.PlantFlag(req, r =>
+                {
+                    if (r != null && r.Ok) _plantPick.Clear();
+                    Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.plant." + r.Reason);
+                    NamesFetched = false;
+                    if (root != null) app.ShowMain("territory");
+                });
+            }, 84, Palette.ButtonActive, 28);
+            Ui.SetEnabled(go, _plantPick.Count > 0);
+        }
+
+        /// <summary>내 깃발 판 (R-109): 나간 장수마다 [회수], [모두 회수] = 깃발 거두기 (확인, 쌓인 수입은 우편).</summary>
+        private static void OpenFlagSheet(GameApp app, RectTransform root, TerritoryOwner flag)
+        {
+            var ctx = app.Context;
+            var ids = TerritoryFlags.GeneralsOf(flag);
+            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 240 + 96 * ids.Count + 120);
+            Ui.Column(content, 8, 0);
+            void Recall(List<string> which)
+            {
+                close();
+                ctx.RecallFlag(new RecallRequest { FlagKey = flag.RegionId, GeneralIds = which }, r =>
+                {
+                    Notice = r == null ? ctx.T("ui.hire.failed") : !r.Ok ? ctx.T("ui.terr.recall." + r.Reason) : r.Flag == null ? ctx.T("ui.terr.recall.removed", r.Mail.Count) : ctx.T("ui.terr.recall.ok");
+                    NamesFetched = false;
+                    if (root != null) app.ShowMain("territory");
+                });
+            }
+            foreach (var gid in ids)
+            {
+                string id = gid;
+                var row = Ui.Row(content, "General", 84, 12);
+                Ui.Size(Ui.Label(row, ctx.GeneralName(id), 28, TextAnchor.MiddleLeft), flexibleWidth: 1);
+                Ui.Size(Ui.SecondaryButton(row, ctx.T("ui.terr.recall"), () => Recall(new List<string> { id }), 72, 24), 72, 170).flexibleWidth = 0;
+            }
+            Ui.Button(content, ctx.T("ui.terr.recallAll"), () =>
+            {
+                close();
+                Ui.Confirm(root, ctx.T("ui.terr.recallAll"), ctx.T("ui.terr.recallConfirm"), ctx.T("ui.terr.recallAll"), () => Recall(null), (ctx.T("ui.common.cancel"), () => { }));
+            }, 80, Palette.Bad, 26);
         }
 
         private static void Marker(GameContext ctx, RectTransform parent, Vector2 pos, Color c, string letter, float size)

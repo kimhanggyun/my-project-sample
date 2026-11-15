@@ -666,6 +666,8 @@ namespace Game.Unity.Boot
 
         /// <summary>깃발 꽂기 (R-96).</summary>
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => Online.PlantFlag(request, done);
+        /// <summary>깃발에서 장수 회수 (R-109).</summary>
+        public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => Online.RecallFlag(request, done);
 
         /// <summary>우편 받기 = 행동 mail.claim (서버가 우편이 있는지 확인하고 같은 규칙으로 더한다).</summary>
         public bool ClaimMail(Mail mail)
