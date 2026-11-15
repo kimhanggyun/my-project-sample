@@ -39,8 +39,10 @@ namespace Game.Unity.Boot
                 ("07_main_formation", () => { Game.Unity.Screens.FormationTabView.BoardOpen = false; return new MainScreen("formation"); }, 0f),
                 ("07b_formation_board", () => { Game.Unity.Screens.FormationTabView.BoardOpen = true; return new MainScreen("formation"); }, 0f),
                 ("07c_parts", () => new MainScreen("parts"), 0f),
-                ("08_main_territory", () => new MainScreen("territory"), 0f),
-                ("09_main_hiring", () => new MainScreen("hiring"), 0f),
+                ("08_main_territory", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 0; return new MainScreen("territory"); }, 0f),
+                ("08b_territory_mid", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; return new MainScreen("territory"); }, 0f), // 지도 바탕: 중간 줌 (한강)
+                ("08c_territory_far", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 2; return new MainScreen("territory"); }, 0f), // 멀리 줌 (서해 · 반도)
+                ("09_main_hiring", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 0; return new MainScreen("hiring"); }, 0f),
                 ("10_step", () => new StepScreen(FirstStep()), 0f),
             };
             if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => { TroopGrowthTabView.PreparePromote(Ctx.State.Units[0].UnitId); return new MainScreen("troop"); }, 0f)); // 시안 06 승급 화면

@@ -555,9 +555,10 @@ namespace Game.Unity.Screens
     internal static class GeoBackdrop
     {
         private const int TexWidth = 512;
-        private static readonly Color32 Sea = new Color32(196, 210, 212, 255);
-        private static readonly Color32 Land = new Color32(227, 217, 191, 255);
-        private static readonly Color32 River = new Color32(150, 178, 186, 255);
+        // 육지는 예전 빈 지도 바탕(0.89, 0.85, 0.75)과 구분되게 조금 짙게, 바다 · 강은 수묵 청회색
+        private static readonly Color32 Sea = new Color32(178, 199, 203, 255);
+        private static readonly Color32 Land = new Color32(222, 210, 176, 255);
+        private static readonly Color32 River = new Color32(120, 156, 170, 255);
         private static string _key;
         private static Texture2D _tex;
 
@@ -637,8 +638,8 @@ namespace Game.Unity.Screens
                 for (int k = 0; k <= steps; k++)
                 {
                     int x = (int)(x0 + (x1 - x0) * k / steps), y = (int)(y0 + (y1 - y0) * k / steps);
-                    for (int dy = 0; dy <= 1; dy++)
-                        for (int dx = 0; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
                         {
                             int xx = x + dx, yy = y + dy;
                             if (xx >= 0 && yy >= 0 && xx < w && yy < h) px[yy * w + xx] = c;
