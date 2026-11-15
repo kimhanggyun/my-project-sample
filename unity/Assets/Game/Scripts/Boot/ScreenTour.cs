@@ -36,6 +36,8 @@ namespace Game.Unity.Boot
                 ("04_main_story", () => new MainScreen("story"), 0f),
                 ("05_main_general", () => new MainScreen("general"), 0f),
                 ("06_main_troop", () => new MainScreen("troop"), 0f),
+                ("06c_cosmetic", () => new Game.Unity.Screens.CosmeticScreen("infantry"), 0.3f), // 치장 1단계: 꾸미기 (기본)
+                ("06d_cosmetic_try", () => Game.Unity.Screens.CosmeticScreen.Trying("cavalry", "armor_brown", "horse_navy"), 0.3f), // 갈색 갑옷 · 진남색 말 입어 보기
                 ("07_main_formation", () => { Game.Unity.Screens.FormationTabView.BoardOpen = false; return new MainScreen("formation"); }, 0f),
                 ("07b_formation_board", () => { Game.Unity.Screens.FormationTabView.BoardOpen = true; return new MainScreen("formation"); }, 0f),
                 ("07c_parts", () => new MainScreen("parts"), 0f),

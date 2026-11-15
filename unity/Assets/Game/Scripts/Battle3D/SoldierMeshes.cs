@@ -11,8 +11,13 @@ namespace Game.Unity.Battle3D
     /// </summary>
     public static class SoldierMeshes
     {
-        /// <summary>하위 메시 번호 (재질 순서).</summary>
-        public const int Team = 0, Skin = 1, Metal = 2, Dark = 3;
+        /// <summary>부위 번호. 병사 메시는 비지 않은 부위만 하위 메시가 되고, 차례는 <see cref="PartsOf"/> (장수 메시는 0~3 그대로).</summary>
+        public const int Team = 0, Skin = 1, Metal = 2, Dark = 3, Armor = 4, Horse = 5;
+        private const int PartCount = 6;
+        private static readonly Dictionary<Mesh, int[]> Parts = new Dictionary<Mesh, int[]>();
+
+        /// <summary>병사 메시의 하위 메시마다 부위 번호 (재질을 이 차례로). 모르는 메시면 0~3.</summary>
+        public static int[] PartsOf(Mesh m) => m != null && Parts.TryGetValue(m, out var p) ? p : new[] { Team, Skin, Metal, Dark };
         /// <summary>팀 색 외 부위 색.</summary>
         public static readonly Color SkinColor = new Color(0.93f, 0.78f, 0.62f);
         public static readonly Color MetalColor = new Color(0.62f, 0.64f, 0.68f);
@@ -23,11 +28,13 @@ namespace Game.Unity.Battle3D
         private static Mesh Builtin(string name) => Resources.GetBuiltinResource<Mesh>(name + ".fbx");
 
         /// <param name="baseType">1단계 병종 id (infantry, spearman, archer, cavalry, scout). 모르는 값이면 보병.</param>
-        public static Mesh For(string baseType)
+        /// <param name="armored">치장 갑옷을 입음 (cosmetics.md 2장): 어깨 덧댐 · 가슴 띠 · 둥근 투구 · 방패가 갑옷 부위(Armor)로. 말 몸은 늘 Horse 부위 (말 색).</param>
+        public static Mesh For(string baseType, bool armored = false)
         {
-            if (Built.TryGetValue(baseType ?? "", out var m) && m != null) return m;
-            // 부위 → 하위 메시 번호 (Materials 순서와 같다)
-            var parts = new List<CombineInstance>[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
+            string cacheKey = (baseType ?? "") + (armored ? "#armor" : "");
+            if (Built.TryGetValue(cacheKey, out var m) && m != null) return m;
+            var parts = new List<CombineInstance>[PartCount];
+            for (int i = 0; i < PartCount; i++) parts[i] = new List<CombineInstance>();
             int part = Team;
             var cube = Builtin("Cube");
             var sphere = Builtin("Sphere");
@@ -66,18 +73,23 @@ namespace Game.Unity.Battle3D
                 Add(sphere, new Vector3(-0.05f, 0.13f, -0.1f), new Vector3(0.05f, 0.05f, 0.05f));
                 Add(sphere, new Vector3(0.05f, 0.13f, 0.12f), new Vector3(0.05f, 0.05f, 0.05f));
             }
-            else BuildPerson(baseType, parts, cube, sphere, capsule, cylinder);
-            var subs0 = new CombineInstance[parts.Length];
+            else BuildPerson(baseType, parts, cube, sphere, capsule, cylinder, armored);
+            // 비지 않은 부위만 하위 메시로 (빈 하위 메시를 그리지 않게)
+            var subs0 = new List<CombineInstance>();
+            var map = new List<int>();
             for (int i = 0; i < parts.Length; i++)
             {
+                if (parts[i].Count == 0) continue;
                 var pm = new Mesh();
-                if (parts[i].Count > 0) pm.CombineMeshes(parts[i].ToArray(), true, true);
-                subs0[i] = new CombineInstance { mesh = pm, transform = Matrix4x4.identity };
+                pm.CombineMeshes(parts[i].ToArray(), true, true);
+                subs0.Add(new CombineInstance { mesh = pm, transform = Matrix4x4.identity });
+                map.Add(i);
             }
-            m = new Mesh { name = "soldier_" + (baseType ?? "default") };
-            m.CombineMeshes(subs0, false, false);
+            m = new Mesh { name = "soldier_" + cacheKey };
+            m.CombineMeshes(subs0.ToArray(), false, false);
             m.RecalculateBounds();
-            return Built[baseType ?? ""] = m;
+            Parts[m] = map.ToArray();
+            return Built[cacheKey] = m;
         }
 
         /// <summary>
@@ -85,7 +97,7 @@ namespace Game.Unity.Battle3D
         /// 몸통 · 팔만 팀 색, 얼굴 살색(위에서도 보이게 크게), 가는 다리 · 투구 챙 · 방패 · 활 · 말은 갈색, 칼 · 창은 쇠. 병종은 들고 있는 것으로 구분:
         /// 보병 = 둥근 방패 + 칼, 창병 = 몸보다 긴 창, 궁병 = 활 + 등 화살통, 기병 = 가는 말 + 앞으로 든 창, 정찰병 = 투구 없이 짧은 칼, 공병 = 도끼 + 등 나무.
         /// </summary>
-        private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder)
+        private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder, bool armored)
         {
             int part = Team;
             void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
@@ -94,8 +106,8 @@ namespace Game.Unity.Battle3D
             float lift = mounted ? 0.15f : 0f;
             if (mounted)
             {
-                // 가는 말: 몸 · 목 · 머리 · 다리 넷 · 꼬리
-                part = Dark;
+                // 가는 말: 몸 · 목 · 머리 · 다리 넷 · 꼬리 (말 색 부위)
+                part = Horse;
                 Add(capsule, new Vector3(0f, 0.13f, 0f), new Vector3(0.07f, 0.12f, 0.07f), new Vector3(90f, 0f, 0f));
                 Add(cube, new Vector3(0f, 0.2f, 0.12f), new Vector3(0.035f, 0.11f, 0.045f), new Vector3(-35f, 0f, 0f));
                 Add(cube, new Vector3(0f, 0.245f, 0.17f), new Vector3(0.035f, 0.035f, 0.075f), new Vector3(10f, 0f, 0f));
@@ -119,8 +131,16 @@ namespace Game.Unity.Battle3D
             Add(capsule, new Vector3(0f, lift + 0.205f, 0f), new Vector3(0.062f, light ? 0.065f : 0.07f, 0.045f));   // 가는 몸통
             Add(cylinder, new Vector3(-0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, 12f)); // 팔
             Add(cylinder, new Vector3(0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, -12f));
-            part = Dark;
+            part = armored ? Armor : Dark;
             if (!light) Add(cylinder, new Vector3(0f, lift + 0.37f, 0f), new Vector3(0.074f, 0.01f, 0.074f));        // 투구 챙 (짙은 색: 위에서 봐도 머리가 보이게)
+            if (armored)
+            {
+                // 치장 갑옷: 둥근 투구 · 어깨 덧댐 · 가슴 띠 (팀 색 몸통은 그대로 보이게 작게)
+                if (!light) Add(sphere, new Vector3(0f, lift + 0.372f, 0f), new Vector3(0.062f, 0.036f, 0.062f));
+                Add(sphere, new Vector3(-0.04f, lift + 0.268f, 0f), new Vector3(0.042f, 0.028f, 0.046f));
+                Add(sphere, new Vector3(0.04f, lift + 0.268f, 0f), new Vector3(0.042f, 0.028f, 0.046f));
+                Add(cube, new Vector3(0f, lift + 0.235f, 0.019f), new Vector3(0.056f, 0.022f, 0.012f), new Vector3(0f, 0f, 30f));
+            }
             part = Skin;
             Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.068f, 0.07f, 0.068f));                        // 얼굴
             part = Metal;
@@ -149,8 +169,8 @@ namespace Game.Unity.Battle3D
                     Add(cube, new Vector3(0.05f, lift + 0.18f, 0.03f), new Vector3(0.008f, 0.1f, 0.008f));               // 도끼 자루
                     Add(cube, new Vector3(0.05f, lift + 0.23f, 0.05f), new Vector3(0.008f, 0.035f, 0.035f));             // 도끼 날
                     break;
-                default: // 보병: 둥근 방패(나무) + 칼
-                    part = Dark;
+                default: // 보병: 둥근 방패(나무, 갑옷을 입으면 갑옷 색) + 칼
+                    part = armored ? Armor : Dark;
                     Add(cylinder, new Vector3(-0.05f, lift + 0.19f, 0.03f), new Vector3(0.085f, 0.006f, 0.085f), new Vector3(90f, 0f, 0f)); // 앞(+Z)을 보는 원판
                     part = Metal;
                     Add(cube, new Vector3(0.05f, lift + 0.2f, 0.035f), new Vector3(0.01f, 0.1f, 0.01f), new Vector3(20f, 0f, 0f));

@@ -25,6 +25,8 @@ namespace Game.Data.Defs
         /// <summary>장수가 타는 것 (stats.json mounts, R-90).</summary>
         public MountRules Mounts { get; private set; } = new MountRules();
         public IReadOnlyDictionary<string, ProductDef> Products { get; private set; }
+        /// <summary>치장 원본 (Rules/cosmetics.json, 없으면 null). 겉모습만이라 해석은 Game.Flow.CosmeticService가 한다.</summary>
+        public JObject CosmeticsDoc { get; private set; }
         public StartingKitDef StartingKit { get; private set; }
         public IReadOnlyDictionary<string, string> Strings { get; private set; }
         public JObject RuleFlagDefinitions { get; private set; }
@@ -175,6 +177,7 @@ namespace Game.Data.Defs
                 AddUnique(products, def.Id, def, "products.json");
             }
             set.Products = products;
+            if (source.Exists(RulesDir + "cosmetics.json")) set.CosmeticsDoc = Read(RulesDir + "cosmetics.json");
 
             set.RuleFlagDefinitions = JsonUtil.RequireObject(Read(RulesDir + "ruleFlags.json"), "flags", "ruleFlags.json");
             set.BalanceCommon = Read(RulesDir + "balance.json");

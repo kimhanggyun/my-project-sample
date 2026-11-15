@@ -50,6 +50,10 @@ namespace Game.Campaign
         /// <summary>배너 광고 제거 (R-64): 영구 여부, 기간제 끝나는 시각 (unix 초, 0 = 없음).</summary>
         public bool AdFreeForever { get; set; }
         public long AdFreeUntilUnixSeconds { get; set; }
+        /// <summary>치장 (cosmetics.md 4장, R-108): 가진 갑옷 · 말 색 id, 계열 id → 입은 갑옷 · 말 색. 예전 세이브는 빈 것 = 기본 모습.</summary>
+        public List<string> OwnedCosmetics { get; set; } = new List<string>();
+        public Dictionary<string, string> EquippedArmor { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> EquippedHorse { get; set; } = new Dictionary<string, string>();
 
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);

@@ -659,7 +659,8 @@ namespace Game.Unity.UI
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             bg.raycastTarget = false;
-            Sprite pic = null;
+            // 치장 1단계 (cosmetics.md 9장 4): 전투 병사 인형을 찍은 그림 (입은 갑옷 · 말 그대로), 못 찍으면 미리 그린 PNG
+            Sprite pic = TroopPictureRenderer.For(ctx, troopType);
             string id = troopType;
             for (int guard = 0; guard < 4 && id != null && pic == null; guard++)
             {

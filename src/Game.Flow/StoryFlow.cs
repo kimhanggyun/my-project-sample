@@ -277,10 +277,15 @@ namespace Game.Flow
                 // 병종 칸 → 진형 칸 6개 자동 배치 (army-v2.md 5장). 전투 소부대 id = 병종 묶음 id + "@" + 칸 (결과를 묶음으로 모은다)
                 var picks = new List<(string unitId, string troopType, long troops)>();
                 foreach (var p in comp.Picks) { var pu = state.FindUnit(p.UnitId); if (pu != null) picks.Add((p.UnitId, pu.TroopType, p.Troops)); }
+                var hiredUnits = new HashSet<string>();
+                foreach (var p in comp.Picks) if (p.Hired) hiredUnits.Add(p.UnitId);
                 foreach (var st in Army.Layout(_defs, picks))
                 {
                     var u = state.FindUnit(st.UnitId);
-                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId + SubUnitMark + st.Slot, Slot = st.Slot, TroopType = u.TroopType, Troops = st.Troops, Cohesion = u.Cohesion, Training = u.Training });
+                    // 겉모습 (R-108): 내 병종 계열이 입은 갑옷 · 말 색. 빌린 부대(용병)는 기본 모습 (주인의 치장 전달은 나중)
+                    string line = hiredUnits.Contains(u.UnitId) ? null : CosmeticService.LineOf(_defs, u.TroopType);
+                    cs.Units.Add(new UnitSetup { UnitId = u.UnitId + SubUnitMark + st.Slot, Slot = st.Slot, TroopType = u.TroopType, Troops = st.Troops, Cohesion = u.Cohesion, Training = u.Training,
+                        Armor = CosmeticService.Worn(state, line, CosmeticKinds.Armor), Horse = CosmeticService.Worn(state, line, CosmeticKinds.Horse) });
                     if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + st.Troops * tt.SupplyPerDay);
                 }
                 daily.Add(d);

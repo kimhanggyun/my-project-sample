@@ -171,6 +171,9 @@ namespace Game.Battle.Model.Simulation
         public Fix Cohesion { get; set; }
         /// <summary>부대 훈련도 (0~1, R-52). 공격·방어 보정 (combat.json training).</summary>
         public Fix Training { get; set; }
+        /// <summary>겉모습 (치장, cosmetics.md 7장, R-108): 입은 갑옷 · 말 색 id. **규칙 계산 · 상태 해시는 읽지 않는다** (그림만). 없으면 기본.</summary>
+        public string Armor { get; set; }
+        public string Horse { get; set; }
     }
 
     public sealed class CorpsSetup
