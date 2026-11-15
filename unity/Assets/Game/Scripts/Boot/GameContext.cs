@@ -668,6 +668,13 @@ namespace Game.Unity.Boot
 
         /// <summary>깃발 꽂기 (R-96).</summary>
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => Online.PlantFlag(request, done);
+        private const string LocationConsentKey = "prefs.locationConsent";
+
+        /// <summary>영토 위치 확인에 동의했다 (이 기기, 깃발 꽂기 · 공격 때 한 번 묻는다, 위치정보 안내).</summary>
+        public bool LocationConsented => _saveStore.Exists(LocationConsentKey) && _saveStore.Read(LocationConsentKey) == "1";
+
+        public void SetLocationConsent(bool on) => _saveStore.Write(LocationConsentKey, on ? "1" : "0");
+
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => Online.RecallFlag(request, done);
 

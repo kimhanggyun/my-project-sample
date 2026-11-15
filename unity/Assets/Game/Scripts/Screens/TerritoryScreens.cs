@@ -55,15 +55,7 @@ namespace Game.Unity.Screens
             }
             var (header, body, _) = Ui.PageLayout(root, 0);
 
-            // ---- 위치 띠 ----
-            var band = Ui.Row(header, "Band", 88, 10);
-            var where = Ui.Label(band, Last == null ? ctx.T("ui.terr.noLocation") : Last.Ok ? ctx.T("ui.terr.here", Last.Point.ToString()) : Ui.Colored(ctx.T("ui.territory.failed", Last.Reason), Palette.Bad), Ui.FontSmall);
-            Ui.Size(where, flexibleWidth: 1);
-            Ui.Size(Ui.Button(band, ctx.T("ui.territory.locate"), () =>
-            {
-                where.text = ctx.T("ui.territory.locating");
-                ctx.Location.Request(r => { Last = r; NamesFetched = false; PanM = Vector2.zero; if (root != null) app.ShowMain("territory"); });
-            }, 80, fontSize: 24), width: 230);
+            // 위치 확인 띠 없음 (2026-11-15 사용자): 위치는 깃발을 꽂거나 공격할 때만, 그때 동의를 받고 확인한다 (WithLocation)
             InfoButton.Add(root, ctx.T("ui.terr.note"));
 
             long myRadius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
@@ -209,8 +201,12 @@ namespace Game.Unity.Screens
                 }
             // 내 위치 · 꽂을 수 있는 범위
             var mePos = Pos(here);
-            if (Mode < 2) Disc(layer, mePos, myRadius * 2 * ppm, new Color(MeBlue.r, MeBlue.g, MeBlue.b, 0.10f));
-            Disc(layer, mePos, 26, MeBlue);
+            // 위치를 모르면 내 점 · 꽂을 범위는 그리지 않는다 (기본 위치는 지도를 보여 주려는 것뿐)
+            if (Last != null && Last.Ok)
+            {
+                if (Mode < 2) Disc(layer, mePos, myRadius * 2 * ppm, new Color(MeBlue.r, MeBlue.g, MeBlue.b, 0.10f));
+                Disc(layer, mePos, 26, MeBlue);
+            }
             // 손가락으로: 한 손가락 끌기 = 지도 옮기기, 두 손가락 (휠) = 확대 · 축소 (2026-11-15 사용자)
             var gestures = map.gameObject.AddComponent<GestureArea>();
             gestures.Tapped += screen =>
@@ -225,7 +221,12 @@ namespace Game.Unity.Screens
                             else OpenOtherFlagSheet(app, root, o, here, myAlliance != null && o.OwnerAllianceId == myAlliance);
                             return;
                         }
-                if (Last == null || !Last.Ok) { Notice = ctx.T("ui.terr.plant.badLocation"); app.ShowMain("territory"); return; }
+                if (Last == null || !Last.Ok)
+                {
+                    // 아직 위치를 모름: 동의 · 확인 → 내 위치로 지도를 옮기고 다시 누르게
+                    WithLocation(app, root, ok => { Notice = ok ? ctx.T("ui.terr.located") : ctx.T("ui.territory.failed", Last?.Reason ?? "?"); if (root != null) app.ShowMain("territory"); });
+                    return;
+                }
                 var target = new GeoPoint(
                     center.LatE6 + (long)(lp.y / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLat),
                     center.LonE6 + (long)(lp.x / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLon));
@@ -476,6 +477,29 @@ namespace Game.Unity.Screens
             }, 80, Palette.Bad, 26);
         }
 
+        /// <summary>
+        /// 위치가 필요할 때만 (깃발 꽂기 · 공격): 이미 알면 바로, 아니면 처음 한 번 동의를 묻고 위치를 확인한다. 확인하면 지도를 내 위치로.
+        /// then(ok) — ok면 Last에 위치가 있다.
+        /// </summary>
+        private static void WithLocation(GameApp app, RectTransform root, System.Action<bool> then)
+        {
+            var ctx = app.Context;
+            if (Last != null && Last.Ok) { then(true); return; }
+            void Ask()
+            {
+                ctx.Location.Request(r =>
+                {
+                    Last = r;
+                    NamesFetched = false;
+                    PanM = Vector2.zero;
+                    then(r != null && r.Ok);
+                });
+            }
+            if (ctx.LocationConsented) { Ask(); return; }
+            Ui.Confirm(root, ctx.T("ui.terr.consent.title"), ctx.T("ui.terr.consent.body"), ctx.T("ui.terr.consent.agree"), () => { ctx.SetLocationConsent(true); Ask(); },
+                (ctx.T("ui.common.cancel"), () => { }));
+        }
+
         /// <summary>깃발 하나 수입 받기 → 우편함.</summary>
         private static void CollectOne(GameApp app, RectTransform root, string regionId)
         {
@@ -498,12 +522,24 @@ namespace Game.Unity.Screens
             long d = FlagDefs.TryParseKey(o.RegionId, out var cell) ? (long)Mathf.Sqrt(ctx.Territory.Flags.DistanceSquaredM(here, cell)) : 0;
             Ui.Label(content, ctx.T("ui.terr.flagLine", GeneralNames(ctx, o), Troops(o).ToString("N0"), FormatKm(d)), 24, TextAnchor.MiddleLeft, Palette.TextDim);
             string loc = Last != null && Last.Ok ? Last.Point.ToString() : null;
-            string err = ally ? ctx.T("ui.terr.ally") : loc == null ? ctx.T("ui.terr.noLocation")
+            // 위치를 모르면 [공격]을 누를 때 동의 · 확인한 뒤 검사 (위치는 공격 · 꽂기 때만)
+            string err = ally ? ctx.T("ui.terr.ally") : loc == null ? null
                 : TerritoryFlags.CheckSiege(ctx.Territory, ctx.Defs, ctx.State, ctx.AccountId, Owners, o.RegionId, loc, now);
             if (err == null)
             {
                 string key = o.RegionId; var def = o.Defense;
-                Ui.Button(content, ctx.T("ui.terr.attack"), () => { close(); app.Show(new TerritorySortieScreen(key, loc, def)); }, 80, Palette.ButtonActive, 28);
+                Ui.Button(content, ctx.T("ui.terr.attack"), () =>
+                {
+                    close();
+                    WithLocation(app, root, ok =>
+                    {
+                        string at = ok ? Last.Point.ToString() : null;
+                        string why = !ok ? ctx.T("ui.territory.failed", Last?.Reason ?? "?")
+                            : TerritoryFlags.CheckSiege(ctx.Territory, ctx.Defs, ctx.State, ctx.AccountId, Owners, key, at, ctx.Clock.UtcNow.ToUnixTimeSeconds());
+                        if (why == null) app.Show(new TerritorySortieScreen(key, at, def));
+                        else { Notice = why; if (root != null) app.ShowMain("territory"); }
+                    });
+                }, 80, Palette.ButtonActive, 28);
             }
             else Ui.Label(content, o.ProtectedUntilUnixSeconds > now ? ctx.T("ui.terr.protected", (o.ProtectedUntilUnixSeconds - now + 59) / 60) : err, 24, TextAnchor.MiddleLeft, Palette.TextDim);
         }
