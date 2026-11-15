@@ -1288,7 +1288,7 @@
   "ui.battle.pickPoint": "땅을 누르세요",
   "ui.battle.pickAlly": "따라갈 아군을 누르세요",
   "ui.battle.pickBack": "물러날 곳을 누르세요",
-  "ui.battle.drawPath": "지나갈 곳을 차례로 누르세요 (적을 누르면 그 길로 공격)",
+  "ui.battle.drawPath": "길을 끌어 그리세요 (손을 떼면 출발, 끝이 적이면 공격)",
   "ui.battle.thisPath": "✓ 이 길로",
   "ui.battle.pathPoint": "경로 점 {0}",
   "ui.battle.pathFull": "경로 점은 더 넣을 수 없습니다",
