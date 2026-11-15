@@ -652,6 +652,8 @@ namespace Game.Unity.Boot
 
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47). 받기는 우편함에서.</summary>
         public void CollectTerritory(Action<MailListResponse> done) => Online.CollectTerritory(done);
+        /// <summary>깃발 하나만 수입 받기 (지도의 수입 표시 · 깃발 판).</summary>
+        public void CollectFlag(string regionId, Action<MailListResponse> done) => Online.CollectFlag(regionId, done);
 
         // ---- 연합 (R-49) ----
         public void LoadAlliances(Action<AllianceListResponse> done) => Online.GetAlliances(done);

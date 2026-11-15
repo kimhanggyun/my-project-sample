@@ -395,6 +395,12 @@ namespace Game.Online
     }
 
     /// <summary>깃발에서 장수 회수 (R-109): 깃발 키, 회수할 장수들 (null = 모두). 모두 회수하면 깃발이 사라진다.</summary>
+    /// <summary>수입 받기 요청: 지역 · 깃발 하나 (없으면 모두).</summary>
+    public sealed class CollectRequest
+    {
+        public string RegionId { get; set; }
+    }
+
     public sealed class RecallRequest
     {
         public string FlagKey { get; set; }
@@ -835,6 +841,8 @@ namespace Game.Online
         void GetTerritory(Action<TerritoryResponse> done);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (보낸 우편, 닿지 않으면 null).</summary>
         void CollectTerritory(Action<MailListResponse> done);
+        /// <summary>깃발 · 지역 하나만 수입 받기 (지도에서 깃발마다). 서버에 닿지 않으면 null.</summary>
+        void CollectFlag(string regionId, Action<MailListResponse> done);
         /// <summary>내 지역에 수비 편성 등록 (닿지 않으면 null).</summary>
         void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done);
         /// <summary>깃발 꽂기 (R-96, 닿지 않으면 null).</summary>
@@ -872,6 +880,7 @@ namespace Game.Online
         public void LinkFirebase(string idToken, Action<LinkResponse> done) => done?.Invoke(null);
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
+        public void CollectFlag(string regionId, Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);

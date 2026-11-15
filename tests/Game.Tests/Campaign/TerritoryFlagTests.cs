@@ -229,5 +229,19 @@ namespace Game.Tests.Campaign
             Assert.NotEmpty(all.Mail);
             Assert.Equal(RecallReasons.NoFlag, TerritoryFlags.Recall(Defs, Kit.D, state, "me", owners, new RecallRequest { FlagKey = flag.RegionId }, Now, Send).Reason);
         }
+
+        [Fact(DisplayName = "깃발 하나만 수입 받기: 고른 깃발만 우편 · 받은 시각 갱신, 다른 깃발은 그대로 쌓임")]
+        public void CollectOne()
+        {
+            var state = Kit.Veteran();
+            var owners = new Dictionary<string, TerritoryOwner>();
+            var a = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_a"), Now).Flag;
+            var b = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_b", "37.57,126.98"), Now).Flag;
+            var mail = new List<Mail>();
+            var sent = TerritoryLedger.Collect(Defs, owners, "me", Now + 3 * 3600, (who, m) => mail.Add(m), a.RegionId);
+            Assert.NotEmpty(sent);
+            Assert.Equal(Now + 3 * 3600, owners[a.RegionId].CollectedUnixSeconds);
+            Assert.Equal(Now, owners[b.RegionId].CollectedUnixSeconds);
+        }
     }
 }

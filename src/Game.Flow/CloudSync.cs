@@ -502,6 +502,9 @@ namespace Game.Flow
         public void ManageAlliance(AllianceManageRequest req, Action<AllianceResponse> done) =>
             done?.Invoke(TerritoryData == null ? null : AllianceBook.Manage(TerritoryData, _alliances, AccountId, req));
 
+        public void CollectFlag(string regionId, Action<MailListResponse> done) =>
+            done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m), regionId) });
+
         public void CollectTerritory(Action<MailListResponse> done) =>
             done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m)) });
 

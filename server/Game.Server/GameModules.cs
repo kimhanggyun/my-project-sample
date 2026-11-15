@@ -37,7 +37,8 @@ namespace Game.Server
         /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
         TerritoryResponse Territory(string accountId);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47).</summary>
-        MailListResponse CollectTerritory(string accountId);
+        /// <param name="regionId">이 지역 · 깃발만 (null = 모두).</param>
+        MailListResponse CollectTerritory(string accountId, string regionId = null);
         /// <summary>내 지역에 수비 편성 등록 (R-48).</summary>
         DefenseResponse RegisterDefense(string accountId, DefenseRequest request);
         /// <summary>깃발 꽂기 (R-96).</summary>
@@ -304,8 +305,8 @@ namespace Game.Server
             return _store.WithTerritory(Code, owners => TerritoryFlags.Recall(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
         }
 
-        public MailListResponse CollectTerritory(string accountId) =>
-            new MailListResponse { Mail = _store.WithTerritory(Code, owners => TerritoryLedger.Collect(_territory, owners, accountId, Now, (who, m) => _store.AddMail(Code, who, m))) };
+        public MailListResponse CollectTerritory(string accountId, string regionId = null) =>
+            new MailListResponse { Mail = _store.WithTerritory(Code, owners => TerritoryLedger.Collect(_territory, owners, accountId, Now, (who, m) => _store.AddMail(Code, who, m), regionId)) };
 
         public static string ToJson(CampaignState state) => SaveJson.Write(state);
         public static CampaignState FromJson(string json) => SaveJson.Read(json);

@@ -39,6 +39,7 @@ namespace Game.Tests.Campaign
             public void LinkFirebase(string t, Action<LinkResponse> done) { if (Down) done(null); else _inner.LinkFirebase(t, done); }
             public void GetNames(System.Collections.Generic.IReadOnlyCollection<string> ids, Action<NamesResponse> done) { if (Down) done(null); else _inner.GetNames(ids, done); }
             public void CollectTerritory(Action<MailListResponse> done) { if (Down) done(null); else _inner.CollectTerritory(done); }
+            public void CollectFlag(string regionId, Action<MailListResponse> done) { if (Down) done(null); else _inner.CollectFlag(regionId, done); }
             public void RegisterDefense(DefenseRequest r, Action<DefenseResponse> done) { if (Down) done(null); else _inner.RegisterDefense(r, done); }
             public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
             public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);

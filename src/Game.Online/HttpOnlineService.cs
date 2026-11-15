@@ -163,6 +163,9 @@ namespace Game.Online
         public void GetTerritory(Action<TerritoryResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Territory(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<TerritoryResponse>(body) : null));
 
+        public void CollectFlag(string regionId, Action<MailListResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryCollect(_game), OnlineJson.Write(new CollectRequest { RegionId = regionId }), Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
+
         public void CollectTerritory(Action<MailListResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryCollect(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
