@@ -385,6 +385,9 @@ namespace Game.Unity.Boot
         }
 
         private bool _flushing;
+
+        /// <summary>서버가 올린 기록(행동 · 전투)을 받지 않아 서버 세이브로 되돌렸다. 화면은 다시 그리고 알려야 한다 (안 그러면 방금 한 것이 조용히 사라진다).</summary>
+        public event Action<SyncResult> Reverted;
         private readonly List<Action<SyncResult>> _afterFlush = new List<Action<SyncResult>>();
 
         /// <summary>
@@ -406,6 +409,7 @@ namespace Game.Unity.Boot
                 {
                     if (r.Outcome == SyncOutcomes.Rejected) OnlineStatus = r.Outcome;
                     Adopt(r);
+                    if (r.Outcome == SyncOutcomes.Rejected) Reverted?.Invoke(r);
                 }
                 RunAfterFlush(r);
             });

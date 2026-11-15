@@ -58,6 +58,7 @@ namespace Game.Unity.Boot
                     this);
                 Game.Unity.UI.Sfx.Init(gameObject); // 임시 합성 효과음
                 Context.ApplyVolumes(); // 설정의 배경음 · 효과음 (15)
+                Context.Reverted += _ => OnReverted();
             }
             catch (Exception e)
             {
@@ -155,6 +156,16 @@ namespace Game.Unity.Boot
                 Application.Quit();
             }, (T("ui.common.cancel"), () => { }));
             box.parent.name = "QuitDim";
+        }
+
+        /// <summary>
+        /// 서버가 행동을 받지 않아 서버 세이브로 되돌렸을 때 (2026-11-15: 훈련이 "라디오 버튼"처럼 하나만 남던 것):
+        /// 메인 화면이면 되돌린 세이브로 다시 그리고, 확인 창으로 알린다.
+        /// </summary>
+        private void OnReverted()
+        {
+            if (_current is Game.Unity.Screens.MainScreen) Show(_current);
+            if (_screenRoot != null) Ui.Confirm(_screenRoot, Context.T("ui.sync.reverted.title"), Context.T("ui.sync.reverted.body"), Context.T("ui.common.ok"), () => { });
         }
 
         /// <summary>지금 화면을 닫고 새 화면을 연다.</summary>
