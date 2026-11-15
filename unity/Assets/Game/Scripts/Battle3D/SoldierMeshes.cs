@@ -119,48 +119,71 @@ namespace Game.Unity.Battle3D
             part = Dark;
             if (!mounted)
             {
-                Add(cylinder, new Vector3(-0.02f, 0.065f, 0f), new Vector3(0.028f, 0.065f, 0.028f)); // 가는 다리
-                Add(cylinder, new Vector3(0.02f, 0.065f, 0f), new Vector3(0.028f, 0.065f, 0.028f));
+                // 가는 다리 (병종 그림 PNG 비율: 다리 = 키의 1/3, 살짝 벌림)
+                Add(cylinder, new Vector3(-0.02f, 0.068f, 0f), new Vector3(0.024f, 0.07f, 0.024f), new Vector3(0f, 0f, -3f));
+                Add(cylinder, new Vector3(0.02f, 0.068f, 0f), new Vector3(0.024f, 0.07f, 0.024f), new Vector3(0f, 0f, 3f));
             }
             else
             {
                 Add(cylinder, new Vector3(-0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, 30f)); // 말 탄 다리
                 Add(cylinder, new Vector3(0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, -30f));
             }
+            // 몸통: 어깨가 넓고 허리가 좁은 웃옷 (팀 색, 위 · 아래 두 덩어리로 가늘어지게) + 허리띠
             part = Team;
-            Add(capsule, new Vector3(0f, lift + 0.205f, 0f), new Vector3(0.062f, light ? 0.065f : 0.07f, 0.045f));   // 가는 몸통
-            Add(cylinder, new Vector3(-0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, 12f)); // 팔
-            Add(cylinder, new Vector3(0.042f, lift + 0.2f, 0.01f), new Vector3(0.018f, 0.055f, 0.018f), new Vector3(10f, 0f, -12f));
+            Add(capsule, new Vector3(0f, lift + 0.235f, 0f), new Vector3(0.06f, 0.05f, 0.036f));
+            Add(capsule, new Vector3(0f, lift + 0.175f, 0f), new Vector3(0.046f, 0.045f, 0.032f));
+            // 팔: 어깨에서 비스듬히 벌려 내림 (그림처럼 몸 밖으로), 끝에 손
+            Add(cylinder, new Vector3(-0.047f, lift + 0.225f, 0.008f), new Vector3(0.016f, 0.05f, 0.016f), new Vector3(8f, 0f, -22f));
+            Add(cylinder, new Vector3(0.047f, lift + 0.225f, 0.008f), new Vector3(0.016f, 0.05f, 0.016f), new Vector3(8f, 0f, 22f));
+            part = Dark;
+            Add(cylinder, new Vector3(0f, lift + 0.15f, 0f), new Vector3(0.05f, 0.006f, 0.036f));                     // 허리띠
+            part = Skin;
+            Add(sphere, new Vector3(-0.066f, lift + 0.183f, 0.012f), new Vector3(0.018f, 0.018f, 0.018f));            // 손
+            Add(sphere, new Vector3(0.066f, lift + 0.183f, 0.012f), new Vector3(0.018f, 0.018f, 0.018f));
+            Add(cylinder, new Vector3(0f, lift + 0.293f, 0f), new Vector3(0.018f, 0.012f, 0.018f));                   // 목
+            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.062f, 0.064f, 0.062f));                      // 얼굴
+            // 뾰족 투구 (그림의 삿갓 모양): 넓은 챙 + 위로 좁아지는 둥근 판들. 정찰병은 투구 대신 팀 색 머리띠
             part = armored ? Armor : Dark;
-            if (!light) Add(cylinder, new Vector3(0f, lift + 0.37f, 0f), new Vector3(0.074f, 0.01f, 0.074f));        // 투구 챙 (짙은 색: 위에서 봐도 머리가 보이게)
+            if (!light)
+            {
+                Add(cylinder, new Vector3(0f, lift + 0.357f, 0f), new Vector3(0.088f, 0.005f, 0.088f));
+                Add(cylinder, new Vector3(0f, lift + 0.369f, 0f), new Vector3(0.05f, 0.008f, 0.05f));
+                Add(cylinder, new Vector3(0f, lift + 0.383f, 0f), new Vector3(0.034f, 0.008f, 0.034f));
+                Add(cylinder, new Vector3(0f, lift + 0.396f, 0f), new Vector3(0.018f, 0.008f, 0.018f));
+            }
+            else
+            {
+                part = Team;
+                Add(cylinder, new Vector3(0f, lift + 0.343f, 0f), new Vector3(0.064f, 0.006f, 0.064f));
+            }
             if (armored)
             {
-                // 치장 갑옷: 둥근 투구 · 어깨 덧댐 · 가슴 띠 (팀 색 몸통은 그대로 보이게 작게)
-                if (!light) Add(sphere, new Vector3(0f, lift + 0.372f, 0f), new Vector3(0.062f, 0.036f, 0.062f));
-                Add(sphere, new Vector3(-0.04f, lift + 0.268f, 0f), new Vector3(0.042f, 0.028f, 0.046f));
-                Add(sphere, new Vector3(0.04f, lift + 0.268f, 0f), new Vector3(0.042f, 0.028f, 0.046f));
-                Add(cube, new Vector3(0f, lift + 0.235f, 0.019f), new Vector3(0.056f, 0.022f, 0.012f), new Vector3(0f, 0f, 30f));
+                // 치장 갑옷: 어깨 덧댐 · 가슴 띠 (팀 색 몸통은 그대로 보이게 작게), 투구 · 방패는 위에서 갑옷 색
+                part = Armor;
+                Add(sphere, new Vector3(-0.036f, lift + 0.272f, 0f), new Vector3(0.036f, 0.022f, 0.04f));
+                Add(sphere, new Vector3(0.036f, lift + 0.272f, 0f), new Vector3(0.036f, 0.022f, 0.04f));
+                Add(cube, new Vector3(0f, lift + 0.235f, 0.017f), new Vector3(0.05f, 0.018f, 0.008f), new Vector3(0f, 0f, 30f));
             }
-            part = Skin;
-            Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.068f, 0.07f, 0.068f));                        // 얼굴
             part = Metal;
             switch (baseType)
             {
                 case "spearman":
-                    Add(cylinder, new Vector3(0.05f, lift + 0.25f, 0.025f), new Vector3(0.009f, 0.25f, 0.009f));          // 몸보다 긴 창
-                    Add(cube, new Vector3(0.05f, lift + 0.515f, 0.025f), new Vector3(0.016f, 0.04f, 0.006f));             // 창날
+                    part = Dark;
+                    Add(cylinder, new Vector3(0.068f, lift + 0.25f, 0.012f), new Vector3(0.009f, 0.25f, 0.009f));         // 몸보다 긴 창 (나무 자루, 손에 듦)
+                    part = Metal;
+                    Add(cube, new Vector3(0.068f, lift + 0.515f, 0.012f), new Vector3(0.016f, 0.04f, 0.006f));            // 창날
                     break;
                 case "archer":
                     part = Dark;
-                    Add(cube, new Vector3(0.055f, lift + 0.27f, 0.03f), new Vector3(0.008f, 0.1f, 0.012f), new Vector3(-22f, 0f, 0f)); // 활 위
-                    Add(cube, new Vector3(0.055f, lift + 0.15f, 0.03f), new Vector3(0.008f, 0.1f, 0.012f), new Vector3(22f, 0f, 0f));  // 활 아래
+                    Add(cube, new Vector3(-0.075f, lift + 0.235f, 0.02f), new Vector3(0.008f, 0.1f, 0.012f), new Vector3(0f, 0f, -20f)); // 활 위 (왼손)
+                    Add(cube, new Vector3(-0.075f, lift + 0.135f, 0.02f), new Vector3(0.008f, 0.1f, 0.012f), new Vector3(0f, 0f, 20f));  // 활 아래
                     Add(cube, new Vector3(-0.012f, lift + 0.24f, -0.04f), new Vector3(0.025f, 0.09f, 0.02f), new Vector3(0f, 0f, 20f)); // 등 화살통
                     break;
                 case "cavalry":
                     Add(cylinder, new Vector3(0.045f, lift + 0.2f, 0.1f), new Vector3(0.008f, 0.17f, 0.008f), new Vector3(70f, 0f, 0f)); // 앞으로 든 창
                     break;
                 case "scout":
-                    Add(cube, new Vector3(0.05f, lift + 0.15f, 0.03f), new Vector3(0.01f, 0.07f, 0.01f));                // 짧은 칼
+                    Add(cube, new Vector3(0.072f, lift + 0.21f, 0.014f), new Vector3(0.008f, 0.06f, 0.008f), new Vector3(0f, 0f, -15f)); // 짧은 칼
                     break;
                 case "engineer":
                     part = Dark;
@@ -171,9 +194,10 @@ namespace Game.Unity.Battle3D
                     break;
                 default: // 보병: 둥근 방패(나무, 갑옷을 입으면 갑옷 색) + 칼
                     part = armored ? Armor : Dark;
-                    Add(cylinder, new Vector3(-0.05f, lift + 0.19f, 0.03f), new Vector3(0.085f, 0.006f, 0.085f), new Vector3(90f, 0f, 0f)); // 앞(+Z)을 보는 원판
+                    Add(cylinder, new Vector3(-0.07f, lift + 0.2f, 0.03f), new Vector3(0.1f, 0.006f, 0.1f), new Vector3(90f, 0f, 0f)); // 앞(+Z)을 보는 둥근 방패 (왼손)
                     part = Metal;
-                    Add(cube, new Vector3(0.05f, lift + 0.2f, 0.035f), new Vector3(0.01f, 0.1f, 0.01f), new Vector3(20f, 0f, 0f));
+                    Add(sphere, new Vector3(-0.07f, lift + 0.2f, 0.035f), new Vector3(0.022f, 0.022f, 0.01f));               // 방패 가운데 쇠
+                    Add(cube, new Vector3(0.075f, lift + 0.235f, 0.014f), new Vector3(0.009f, 0.1f, 0.009f), new Vector3(0f, 0f, -18f)); // 칼 (오른손, 위로)
                     break;
             }
         }

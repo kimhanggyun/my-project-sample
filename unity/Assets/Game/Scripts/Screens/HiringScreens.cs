@@ -227,6 +227,12 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             var rules = new HireRules(Ctx.Defs);
+            // 서버 세이브로 되돌려져 대상이 없어졌으면 (예: 옛 서버가 닉네임 장수 만들기를 받지 않음) 오류 대신 돌아간다
+            if (_kind == HireKinds.General ? Ctx.State.FindGeneral(_id) == null : Ctx.State.FindUnit(_id) == null)
+            {
+                App.ShowMain("hiring");
+                return;
+            }
             long rec = _kind == HireKinds.General
                 ? rules.RecommendedPrice(Ctx.State.FindGeneral(_id), _payWith)
                 : rules.RecommendedPrice(Ctx.State.FindUnit(_id), _payWith);

@@ -120,6 +120,9 @@ namespace Game.Unity.Screens
         private RectTransform _cmdBar;
         /// <summary>하위 명령 줄: 명령 줄(카테고리) 바로 위에 뜬다 (19 시안, 2026-11-15 사용자: 카테고리를 그대로 두어 다른 카테고리를 바로 누를 수 있게).</summary>
         private RectTransform _subBar;
+        /// <summary>전장 위에 겹친 하위 명령 줄의 높이 (레이아웃 밖이라 직접).</summary>
+        private void SubBarHeight(float h) => _subBar.sizeDelta = new Vector2(0f, h);
+
         /// <summary>하위 명령 동그라미 지름.</summary>
         private const float SubRoundSize = 104f;
         /// <summary>경로 그리기 중 손가락 자취 (놓으면 예약 상한만큼 고르게 골라 _path로).</summary>
@@ -364,8 +367,13 @@ namespace Game.Unity.Screens
 
             // 19 시안: 명령 버튼 패널은 숨기고 (전장을 덜 가리게) 군단 카드 위 명령 줄로
             panel.gameObject.SetActive(false);
-            _subBar = Ui.Row(Root, "SubCommandBar", 92, 6);
-            Ui.Background(_subBar, Color.Lerp(Palette.Bar, Palette.Seal, 0.12f));
+            // 하위 명령 줄은 전장 위에 겹쳐 띄운다 (줄로 넣으면 전장이 위로 밀려 지도가 가려짐, 2026-11-15 사용자)
+            _subBar = Ui.Row(_fieldArea, "SubCommandBar", 92, 6);
+            _subBar.anchorMin = new Vector2(0f, 0f);
+            _subBar.anchorMax = new Vector2(1f, 0f);
+            _subBar.pivot = new Vector2(0.5f, 0f);
+            _subBar.anchoredPosition = Vector2.zero;
+            Ui.Background(_subBar, new Color(Palette.Bar.r, Palette.Bar.g, Palette.Bar.b, 0.82f));
             _subBar.gameObject.SetActive(false);
             _cmdBar = Ui.Row(Root, "CommandBar", 92, 6);
             Ui.Background(_cmdBar, Palette.Bar);
@@ -1635,6 +1643,7 @@ namespace Game.Unity.Screens
             }
             _pathTarget = enemy ? hit.Id : null;
             _dragTrail.Clear();
+            if (_path.Count > 0 || _pathTarget != null) { FinishPath(_pathTarget); return; } // 손을 떼면 바로 그 길로 ([✓ 이 길로]는 점을 눌러 찍을 때)
             Notice(T("ui.battle.pathPoint", _path.Count));
             _dirty = true;
         }
@@ -1805,7 +1814,7 @@ namespace Game.Unity.Screens
             if (_pickMode != null)
             {
                 _subBar.gameObject.SetActive(true);
-                Ui.Size(_subBar, 92);
+                SubBarHeight(92);
                 string hint = _pickMode == "enemy" ? "ui.battle.pickTarget" : _pickMode == "ally" ? "ui.battle.pickAlly" : _pickMode == "path" ? "ui.battle.drawPath" : _pickKind == "lureBack" ? "ui.battle.pickBack" : "ui.battle.pickPoint";
                 Ui.Size(Ui.Label(_subBar, (single ? "" : T("ui.battle.together", ids.Count) + " · ") + T(hint) + (_pickMode == "path" && _path.Count > 0 ? "  " + _path.Count : ""), 26, TextAnchor.MiddleLeft, Palette.PromptText), flexibleWidth: 1);
                 if (_pickMode == "path")
@@ -1821,7 +1830,7 @@ namespace Game.Unity.Screens
 
             // ---- 위 줄: 고른 카테고리의 하위 명령 = 흰 동그라미 버튼 (2026-11-15 사용자: 카테고리 네모 버튼과 모양을 달리) ----
             _subBar.gameObject.SetActive(true);
-            Ui.Size(_subBar, SubRoundSize + 14);
+            SubBarHeight(SubRoundSize + 14);
             var row = Ui.HScrollRow(_subBar, "Commands", SubRoundSize + 8, 14, 4);
             Ui.Size(row.parent.parent, SubRoundSize + 8, -1, -1, 1);
             void Btn(string label, System.Action act, bool enabled = true)
