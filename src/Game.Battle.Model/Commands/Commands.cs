@@ -237,13 +237,22 @@ namespace Game.Battle.Model.Commands
         public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => Systems.RetreatSystem.BeginRetreat(ctx, corps, Systems.RetreatReasons.Order);
     }
 
-    /// <summary>위임 켜고 끄기. 켜면 AI가 바로 지휘하고(진행 중인 플레이어 명령은 그대로 둔다), 끄면 지금 명령을 유지한 채 플레이어에게 돌아온다.</summary>
+    /// <summary>
+    /// 위임 켜고 끄기 (R-106). 켜면 AI가 바로 지휘한다: 진행 중인 플레이어 명령도 AI에게 넘기고(OrderByPlayer 끔) 예약은 비운다
+    /// (예전엔 진행 중 명령을 두어, 적에게서 멀어지던 이동이 접전으로 멈춘 채 끝나지 않아 등을 보인 채 싸우지 않았다). 끄면 지금 명령을 유지한 채 플레이어에게 돌아온다.
+    /// </summary>
     internal sealed class DelegateHandler : ICommandHandler
     {
         public string Kind => CommandKinds.Delegate;
         public bool IsValid(BattleContext ctx, CorpsState corps, BattleCommand cmd) =>
             ctx.IsEnabled(CommandKinds.DelegateFlag) && (cmd.Mode == "on" || cmd.Mode == "off") && (cmd.Mode == "on") != corps.Delegated;
-        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd) => corps.Delegated = cmd.Mode == "on";
+        public void Apply(BattleContext ctx, CorpsState corps, BattleCommand cmd)
+        {
+            corps.Delegated = cmd.Mode == "on";
+            if (!corps.Delegated) return;
+            corps.OrderByPlayer = false;
+            corps.Queue.Clear();
+        }
     }
 
     internal sealed class ChangeFormationHandler : ICommandHandler

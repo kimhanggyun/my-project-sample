@@ -602,6 +602,8 @@
   "ui.generals.codex": "도감",
   "ui.general.cardTitle": "장수 카드",
   "ui.formation.autoCorps": "자동 편성",
+  "ui.battle.cmd.named": "지명 공격",
+  "ui.battle.cmd.nearest": "근접 공격",
   "ui.settings.header": "설정",
   "ui.settings.version": "버전 {0} / Unity {1}",
   "ui.settings.services": "외부 서비스 설정",

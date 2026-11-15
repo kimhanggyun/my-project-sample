@@ -291,6 +291,14 @@ namespace Game.Battle.Model.Control
         public bool AttackWith(string targetCorpsId, string attackMode) =>
             Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Mode = attackMode; c.Queued = Queueing; });
 
+        /// <summary>근접 공격 (R-107): 고른 군단에서 가장 가까운 보이는 적 군단을 바로 공격 (상대를 누르지 않음). 보이는 적이 없으면 받지 않는다.</summary>
+        public bool AttackNearest()
+        {
+            if (!CanCommand(Selected)) return false;
+            var t = Context.NearestEnemy(Selected);
+            return t != null && Sees(t) && AttackWith(t.Id, AttackModes.Normal);
+        }
+
         /// <summary>유인: 상대를 건드리고 맞붙으면 지점(back)으로 강행해 물러난다.</summary>
         public bool Lure(string targetCorpsId, Vec back) =>
             Issue(Selected, CommandKinds.Attack, c => { c.TargetCorpsId = targetCorpsId; c.Mode = AttackModes.Lure; c.X = back.X; c.Y = back.Y; c.Queued = Queueing; });

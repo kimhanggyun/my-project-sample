@@ -16,6 +16,8 @@ namespace Game.Unity.UI
         public event Action<Vector2> Tapped;
         /// <summary>한 손가락 끌기: (이전 위치, 지금 위치).</summary>
         public event Action<Vector2, Vector2> Dragged;
+        /// <summary>한 손가락 끌기가 끝남 (경로 그리기를 마칠 때).</summary>
+        public event Action DragEnded;
         /// <summary>확대 비율 (1보다 크면 가까이).</summary>
         public event Action<float> Zoomed;
 
@@ -36,7 +38,7 @@ namespace Game.Unity.UI
         }
 
         public void OnBeginDrag(PointerEventData e) { }
-        public void OnEndDrag(PointerEventData e) { }
+        public void OnEndDrag(PointerEventData e) { if (!_multiTouched) DragEnded?.Invoke(); }
 
         public void OnDrag(PointerEventData e)
         {
