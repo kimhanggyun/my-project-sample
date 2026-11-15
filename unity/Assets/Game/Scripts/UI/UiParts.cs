@@ -310,7 +310,7 @@ namespace Game.Unity.UI
             lh.childForceExpandHeight = false; // 줄이 늘어나도 꼬리표는 제 높이로 가운데에 (캡처 2026-11-15)
             lh.childAlignment = TextAnchor.MiddleLeft;
             var tag = Rect(line, "Tag");
-            Size(tag, height);
+            Size(tag, height).flexibleHeight = 0; // 안쪽 레이아웃이 늘어나겠다고 알려도 제 높이
             var img = Background(tag, color);
             img.sprite = UiShapes.Rounded(10);
             img.type = Image.Type.Sliced;
