@@ -48,6 +48,63 @@ namespace Game.Flow
         public static bool AdFree(CampaignState state, long nowUnixSeconds) => state.AdFreeForever || state.AdFreeUntilUnixSeconds > nowUnixSeconds;
     }
 
+    /// <summary>영수증 검증 결과 (R-114).</summary>
+    public sealed class ReceiptVerdict
+    {
+        public bool Valid { get; set; }
+        /// <summary><see cref="ReceiptReasons"/>.</summary>
+        public string Reason { get; set; }
+        /// <summary>스토어 거래 id (한 번만 쓰게 하는 키). 없으면 영수증 문자열 그대로.</summary>
+        public string TransactionId { get; set; }
+
+        public static ReceiptVerdict Ok(string transactionId) => new ReceiptVerdict { Valid = true, Reason = ReceiptReasons.Ok, TransactionId = transactionId };
+        public static ReceiptVerdict No(string reason) => new ReceiptVerdict { Valid = false, Reason = reason };
+    }
+
+    public static class ReceiptReasons
+    {
+        public const string Ok = "ok";
+        public const string Empty = "empty";
+        /// <summary>이 검증기가 받지 않는 형식 (가짜 영수증을 끈 서버 등).</summary>
+        public const string NotAccepted = "notAccepted";
+        /// <summary>스토어가 아니라고 함 (취소 · 환불 · 다른 상품).</summary>
+        public const string Rejected = "rejected";
+        /// <summary>검증기 설정이 없거나 아직 만들지 않음 (구글 플레이 자리).</summary>
+        public const string NotConfigured = "notConfigured";
+        /// <summary>이미 쓴 영수증.</summary>
+        public const string Used = "used";
+    }
+
+    /// <summary>
+    /// 결제 영수증 검증 (서버만, R-114, economy.md 4장). 설정 <c>Game:ReceiptVerifier</c>로 고른다: fake(기본, 개발용 "fake:" 영수증) · off(모두 거절) · googlePlay(자리, deploy-cloudrun.md).
+    /// 규칙 코드는 이 인터페이스만 안다 — 스토어 SDK · HTTP는 서버 쪽 구현에.
+    /// </summary>
+    public interface IReceiptVerifier
+    {
+        /// <summary>이 상품의 영수증이 진짜인지. 한 번만 쓰기는 <see cref="ReceiptCheck"/>가 TransactionId로 본다.</summary>
+        ReceiptVerdict Verify(string productId, string receipt);
+    }
+
+    public static class ReceiptVerifierIds
+    {
+        public const string Fake = "fake";
+        public const string Off = "off";
+        public const string GooglePlay = "googlePlay";
+    }
+
+    /// <summary>개발 · 테스트용: "fake:"로 시작하는 영수증만 받는다 (참고 서버 기본).</summary>
+    public sealed class FakeReceiptVerifier : IReceiptVerifier
+    {
+        public ReceiptVerdict Verify(string productId, string receipt) =>
+            receipt != null && receipt.StartsWith(ReceiptCheck.FakePrefix, System.StringComparison.Ordinal) ? ReceiptVerdict.Ok(receipt) : ReceiptVerdict.No(ReceiptReasons.NotAccepted);
+    }
+
+    /// <summary>모든 영수증 거절 (실제 검증 전의 배포 서버).</summary>
+    public sealed class RejectAllReceiptVerifier : IReceiptVerifier
+    {
+        public ReceiptVerdict Verify(string productId, string receipt) => ReceiptVerdict.No(ReceiptReasons.NotAccepted);
+    }
+
     /// <summary>
     /// 서버 쪽 영수증 검사 (R-64). 실제 스토어 검증(구글·애플)은 백엔드를 정한 뒤 구현을 더한다.
     /// 지금은 개발용 가짜 영수증("fake:")만 받을 수 있고, 받을지는 서버 설정. 같은 영수증은 한 번만.
@@ -55,22 +112,33 @@ namespace Game.Flow
     public sealed class ReceiptCheck
     {
         public const string FakePrefix = "fake:";
-        private readonly bool _allowFake;
+        private readonly IReceiptVerifier _verifier;
         private readonly HashSet<string> _used;
 
+        /// <summary>예전 설정 (AllowFakeReceipts): true = 가짜 검증기, false = 모두 거절.</summary>
         public ReceiptCheck(bool allowFake, HashSet<string> usedReceipts = null)
+            : this(allowFake ? (IReceiptVerifier)new FakeReceiptVerifier() : new RejectAllReceiptVerifier(), usedReceipts) { }
+
+        public ReceiptCheck(IReceiptVerifier verifier, HashSet<string> usedReceipts = null)
         {
-            _allowFake = allowFake;
+            _verifier = verifier ?? new RejectAllReceiptVerifier();
             _used = usedReceipts ?? new HashSet<string>(System.StringComparer.Ordinal);
         }
+
+        /// <summary>마지막 결제 검사의 결과 (서버 기록 · 문제 찾기용).</summary>
+        public ReceiptVerdict Last { get; private set; }
 
         /// <summary>결제 행동이 아니면 true. 결제면 영수증이 받을 수 있는 것이고 처음 쓰는 것이어야 true.</summary>
         public bool Check(PlayerAction a)
         {
             if (a?.Kind != ActionKinds.StorePurchase) return true;
-            if (string.IsNullOrEmpty(a.Receipt)) return false;
-            if (!(_allowFake && a.Receipt.StartsWith(FakePrefix, System.StringComparison.Ordinal))) return false;
-            return _used.Add(a.Receipt);
+            if (string.IsNullOrEmpty(a.Receipt)) { Last = ReceiptVerdict.No(ReceiptReasons.Empty); return false; }
+            var v = _verifier.Verify(a.ProductId, a.Receipt) ?? ReceiptVerdict.No(ReceiptReasons.Rejected);
+            Last = v;
+            if (!v.Valid) return false;
+            if (_used.Add(v.TransactionId ?? a.Receipt)) return true;
+            Last = ReceiptVerdict.No(ReceiptReasons.Used);
+            return false;
         }
     }
 }

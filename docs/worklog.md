@@ -81,3 +81,4 @@
 - 2026-11-15 [원격] claude/cosmetics-2 — 치장 2단계 R-111: 스텝·숨은 보상 치장(중복이면 엽전), 치장 상품(결제 전용 허용), 용병·수비 스냅샷에 주인 겉모습
 - 2026-11-15 [원격] claude/economy-daily — 출석·교환·금괴 해금 R-112 (economy.json 임시값): 출석 우편(서버 시각, POST /attendance), economy.exchange(손실·하루 한도), skill.unlockLearn, 선호 구매는 미결 · 머지 뒤 서버 배포 필요
 - 2026-11-15 [원격] claude/siege-prep — 공성전 준비 1분 R-113: POST /territory/siege(시작 시각 기록·수비자 siegeAlert 우편), 1분 전 제출 거절, 준비 중 취소 · 머지 뒤 서버 배포 필요
+- 2026-11-15 [원격] claude/receipt-verifier — 영수증 검증기 뼈대 R-114: IReceiptVerifier (Game:ReceiptVerifier fake 기본 · off · googlePlay 자리), 거래 id로 한 번만 · 머지 뒤 서버 배포 필요
