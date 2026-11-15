@@ -82,7 +82,7 @@ namespace Game.Unity.UI
             mr.shadowCastingMode = ShadowCastingMode.Off;
             var lightGo = new GameObject("Light", typeof(Light));
             lightGo.transform.SetParent(root.transform, false);
-            lightGo.transform.rotation = Quaternion.Euler(35f, -30f, 0f);
+            lightGo.transform.rotation = Quaternion.LookRotation(new Vector3(-0.4f, -0.6f, -0.8f)); // 앞 오른쪽 위에서 비춤 (카메라 쪽 얼굴이 밝게)
             var light = lightGo.GetComponent<Light>();
             light.type = LightType.Directional;
             light.intensity = 1.1f;
