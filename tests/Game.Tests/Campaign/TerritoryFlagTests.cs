@@ -48,6 +48,27 @@ namespace Game.Tests.Campaign
             Assert.False(f.Within(a, new GeoPoint(37_575_600, 126_978_000), 1000));
         }
 
+        [Fact(DisplayName = "R-110 닉네임 장수를 깃발에 꽂으면 그 계정의 용병 등록(장수·부대)이 깃발 까닭(onFlag)으로 거절, 회수하면 다시 된다")]
+        public void AvatarOnFlagBlocksHire()
+        {
+            var state = Kit.Veteran();
+            state.Compositions.Add(new CorpsComposition { GeneralId = AvatarGeneral.GeneralId, Formation = "square", Role = "rear", Picks = { new TroopPick { UnitId = "cavalry", Troops = 1000 } } });
+            var owners = new Dictionary<string, TerritoryOwner>();
+            var plant = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req(AvatarGeneral.GeneralId), Now);
+            Assert.True(plant.Ok, plant.Reason);
+            owners[plant.Flag.RegionId] = plant.Flag;
+            var busy = TerritoryFlags.GeneralsOnFlags(owners, "me");
+            Assert.Contains(AvatarGeneral.GeneralId, busy);
+            Assert.Empty(TerritoryFlags.GeneralsOnFlags(owners, "someoneElse"));
+            var rules = new HireRules(Kit.D);
+            var gen = new HireListingRequest { Kind = HireKinds.General, GeneralId = AvatarGeneral.GeneralId, Price = 1, PayWith = "gold" };
+            var unit = new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 1, PayWith = "gold" };
+            Assert.Equal(HireReasons.OnFlag, rules.Register(state, gen, 0, busy).Reason);
+            Assert.Equal(HireReasons.OnFlag, rules.Register(state, unit, 0, busy).Reason);
+            owners.Remove(plant.Flag.RegionId); // 회수 (깃발이 거두어짐)
+            Assert.True(rules.Register(state, gen, 0, TerritoryFlags.GeneralsOnFlags(owners, "me")).Ok);
+        }
+
         [Fact(DisplayName = "R-96 꽂기: 빈 땅이면 그 칸에 깃발 (반지름 = 계급, 수비 = 그 장수 군단 하나)")]
         public void PlantEmpty()
         {

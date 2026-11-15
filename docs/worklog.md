@@ -77,3 +77,4 @@
 - 2026-11-15 [데스크탑] desktop/flag-multi-recall — 영토 위치는 꽂기 · 공격 때만 (동의 한 번), [내 위치 확인] 띠 없앰
 - 2026-11-15 [데스크탑] desktop/territory-fullmap — 영토 지도 화면 가득 · 알림 토스트 · 연합 없으면 [연합 가입] · 내 땅 안을 누르면 깃발 판(+ 더 꽂기)
 - 2026-11-15 [데스크탑] desktop/flag-view-generals — 영토 목록 보기에 깃발 장수들 복사 (3명 꽂아도 1명만 보이던 것)
+- 2026-11-15 [원격] claude/mercenary-checks — 용병 등록 서버 검사 R-110: 깃발에 나간 닉네임 장수 거절(onFlag), 부대는 닉네임 장수 군단 병종 칸만(notAvatarCorps)

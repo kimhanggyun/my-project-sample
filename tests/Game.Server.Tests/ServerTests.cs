@@ -217,6 +217,14 @@ namespace Game.Server.Tests
             var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
             var mail = OnlineRoutes.Mail(ServerSetup.DefaultGame);
 
+            // 부대는 닉네임 장수가 직접 이끄는 병종만 (R-110): 군단이 없으면 거절, 기병 1000을 이끄는 군단을 저장한 뒤 등록
+            var none = await a.PostAsync(listings, Body(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = "gold" }));
+            Assert.Equal(HireReasons.NotAvatarCorps, (await Read<HireListingResponse>(none)).Reason);
+            var aFirst = await Read<CloudSave>(await a.GetAsync(Save));
+            var avatarCorps = new System.Collections.Generic.List<Game.Campaign.Roster.CorpsComposition> { new Game.Campaign.Roster.CorpsComposition { GeneralId = AvatarGeneral.GeneralId, Formation = "square", Role = "vanguard", Commander = true, Picks = { new Game.Campaign.Roster.TroopPick { UnitId = "cavalry", Troops = 1000 } } } };
+            var saved = await a.PostAsync(actions, Body(new ActionSubmission { BaseRevision = aFirst.Revision, Actions = { PlayerActionRunner.SaveFormation(null, avatarCorps) } }));
+            Assert.True(saved.StatusCode == HttpStatusCode.OK, await saved.Content.ReadAsStringAsync());
+
             var tooExpensive = await a.PostAsync(listings, Body(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 99, PayWith = "gold" }));
             Assert.Equal((HttpStatusCode)422, tooExpensive.StatusCode);
             var reg = await a.PostAsync(listings, Body(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = "gold" }));

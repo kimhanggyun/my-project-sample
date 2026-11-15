@@ -247,7 +247,8 @@ namespace Game.Server
             var state = FromJson(LoadOrCreate(accountId).Json);
             string source = req?.Kind == HireKinds.General ? req.GeneralId : req?.UnitId;
             int existing = _store.Listings(Code, req?.Kind).FindAll(l => l.OwnerAccountId == accountId && l.SourceId != source).Count;
-            var r = _hire.Register(state, req, existing);
+            var onFlags = _store.WithTerritory(Code, owners => TerritoryFlags.GeneralsOnFlags(owners, accountId)); // 깃발에 나간 닉네임 장수는 등록 불가 (R-110)
+            var r = _hire.Register(state, req, existing, onFlags);
             if (!r.Ok) return r;
             r.Listing.OwnerAccountId = accountId;
             r.Listing.CreatedAtUnixSeconds = Now;

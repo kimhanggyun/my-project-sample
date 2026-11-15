@@ -536,6 +536,10 @@ namespace Game.Online
         public const string BadRequest = "badRequest";
         /// <summary>장수는 닉네임 장수만 용병으로 등록 (hiring-v2.md 1장, R-98).</summary>
         public const string NotAvatar = "notAvatar";
+        /// <summary>닉네임 장수가 영토 깃발에 나가 있어 장수·부대 모두 등록할 수 없다 (hiring-v2.md 1장, R-110).</summary>
+        public const string OnFlag = "onFlag";
+        /// <summary>부대는 닉네임 장수가 기본 편성에서 직접 이끄는 병종만 (hiring-v2.md 1장, R-110).</summary>
+        public const string NotAvatarCorps = "notAvatarCorps";
     }
 
     public sealed class HireListingResponse

@@ -428,7 +428,7 @@ namespace Game.Flow
             LoadSave(_ => { });
             string source = req?.Kind == HireKinds.General ? req.GeneralId : req?.UnitId;
             int existing = _market.FindAll(l => l.OwnerAccountId == AccountId && l.Kind == req?.Kind && l.SourceId != source).Count;
-            var r = _hire.Register(SaveJson.Read(_save.Json), req, existing);
+            var r = _hire.Register(SaveJson.Read(_save.Json), req, existing, TerritoryFlags.GeneralsOnFlags(_owners, AccountId));
             if (r.Ok)
             {
                 var old = _market.Find(l => l.OwnerAccountId == AccountId && l.Kind == r.Listing.Kind && l.SourceId == r.Listing.SourceId);

@@ -22,6 +22,17 @@ namespace Game.Flow
             return o?.GeneralId != null ? new List<string> { o.GeneralId } : new List<string>();
         }
 
+        /// <summary>그 계정의 깃발에 나가 있는 장수 모두 (용병 등록 검사 R-110 등).</summary>
+        public static HashSet<string> GeneralsOnFlags(IReadOnlyDictionary<string, TerritoryOwner> owners, string accountId)
+        {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            if (owners == null || accountId == null) return set;
+            foreach (var o in owners.Values)
+                if (o != null && FlagDefs.IsFlagKey(o.RegionId) && o.OwnerAccountId == accountId)
+                    foreach (var g in GeneralsOf(o)) set.Add(g);
+            return set;
+        }
+
         /// <summary>꽂기 요청의 장수들 (겹친 것 빼고 차례대로, 없으면 GeneralId 하나).</summary>
         public static List<string> RequestGenerals(PlantRequest req)
         {
