@@ -347,6 +347,14 @@ namespace Game.Unity.Boot
             // 자동 로그인(구글 등)이 아직이면 끝난 뒤에: 먼저 동기화하면 토큰이 없어 새 게스트 계정으로 들어가 새 게임 세이브를 받고,
             // 그 뒤 구글 계정으로 바뀌어 다음 행동이 staleSave로 거절된다 (2026-11-15 폰: 계정 바꾼 뒤 부대가 새 게임으로 보임)
             if (_autoSigningIn) { _afterAutoSignIn.Add(() => StartSync(done)); return; }
+            // 구글 등으로 로그인해 쓰던 기기인데 자동 로그인이 실패했고 서버 토큰도 없으면: 게스트로 들어가지 않는다
+            // (토큰 없이 동기화하면 새 게스트 계정이 생겨 원래 계정이 아닌 새 진행을 받는다). 이 기기 세이브로 두고 다시 시도를 묻는다.
+            if (SignInFailed && !(Online is HttpOnlineService h0 && h0.Token != null))
+            {
+                OnlineStatus = SignInFailedStatus;
+                done?.Invoke();
+                return;
+            }
             Sync.Start(State, Link.Revision, r =>
             {
                 OnlineStatus = r.Outcome;
@@ -558,16 +566,33 @@ namespace Game.Unity.Boot
         }
 
         private bool _autoSigningIn;
+
+        /// <summary>타이틀 상태: 기록된 로그인 수단(구글 등)으로 자동 로그인하지 못해 서버에 붙지 않았다 (게스트로 대신 들어가지 않음).</summary>
+        public const string SignInFailedStatus = "signInFailed";
+
+        /// <summary>게스트가 아닌 수단의 자동 로그인이 실패했다 (다시 시도하면 지움).</summary>
+        public bool SignInFailed { get; private set; }
+
+        /// <summary>타이틀의 [다시 로그인]: 기록된 수단으로 다시 자동 로그인한 뒤 서버 동기화.</summary>
+        public void RetrySignIn(Action done)
+        {
+            string method = StartupRecord?.SignInMethod;
+            if (method == null) { StartSync(done); return; }
+            AutoSignIn(method);
+            StartSync(done);
+        }
         private readonly List<Action> _afterAutoSignIn = new List<Action>();
 
         /// <summary>시작할 때 기록된 수단으로 자동 로그인. 끝날 때까지 <see cref="StartSync"/>는 기다린다.</summary>
         public void AutoSignIn(string method)
         {
             _autoSigningIn = true;
+            SignInFailed = false;
             SignIn(method, ok =>
             {
                 Debug.Log("자동 로그인: " + (ok ? Auth.AccountId : "실패"));
                 _autoSigningIn = false;
+                SignInFailed = !ok && method != "guest";
                 var waiting = new List<Action>(_afterAutoSignIn);
                 _afterAutoSignIn.Clear();
                 foreach (var a in waiting) a?.Invoke();
