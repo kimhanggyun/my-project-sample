@@ -29,6 +29,8 @@ namespace Game.Online
         public const string GuestSignIn = "/v1/auth/guest";
         /// <summary>Firebase 로그인 (POST, 본문 <see cref="ExternalSignInRequest"/>): 서버가 ID 토큰을 확인하고 계정 토큰을 준다. 설정이 없으면 404.</summary>
         public const string FirebaseSignIn = "/v1/auth/firebase";
+        /// <summary>지금 계정(게스트)에 구글(Firebase) 로그인을 붙인다 (R-105): 계정 번호 · 진행 그대로.</summary>
+        public const string LinkFirebase = "/v1/me/link/firebase";
         public const string Time = "/v1/time";
         public const string Games = "/v1/games";
         public const string MyGames = "/v1/me/games";
@@ -98,6 +100,25 @@ namespace Game.Online
         public bool IsMaster { get; set; }
         /// <summary>삭제 요청 중이던 계정이 다시 들어와 삭제가 취소되었다 (R-102).</summary>
         public bool DeletionCancelled { get; set; }
+        /// <summary>외부 로그인(구글 등)이 붙어 있다 (R-105). false = 게스트 (이 기기에만 묶임).</summary>
+        public bool Linked { get; set; }
+    }
+
+    /// <summary>구글 연동 결과 (R-105).</summary>
+    public sealed class LinkResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary>LinkReasons.</summary>
+        public string Reason { get; set; }
+    }
+
+    public static class LinkReasons
+    {
+        public const string Ok = "ok";
+        /// <summary>그 구글 계정은 이미 다른 계정(다른 진행)에 붙어 있다 — 연동하지 않는다 (진행이 섞이지 않게).</summary>
+        public const string Taken = "taken";
+        /// <summary>이 계정에는 이미 다른 구글 계정이 붙어 있다.</summary>
+        public const string AlreadyLinked = "alreadyLinked";
     }
 
     /// <summary>계정 삭제 (15 시안, R-102): 요청하면 유예 뒤 영구 삭제, 유예 안에 다시 로그인하면 취소.</summary>
@@ -766,6 +787,8 @@ namespace Game.Online
         void SetNickname(string nickname, Action<NicknameResponse> done);
         /// <summary>계정 삭제 요청 (R-102). 닿지 않으면 null.</summary>
         void DeleteAccount(Action<DeleteAccountResponse> done);
+        /// <summary>지금 계정에 구글(Firebase ID 토큰)을 붙인다 (R-105). 닿지 않으면 null.</summary>
+        void LinkFirebase(string idToken, Action<LinkResponse> done);
         /// <summary>계정 id들 → 닉네임.</summary>
         void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done);
 
@@ -805,6 +828,7 @@ namespace Game.Online
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
         public void DeleteAccount(Action<DeleteAccountResponse> done) => done?.Invoke(null);
+        public void LinkFirebase(string idToken, Action<LinkResponse> done) => done?.Invoke(null);
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);

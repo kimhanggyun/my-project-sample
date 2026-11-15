@@ -128,17 +128,52 @@ namespace Game.Unity.Screens
         {
             var card = Section(body, "account");
             string method = Ctx.StartupRecord?.SignInMethod ?? "guest";
-            var signIn = Line(card, method == "google" ? "G" : method == "apple" ? "A" : "客", T("ui.signIn.method." + method));
-            Ui.Size(Ui.Tag(signIn, method == "guest" ? T("ui.settings.guest") : T("ui.settings.linked"), method == "guest" ? Palette.TextDim : Palette.Good, 20, 44), width: 160);
+            bool guest = Ctx.IsGuestAccount;
+            var signIn = Line(card, guest ? "客" : method == "apple" ? "A" : "G", T(guest ? "ui.signIn.method.guest" : "ui.signIn.method." + (method == "guest" ? "google" : method)), guest ? T("ui.settings.guestNote") : null);
+            Ui.Size(Ui.Tag(signIn, guest ? T("ui.settings.guest") : T("ui.settings.linked"), guest ? Palette.TextDim : Palette.Good, 20, 44), width: 160);
+            if (guest && Ctx.OnlineEnabled)
+            {
+                // 구글 연동 (R-105): 기기를 바꾸거나 앱을 지워도 이어서 할 수 있게 (추천)
+                var link = Line(card, "連", T("ui.settings.linkGoogle"), T("ui.settings.linkGoogleSub"), Palette.Good);
+                Arrow(link, T("ui.settings.recommend"), LinkGoogle);
+            }
             if (Ctx.OnlineEnabled && Ctx.AccountId != null)
             {
                 var id = Line(card, "番", T("ui.settings.accountId"), Ctx.AccountId);
                 Arrow(id, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Ctx.AccountId; App.Show(new SettingsScreen(T("ui.settings.copied"))); });
             }
             var logout = Line(card, "出", T("ui.settings.logout"));
-            Arrow(logout, "›", () => Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutBody"), T("ui.settings.logout"), () => { Ctx.SignOut(); App.Reboot(); }, (T("ui.common.cancel"), () => { })));
+            Arrow(logout, "›", ConfirmLogout);
             var del = Line(card, "削", T("ui.settings.deleteAccount"), T("ui.settings.irreversible"), Palette.Bad);
             Arrow(del, "›", DeleteDialog, Ctx.OnlineEnabled);
+        }
+
+        /// <summary>
+        /// 로그아웃 (R-105): 게스트는 경고 + 구글 연동 추천 ("이 기기에만 저장돼 다시 찾을 수 없음"), 연동된 계정은 확인만.
+        /// 로그아웃하면 이 기기의 계정 · 세이브를 지우고 처음 화면으로.
+        /// </summary>
+        private void ConfirmLogout()
+        {
+            if (Ctx.IsGuestAccount && Ctx.OnlineEnabled)
+                Ui.Confirm(Root, T("ui.settings.guestLogoutTitle"), T("ui.settings.guestLogoutBody"), T("ui.settings.linkGoogleFirst"), LinkGoogle,
+                    (T("ui.settings.logoutAnyway"), () => DoLogout(false)), (T("ui.common.cancel"), () => { }));
+            else
+                Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutBody"), T("ui.settings.logout"), () => DoLogout(false), (T("ui.common.cancel"), () => { }));
+        }
+
+        private void DoLogout(bool force)
+        {
+            Ctx.LogOut(force, ok =>
+            {
+                if (ok) { App.Reboot(); return; }
+                // 올리지 못한 기록이 있다: 그래도 지울지 묻는다
+                Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutPending"), T("ui.settings.logoutAnyway"), () => DoLogout(true), (T("ui.common.cancel"), () => { }));
+            });
+        }
+
+        private void LinkGoogle()
+        {
+            Ctx.LinkGoogle(reason => App.Show(new SettingsScreen(T("ui.settings.link." + reason))));
         }
 
         /// <summary>계정 삭제 확인 창: 사라지는 것 · 7일 유예 · "삭제"를 입력해야 [삭제] 켜짐 (R-102).</summary>
@@ -169,8 +204,7 @@ namespace Game.Unity.Screens
                 Ctx.RequestAccountDeletion(r =>
                 {
                     if (r == null || !r.Ok) { App.Show(new SettingsScreen(T("ui.hire.failed"))); return; }
-                    Ctx.SignOut();
-                    App.Reboot();
+                    Ctx.LogOut(true, _ => App.Reboot()); // 토큰까지 지워야 다시 시작할 때 /me가 삭제를 취소하지 않는다 (7일 안에 직접 로그인해야 취소)
                 });
             }, 96, Palette.Danger, 28);
             Ui.SetEnabled(go, false);

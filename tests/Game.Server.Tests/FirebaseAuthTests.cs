@@ -98,6 +98,36 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.OK, (await c.GetAsync(OnlineRoutes.Me)).StatusCode); // 받은 토큰으로 다른 API
         }
 
+        [Fact(DisplayName = "R-105 구글 연동: 게스트 계정에 붙이면 계정 번호 그대로 · 다음 구글 로그인도 그 계정, 이미 다른 계정의 구글이면 409 taken, 이미 연동한 계정에 다른 구글이면 alreadyLinked")]
+        public async Task LinkGuestToGoogle()
+        {
+            using var f = new WithFirebase();
+            var c = f.CreateClient();
+            var guest = OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.GuestSignIn, null)).Content.ReadAsStringAsync());
+            async Task<HttpResponseMessage> Send(HttpMethod m, string path, string token, object body = null)
+            {
+                var req = new HttpRequestMessage(m, path) { Content = body == null ? null : Body(body) };
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                return await c.SendAsync(req);
+            }
+            Assert.False(OnlineJson.Read<ProfileResponse>(await (await Send(HttpMethod.Get, OnlineRoutes.Me, guest.Token)).Content.ReadAsStringAsync()).Linked);
+            var link = await Send(HttpMethod.Post, OnlineRoutes.LinkFirebase, guest.Token, new ExternalSignInRequest { IdToken = Token("userLink") });
+            Assert.Equal(HttpStatusCode.OK, link.StatusCode);
+            Assert.True(OnlineJson.Read<ProfileResponse>(await (await Send(HttpMethod.Get, OnlineRoutes.Me, guest.Token)).Content.ReadAsStringAsync()).Linked);
+            var signIn = OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.FirebaseSignIn, Body(new ExternalSignInRequest { IdToken = Token("userLink") }))).Content.ReadAsStringAsync());
+            Assert.Equal(guest.AccountId, signIn.AccountId); // 연동한 구글로 다른 기기에서도 같은 계정
+
+            var other = await c.PostAsync(OnlineRoutes.FirebaseSignIn, Body(new ExternalSignInRequest { IdToken = Token("userHas") }));
+            Assert.Equal(HttpStatusCode.OK, other.StatusCode); // userHas는 이미 자기 계정이 있다
+            var guest2 = OnlineJson.Read<SignInResponse>(await (await c.PostAsync(OnlineRoutes.GuestSignIn, null)).Content.ReadAsStringAsync());
+            var taken = await Send(HttpMethod.Post, OnlineRoutes.LinkFirebase, guest2.Token, new ExternalSignInRequest { IdToken = Token("userHas") });
+            Assert.Equal(HttpStatusCode.Conflict, taken.StatusCode);
+            Assert.Equal(LinkReasons.Taken, OnlineJson.Read<LinkResponse>(await taken.Content.ReadAsStringAsync()).Reason);
+            var again = await Send(HttpMethod.Post, OnlineRoutes.LinkFirebase, guest.Token, new ExternalSignInRequest { IdToken = Token("userNew") });
+            Assert.Equal(LinkReasons.AlreadyLinked, OnlineJson.Read<LinkResponse>(await again.Content.ReadAsStringAsync()).Reason);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Send(HttpMethod.Post, OnlineRoutes.LinkFirebase, guest2.Token, new ExternalSignInRequest { IdToken = Token(aud: "x") })).StatusCode);
+        }
+
         [Fact(DisplayName = "R-86 토큰의 이메일: 확인된(email_verified) 이메일만 소문자로, 확인 안 됐으면 무시")]
         public void ReadsVerifiedEmail()
         {

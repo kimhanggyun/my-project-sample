@@ -64,7 +64,22 @@ app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
 app.MapGet(OnlineRoutes.Me, (HttpRequest req, IPlatformStore p, MasterAccounts masters) =>
 {
     p.PurgeDeleted(Now());
-    return Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id), DeletionCancelled = p.CancelDeletion(id) }));
+    return Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id), DeletionCancelled = p.CancelDeletion(id), Linked = p.IsLinked(id) }));
+});
+// 구글 연동 (R-105): 게스트 계정에 구글을 붙인다. 그 구글이 이미 다른 계정 것이면 409 taken (진행을 섞지 않는다)
+app.MapPost(OnlineRoutes.LinkFirebase, async (HttpRequest req, IPlatformStore p, IServiceProvider sp) =>
+{
+    var verifier = sp.GetService<IExternalTokenVerifier>();
+    if (verifier == null) return Results.NotFound();
+    var body = await Body<ExternalSignInRequest>(req);
+    return Authed(req, p, id =>
+    {
+        var who = verifier.Verify(body?.IdToken, Now());
+        if (who == null) return Results.Unauthorized();
+        string reason = p.LinkExternal(id, who.Provider, who.Subject, who.Email);
+        var res = new LinkResponse { Ok = reason == LinkReasons.Ok, Reason = reason };
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status409Conflict);
+    });
 });
 app.MapPost(OnlineRoutes.MyDelete, (HttpRequest req, IPlatformStore p) =>
     Authed(req, p, id => Json(new DeleteAccountResponse { Ok = true, PurgeAtUnixSeconds = p.RequestDeletion(id, Now()) })));

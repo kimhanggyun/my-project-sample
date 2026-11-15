@@ -460,6 +460,10 @@ namespace Game.Flow
             done?.Invoke(new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n });
         }
 
+        /// <summary>가짜 서버: 계정이 하나라 연동은 늘 된 것으로 (R-105 흐름 확인용).</summary>
+        public void LinkFirebase(string idToken, Action<LinkResponse> done) =>
+            done?.Invoke(new LinkResponse { Ok = idToken != null, Reason = idToken != null ? LinkReasons.Ok : LinkReasons.Taken });
+
         /// <summary>가짜 서버: 삭제 요청만 받아 둔다 (유예 · 영구 삭제는 진짜 서버, R-102).</summary>
         public void DeleteAccount(Action<DeleteAccountResponse> done) =>
             done?.Invoke(new DeleteAccountResponse { Ok = true, PurgeAtUnixSeconds = _time.UtcNow.ToUnixTimeSeconds() + AccountDeletion.GraceSeconds });
