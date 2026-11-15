@@ -63,3 +63,6 @@
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 폰 오른쪽 잘림(세로로 긴 화면은 너비 맞춤), 이미 진행이 있는 구글로 연동하면 그 계정으로 바꾸기
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 공통 타이틀(Ui.TitleBar · NoTitle · TitledPage)로 화면 정리, 아래 [뒤로] 제거, 편성 빼기 = 그림 위 −, 카드별 자동 편성(AutoFillCorps), 장수 카드 ◀ ▶ 좌우, 장수 탭 [모집] → 모집 탭 · [도감]
 - 2026-11-15 [데스크탑] desktop/phone-fixes — 영토 지도 바탕: Natural Earth 1:10m 육지 · 호수 · 강 타일(data/Territory/geo, tools/naturalearth_tiles.js) + GeoTiles + 지도 그림
+- 2026-11-15 [데스크탑] desktop/phone-fixes — 전투 명령 줄: 하위 명령은 카테고리 줄 위, 근접 공격(R-107) · 지명 공격, 경로 끌어 그리기(그동안 지도 고정), 위임 켜면 바로 AI 지휘(R-106)
+- 2026-11-15 [데스크탑] desktop/phone-fixes — 병사 = 가는 실루엣(시안 C, 코드 인형) + 병종 그림 다시 그림(tools/troop_pictures.js), 지도 바탕 색 구분 · 캡처 08b/08c
+- 2026-11-15 [데스크탑] desktop/phone-fixes — 치장 설계 초안(cosmetics.md: 갑옷 한 벌 · 말 색, 첫 목록), 구매 정책 세 단(결제 전용 · 금괴 · 엽전) · 교환, 재화 이름 곡식 · 엽전 · 금괴 + 아이콘(tools/resource_icons.js)
