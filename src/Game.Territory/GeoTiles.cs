@@ -10,6 +10,21 @@ namespace Game.Territory
         public List<int[]> Land { get; } = new List<int[]>();
         public List<int[]> Lake { get; } = new List<int[]>();
         public List<int[]> River { get; } = new List<int[]>();
+        /// <summary>세부 층 (tools/naturalearth_detail.js, 한국 근처 칸만): 시도 경계 선 · 큰 도로 · 그 밖 도로 · 도시 지역 고리 · 도시 이름.</summary>
+        public List<int[]> Admin1 { get; } = new List<int[]>();
+        public List<int[]> Road { get; } = new List<int[]>();
+        public List<int[]> Road2 { get; } = new List<int[]>();
+        public List<int[]> Urban { get; } = new List<int[]>();
+        public List<GeoPlace> Places { get; } = new List<GeoPlace>();
+    }
+
+    /// <summary>도시 이름 점: 위치(1e-4도), 등급(0 큰 도시 ~ 10 작은), 이름 (Natural Earth, 로마자).</summary>
+    public sealed class GeoPlace
+    {
+        public int Lon { get; internal set; }
+        public int Lat { get; internal set; }
+        public int Rank { get; internal set; }
+        public string Name { get; internal set; }
     }
 
     /// <summary>
@@ -41,6 +56,14 @@ namespace Game.Territory
             Read(o["land"] as JArray, t.Land);
             Read(o["lake"] as JArray, t.Lake);
             Read(o["river"] as JArray, t.River);
+            Read(o["admin1"] as JArray, t.Admin1);
+            Read(o["road"] as JArray, t.Road);
+            Read(o["road2"] as JArray, t.Road2);
+            Read(o["urban"] as JArray, t.Urban);
+            if (o["place"] is JArray places)
+                foreach (var p in places)
+                    if (p is JArray a && a.Count >= 4)
+                        t.Places.Add(new GeoPlace { Lon = a[0].Value<int>(), Lat = a[1].Value<int>(), Rank = a[2].Value<int>(), Name = a[3].Value<string>() });
             return t;
         }
 
