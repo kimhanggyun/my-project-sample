@@ -82,6 +82,9 @@ namespace Game.Unity.Boot
                 yield return Shot("18_battle_start", () => battle, 0.5f); // 승패 조건 카드
                 battle.CloseConditionsForTour();
                 yield return Shot("18b_battle_plan", null, 0.3f); // 멈춘 채 작전 시간 (명령 줄)
+                battle.OpenMenuForTour("attack");
+                yield return Shot("18c_battle_attack", null, 0.3f); // 공격 › 하위 명령 (흰 동그라미)
+                battle.OpenMenuForTour("root");
                 battle.BeginBattleForTour();
                 yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더 (진행 중)
                 Game.Unity.UI.GuideOverlay.Suppressed = false;

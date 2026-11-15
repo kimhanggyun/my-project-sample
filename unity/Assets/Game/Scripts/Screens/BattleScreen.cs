@@ -1470,6 +1470,15 @@ namespace Game.Unity.Screens
             _dirty = true;
         }
 
+        /// <summary>캡처 도구 (ScreenTour): 첫 군단을 고르고 명령 카테고리를 연다 (하위 명령 줄 보기).</summary>
+        public void OpenMenuForTour(string menu)
+        {
+            var own = _ctl.OwnCorps();
+            if (own.Count > 0) SelectOnly(own[0]);
+            _cmdMenu = menu;
+            _dirty = true;
+        }
+
         /// <summary>캡처 도구 (ScreenTour): 작전 시간을 끝내고 전투를 진행.</summary>
         public void BeginBattleForTour()
         {
