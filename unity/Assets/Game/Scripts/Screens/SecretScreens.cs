@@ -73,6 +73,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(top, T("ui.codex.head"), Ui.FontTitle - 6), flexibleWidth: 1);
             bool sec = _tab == "secrets";
             Ring(top, sec ? found : owned, sec ? codex.Count : gens.Count);
+            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T(sec ? "ui.codex.note" : "ui.codex.noteGenerals"));
             Ui.SegmentTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets")), ("generals", T("ui.codex.tab.generals")) }, _tab, id => { _tab = id; App.Show(new CodexScreen()); }, 70, 500);
 

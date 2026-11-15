@@ -37,6 +37,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(nav, (at + 1) + " / " + gs.Count, 22, TextAnchor.MiddleRight, Palette.TextDim), flexibleWidth: 1);
             Ui.Size(Ui.Button(nav, "◀", () => App.Show(new GeneralScreen(gs[(at - 1 + gs.Count) % gs.Count].GeneralId)), 84, fontSize: 30), width: 110);
             Ui.Size(Ui.Button(nav, "▶", () => App.Show(new GeneralScreen(gs[(at + 1) % gs.Count].GeneralId)), 84, fontSize: 30), width: 110);
+            Ui.Size(Ui.Rect(nav, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
 
             var who = Ui.Row(header, "Who", 200, 18);
             var pic = Ui.Rect(who, "Portrait");

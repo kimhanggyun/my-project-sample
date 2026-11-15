@@ -21,6 +21,7 @@ namespace Game.Unity.UI
         {
             Rect = Ui.Rect(parent, "Portrait");
             Ui.Size(Rect, size, size);
+            if (parent.GetComponent<LayoutGroup>() == null) Ui.Fill(Rect); // 레이아웃 없는 자리: 그 자리를 채운다 (크기가 기본 100으로 남던 것)
             _back = Ui.Background(Rect, Palette.Card);
             _back.sprite = UiShapes.Circle;
             _picture = Ui.Background(Ui.Rect(Rect, "Picture"), Color.white);

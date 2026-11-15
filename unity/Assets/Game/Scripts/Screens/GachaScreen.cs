@@ -43,6 +43,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(top, "‹", Back, 84, fontSize: 40), width: 90);
             Ui.Size(Ui.Label(top, T(_mode == Mode.Result ? "ui.gacha.result" : _mode == Mode.Rates ? "ui.gacha.ratesHead" : "ui.gacha.title"), Ui.FontTitle - 6), flexibleWidth: 1);
             Ui.Size(Ui.ResourceChip(Ctx, top, b.Currency, Ctx.Resource(b.Currency), () => App.ShowMain("shop"), 74), width: 280);
+            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T("ui.gacha.note"));
             if (_notice != null) Ui.Label(header, Ui.Colored(_notice, Palette.Bad), 24);
 

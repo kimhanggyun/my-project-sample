@@ -278,7 +278,7 @@ namespace Game.Unity.UI
         public static RectTransform Tag(Transform parent, string text, Color color, int fontSize = 26, float height = 48)
         {
             var line = Rect(parent, "TagLine");
-            Size(line, height);
+            Size(line, height).flexibleHeight = 0; // 안의 레이아웃이 세로로 늘어나겠다고 알려 묶음에서 키가 커지던 것 (캡처 2026-11-15)
             var lh = line.gameObject.AddComponent<HorizontalLayoutGroup>();
             lh.childControlWidth = lh.childControlHeight = true;
             lh.childForceExpandWidth = false;

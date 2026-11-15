@@ -216,6 +216,8 @@ namespace Game.Unity.UI
         public static RectTransform Gauge(Transform parent, Color color, float height)
         {
             var back = Rect(parent, "Gauge");
+            var row = parent.GetComponent<HorizontalLayoutGroup>();
+            if (row != null) { row.childForceExpandHeight = false; row.childAlignment = TextAnchor.MiddleLeft; } // 줄 높이로 늘지 않게
             Background(back, Palette.IsLight ? new Color(0.17f, 0.15f, 0.12f, 0.25f) : new Color(0f, 0f, 0f, 0.5f)).raycastTarget = false;
             Size(back, height);
             var fill = Rect(back, "Fill");

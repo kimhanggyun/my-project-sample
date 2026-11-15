@@ -32,6 +32,7 @@ namespace Game.Unity.Screens
             Ui.Size(bar.parent, width: 240);
             Ui.SetGauge(bar, max <= 0 ? 0f : Mathf.Clamp01((float)n / max));
             Ui.Size(Ui.Label(top, n + " / " + max, 24, TextAnchor.MiddleRight), width: 110);
+            Ui.Size(Ui.Rect(top, "InfoGap"), width: 70); // 오른쪽 위 ⓘ 자리
             InfoButton.Add(Root, T("ui.replay.note"));
             if (!Ctx.OnlineEnabled) _tab = "mine";
             if (Ctx.OnlineEnabled)
