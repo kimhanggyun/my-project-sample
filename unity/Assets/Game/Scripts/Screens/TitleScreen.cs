@@ -42,14 +42,30 @@ namespace Game.Unity.Screens
             if (Ctx.OnlineEnabled)
             {
                 status.text = T("ui.online.connecting");
-                Ctx.StartSync(() =>
+                Button retry = null;
+                void Synced()
                 {
                     if (status == null || start == null) return; // 동기화가 끝났을 때 타이틀이 이미 닫혔으면 무시 (Unity: 파괴된 객체는 == null)
                     status.text = T("ui.online." + Ctx.OnlineStatus);
                     _ready = true;
                     Ui.SetPrimaryEnabled(start, true);
+                    if (Ctx.OnlineStatus == Game.Unity.Boot.GameContext.SignInFailedStatus)
+                    {
+                        // 구글 자동 로그인 실패: 게스트로 들어가지 않고, 다시 시도하거나 이 기기 세이브로 (오프라인) 시작
+                        if (retry == null)
+                            retry = Ui.SecondaryButton(bottom, T("ui.online.retrySignIn"), () =>
+                            {
+                                status.text = T("ui.online.connecting");
+                                _ready = false;
+                                Ui.SetPrimaryEnabled(start, false);
+                                Ctx.RetrySignIn(Synced);
+                            }, 110);
+                        return;
+                    }
+                    if (retry != null) { Object.Destroy(retry.gameObject); retry = null; }
                     Ctx.LoadProfile(null); // 마스터 계정인지 (R-86, 개발 줄 탭)
-                });
+                }
+                Ctx.StartSync(Synced);
             }
         }
 
