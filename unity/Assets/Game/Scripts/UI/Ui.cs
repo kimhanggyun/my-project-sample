@@ -115,7 +115,14 @@ namespace Game.Unity.UI
             var le = c.GetComponent<LayoutElement>();
             if (le == null) le = c.gameObject.AddComponent<LayoutElement>();
             if (height > 0) { le.minHeight = height; le.preferredHeight = height; }
-            if (width > 0) { le.minWidth = width; le.preferredWidth = width; }
+            if (width > 0)
+            {
+                le.minWidth = width;
+                le.preferredWidth = width;
+                // 정한 너비 그대로 (줄의 남는 너비를 나눠 받지 않게): 그 줄은 FixedSizeLayout으로
+                if (flexibleWidth <= 0) le.flexibleWidth = 0;
+                FixedSizeLayout.Attach(c.transform.parent);
+            }
             if (flexibleHeight > 0) le.flexibleHeight = flexibleHeight;
             if (flexibleWidth > 0) le.flexibleWidth = flexibleWidth;
             return le;

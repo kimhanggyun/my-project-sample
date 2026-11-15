@@ -127,6 +127,7 @@ namespace Game.Unity.Screens
         private string _lureTarget;
         private readonly List<Vec> _path = new List<Vec>();
         private bool _planning;
+        private RectTransform _condDim;
         private Button _advanceAllButton;
         private readonly Dictionary<CorpsState, (RectTransform troop, RectTransform morale, Text lost, Outline outline)> _cardGauges = new Dictionary<CorpsState, (RectTransform, RectTransform, Text, Outline)>();
 
@@ -1388,6 +1389,7 @@ namespace Game.Unity.Screens
         {
             var ctx = _sim.Context;
             var dim = Ui.Rect(Root, "CondDim");
+            _condDim = dim;
             dim.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             Ui.Fill(dim);
             Ui.Background(dim, new Color(0f, 0f, 0f, 0.55f));
@@ -1438,6 +1440,21 @@ namespace Game.Unity.Screens
             card.GetComponent<Image>().color = back;
             Ui.Label(card, Ui.Colored(head, accent), 30);
             foreach (var l in lines) Ui.Label(card, "· " + l, 26, TextAnchor.MiddleLeft, Palette.Text);
+        }
+
+        /// <summary>캡처 도구 (ScreenTour): 승패 조건 카드를 닫고 작전 시간 화면으로.</summary>
+        public void CloseConditionsForTour()
+        {
+            if (_condDim != null) Object.Destroy(_condDim.gameObject);
+            _condDim = null;
+            _dirty = true;
+        }
+
+        /// <summary>캡처 도구 (ScreenTour): 작전 시간을 끝내고 전투를 진행.</summary>
+        public void BeginBattleForTour()
+        {
+            CloseConditionsForTour();
+            if (_planning) StartBattle();
         }
 
         /// <summary>작전 시간 끝 → 전투 시작 (멈춤 풀기).</summary>

@@ -29,8 +29,8 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(top, T("ui.replay.head"), Ui.FontTitle - 6), flexibleWidth: 1);
             int n = Ctx.Replays.Items.Count, max = Ctx.ReplayRules.MaxSaved;
             var bar = Ui.Gauge(top, Palette.Ally, 24);
-            Ui.Size(bar, width: 240);
-            Ui.SetGauge((RectTransform)bar.GetChild(0), max <= 0 ? 0f : Mathf.Clamp01((float)n / max));
+            Ui.Size(bar.parent, width: 240);
+            Ui.SetGauge(bar, max <= 0 ? 0f : Mathf.Clamp01((float)n / max));
             Ui.Size(Ui.Label(top, n + " / " + max, 24, TextAnchor.MiddleRight), width: 110);
             InfoButton.Add(Root, T("ui.replay.note"));
             if (!Ctx.OnlineEnabled) _tab = "mine";

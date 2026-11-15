@@ -210,8 +210,8 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(row, name, 26), width: 140);
             Ui.Size(Ui.Button(row, "−", () => { set(value - 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             var g = Ui.Gauge(row, Palette.Ally, 22);
-            Ui.Size(g, flexibleWidth: 1);
-            Ui.SetGauge((RectTransform)g.GetChild(0), value / 100f);
+            Ui.Size(g.parent, flexibleWidth: 1);
+            Ui.SetGauge(g, value / 100f);
             Ui.Size(Ui.Button(row, "+", () => { set(value + 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             Ui.Size(Ui.Label(row, value.ToString(), 24, TextAnchor.MiddleRight), width: 60);
         }

@@ -206,8 +206,8 @@ namespace Game.Unity.Screens
             var row = Ui.Row(card, "Bar", 52, 10);
             Ui.Size(Ui.Label(row, Ui.Colored(mine.ToString("N0"), Palette.Ally), 28), width: 170);
             var g = Ui.Gauge(row, Palette.Ally, 26);
-            Ui.Size(g, flexibleWidth: 1);
-            Ui.SetGauge((RectTransform)g.GetChild(0), mine + enemy <= 0 ? 0.5f : (float)mine / (mine + enemy));
+            Ui.Size(g.parent, flexibleWidth: 1);
+            Ui.SetGauge(g, mine + enemy <= 0 ? 0.5f : (float)mine / (mine + enemy));
             Ui.Size(Ui.Label(row, Ui.Colored("~" + SortieAdvice.Rough(enemy).ToString("N0"), Palette.Enemy), 28, TextAnchor.MiddleRight), width: 170);
         }
 
@@ -568,6 +568,7 @@ namespace Game.Unity.Screens
             var group = slot.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             pic = new Portrait(slot, 440);
+            Ui.Fill(pic.Rect); // 레이아웃 없는 자리라 크기를 직접
             return group;
         }
 

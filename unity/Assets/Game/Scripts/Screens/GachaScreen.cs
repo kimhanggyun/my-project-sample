@@ -69,7 +69,7 @@ namespace Game.Unity.Screens
             var pool = new List<string>(b.Pool);
             pool.Sort((x, y) => Rank(y).CompareTo(Rank(x)));
             var art = Ui.Card(body, "Banner", 16, 8);
-            Ui.Round(Ui.Background(art, new Color(0.16f, 0.15f, 0.14f)));
+            art.GetComponent<Image>().color = new Color(0.16f, 0.15f, 0.14f);
             var faces = Ui.Row(art, "Faces", 300, 16);
             Ui.Spacer(faces, 0, 1);
             int[] order = { 1, 0, 2 };
@@ -98,8 +98,8 @@ namespace Game.Unity.Screens
                 Ctx.State.GachaPity.TryGetValue(b.Id, out int since);
                 Ui.Size(Ui.Label(pity, Ui.Colored("★", GradeLabel.ColorOf(b.PityGrade)), 40, TextAnchor.MiddleCenter), width: 50);
                 var gauge = Ui.Gauge(pity, GradeLabel.ColorOf(b.PityGrade), 24);
-                Ui.Size(gauge, flexibleWidth: 1);
-                Ui.SetGauge((RectTransform)gauge.GetChild(0), b.PityCount <= 0 ? 0f : Mathf.Clamp01((float)since / b.PityCount));
+                Ui.Size(gauge.parent, flexibleWidth: 1);
+                Ui.SetGauge(gauge, b.PityCount <= 0 ? 0f : Mathf.Clamp01((float)since / b.PityCount));
                 Ui.Size(Ui.Label(pity, since + " / " + b.PityCount, 24, TextAnchor.MiddleRight), width: 140);
             }
 
@@ -125,7 +125,7 @@ namespace Game.Unity.Screens
                 long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
                 int left = GachaService.FreeLeft(Ctx.State, b, now);
                 var free = Ui.Card(body, "Free", 14, 4);
-                Ui.Round(Ui.Background(free, new Color(0.88f, 0.94f, 0.86f)));
+                free.GetComponent<Image>().color = new Color(0.88f, 0.94f, 0.86f);
                 var row = Ui.Row(free, "Row", 70, 10);
                 Ui.Size(Ui.Label(row, "▶", 34, TextAnchor.MiddleCenter, Palette.Good), width: 50);
                 string sub = left > 0 ? T(AdFree(now) ? "ui.gacha.freeNoteNoAd" : "ui.gacha.freeNote") : T("ui.gacha.freeNext", Until(now));
@@ -193,13 +193,14 @@ namespace Game.Unity.Screens
                     if (!_open[at])
                     {
                         var back = Ui.Button(line, "?", () => Flip(at), 400, new Color(0.18f, 0.17f, 0.16f), 72);
+                        Ui.Size(back, 400, 180, -1, 1);
                         var outline = back.gameObject.AddComponent<Outline>();
                         outline.effectColor = color;
                         outline.effectDistance = new Vector2(6, -6);
                         continue;
                     }
                     var card = Ui.Card(line, "Card" + i, 8, 4);
-                    Ui.Size(card, 400, -1, -1, 1);
+                    Ui.Size(card, 400, 180, -1, 1);
                     card.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
                     var outl = card.gameObject.AddComponent<Outline>();
                     outl.effectColor = color;
@@ -266,8 +267,8 @@ namespace Game.Unity.Screens
                 var row = Ui.Row(grades, gr.Id, 44, 10);
                 Ui.Size(Ui.Tag(row, T("grade." + gr.Id), GradeLabel.ColorOf(gr.Id), 20, 40), width: 120);
                 var gauge = Ui.Gauge(row, GradeLabel.ColorOf(gr.Id), 20);
-                Ui.Size(gauge, flexibleWidth: 1);
-                Ui.SetGauge((RectTransform)gauge.GetChild(0), gr.Rate.Raw / 10000f);
+                Ui.Size(gauge.parent, flexibleWidth: 1);
+                Ui.SetGauge(gauge, gr.Rate.Raw / 10000f);
                 Ui.Size(Ui.Label(row, Percent(gr.Rate.Raw) + "%  ×" + n, 22, TextAnchor.MiddleRight), width: 200);
             }
             var table = Ui.Card(body, "Generals", 16, 4);

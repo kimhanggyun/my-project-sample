@@ -52,7 +52,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Tag(tags, "Lv." + g.Level, new Color(0.16f, 0.13f, 0.1f), 22, 40), width: 120);
             long need = Ctx.Defs.Levels.ExpToNext(g.Level);
             var exp = Ui.Gauge(id, Palette.Ally, 22);
-            Ui.SetGauge((RectTransform)exp.GetChild(0), need <= 0 ? 1f : Mathf.Clamp01((float)g.Exp / need));
+            Ui.SetGauge(exp, need <= 0 ? 1f : Mathf.Clamp01((float)g.Exp / need));
             Ui.Label(id, g.Exp.ToString("N0") + " / " + need.ToString("N0") + "   " + T("ui.generals." + g.Status), 22, TextAnchor.MiddleLeft, Palette.TextDim);
 
             // 능력치 타일 (아이콘 + 큰 숫자 + 레벨마다 성장)

@@ -140,7 +140,7 @@ namespace Game.Unity.Screens
                 col++;
                 var def = defs[i];
                 var tile = Ui.Card(row, def.Id, 12, 4);
-                Ui.Size(tile, 340, -1, -1, 1);
+                Ui.Size(tile, 340, 300, -1, 1);
                 tile.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
                 Ui.Label(tile, Ui.Colored(CatIcon(e.Category), Palette.TextDim), 22, TextAnchor.MiddleLeft).font = Ui.TitleFont;
                 var stamp = Ui.Rect(tile, "Stamp");
@@ -167,7 +167,7 @@ namespace Game.Unity.Screens
                     tile.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new CodexScreen(open ? null : id)));
                 }
             }
-            if (row != null) for (; col % 3 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 340, -1, -1, 1);
+            if (row != null) for (; col % 3 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 340, 300, -1, 1);
             if (_cat == "all" || _cat == "land" || _cat == "merc")
             {
                 var later = Ui.Card(body, "Later", 16, 4);
@@ -231,7 +231,7 @@ namespace Game.Unity.Screens
                 col++;
                 var color = GradeLabel.ColorOf(g.Grade);
                 var card = Ui.Card(row, g.GeneralId, 8, 4);
-                Ui.Size(card, 330, -1, -1, 1);
+                Ui.Size(card, 330, 220, -1, 1);
                 card.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
                 var outline = card.gameObject.AddComponent<Outline>();
                 outline.effectColor = color;
@@ -254,7 +254,7 @@ namespace Game.Unity.Screens
                     card.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new GeneralScreen(gid)));
                 }
             }
-            if (row != null) for (; col % 4 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 330, -1, -1, 1);
+            if (row != null) for (; col % 4 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 330, 220, -1, 1);
             var more = Ui.Card(body, "More", 16, 6);
             Ui.Label(more, T("ui.codex.missing"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Button(more, T("ui.codex.toGacha"), () => App.Show(new GachaScreen()), 76, fontSize: 26);

@@ -60,7 +60,11 @@ namespace Game.Unity.Boot
                 yield return Shot("17_dialogue", () => new DialogueScreen(plan, "dialogue." + plan.Step.Id + ".start"), 0f);
                 // 안내 팝업을 띄우지 않고 (전투가 멈추지 않게) 시작·진행 중을 찍는다. 세이브의 "본 안내"는 그대로
                 Game.Unity.UI.GuideOverlay.Suppressed = true;
-                yield return Shot("18_battle_start", () => new BattleScreen(plan), 0.5f);
+                var battle = new BattleScreen(plan);
+                yield return Shot("18_battle_start", () => battle, 0.5f); // 승패 조건 카드
+                battle.CloseConditionsForTour();
+                yield return Shot("18b_battle_plan", null, 0.3f); // 멈춘 채 작전 시간 (명령 줄)
+                battle.BeginBattleForTour();
                 yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더 (진행 중)
                 Game.Unity.UI.GuideOverlay.Suppressed = false;
                 Ctx.ClearSuspendedBattle();
