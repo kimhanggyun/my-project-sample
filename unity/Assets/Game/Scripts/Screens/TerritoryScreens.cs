@@ -36,7 +36,11 @@ namespace Game.Unity.Screens
         private static readonly long[] ViewMeters = { 4000, 8000, 20000, 60000, 200000, 600000, 1500000 };
         private static readonly long[] GridMeters = { 500, 1000, 2500, 5000, 20000, 50000, 100000 };
         private static int Mode => Zoom <= 1 ? 0 : Zoom <= 3 ? 1 : 2;
-        private const float MapHeight = 600f;
+        /// <summary>지도 높이: 탭 화면을 거의 다 쓴다 (2026-11-15 사용자: 지도를 늘리고 아래 칸 없앰). Build마다 화면 비율로 정한다.</summary>
+        private static float MapHeight = 600f;
+        /// <summary>내 연합 (없으면 null). 처음 한 번 서버에서 받아 둔다 — 없으면 좌상단에 [연합 가입].</summary>
+        internal static string MyAllianceId;
+        internal static bool AllianceChecked;
 
         private static readonly Color SealRed = new Color(0.79f, 0.34f, 0.25f);
         private static readonly Color AllyGreen = new Color(0.24f, 0.48f, 0.25f);
@@ -54,6 +58,15 @@ namespace Game.Unity.Screens
                 return;
             }
             var (header, body, _) = Ui.PageLayout(root, 0);
+            // 캔버스 높이 (너비 1080 맞춤) − 위 막대 · 아래 탭 두 줄 · 여백
+            float canvasH = Screen.width > 0 ? 1080f * Screen.height / Screen.width : 1920f;
+            if (canvasH < 1920f) canvasH = 1920f;
+            MapHeight = Mathf.Max(600f, canvasH - 110f - 104f - 72f - 40f);
+            if (!AllianceChecked && ctx.OnlineEnabled)
+            {
+                AllianceChecked = true;
+                ctx.LoadAlliances(r => { MyAllianceId = r?.MineId; if (root != null) app.ShowMain("territory"); });
+            }
 
             // 위치 확인 띠 없음 (2026-11-15 사용자): 위치는 깃발을 꽂거나 공격할 때만, 그때 동의를 받고 확인한다 (WithLocation)
             InfoButton.Add(root, ctx.T("ui.terr.note"));
@@ -117,8 +130,8 @@ namespace Game.Unity.Screens
             for (float x = -((widthPx / 2) - ((widthPx / 2) % step)); x <= widthPx / 2; x += step) Box(layer, new Vector2(x, 0), new Vector2(2, MapHeight), lineC);
             for (float y = -((MapHeight / 2) - ((MapHeight / 2) % step)); y <= MapHeight / 2; y += step) Box(layer, new Vector2(0, y), new Vector2(widthPx, 2), lineC);
 
-            string myAlliance = null;
-            if (Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId && o.OwnerAllianceId != null) myAlliance = o.OwnerAllianceId;
+            string myAlliance = MyAllianceId;
+            if (myAlliance == null && Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId && o.OwnerAllianceId != null) myAlliance = o.OwnerAllianceId;
             Color Rel(TerritoryOwner o) => o.OwnerAccountId == ctx.AccountId ? SealRed : myAlliance != null && o.OwnerAllianceId == myAlliance ? AllyGreen : OtherRed;
             bool Shown(TerritoryOwner o) => o.OwnerAccountId == ctx.AccountId ? ShowMine : myAlliance != null && o.OwnerAllianceId == myAlliance ? ShowAlly : ShowOthers;
 
@@ -213,24 +226,37 @@ namespace Game.Unity.Screens
             {
                 if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(layer, screen, null, out var lp)) return;
                 // 내 깃발을 눌렀나 (가까이 볼 때 깃발 표식 둘레)
+                var tapPoint = new GeoPoint(
+                    center.LatE6 + (long)(lp.y / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLat),
+                    center.LonE6 + (long)(lp.x / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLon));
                 if (Owners != null && Mode < 2)
+                {
+                    // 깃발 표식을 눌렀나 (남의 깃발 포함)
                     foreach (var o in Owners.Values)
                         if (Shown(o) && FlagDefs.TryParseKey(o.RegionId, out var fc) && (Pos(fc) - lp).sqrMagnitude <= 44f * 44f)
                         {
-                            if (o.OwnerAccountId == ctx.AccountId) OpenFlagSheet(app, root, o);
+                            if (o.OwnerAccountId == ctx.AccountId) OpenFlagSheet(app, root, o, Last != null && Last.Ok ? (GeoPoint?)tapPoint : null);
                             else OpenOtherFlagSheet(app, root, o, here, myAlliance != null && o.OwnerAllianceId == myAlliance);
                             return;
                         }
+                    // 내 깃발 원(땅) 안을 눌렀나 → 가장 가까운 내 깃발 판 (그 자리에 깃발 더 꽂기도, 2026-11-15 사용자)
+                    TerritoryOwner mine = null; float best = float.MaxValue;
+                    foreach (var o in Owners.Values)
+                    {
+                        if (o.OwnerAccountId != ctx.AccountId || !ShowMine || !FlagDefs.TryParseKey(o.RegionId, out var mc)) continue;
+                        float d2 = (Pos(mc) - lp).sqrMagnitude, r = o.RadiusM * ppm;
+                        if (d2 <= r * r && d2 < best) { best = d2; mine = o; }
+                    }
+                    if (mine != null) { OpenFlagSheet(app, root, mine, Last != null && Last.Ok ? (GeoPoint?)tapPoint : null); return; }
+                }
                 if (Last == null || !Last.Ok)
                 {
                     // 아직 위치를 모름: 동의 · 확인 → 내 위치로 지도를 옮기고 다시 누르게
                     WithLocation(app, root, ok => { Notice = ok ? ctx.T("ui.terr.located") : ctx.T("ui.territory.failed", Last?.Reason ?? "?"); if (root != null) app.ShowMain("territory"); });
                     return;
                 }
-                var target = new GeoPoint(
-                    center.LatE6 + (long)(lp.y / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLat),
-                    center.LonE6 + (long)(lp.x / ppm * GeoPoint.Scale / (double)flags.MetersPerDegreeLon));
-                if (!flags.Within(here, flags.CellOf(target), myRadius)) { Notice = ctx.T("ui.terr.plant.outOfRange"); app.ShowMain("territory"); return; }
+                var target = tapPoint;
+                if (!flags.Within(here, flags.CellOf(target), myRadius)) { Toast(map, ctx.T("ui.terr.plant.outOfRange")); return; }
                 OpenPlantSheet(app, root, here, target, myRadius);
             };
             gestures.Dragged += (a, b) =>
@@ -281,7 +307,18 @@ namespace Game.Unity.Screens
             }
             Filter(ctx.T("ui.terr.tab.near"), ShowOthers, OtherRed, () => ShowOthers = !ShowOthers);
             Filter(ctx.T("ui.terr.tab.mine"), ShowMine, SealRed, () => ShowMine = !ShowMine);
-            Filter(ctx.T("ui.terr.tab.ally"), ShowAlly, AllyGreen, () => ShowAlly = !ShowAlly);
+            if (myAlliance != null) Filter(ctx.T("ui.terr.tab.ally"), ShowAlly, AllyGreen, () => ShowAlly = !ShowAlly);
+            else
+            {
+                // 연합이 없으면 연합 체크 대신 [연합 가입] (연합 화면)
+                var join = Ui.Button(filters, ctx.T("ui.terr.joinAlliance"), () => { AllianceChecked = false; app.Show(new AllianceScreen()); }, 50, new Color(0.24f, 0.48f, 0.25f), 20);
+                join.GetComponentInChildren<Text>().color = Color.white;
+            }
+            if (ctx.Online is LocalOnlineService fakeSeed && Last != null && Last.Ok)
+            {
+                filters.sizeDelta = new Vector2(196, 4 * 50 + 3 * 6);
+                Ui.Button(filters, ctx.T("ui.terr.seed"), () => { SeedNearby(ctx, fakeSeed, center); app.ShowMain("territory"); }, 50, fontSize: 18);
+            }
             // 줌 버튼 · 줌 칩
             var zoomCol = Ui.Rect(map, "Zoom");
             zoomCol.anchorMin = zoomCol.anchorMax = new Vector2(1, 0.5f);
@@ -291,28 +328,22 @@ namespace Game.Unity.Screens
             Ui.Column(zoomCol, 12, 0);
             Ui.SetEnabled(Ui.Button(zoomCol, "+", () => { Zoom = Mathf.Max(0, Zoom - 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom > 0);
             Ui.SetEnabled(Ui.Button(zoomCol, "−", () => { Zoom = Mathf.Min(ViewMeters.Length - 1, Zoom + 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom < ViewMeters.Length - 1);
-            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Mode, ViewMeters[Zoom] / 1000), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
+            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Mode, ViewMeters[Zoom] / 1000) + " · " + ctx.T("ui.terr.rankRadius", ctx.T("rank." + ctx.Defs.Campaign.RankFor(ctx.State.LordLevel).Id), FormatKm(myRadius)), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
             chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(0, 0);
             chip.anchoredPosition = new Vector2(14, 14);
-            Ui.Label(header, ctx.T("ui.terr.legend", ctx.T("rank." + ctx.Defs.Campaign.RankFor(ctx.State.LordLevel).Id), FormatKm(myRadius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
 
 
-            if (Notice != null) { Ui.Label(body, Notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good); Notice = null; }
-            if (!ctx.OnlineEnabled) { Ui.Label(body, ctx.T("ui.territory.needOnline"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim); return; }
+
+            if (Notice != null) { Toast(map, Notice); Notice = null; }
+            if (!ctx.OnlineEnabled) { Toast(map, ctx.T("ui.territory.needOnline")); return; }
             string loc = Last != null && Last.Ok ? Last.Point.ToString() : null;
 
-            // 지도가 전부 (2026-11-15 사용자): 파란 원 안 = 깃발 꽂기, 내 깃발 = 장수 회수 · 수입, 남의 깃발 = 정보 · 공격. 아래 목록 없음
-            Ui.Label(body, ctx.T(loc != null ? "ui.terr.tapHint" : "ui.terr.tapHintNoLoc"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Button(body, ctx.T("ui.alliance.button"), () => app.Show(new AllianceScreen()), 72, fontSize: 24);
-            if (ctx.Online is LocalOnlineService fake && loc != null)
-                Ui.Button(body, ctx.T("ui.terr.seed"), () => { SeedNearby(ctx, fake, center); app.ShowMain("territory"); }, 72, fontSize: 24);
-            var list = body;
-            var loading = Ui.Label(list, ctx.T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            // 지도가 전부 (2026-11-15 사용자): 파란 원 안 = 깃발 꽂기, 내 깃발 · 그 땅 = 장수 회수 · 수입 · 더 꽂기, 남의 깃발 = 정보 · 공격. 아래 칸 없음 (알림은 토스트)
+            if (Owners == null) Toast(map, ctx.T(loc != null ? "ui.terr.tapHint" : "ui.terr.tapHintNoLoc"));
             ctx.LoadTerritory(res =>
             {
-                if (list == null) return;
-                Object.Destroy(loading.gameObject);
-                if (res == null) { Ui.Label(list, ctx.T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                if (map == null) return;
+                if (res == null) { Toast(map, ctx.T("ui.hire.failed")); return; }
                 bool first = Owners == null;
                 var owners = new Dictionary<string, TerritoryOwner>();
                 foreach (var o in res.Owners) owners[o.RegionId] = o;
@@ -442,10 +473,13 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>내 깃발 판 (R-109): 나간 장수마다 [회수], [모두 회수] = 깃발 거두기 (확인, 쌓인 수입은 우편).</summary>
-        private static void OpenFlagSheet(GameApp app, RectTransform root, TerritoryOwner flag)
+        private static void OpenFlagSheet(GameApp app, RectTransform root, TerritoryOwner flag, GeoPoint? plantAt = null)
         {
             var ctx = app.Context;
             var ids = TerritoryFlags.GeneralsOf(flag);
+            var fd = ctx.Territory?.Flags;
+            long radius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
+            bool canPlant = plantAt != null && Last != null && Last.Ok && fd != null && fd.Within(Last.Point, fd.CellOf(plantAt.Value), radius) && FlagDefs.KeyOf(fd.CellOf(plantAt.Value)) != flag.RegionId;
             var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 340 + 96 * ids.Count + 120);
             Ui.Column(content, 8, 0);
             // 쌓인 수입 · [수입 받기]
@@ -469,6 +503,12 @@ namespace Game.Unity.Screens
                 var row = Ui.Row(content, "General", 84, 12);
                 Ui.Size(Ui.Label(row, ctx.GeneralName(id), 28, TextAnchor.MiddleLeft), flexibleWidth: 1);
                 Ui.Size(Ui.SecondaryButton(row, ctx.T("ui.terr.recall"), () => Recall(new List<string> { id }), 72, 24), 72, 170).flexibleWidth = 0;
+            }
+            if (canPlant)
+            {
+                // 내 땅 안의 다른 자리에 깃발 더 꽂기 (내 원과는 겹쳐도 된다, R-96)
+                var at = plantAt.Value; var me = Last.Point;
+                Ui.Button(content, ctx.T("ui.terr.plantMore"), () => { close(); OpenPlantSheet(app, root, me, at, radius); }, 72, fontSize: 24);
             }
             Ui.Button(content, ctx.T("ui.terr.recallAll"), () =>
             {
@@ -498,6 +538,28 @@ namespace Game.Unity.Screens
             if (ctx.LocationConsented) { Ask(); return; }
             Ui.Confirm(root, ctx.T("ui.terr.consent.title"), ctx.T("ui.terr.consent.body"), ctx.T("ui.terr.consent.agree"), () => { ctx.SetLocationConsent(true); Ask(); },
                 (ctx.T("ui.common.cancel"), () => { }));
+        }
+
+        /// <summary>지도 아래쪽에 잠깐 뜨는 알림 (3초 뒤 사라짐). 아래 칸 대신.</summary>
+        private static void Toast(RectTransform map, string text)
+        {
+            if (map == null || string.IsNullOrEmpty(text)) return;
+            var t = Ui.Rect(map, "Toast");
+            t.anchorMin = new Vector2(0.08f, 0f);
+            t.anchorMax = new Vector2(0.92f, 0f);
+            t.pivot = new Vector2(0.5f, 0f);
+            t.anchoredPosition = new Vector2(0, 80);
+            t.sizeDelta = new Vector2(0, 76);
+            var bg = Ui.Background(t, new Color(0.16f, 0.13f, 0.1f, 0.86f));
+            bg.sprite = UiShapes.Rounded(14);
+            bg.type = Image.Type.Sliced;
+            bg.raycastTarget = false;
+            var l = Ui.Label(t, text, 22, TextAnchor.MiddleCenter, Color.white);
+            l.raycastTarget = false;
+            Ui.Fill(l.rectTransform);
+            l.rectTransform.offsetMin = new Vector2(16, 4);
+            l.rectTransform.offsetMax = new Vector2(-16, -4);
+            Object.Destroy(t.gameObject, 3f);
         }
 
         /// <summary>깃발 하나 수입 받기 → 우편함.</summary>
