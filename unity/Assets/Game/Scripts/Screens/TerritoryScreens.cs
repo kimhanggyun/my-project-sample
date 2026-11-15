@@ -25,10 +25,15 @@ namespace Game.Unity.Screens
         internal static string Notice;
         internal static bool NamesFetched;
         /// <summary>줌 단계: 0 가까이 · 1 중간(칸 대표) · 2 멀리(세력도).</summary>
-        internal static int Zoom;
+        internal static int Zoom = 1;
+        /// <summary>지도를 끌어 옮긴 양 (미터, 동 · 북). 0이면 내 위치가 가운데. [내 위치]로 되돌린다.</summary>
+        internal static Vector2 PanM;
+        private static float _pinch = 1f;
         internal static string Tab = "near";
-        private static readonly long[] ViewMeters = { 8000, 60000, 600000 };
-        private static readonly long[] GridMeters = { 1000, 5000, 50000 };
+        // 줌 단계 (두 손가락 · 휠 · +/−): 보이는 너비와 칸 줄. 표시 방식 = Mode (0 가까이: 깃발 원 · 1 중간: 칸 대표 · 2 멀리: 세력도)
+        private static readonly long[] ViewMeters = { 4000, 8000, 20000, 60000, 200000, 600000, 1500000 };
+        private static readonly long[] GridMeters = { 500, 1000, 2500, 5000, 20000, 50000, 100000 };
+        private static int Mode => Zoom <= 1 ? 0 : Zoom <= 3 ? 1 : 2;
         private const float MapHeight = 600f;
 
         private static readonly Color SealRed = new Color(0.79f, 0.34f, 0.25f);
@@ -55,12 +60,16 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(band, ctx.T("ui.territory.locate"), () =>
             {
                 where.text = ctx.T("ui.territory.locating");
-                ctx.Location.Request(r => { Last = r; NamesFetched = false; if (root != null) app.ShowMain("territory"); });
+                ctx.Location.Request(r => { Last = r; NamesFetched = false; PanM = Vector2.zero; if (root != null) app.ShowMain("territory"); });
             }, 80, fontSize: 24), width: 230);
             InfoButton.Add(root, ctx.T("ui.terr.note"));
 
             long myRadius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
-            GeoPoint center = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+            GeoPoint here = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+            // 보는 가운데 = 내 위치 + 끌어 옮긴 양
+            GeoPoint center = new GeoPoint(
+                here.LatE6 + (long)(PanM.y * GeoPoint.Scale / (double)flags.MetersPerDegreeLat),
+                here.LonE6 + (long)(PanM.x * GeoPoint.Scale / (double)flags.MetersPerDegreeLon));
 
             // ---- 지도 ----
             var map = Ui.Rect(header, "Map");
@@ -85,10 +94,32 @@ namespace Game.Unity.Screens
                 raw.rectTransform.sizeDelta = new Vector2(widthPx, MapHeight);
                 raw.texture = geo;
                 raw.raycastTarget = false;
+                // 도시 이름: 멀리 볼수록 큰 도시만, 겹치면 큰 도시 먼저 (Natural Earth 로마자 이름)
+                int maxRank = ViewMeters[Zoom] <= 20000 ? 10 : ViewMeters[Zoom] <= 60000 ? 8 : ViewMeters[Zoom] <= 200000 ? 6 : ViewMeters[Zoom] <= 600000 ? 4 : 2;
+                var shownPlaces = new List<Vector2>();
+                var places = new List<(float x, float y, int rank, string name)>(GeoBackdrop.Places);
+                places.Sort((p, q) => p.rank.CompareTo(q.rank));
+                foreach (var pl in places)
+                {
+                    if (pl.rank > maxRank || string.IsNullOrEmpty(pl.name)) continue;
+                    var at = new Vector2((pl.x - 0.5f) * widthPx, (pl.y - 0.5f) * MapHeight);
+                    bool crowded = false;
+                    foreach (var o in shownPlaces) if (Mathf.Abs(o.x - at.x) < 150f && Mathf.Abs(o.y - at.y) < 34f) { crowded = true; break; }
+                    if (crowded) continue;
+                    shownPlaces.Add(at);
+                    Disc(layer, at, 10, new Color(0.35f, 0.25f, 0.18f));
+                    var name = Ui.Label(layer, pl.name, pl.rank <= 2 ? 22 : 18, TextAnchor.MiddleLeft, new Color(0.3f, 0.22f, 0.16f));
+                    name.raycastTarget = false;
+                    name.horizontalOverflow = HorizontalWrapMode.Overflow;
+                    name.rectTransform.anchorMin = name.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                    name.rectTransform.pivot = new Vector2(0f, 0.5f);
+                    name.rectTransform.sizeDelta = new Vector2(200, 30);
+                    name.rectTransform.anchoredPosition = at + new Vector2(10, 0);
+                }
             }
             // 칸 줄
             float step = GridMeters[Zoom] * ppm;
-            var lineC = new Color(0.44f, 0.38f, 0.27f, Zoom == 0 ? 0.16f : 0.28f);
+            var lineC = new Color(0.44f, 0.38f, 0.27f, Mode == 0 ? 0.16f : 0.28f);
             for (float x = -((widthPx / 2) - ((widthPx / 2) % step)); x <= widthPx / 2; x += step) Box(layer, new Vector2(x, 0), new Vector2(2, MapHeight), lineC);
             for (float y = -((MapHeight / 2) - ((MapHeight / 2) % step)); y <= MapHeight / 2; y += step) Box(layer, new Vector2(0, y), new Vector2(widthPx, 2), lineC);
 
@@ -98,7 +129,7 @@ namespace Game.Unity.Screens
 
             if (Owners != null)
             {
-                if (Zoom == 0)
+                if (Mode == 0)
                 {
                     foreach (var o in Owners.Values)
                     {
@@ -109,7 +140,7 @@ namespace Game.Unity.Screens
                         Marker(ctx, layer, p, c, RankLetter(ctx, o.RadiusM), 44);
                     }
                 }
-                else if (Zoom == 1)
+                else if (Mode == 1)
                 {
                     // 칸(5km)마다 대표 깃발 하나 (병력 큰 순, 같으면 반지름 = 계급) + 나머지 수, 내 깃발은 늘
                     var groups = new Dictionary<string, List<TerritoryOwner>>();
@@ -159,8 +190,44 @@ namespace Game.Unity.Screens
                 }
             }
             // 내 위치 · 꽂을 수 있는 범위
-            if (Zoom < 2) Disc(layer, Vector2.zero, myRadius * 2 * ppm, new Color(MeBlue.r, MeBlue.g, MeBlue.b, 0.10f));
-            Disc(layer, Vector2.zero, 26, MeBlue);
+            var mePos = Pos(here);
+            if (Mode < 2) Disc(layer, mePos, myRadius * 2 * ppm, new Color(MeBlue.r, MeBlue.g, MeBlue.b, 0.10f));
+            Disc(layer, mePos, 26, MeBlue);
+            // 손가락으로: 한 손가락 끌기 = 지도 옮기기, 두 손가락 (휠) = 확대 · 축소 (2026-11-15 사용자)
+            var gestures = map.gameObject.AddComponent<GestureArea>();
+            gestures.Dragged += (a, b) =>
+            {
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(map, a, null, out var la) && RectTransformUtility.ScreenPointToLocalPointInRectangle(map, b, null, out var lb))
+                    layer.anchoredPosition += lb - la;
+            };
+            gestures.DragEnded += () =>
+            {
+                if (layer == null || layer.anchoredPosition.sqrMagnitude < 4f) return;
+                PanM -= layer.anchoredPosition / ppm / layer.localScale.x;
+                app.ShowMain("territory");
+            };
+            gestures.Zoomed += f =>
+            {
+                if (layer == null) return;
+                _pinch *= f;
+                layer.localScale = Vector3.one * Mathf.Clamp(_pinch, 0.5f, 2f);
+                int to = _pinch >= 1.6f ? Zoom - 1 : _pinch <= 0.62f ? Zoom + 1 : Zoom;
+                to = Mathf.Clamp(to, 0, ViewMeters.Length - 1);
+                if (to == Zoom) { if (_pinch >= 1.6f || _pinch <= 0.62f) { _pinch = 1f; layer.localScale = Vector3.one; } return; }
+                Zoom = to;
+                _pinch = 1f;
+                app.ShowMain("territory");
+            };
+            _pinch = 1f;
+            if (PanM != Vector2.zero)
+            {
+                // 옮긴 지도를 내 위치로 되돌리기
+                var back = Ui.Button(map, ctx.T("ui.terr.recenter"), () => { PanM = Vector2.zero; app.ShowMain("territory"); }, 56, new Color(0.98f, 0.96f, 0.93f), 22);
+                var bt = (RectTransform)back.transform;
+                bt.anchorMin = bt.anchorMax = bt.pivot = new Vector2(1f, 0f);
+                bt.sizeDelta = new Vector2(170, 56);
+                bt.anchoredPosition = new Vector2(-14, 14);
+            }
             // 줌 버튼 · 줌 칩
             var zoomCol = Ui.Rect(map, "Zoom");
             zoomCol.anchorMin = zoomCol.anchorMax = new Vector2(1, 0.5f);
@@ -169,8 +236,8 @@ namespace Game.Unity.Screens
             zoomCol.sizeDelta = new Vector2(70, 160);
             Ui.Column(zoomCol, 12, 0);
             Ui.SetEnabled(Ui.Button(zoomCol, "+", () => { Zoom = Mathf.Max(0, Zoom - 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom > 0);
-            Ui.SetEnabled(Ui.Button(zoomCol, "−", () => { Zoom = Mathf.Min(2, Zoom + 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom < 2);
-            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Zoom, ViewMeters[Zoom] / 1000), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
+            Ui.SetEnabled(Ui.Button(zoomCol, "−", () => { Zoom = Mathf.Min(ViewMeters.Length - 1, Zoom + 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom < ViewMeters.Length - 1);
+            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Mode, ViewMeters[Zoom] / 1000), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
             chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(0, 0);
             chip.anchoredPosition = new Vector2(14, 14);
             Ui.Label(header, ctx.T("ui.terr.legend", ctx.T("rank." + ctx.Defs.Campaign.RankFor(ctx.State.LordLevel).Id), FormatKm(myRadius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -549,7 +616,7 @@ namespace Game.Unity.Screens
     }
 
     /// <summary>
-    /// 영토 지도 바탕 그림 (Natural Earth 타일, Game.Territory.GeoTiles): 보이는 범위를 텍스처로 그린다 — 바다 · 육지(짝홀 채우기) · 호수 · 강 선.
+    /// 영토 지도 바탕 그림 (Natural Earth 타일, Game.Territory.GeoTiles): 보이는 범위를 텍스처로 그린다 — 바다 · 육지(짝홀 채우기) · 도시 지역 · 호수 · 강 · 도로 · 시도 경계 선 (세부 층은 한국 근처만).
     /// 가운데 · 축척이 같으면 다시 그리지 않는다. 그림만 (규칙과 무관), 지도 좌표는 영토 탭과 같은 평면 근사(위도 · 경도마다 미터).
     /// </summary>
     internal static class GeoBackdrop
@@ -559,7 +626,15 @@ namespace Game.Unity.Screens
         private static readonly Color32 Sea = new Color32(178, 199, 203, 255);
         private static readonly Color32 Land = new Color32(222, 210, 176, 255);
         private static readonly Color32 River = new Color32(120, 156, 170, 255);
+        // 세부 층 (한국 근처, tools/naturalearth_detail.js): 도시 지역 · 시도 경계 · 도로
+        private static readonly Color32 Urban = new Color32(207, 190, 154, 255);
+        private static readonly Color32 Admin1 = new Color32(158, 120, 98, 255);
+        private static readonly Color32 Road = new Color32(181, 102, 74, 255);
+        private static readonly Color32 Road2 = new Color32(176, 150, 118, 255);
         private static string _key;
+
+        /// <summary>마지막으로 그린 범위의 도시 이름: 그림 안 위치(0~1, 왼쪽 아래 기준) · 등급 · 이름.</summary>
+        public static readonly List<(float x, float y, int rank, string name)> Places = new List<(float, float, int, string)>();
         private static Texture2D _tex;
 
         public static Texture2D Get(GameContext ctx, GeoPoint center, long viewMeters, float aspect, long mPerDegLat, long mPerDegLon)
@@ -579,10 +654,26 @@ namespace Game.Unity.Screens
                 double sx = w / (maxLon - minLon) / GeoTiles.Scale, sy = h / (maxLat - minLat) / GeoTiles.Scale;
                 double ox = minLon * GeoTiles.Scale, oy = minLat * GeoTiles.Scale;
                 var land = new List<int[]>(); var lakes = new List<int[]>(); var rivers = new List<int[]>();
-                foreach (var t in tiles) { land.AddRange(t.Land); lakes.AddRange(t.Lake); rivers.AddRange(t.River); }
+                var urban = new List<int[]>(); var admin1 = new List<int[]>(); var roads = new List<int[]>(); var roads2 = new List<int[]>();
+                Places.Clear();
+                foreach (var t in tiles)
+                {
+                    land.AddRange(t.Land); lakes.AddRange(t.Lake); rivers.AddRange(t.River);
+                    urban.AddRange(t.Urban); admin1.AddRange(t.Admin1); roads.AddRange(t.Road); roads2.AddRange(t.Road2);
+                    foreach (var p in t.Places)
+                    {
+                        float fx = (float)((p.Lon - ox) * sx / w), fy = (float)((p.Lat - oy) * sy / h);
+                        if (fx >= 0f && fx <= 1f && fy >= 0f && fy <= 1f) Places.Add((fx, fy, p.Rank, p.Name));
+                    }
+                }
                 Fill(px, w, h, land, Land, sx, sy, ox, oy);
+                Fill(px, w, h, urban, Urban, sx, sy, ox, oy);
                 Fill(px, w, h, lakes, Sea, sx, sy, ox, oy);
-                foreach (var r in rivers) Line(px, w, h, r, River, sx, sy, ox, oy);
+                foreach (var r in rivers) Line(px, w, h, r, River, sx, sy, ox, oy, 1);
+                // 멀리 볼수록 덜 그린다: 작은 도로는 200km 이하, 큰 도로는 600km 이하
+                if (viewMeters <= 200000) foreach (var r in roads2) Line(px, w, h, r, Road2, sx, sy, ox, oy, 0);
+                foreach (var r in admin1) Line(px, w, h, r, Admin1, sx, sy, ox, oy, 0);
+                if (viewMeters <= 600000) foreach (var r in roads) Line(px, w, h, r, Road, sx, sy, ox, oy, viewMeters <= 60000 ? 1 : 0);
                 if (_tex == null) _tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
                 else if (_tex.width != w || _tex.height != h) _tex.Reinitialize(w, h);
                 _tex.SetPixels32(px);
@@ -628,7 +719,8 @@ namespace Game.Unity.Screens
             }
         }
 
-        private static void Line(Color32[] px, int w, int h, int[] pts, Color32 c, double sx, double sy, double ox, double oy)
+        /// <param name="radius">선 굵기 반지름 (0 = 한 칸, 1 = 3칸).</param>
+        private static void Line(Color32[] px, int w, int h, int[] pts, Color32 c, double sx, double sy, double ox, double oy, int radius)
         {
             for (int i = 2; i + 1 < pts.Length; i += 2)
             {
@@ -638,8 +730,8 @@ namespace Game.Unity.Screens
                 for (int k = 0; k <= steps; k++)
                 {
                     int x = (int)(x0 + (x1 - x0) * k / steps), y = (int)(y0 + (y1 - y0) * k / steps);
-                    for (int dy = -1; dy <= 1; dy++)
-                        for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -radius; dy <= radius; dy++)
+                        for (int dx = -radius; dx <= radius; dx++)
                         {
                             int xx = x + dx, yy = y + dy;
                             if (xx >= 0 && yy >= 0 && xx < w && yy < h) px[yy * w + xx] = c;

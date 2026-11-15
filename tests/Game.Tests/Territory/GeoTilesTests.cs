@@ -7,7 +7,7 @@ namespace Game.Tests.Territory
     /// <summary>영토 지도 바탕 (Natural Earth 타일, data/Territory/geo).</summary>
     public class GeoTilesTests
     {
-        [Fact(DisplayName = "지도 바탕: 칸 번호 · 서울은 육지, 서해 바다는 아님, 파일이 없는 칸은 빈 바다, 서울 칸에 강 선이 있다")]
+        [Fact(DisplayName = "지도 바탕: 칸 번호 · 서울은 육지, 서해 바다는 아님, 파일이 없는 칸은 빈 바다, 서울 칸에 강 선 · 시도 경계 · 도로 · 도시 지역 · 서울 이름이 있다")]
         public void SeoulAndSea()
         {
             Assert.Equal((12, 30), GeoTiles.IndexOf(37_566_500, 126_978_000));
@@ -19,6 +19,11 @@ namespace Game.Tests.Territory
             Assert.False(GeoTiles.OnLand(t, 37_000_000, 125_000_000));  // 서해
             Assert.True(GeoTiles.OnLand(t, 35_179_600, 129_075_600));   // 부산
             Assert.Empty(GeoTiles.Load(Kit.Source, 99, 99).Land);
+            // 세부 층 (한국 근처): 시도 경계 · 도로 · 도시 지역 · 도시 이름
+            Assert.NotEmpty(t.Admin1);
+            Assert.NotEmpty(t.Road);
+            Assert.NotEmpty(t.Urban);
+            Assert.Contains(t.Places, pl => pl.Name == "Seoul" && pl.Rank <= 2);
             Assert.Equal(4, GeoTiles.ForView(Kit.Source, 39_000_000, 129_000_000, 41_000_000, 131_000_000).Count); // 40도 · 130도 모서리에 걸침
         }
     }
