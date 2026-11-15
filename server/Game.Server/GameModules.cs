@@ -47,6 +47,9 @@ namespace Game.Server
         PlantResponse PlantFlag(string accountId, PlantRequest request);
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         RecallResponse RecallFlag(string accountId, RecallRequest request);
+        /// <summary>공성전 준비 시작 · 준비 중 취소 (R-113).</summary>
+        SiegeResponse StartSiege(string accountId, SiegeRequest request);
+        bool CancelSiege(string accountId, string flagKey);
 
         // ---- 연합 (R-49) ----
         AllianceListResponse Alliances(string accountId);
@@ -186,7 +189,8 @@ namespace Game.Server
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
             // 깃발 공성전 (R-97): 깃발 · 보호 · 범위 검사
             string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
-            if (flagKey != null && _store.WithTerritory(Code, owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)) != null)
+            if (flagKey != null && _store.WithTerritory(Code, owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)
+                    ?? TerritoryFlags.CheckSiegeReady(_territory, owners, flagKey, accountId, Now)) != null) // 준비 1분 (R-113)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = save };
             var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
                 _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, owners => TerritoryLedger.DefenseOf(owners, region)));
@@ -196,7 +200,7 @@ namespace Game.Server
             if (flagKey != null)
             {
                 var after = FromJson(json);
-                _store.WithTerritory(Code, owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
+                _store.WithTerritory(Code, owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m), TakeAlert); return 0; });
             }
             else if (TerritoryBattles.Captures(s, verdict))
                 _store.WithTerritory(Code, owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
@@ -303,6 +307,22 @@ namespace Game.Server
             var state = FromJson(LoadOrCreate(accountId).Json);
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
             return _store.WithTerritory(Code, owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
+        }
+
+        public SiegeResponse StartSiege(string accountId, SiegeRequest req)
+        {
+            var state = FromJson(LoadOrCreate(accountId).Json);
+            return _store.WithTerritory(Code, owners => TerritoryFlags.StartSiege(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
+        }
+
+        public bool CancelSiege(string accountId, string flagKey) =>
+            _store.WithTerritory(Code, owners => TerritoryFlags.CancelSiege(_territory, owners, flagKey, accountId, Now, TakeAlert));
+
+        /// <summary>수비자의 그 깃발 공성전 알림 우편을 지운다 (공성전이 끝나거나 취소, R-113).</summary>
+        private void TakeAlert(string who, string flagKey)
+        {
+            foreach (var m in _store.MailOf(Code, who))
+                if (m.Kind == MailKinds.SiegeAlert && m.RegionId == flagKey) _store.TakeMail(Code, who, m.Id);
         }
 
         public RecallResponse RecallFlag(string accountId, RecallRequest req)

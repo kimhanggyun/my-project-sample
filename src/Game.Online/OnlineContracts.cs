@@ -66,6 +66,9 @@ namespace Game.Online
         public static string TerritoryPlant(string game) => Territory(game) + "/plant";
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public static string TerritoryRecall(string game) => Territory(game) + "/recall";
+        /// <summary>공성전 준비 시작 · 취소 (POST, R-113).</summary>
+        public static string TerritorySiege(string game) => Territory(game) + "/siege";
+        public static string TerritorySiegeCancel(string game) => Territory(game) + "/siege/cancel";
         /// <summary>연합 목록 (GET) / 만들기 (POST, R-49).</summary>
         public static string Alliances(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/alliances";
         public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
@@ -258,6 +261,9 @@ namespace Game.Online
         public long RadiusM { get; set; }
         /// <summary>이 시각까지 공격받지 않음 (공성전 뒤 보호, R-97).</summary>
         public long ProtectedUntilUnixSeconds { get; set; }
+        /// <summary>공성전 준비 중인 공격자와 준비 시작 시각 (R-113, 없으면 null · 0). 서버가 기록한다.</summary>
+        public string SiegeAttackerId { get; set; }
+        public long SiegeStartedAtUnixSeconds { get; set; }
     }
 
     /// <summary>연합 하나 (territory.md 6장, R-49). 한 계정은 한 연합에만.</summary>
@@ -410,6 +416,33 @@ namespace Game.Online
     {
         public string FlagKey { get; set; }
         public List<string> GeneralIds { get; set; }
+    }
+
+    /// <summary>공성전 준비 시작 (R-113): 칠 깃발과 내 위치.</summary>
+    public sealed class SiegeRequest
+    {
+        public string FlagKey { get; set; }
+        public string Location { get; set; }
+    }
+
+    public static class SiegeReasons
+    {
+        public const string Ok = "ok";
+        /// <summary>칠 수 없는 깃발 (없음 · 내 것 · 보호 중 · 반지름 밖, Message에 까닭).</summary>
+        public const string BadTarget = "badTarget";
+        /// <summary>다른 공격자가 이미 준비 · 공격 중.</summary>
+        public const string Busy = "busy";
+    }
+
+    public sealed class SiegeResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="SiegeReasons"/>.</summary>
+        public string Reason { get; set; }
+        public string Message { get; set; }
+        /// <summary>준비가 끝나 공성전을 낼 수 있는 시각, 그 뒤 이 시각까지 내야 함 (unix 초).</summary>
+        public long StartsAtUnixSeconds { get; set; }
+        public long ExpiresAtUnixSeconds { get; set; }
     }
 
     public static class RecallReasons
@@ -590,6 +623,8 @@ namespace Game.Online
         public string ListingId { get; set; }
         /// <summary>영토 수입이면 지역 id.</summary>
         public string RegionId { get; set; }
+        /// <summary>공성전 알림이면 공격자 계정.</summary>
+        public string FromAccountId { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
     }
 
@@ -600,6 +635,8 @@ namespace Game.Online
         public const string TerritoryIncome = "territoryIncome";
         /// <summary>출석 보상 (하루 한 번, 서버 시각, R-112).</summary>
         public const string Attendance = "attendance";
+        /// <summary>내 깃발이 공격받는다 (공성전 준비 시작, R-113): RegionId = 깃발 키, FromAccountId = 공격자, Amount 0 (받을 것 없음). 공성전이 끝나거나 취소되면 지워진다.</summary>
+        public const string SiegeAlert = "siegeAlert";
     }
 
     /// <summary>출석 결과 (R-112). 받았으면 Mail이 우편함에 들어가 있다.</summary>
@@ -889,6 +926,10 @@ namespace Game.Online
         void PlantFlag(PlantRequest request, Action<PlantResponse> done);
         /// <summary>깃발에서 장수 회수 (R-109). 서버에 닿지 않으면 null.</summary>
         void RecallFlag(RecallRequest request, Action<RecallResponse> done);
+        /// <summary>공성전 준비 시작 (R-113): 서버가 시각을 기록하고 수비자에게 알림 우편. 닿지 않으면 null.</summary>
+        void StartSiege(SiegeRequest request, Action<SiegeResponse> done);
+        /// <summary>준비 중 공격 취소: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
+        void CancelSiege(string flagKey, Action<bool?> done);
 
         // ---- 연합 (R-49). 닿지 않으면 null ----
         void GetAlliances(Action<AllianceListResponse> done);
@@ -925,6 +966,8 @@ namespace Game.Online
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);
+        public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) => done?.Invoke(null);
+        public void CancelSiege(string flagKey, Action<bool?> done) => done?.Invoke(null);
         public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);
         public void CreateAlliance(string name, Action<AllianceResponse> done) => done?.Invoke(null);
         public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);

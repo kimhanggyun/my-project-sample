@@ -208,6 +208,42 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await b.GetAsync(OnlineRoutes.SharedReplay(ServerSetup.DefaultGame, "nope"))).StatusCode);
         }
 
+[Fact(DisplayName = "R-113 공성전 준비: 서버가 시작 시각 기록, 수비자 우편에 알림, 다른 공격자는 busy, 준비 중 취소하면 알림도 사라짐, 준비 없이 낸 공성전은 거절")]
+        public async Task SiegePrepFlow()
+        {
+            var attacker = await SignedIn();
+            var defender = await SignedIn();
+            var third = await SignedIn();
+            const string here = "37.4012,127.1101";
+            var mailUrl = OnlineRoutes.Mail(ServerSetup.DefaultGame);
+            var dSave = SaveJson.Read((await Read<CloudSave>(await defender.GetAsync(Save))).Json);
+            var plant = await defender.PostAsync(OnlineRoutes.TerritoryPlant(ServerSetup.DefaultGame), Body(new PlantRequest { Location = here, GeneralId = dSave.CompositionsFor(null)[0].GeneralId }));
+            Assert.True(plant.StatusCode == HttpStatusCode.OK, await plant.Content.ReadAsStringAsync());
+            var flagKey = (await Read<PlantResponse>(plant)).Flag.RegionId;
+
+            var siege = OnlineRoutes.TerritorySiege(ServerSetup.DefaultGame);
+            var r = await attacker.PostAsync(siege, Body(new SiegeRequest { FlagKey = flagKey, Location = here }));
+            Assert.True(r.StatusCode == HttpStatusCode.OK, await r.Content.ReadAsStringAsync());
+            var started = await Read<SiegeResponse>(r);
+            Assert.Equal(Clock.ToUnixTimeSeconds() + 60, started.StartsAtUnixSeconds);
+            var alert = Assert.Single((await Read<MailListResponse>(await defender.GetAsync(mailUrl))).Mail, m => m.Kind == MailKinds.SiegeAlert);
+            Assert.Equal(flagKey, alert.RegionId);
+
+            var busy = await third.PostAsync(siege, Body(new SiegeRequest { FlagKey = flagKey, Location = here }));
+            Assert.Equal(SiegeReasons.Busy, (await Read<SiegeResponse>(busy)).Reason);
+
+            // 준비 1분이 지나지 않은 공성전 제출은 거절 (서버 시각 고정 = 시작 시각)
+            var aSave = await Read<CloudSave>(await attacker.GetAsync(Save));
+            var early = await attacker.PostAsync(Battles, Body(new BattleSubmission { BaseRevision = aSave.Revision, StepId = "territory." + flagKey, Location = here }));
+            Assert.Equal(VerdictReasons.BadSortie, (await Read<BattleVerdict>(early)).Reason);
+
+            var cancel = await attacker.PostAsync(OnlineRoutes.TerritorySiegeCancel(ServerSetup.DefaultGame), Body(new SiegeRequest { FlagKey = flagKey }));
+            Assert.Equal(HttpStatusCode.OK, cancel.StatusCode);
+            Assert.DoesNotContain((await Read<MailListResponse>(await defender.GetAsync(mailUrl))).Mail, m => m.Kind == MailKinds.SiegeAlert);
+            var again = await attacker.PostAsync(OnlineRoutes.TerritorySiegeCancel(ServerSetup.DefaultGame), Body(new SiegeRequest { FlagKey = flagKey }));
+            Assert.Equal((HttpStatusCode)422, again.StatusCode);
+        }
+
         [Fact(DisplayName = "R-112 출석: 서버 시각으로 하루 한 번, 보상은 우편 → mail.claim으로 받기, 같은 날 두 번은 already")]
         public async Task AttendanceFlow()
         {

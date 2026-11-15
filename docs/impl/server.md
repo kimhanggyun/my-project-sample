@@ -56,6 +56,8 @@
 | `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
 | `POST /v1/games/{game}/territory/collect` | 내 지역의 쌓인 수입을 우편으로 (받은 시각 = 지금, R-47) | `MailListResponse` (보낸 우편) |
 | `POST /v1/games/{game}/territory/defense` | 내 지역에 수비 편성 등록 (서버 세이브의 기본 편성 스냅샷, 판 +1, R-48). 내 지역이 아니거나 편성에 문제가 있으면 422 | `DefenseResponse` |
+| `POST /v1/games/{game}/territory/siege` | 공성전 준비 시작 (R-113): 서버가 시각 기록, 수비자에게 우편 `siegeAlert`. 준비 1분 전 공성전 제출은 거절 | `SiegeResponse` (200 / 422 `badTarget` · `busy`) |
+| `POST /v1/games/{game}/territory/siege/cancel` | 준비 중 공격 취소 (본문 `SiegeRequest.FlagKey`): 기록 · 수비자 알림 지움 | 200 / 422 |
 | `GET /v1/games/{game}/alliances` | 연합 목록, 내 연합 id, 인원 상한 (R-49) | `AllianceListResponse` |
 | `POST /v1/games/{game}/alliances` | 연합 만들기 (이름). 이름 규칙·이미 연합원이면 422 | `AllianceResponse` |
 | `POST /v1/games/{game}/alliances/{id}/join` · `/alliances/leave` | 가입 (인원 상한) · 탈퇴 (연합장 넘김, 마지막이면 없앰) | `AllianceResponse` |

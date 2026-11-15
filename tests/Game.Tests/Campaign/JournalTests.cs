@@ -44,6 +44,8 @@ namespace Game.Tests.Campaign
             public void RegisterDefense(DefenseRequest r, Action<DefenseResponse> done) { if (Down) done(null); else _inner.RegisterDefense(r, done); }
             public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
             public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);
+            public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) => done?.Invoke(null);
+            public void CancelSiege(string flagKey, Action<bool?> done) => done?.Invoke(null);
             public void GetAlliances(Action<AllianceListResponse> done) { if (Down) done(null); else _inner.GetAlliances(done); }
             public void CreateAlliance(string n, Action<AllianceResponse> done) { if (Down) done(null); else _inner.CreateAlliance(n, done); }
             public void JoinAlliance(string id, Action<AllianceResponse> done) { if (Down) done(null); else _inner.JoinAlliance(id, done); }
