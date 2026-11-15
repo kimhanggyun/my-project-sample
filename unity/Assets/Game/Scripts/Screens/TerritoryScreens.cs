@@ -25,10 +25,15 @@ namespace Game.Unity.Screens
         internal static string Notice;
         internal static bool NamesFetched;
         /// <summary>줌 단계: 0 가까이 · 1 중간(칸 대표) · 2 멀리(세력도).</summary>
-        internal static int Zoom;
+        internal static int Zoom = 1;
+        /// <summary>지도를 끌어 옮긴 양 (미터, 동 · 북). 0이면 내 위치가 가운데. [내 위치]로 되돌린다.</summary>
+        internal static Vector2 PanM;
+        private static float _pinch = 1f;
         internal static string Tab = "near";
-        private static readonly long[] ViewMeters = { 8000, 60000, 600000 };
-        private static readonly long[] GridMeters = { 1000, 5000, 50000 };
+        // 줌 단계 (두 손가락 · 휠 · +/−): 보이는 너비와 칸 줄. 표시 방식 = Mode (0 가까이: 깃발 원 · 1 중간: 칸 대표 · 2 멀리: 세력도)
+        private static readonly long[] ViewMeters = { 4000, 8000, 20000, 60000, 200000, 600000, 1500000 };
+        private static readonly long[] GridMeters = { 500, 1000, 2500, 5000, 20000, 50000, 100000 };
+        private static int Mode => Zoom <= 1 ? 0 : Zoom <= 3 ? 1 : 2;
         private const float MapHeight = 600f;
 
         private static readonly Color SealRed = new Color(0.79f, 0.34f, 0.25f);
@@ -55,12 +60,16 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(band, ctx.T("ui.territory.locate"), () =>
             {
                 where.text = ctx.T("ui.territory.locating");
-                ctx.Location.Request(r => { Last = r; NamesFetched = false; if (root != null) app.ShowMain("territory"); });
+                ctx.Location.Request(r => { Last = r; NamesFetched = false; PanM = Vector2.zero; if (root != null) app.ShowMain("territory"); });
             }, 80, fontSize: 24), width: 230);
             InfoButton.Add(root, ctx.T("ui.terr.note"));
 
             long myRadius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
-            GeoPoint center = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+            GeoPoint here = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+            // 보는 가운데 = 내 위치 + 끌어 옮긴 양
+            GeoPoint center = new GeoPoint(
+                here.LatE6 + (long)(PanM.y * GeoPoint.Scale / (double)flags.MetersPerDegreeLat),
+                here.LonE6 + (long)(PanM.x * GeoPoint.Scale / (double)flags.MetersPerDegreeLon));
 
             // ---- 지도 ----
             var map = Ui.Rect(header, "Map");
@@ -88,7 +97,7 @@ namespace Game.Unity.Screens
             }
             // 칸 줄
             float step = GridMeters[Zoom] * ppm;
-            var lineC = new Color(0.44f, 0.38f, 0.27f, Zoom == 0 ? 0.16f : 0.28f);
+            var lineC = new Color(0.44f, 0.38f, 0.27f, Mode == 0 ? 0.16f : 0.28f);
             for (float x = -((widthPx / 2) - ((widthPx / 2) % step)); x <= widthPx / 2; x += step) Box(layer, new Vector2(x, 0), new Vector2(2, MapHeight), lineC);
             for (float y = -((MapHeight / 2) - ((MapHeight / 2) % step)); y <= MapHeight / 2; y += step) Box(layer, new Vector2(0, y), new Vector2(widthPx, 2), lineC);
 
@@ -98,7 +107,7 @@ namespace Game.Unity.Screens
 
             if (Owners != null)
             {
-                if (Zoom == 0)
+                if (Mode == 0)
                 {
                     foreach (var o in Owners.Values)
                     {
@@ -109,7 +118,7 @@ namespace Game.Unity.Screens
                         Marker(ctx, layer, p, c, RankLetter(ctx, o.RadiusM), 44);
                     }
                 }
-                else if (Zoom == 1)
+                else if (Mode == 1)
                 {
                     // 칸(5km)마다 대표 깃발 하나 (병력 큰 순, 같으면 반지름 = 계급) + 나머지 수, 내 깃발은 늘
                     var groups = new Dictionary<string, List<TerritoryOwner>>();
@@ -159,8 +168,44 @@ namespace Game.Unity.Screens
                 }
             }
             // 내 위치 · 꽂을 수 있는 범위
-            if (Zoom < 2) Disc(layer, Vector2.zero, myRadius * 2 * ppm, new Color(MeBlue.r, MeBlue.g, MeBlue.b, 0.10f));
-            Disc(layer, Vector2.zero, 26, MeBlue);
+            var mePos = Pos(here);
+            if (Mode < 2) Disc(layer, mePos, myRadius * 2 * ppm, new Color(MeBlue.r, MeBlue.g, MeBlue.b, 0.10f));
+            Disc(layer, mePos, 26, MeBlue);
+            // 손가락으로: 한 손가락 끌기 = 지도 옮기기, 두 손가락 (휠) = 확대 · 축소 (2026-11-15 사용자)
+            var gestures = map.gameObject.AddComponent<GestureArea>();
+            gestures.Dragged += (a, b) =>
+            {
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(map, a, null, out var la) && RectTransformUtility.ScreenPointToLocalPointInRectangle(map, b, null, out var lb))
+                    layer.anchoredPosition += lb - la;
+            };
+            gestures.DragEnded += () =>
+            {
+                if (layer == null || layer.anchoredPosition.sqrMagnitude < 4f) return;
+                PanM -= layer.anchoredPosition / ppm / layer.localScale.x;
+                app.ShowMain("territory");
+            };
+            gestures.Zoomed += f =>
+            {
+                if (layer == null) return;
+                _pinch *= f;
+                layer.localScale = Vector3.one * Mathf.Clamp(_pinch, 0.5f, 2f);
+                int to = _pinch >= 1.6f ? Zoom - 1 : _pinch <= 0.62f ? Zoom + 1 : Zoom;
+                to = Mathf.Clamp(to, 0, ViewMeters.Length - 1);
+                if (to == Zoom) { if (_pinch >= 1.6f || _pinch <= 0.62f) { _pinch = 1f; layer.localScale = Vector3.one; } return; }
+                Zoom = to;
+                _pinch = 1f;
+                app.ShowMain("territory");
+            };
+            _pinch = 1f;
+            if (PanM != Vector2.zero)
+            {
+                // 옮긴 지도를 내 위치로 되돌리기
+                var back = Ui.Button(map, ctx.T("ui.terr.recenter"), () => { PanM = Vector2.zero; app.ShowMain("territory"); }, 56, new Color(0.98f, 0.96f, 0.93f), 22);
+                var bt = (RectTransform)back.transform;
+                bt.anchorMin = bt.anchorMax = bt.pivot = new Vector2(1f, 0f);
+                bt.sizeDelta = new Vector2(170, 56);
+                bt.anchoredPosition = new Vector2(-14, 14);
+            }
             // 줌 버튼 · 줌 칩
             var zoomCol = Ui.Rect(map, "Zoom");
             zoomCol.anchorMin = zoomCol.anchorMax = new Vector2(1, 0.5f);
@@ -169,8 +214,8 @@ namespace Game.Unity.Screens
             zoomCol.sizeDelta = new Vector2(70, 160);
             Ui.Column(zoomCol, 12, 0);
             Ui.SetEnabled(Ui.Button(zoomCol, "+", () => { Zoom = Mathf.Max(0, Zoom - 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom > 0);
-            Ui.SetEnabled(Ui.Button(zoomCol, "−", () => { Zoom = Mathf.Min(2, Zoom + 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom < 2);
-            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Zoom, ViewMeters[Zoom] / 1000), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
+            Ui.SetEnabled(Ui.Button(zoomCol, "−", () => { Zoom = Mathf.Min(ViewMeters.Length - 1, Zoom + 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom < ViewMeters.Length - 1);
+            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Mode, ViewMeters[Zoom] / 1000), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
             chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(0, 0);
             chip.anchoredPosition = new Vector2(14, 14);
             Ui.Label(header, ctx.T("ui.terr.legend", ctx.T("rank." + ctx.Defs.Campaign.RankFor(ctx.State.LordLevel).Id), FormatKm(myRadius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
