@@ -74,6 +74,9 @@ namespace Game.Flow
             }));
             var shop = new PurchaseService(defs);
             Register(new Handler(ActionKinds.StorePurchase, (s, a) => shop.Apply(s, a)));
+            var cosmetics = new CosmeticService(defs);
+            Register(new Handler(ActionKinds.CosmeticBuy, (s, a) => cosmetics.Buy(s, a.CosmeticId)));
+            Register(new Handler(ActionKinds.CosmeticEquip, (s, a) => cosmetics.Equip(s, a.TroopType, a.Situation, a.CosmeticId)));
             var guides = new GuideService(defs);
             Register(new Handler(ActionKinds.GuideSeen, (s, a) => guides.MarkSeen(s, a.GuideId)));
             Register(new Handler(ActionKinds.GuideReset, (s, a) => guides.Reset(s)));
@@ -222,6 +225,9 @@ namespace Game.Flow
         public static PlayerAction Purchase(string productId, string receipt) => new PlayerAction { Kind = ActionKinds.StorePurchase, ProductId = productId, Receipt = receipt };
         public static PlayerAction SeeGuide(string guideId) => new PlayerAction { Kind = ActionKinds.GuideSeen, GuideId = guideId };
         public static PlayerAction ResetGuides() => new PlayerAction { Kind = ActionKinds.GuideReset };
+        public static PlayerAction BuyCosmetic(string id) => new PlayerAction { Kind = ActionKinds.CosmeticBuy, CosmeticId = id };
+        /// <param name="id">null = 벗기 (기본 모습).</param>
+        public static PlayerAction EquipCosmetic(string line, string kind, string id) => new PlayerAction { Kind = ActionKinds.CosmeticEquip, TroopType = line, Situation = kind, CosmeticId = id };
         public static PlayerAction DisbandUnit(string unitId) => new PlayerAction { Kind = ActionKinds.UnitDisband, UnitId = unitId };
 
         private sealed class Handler : IPlayerActionHandler

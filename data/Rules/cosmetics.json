@@ -1,0 +1,19 @@
+{
+  "_comment": "치장 (cosmetics.md, verification R-108). 겉모습만 — 전투 계산에 들어가지 않는다. kind = armor(갑옷 한 벌: 사람 계열) · horse(말 색: 말 탄 계열). lines = 입을 수 있는 계열 (없으면 그 종류의 모든 계열). look = 그림 값 (요소 → 색 이름, 그림 쪽이 테마 색으로). obtain.shop = 가격 하나 (gold 엽전 · gem 금괴 · priceKRW 결제), playPaths = 플레이로 얻는 길. 가격은 임시값 (open-values.md)",
+  "items": [
+    {
+      "id": "armor_brown",
+      "kind": "armor",
+      "nameKey": "cos.armor_brown",
+      "look": { "helmet": "leather", "trim": "leather", "shield": "leather" },
+      "obtain": { "shop": { "gold": 500 } }
+    },
+    {
+      "id": "horse_navy",
+      "kind": "horse",
+      "nameKey": "cos.horse_navy",
+      "look": { "horse": "navy" },
+      "obtain": { "shop": { "gold": 500 } }
+    }
+  ]
+}

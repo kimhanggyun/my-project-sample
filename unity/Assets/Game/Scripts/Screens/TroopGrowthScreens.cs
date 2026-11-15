@@ -106,6 +106,14 @@ namespace Game.Unity.Screens
 
             float pic = depth > 0 ? 166f : 196f;
             Ui.Place(Ui.TroopPicture(ctx, card, u.TroopType, pic), 15, (CardHeight - pic) / 2f, pic, pic);
+            // 치장 1단계: 그림 아래 [꾸미기] (사람 병사 계열만, cosmetics.md 6장)
+            string cosLine = Game.Flow.CosmeticService.LineOf(ctx.Defs, u.TroopType);
+            if (cosLine != null)
+            {
+                var dress = Ui.Button(card, ctx.T("ui.cos.open"), () => app.Show(new CosmeticScreen(cosLine)), 40, new Color(0.16f, 0.13f, 0.1f, 0.78f), 20);
+                dress.GetComponentInChildren<UnityEngine.UI.Text>().color = Color.white;
+                Ui.Place((RectTransform)dress.transform, 15 + pic / 2f - 60f, (CardHeight + pic) / 2f - 46f, 120, 40);
+            }
             float tx = 15f + pic + 19f, width = 1030f - dx;
 
             string troopName = FormationTabView.TroopName(ctx, u.TroopType);

@@ -672,6 +672,11 @@ namespace Game.Online
         /// <summary>닉네임 장수 만들기 (hiring-v2.md 2장, R-98): 없으면 avatar 틀로 합류. 예전 세이브용 (새 게임은 처음 지급에 있음).</summary>
         public const string AvatarCreate = "avatar.create";
 
+        /// <summary>치장 사기 (CosmeticId, R-108): 엽전 · 금괴로.</summary>
+        public const string CosmeticBuy = "cosmetic.buy";
+        /// <summary>치장 입히기 (TroopType = 계열 id, Situation = 종류 armor/horse, CosmeticId = 치장 id, 없으면 벗기, R-108).</summary>
+        public const string CosmeticEquip = "cosmetic.equip";
+
         public static bool IsDev(string kind) => kind != null && kind.StartsWith(DevPrefix, System.StringComparison.Ordinal);
     }
 
@@ -730,6 +735,8 @@ namespace Game.Online
         /// <summary>결제: 상품 id, 스토어 영수증 (R-64).</summary>
         public string ProductId { get; set; }
         public string Receipt { get; set; }
+        /// <summary>치장 id (R-108).</summary>
+        public string CosmeticId { get; set; }
         /// <summary>행동한 시각 (서버 시각 기준 unix 초, 0 = 지금, R-42).</summary>
         public long DoneAtUnixSeconds { get; set; }
     }

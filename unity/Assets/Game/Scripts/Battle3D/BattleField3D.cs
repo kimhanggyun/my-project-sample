@@ -212,6 +212,9 @@ namespace Game.Unity.Battle3D
         private InstanceBatch SoldierBatch(string troop, int color)
         {
             if (_soldierBatches.TryGetValue((troop, color), out var b)) return b;
+            string cacheTroop = troop;
+            string[] tk = troop.Split('|');
+            troop = tk[0];
             // 그 병종 모델이 없으면 부모 병종(T3 → T2 → T1) 모델, 그래도 없으면 기본 병사
             string key = "soldier." + troop;
             ArtModel model;
@@ -230,17 +233,27 @@ namespace Game.Unity.Battle3D
             }
             else
             {
-                // 모델이 없으면 코드로 만든 병종 인형 (SoldierMeshes): 1단계 병종 모양
+                // 모델이 없으면 코드로 만든 병종 인형 (SoldierMeshes): 1단계 병종 모양 + 치장 (troop 키 = 병종 id|갑옷 id|말 id)
+                var armorLook = tk.Length > 1 && tk[1].Length > 0 ? CosmeticLooks.Of(_ctl.Context.Defs, tk[1]) : null;
+                var horseLook = tk.Length > 2 && tk[2].Length > 0 ? CosmeticLooks.Of(_ctl.Context.Defs, tk[2]) : null;
                 string baseType = troop;
                 while (baseType != null && types.TryGetValue(baseType, out var d) && d.Parent != null && !d.HasTag("engineer")) baseType = d.Parent;
                 if (types.TryGetValue(troop, out var td) && td.HasTag("engineer")) baseType = "engineer"; // 공병은 보병에서 나왔어도 따로 (R-83)
                 var mat = Own(NewMaterial(SoldierColors[color]));
                 mat.enableInstancing = true;
-                // 부위별 재질: 갑옷(팀 색) · 얼굴 · 무기 · 다리·말
-                b = new InstanceBatch(SoldierMeshes.For(baseType), new[] { mat, PartMaterial(1, SoldierMeshes.SkinColor), PartMaterial(2, SoldierMeshes.MetalColor), PartMaterial(3, SoldierMeshes.DarkColor) }, Matrix4x4.identity);
+                // 부위별 재질: 몸통(팀 색) · 얼굴 · 무기 · 다리 · 치장 갑옷 색(팀 색과 가까우면 흐리게, 9장 3) · 말 색
+                var mesh = SoldierMeshes.For(baseType, armorLook != null);
+                var parts = SoldierMeshes.PartsOf(mesh);
+                var mats = new Material[parts.Length];
+                for (int i = 0; i < parts.Length; i++)
+                    mats[i] = parts[i] == SoldierMeshes.Team ? mat
+                        : parts[i] == SoldierMeshes.Armor ? ColorMaterial(CosmeticLooks.AwayFromTeams(CosmeticLooks.ColorOf(armorLook, "trim", SoldierMeshes.DarkColor), AllyColor, EnemyColor))
+                        : parts[i] == SoldierMeshes.Horse ? ColorMaterial(horseLook != null ? CosmeticLooks.ColorOf(horseLook, "horse", SoldierMeshes.DarkColor) : SoldierMeshes.DarkColor)
+                        : PartMaterial(parts[i], parts[i] == SoldierMeshes.Skin ? SoldierMeshes.SkinColor : parts[i] == SoldierMeshes.Metal ? SoldierMeshes.MetalColor : SoldierMeshes.DarkColor);
+                b = new InstanceBatch(mesh, mats, Matrix4x4.identity);
                 _allSoldierBatches.Add(b);
             }
-            return _soldierBatches[(troop, color)] = b;
+            return _soldierBatches[(cacheTroop, color)] = b;
         }
 
         /// <summary>
@@ -284,6 +297,33 @@ namespace Game.Unity.Battle3D
         }
 
         private readonly Material[] _partMaterials = new Material[8];
+        private readonly Dictionary<Color32, Material> _colorMaterials = new Dictionary<Color32, Material>();
+
+        /// <summary>색마다 재질 하나 (치장 색).</summary>
+        private Material ColorMaterial(Color c)
+        {
+            Color32 k = c;
+            if (_colorMaterials.TryGetValue(k, out var m)) return m;
+            m = Own(NewMaterial(c));
+            m.enableInstancing = true;
+            return _colorMaterials[k] = m;
+        }
+
+        /// <summary>소부대 → 병사 묶음 키 (병종 id|갑옷 id|말 id). 겉모습은 출진 설정(UnitSetup.Armor · Horse, R-108)에서.</summary>
+        private string SoldierKey(Game.Battle.Model.Simulation.SubUnitState u)
+        {
+            if (_lookKeys.TryGetValue(u, out var k)) return k;
+            string armor = null, horse = null;
+            foreach (var c in _ctl.Context.Corps)
+            {
+                if (c.Setup?.Units == null) continue;
+                foreach (var us in c.Setup.Units) if (us.UnitId == u.UnitId) { armor = us.Armor; horse = us.Horse; break; }
+                if (armor != null || horse != null) break;
+            }
+            return _lookKeys[u] = armor == null && horse == null ? u.Troop.Id : u.Troop.Id + "|" + armor + "|" + horse;
+        }
+        private readonly Dictionary<Game.Battle.Model.Simulation.SubUnitState, string> _lookKeys = new Dictionary<Game.Battle.Model.Simulation.SubUnitState, string>();
+
         private Material PartMaterial(int i, Color c)
         {
             if (_partMaterials[i] != null) return _partMaterials[i];
@@ -795,11 +835,11 @@ namespace Game.Unity.Battle3D
                         // 방금 전멸한 부대: 남아 있던 화면 병사가 모두 쓰러진다
                         if (_shownSoldiers.TryGetValue(u, out var was) && was > 0 && _unitPos.TryGetValue(u, out var lastPos))
                             for (int i = 0; i < was; i++)
-                                AddDying(lastPos.cur + rot * (new Vector3(i % side * SoldierSpacing - halfW, 0f, frontZ - i / side * SoldierSpacing) + Jitter(seedBase + i)), rot, u.Troop.Id, teamColor, seedBase + i, clock);
+                                AddDying(lastPos.cur + rot * (new Vector3(i % side * SoldierSpacing - halfW, 0f, frontZ - i / side * SoldierSpacing) + Jitter(seedBase + i)), rot, SoldierKey(u), teamColor, seedBase + i, clock);
                         _shownSoldiers[u] = 0;
                         continue;
                     }
-                    var batch = SoldierBatch(u.Troop.Id, u.Confused ? Confused : teamColor);
+                    var batch = SoldierBatch(SoldierKey(u), u.Confused ? Confused : teamColor);
                     // 맞을 때: 상자는 밝은 색으로, 모델은 (색을 밝힐 수 없어) 살짝 튀어 오른다
                     bool isCube = batch.Mesh == _cube;
                     var hitBatch = isCube ? CubeBatch(Hit) : batch;
@@ -823,7 +863,7 @@ namespace Game.Unity.Battle3D
                             int s = seedBase + (int)k * 31 + _flashFrame;
                             int col = (int)((uint)(s * 2654435761u) % (uint)side);
                             var local = new Vector3(col * SoldierSpacing - halfW, 0f, frontZ + 0.05f) + Jitter(s);
-                            AddDying(cur + rot * local, rot, u.Troop.Id, teamColor, s, clock);
+                            AddDying(cur + rot * local, rot, SoldierKey(u), teamColor, s, clock);
                         }
                     }
                     _shownSoldiers[u] = n;
