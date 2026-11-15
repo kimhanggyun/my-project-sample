@@ -204,6 +204,9 @@ namespace Game.Tests.Campaign
             Assert.Equal("general_a", r.Flag.GeneralId);
             Assert.Equal(2, r.Flag.Defense.Corps.Count);
             Assert.Equal(PlantReasons.GeneralBusy, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_b", "37.57,126.98"), Now).Reason);
+            // 목록 보기(지도)에도 장수들이 그대로 (예전에는 첫 장수만 보였다)
+            var view = TerritoryLedger.View(Defs, owners, "me", Now);
+            Assert.Equal(new[] { "general_a", "general_b" }, view.Owners.Find(o => o.RegionId == r.Flag.RegionId).GeneralIds);
         }
 
         [Fact(DisplayName = "R-109 회수: 한 명 회수하면 남은 장수로 수비 다시 (판 + 1), 모두 회수하면 깃발이 사라지고 쌓인 수입 우편, 남의 깃발 · 없는 장수는 거절")]
