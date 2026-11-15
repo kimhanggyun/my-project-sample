@@ -502,6 +502,9 @@ namespace Game.Flow
         public void ManageAlliance(AllianceManageRequest req, Action<AllianceResponse> done) =>
             done?.Invoke(TerritoryData == null ? null : AllianceBook.Manage(TerritoryData, _alliances, AccountId, req));
 
+        public void CollectFlag(string regionId, Action<MailListResponse> done) =>
+            done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m), regionId) });
+
         public void CollectTerritory(Action<MailListResponse> done) =>
             done?.Invoke(new MailListResponse { Mail = TerritoryLedger.Collect(TerritoryData, _owners, AccountId, Now, (who, m) => SendMail(who, m)) });
 
@@ -519,6 +522,13 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             done?.Invoke(TerritoryFlags.Plant(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, a => AllianceBook.Of(_alliances, a)?.Id, _owners, req, Now));
+        }
+
+        /// <summary>깃발에서 장수 회수 (R-109).</summary>
+        public void RecallFlag(RecallRequest req, Action<RecallResponse> done)
+        {
+            LoadSave(_ => { });
+            done?.Invoke(TerritoryFlags.Recall(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, req, Now, (who, m) => SendMail(who, m)));
         }
 
         /// <summary>개발 · 시험용: 다른 유저의 깃발을 장부에 넣는다 (가짜 서버에는 나 말고 유저가 없으므로).</summary>

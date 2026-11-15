@@ -62,6 +62,8 @@ namespace Game.Online
         public static string TerritoryDefense(string game) => Territory(game) + "/defense";
         /// <summary>깃발 꽂기 (POST, R-96). 남의 원 안이면 꽂지 않고 공성전 대상을 알려 준다.</summary>
         public static string TerritoryPlant(string game) => Territory(game) + "/plant";
+        /// <summary>깃발에서 장수 회수 (R-109).</summary>
+        public static string TerritoryRecall(string game) => Territory(game) + "/recall";
         /// <summary>연합 목록 (GET) / 만들기 (POST, R-49).</summary>
         public static string Alliances(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/alliances";
         public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
@@ -246,8 +248,10 @@ namespace Game.Online
         /// <summary>주인이 든 연합 (없으면 null, R-49).</summary>
         public string OwnerAllianceId { get; set; }
         public string OwnerAllianceName { get; set; }
-        /// <summary>깃발 (RegionId = "flag:위도E6,경도E6", territory-v2.md, R-96): 꽂은 장수 id.</summary>
+        /// <summary>깃발 (RegionId = "flag:위도E6,경도E6", territory-v2.md, R-96): 꽂은 장수 id (여럿이면 첫째, 예전 깃발과 맞춤).</summary>
         public string GeneralId { get; set; }
+        /// <summary>깃발에 나간 장수들 (R-109, 1명 이상). 예전 깃발은 null → GeneralId 하나.</summary>
+        public List<string> GeneralIds { get; set; }
         /// <summary>깃발 원 반지름 (m, 꽂을 때 주인 계급).</summary>
         public long RadiusM { get; set; }
         /// <summary>이 시각까지 공격받지 않음 (공성전 뒤 보호, R-97).</summary>
@@ -371,6 +375,8 @@ namespace Game.Online
         /// <summary>꽂을 지점 "위도,경도" (칸 가운데로 맞춘다). 없으면 내 위치.</summary>
         public string Target { get; set; }
         public string GeneralId { get; set; }
+        /// <summary>꽂을 장수들 (R-109, 1명 이상). 없으면 GeneralId 하나.</summary>
+        public List<string> GeneralIds { get; set; }
     }
 
     public static class PlantReasons
@@ -386,6 +392,38 @@ namespace Game.Online
         public const string Siege = "siege";
         public const string Protected = "protected";
         public const string NoFlags = "noFlags";
+    }
+
+    /// <summary>깃발에서 장수 회수 (R-109): 깃발 키, 회수할 장수들 (null = 모두). 모두 회수하면 깃발이 사라진다.</summary>
+    /// <summary>수입 받기 요청: 지역 · 깃발 하나 (없으면 모두).</summary>
+    public sealed class CollectRequest
+    {
+        public string RegionId { get; set; }
+    }
+
+    public sealed class RecallRequest
+    {
+        public string FlagKey { get; set; }
+        public List<string> GeneralIds { get; set; }
+    }
+
+    public static class RecallReasons
+    {
+        public const string Ok = "ok";
+        public const string NoFlag = "noFlag";
+        public const string NotMine = "notMine";
+        public const string NotOnFlag = "notOnFlag";
+    }
+
+    public sealed class RecallResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="RecallReasons"/>.</summary>
+        public string Reason { get; set; }
+        /// <summary>남은 깃발 (모두 회수해 사라졌으면 null).</summary>
+        public TerritoryOwner Flag { get; set; }
+        /// <summary>깃발이 사라지며 보낸 쌓인 수입 우편.</summary>
+        public List<Mail> Mail { get; set; } = new List<Mail>();
     }
 
     public sealed class PlantResponse
@@ -803,10 +841,14 @@ namespace Game.Online
         void GetTerritory(Action<TerritoryResponse> done);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (보낸 우편, 닿지 않으면 null).</summary>
         void CollectTerritory(Action<MailListResponse> done);
+        /// <summary>깃발 · 지역 하나만 수입 받기 (지도에서 깃발마다). 서버에 닿지 않으면 null.</summary>
+        void CollectFlag(string regionId, Action<MailListResponse> done);
         /// <summary>내 지역에 수비 편성 등록 (닿지 않으면 null).</summary>
         void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done);
         /// <summary>깃발 꽂기 (R-96, 닿지 않으면 null).</summary>
         void PlantFlag(PlantRequest request, Action<PlantResponse> done);
+        /// <summary>깃발에서 장수 회수 (R-109). 서버에 닿지 않으면 null.</summary>
+        void RecallFlag(RecallRequest request, Action<RecallResponse> done);
 
         // ---- 연합 (R-49). 닿지 않으면 null ----
         void GetAlliances(Action<AllianceListResponse> done);
@@ -838,8 +880,10 @@ namespace Game.Online
         public void LinkFirebase(string idToken, Action<LinkResponse> done) => done?.Invoke(null);
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);
         public void CollectTerritory(Action<MailListResponse> done) => done?.Invoke(null);
+        public void CollectFlag(string regionId, Action<MailListResponse> done) => done?.Invoke(null);
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
+        public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);
         public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);
         public void CreateAlliance(string name, Action<AllianceResponse> done) => done?.Invoke(null);
         public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);

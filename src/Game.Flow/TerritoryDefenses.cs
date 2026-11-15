@@ -31,6 +31,19 @@ namespace Game.Flow
             return SnapshotOf(defs, owner, c == null ? null : new List<CorpsComposition> { c }, out error);
         }
 
+        /// <summary>장수 여럿의 군단 스냅샷 (깃발 하나에 여러 장수, R-109). 기본 편성에 없는 장수가 있으면 null.</summary>
+        public static TerritoryDefense SnapshotGenerals(DefinitionSet defs, CampaignState owner, IReadOnlyList<string> generalIds, out string error)
+        {
+            var list = new List<CorpsComposition>();
+            foreach (var id in generalIds ?? new List<string>())
+            {
+                var c = TerritoryFlags.CorpsOf(owner, id);
+                if (c == null) { error = BadFormation; return null; }
+                list.Add(c);
+            }
+            return SnapshotOf(defs, owner, list.Count == 0 ? null : list, out error);
+        }
+
         private static TerritoryDefense SnapshotOf(DefinitionSet defs, CampaignState owner, List<CorpsComposition> source, out string error)
         {
             error = null;

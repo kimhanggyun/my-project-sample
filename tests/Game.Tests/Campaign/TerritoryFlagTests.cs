@@ -189,5 +189,59 @@ namespace Game.Tests.Campaign
             var bad = flow.Prepare(low, new SortieRequest { StepId = "territory." + far.RegionId, Seed = 1, Delegate = true, Location = Here, Defense = rival.Defense });
             Assert.False(bad.Ok);
         }
+
+        [Fact(DisplayName = "R-109 장수 여럿: 한 깃발에 2명 (수비 = 두 군단), 그 장수들은 다른 깃발에 못 감, 한 명이라도 안 되면 꽂지 않음")]
+        public void PlantMany()
+        {
+            var state = Kit.Veteran();
+            var owners = new Dictionary<string, TerritoryOwner>();
+            var bad = new PlantRequest { Location = Here, GeneralIds = new List<string> { "general_a", "nobody" } };
+            Assert.Equal(PlantReasons.NoGeneral, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, bad, Now).Reason);
+            Assert.Empty(owners);
+            var r = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, new PlantRequest { Location = Here, GeneralIds = new List<string> { "general_a", "general_b", "general_a" } }, Now);
+            Assert.True(r.Ok, r.Reason);
+            Assert.Equal(new[] { "general_a", "general_b" }, r.Flag.GeneralIds);
+            Assert.Equal("general_a", r.Flag.GeneralId);
+            Assert.Equal(2, r.Flag.Defense.Corps.Count);
+            Assert.Equal(PlantReasons.GeneralBusy, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_b", "37.57,126.98"), Now).Reason);
+        }
+
+        [Fact(DisplayName = "R-109 회수: 한 명 회수하면 남은 장수로 수비 다시 (판 + 1), 모두 회수하면 깃발이 사라지고 쌓인 수입 우편, 남의 깃발 · 없는 장수는 거절")]
+        public void Recall()
+        {
+            var state = Kit.Veteran();
+            var owners = new Dictionary<string, TerritoryOwner>();
+            var flag = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, new PlantRequest { Location = Here, GeneralIds = new List<string> { "general_a", "general_b" } }, Now).Flag;
+            var mail = new List<Mail>();
+            void Send(string who, Mail m) { Assert.Equal("me", who); mail.Add(m); }
+            Assert.Equal(RecallReasons.NotMine, TerritoryFlags.Recall(Defs, Kit.D, state, "other", owners, new RecallRequest { FlagKey = flag.RegionId }, Now, Send).Reason);
+            Assert.Equal(RecallReasons.NotOnFlag, TerritoryFlags.Recall(Defs, Kit.D, state, "me", owners, new RecallRequest { FlagKey = flag.RegionId, GeneralIds = new List<string> { "general_c" } }, Now, Send).Reason);
+            var one = TerritoryFlags.Recall(Defs, Kit.D, state, "me", owners, new RecallRequest { FlagKey = flag.RegionId, GeneralIds = new List<string> { "general_a" } }, Now + 60, Send);
+            Assert.True(one.Ok);
+            Assert.Equal(new[] { "general_b" }, one.Flag.GeneralIds);
+            Assert.Single(one.Flag.Defense.Corps);
+            Assert.Equal(2, one.Flag.Defense.Version);
+            Assert.True(TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_a", "37.57,126.98"), Now).Ok); // 회수한 장수는 다시 나갈 수 있다
+            var all = TerritoryFlags.Recall(Defs, Kit.D, state, "me", owners, new RecallRequest { FlagKey = flag.RegionId }, Now + 3 * 3600, Send);
+            Assert.True(all.Ok);
+            Assert.Null(all.Flag);
+            Assert.False(owners.ContainsKey(flag.RegionId));
+            Assert.NotEmpty(all.Mail);
+            Assert.Equal(RecallReasons.NoFlag, TerritoryFlags.Recall(Defs, Kit.D, state, "me", owners, new RecallRequest { FlagKey = flag.RegionId }, Now, Send).Reason);
+        }
+
+        [Fact(DisplayName = "깃발 하나만 수입 받기: 고른 깃발만 우편 · 받은 시각 갱신, 다른 깃발은 그대로 쌓임")]
+        public void CollectOne()
+        {
+            var state = Kit.Veteran();
+            var owners = new Dictionary<string, TerritoryOwner>();
+            var a = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_a"), Now).Flag;
+            var b = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_b", "37.57,126.98"), Now).Flag;
+            var mail = new List<Mail>();
+            var sent = TerritoryLedger.Collect(Defs, owners, "me", Now + 3 * 3600, (who, m) => mail.Add(m), a.RegionId);
+            Assert.NotEmpty(sent);
+            Assert.Equal(Now + 3 * 3600, owners[a.RegionId].CollectedUnixSeconds);
+            Assert.Equal(Now, owners[b.RegionId].CollectedUnixSeconds);
+        }
     }
 }

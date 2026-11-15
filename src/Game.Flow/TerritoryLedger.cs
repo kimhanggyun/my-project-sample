@@ -21,6 +21,16 @@ namespace Game.Flow
             owners[regionId] = new TerritoryOwner { RegionId = regionId, OwnerAccountId = accountId, SinceUnixSeconds = at, CollectedUnixSeconds = at };
         }
 
+        /// <summary>깃발 · 지역 내놓기 (R-109 깃발 거두기): 주인에게 그때까지 쌓인 수입을 우편으로 보내고 장부에서 지운다. 보낸 우편.</summary>
+        public static List<Mail> Release(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string regionId, long at, Action<string, Mail> sendMail)
+        {
+            var sent = new List<Mail>();
+            if (regionId == null || !owners.TryGetValue(regionId, out var o)) return sent;
+            if (defs != null) foreach (var m in MailsFor(defs, regionId, o, at)) { sendMail(o.OwnerAccountId, m); sent.Add(m); }
+            owners.Remove(regionId);
+            return sent;
+        }
+
         /// <summary>수비 편성 등록 (R-48): 그 지역의 주인만. 판 = 앞 판 + 1. 되면 등록한 것, 아니면 null.</summary>
         public static TerritoryDefense RegisterDefense(Dictionary<string, TerritoryOwner> owners, string regionId, string accountId, TerritoryDefense defense, long at)
         {
@@ -37,12 +47,14 @@ namespace Game.Flow
             regionId != null && owners.TryGetValue(regionId, out var o) ? o.Defense : null;
 
         /// <summary>수입 받기 (R-47): 내 지역마다 쌓인 수입을 우편으로, 받은 시각 = 지금. 보낸 우편 목록.</summary>
-        public static List<Mail> Collect(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string accountId, long now, Action<string, Mail> sendMail)
+        /// <param name="regionId">이 지역 · 깃발만 (null = 내 것 모두, 2026-11-15 지도에서 깃발마다 받기).</param>
+        public static List<Mail> Collect(TerritoryDefs defs, Dictionary<string, TerritoryOwner> owners, string accountId, long now, Action<string, Mail> sendMail, string regionId = null)
         {
             var sent = new List<Mail>();
             if (defs == null) return sent;
             foreach (var o in owners.Values)
             {
+                if (regionId != null && o.RegionId != regionId) continue;
                 if (o.OwnerAccountId != accountId || AccruedOf(defs, o.RegionId, o.CollectedUnixSeconds, now) == null) continue;
                 foreach (var m in MailsFor(defs, o.RegionId, o, now)) { sendMail(accountId, m); sent.Add(m); }
                 o.CollectedUnixSeconds = now;

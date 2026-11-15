@@ -163,6 +163,9 @@ namespace Game.Online
         public void GetTerritory(Action<TerritoryResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Territory(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<TerritoryResponse>(body) : null));
 
+        public void CollectFlag(string regionId, Action<MailListResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryCollect(_game), OnlineJson.Write(new CollectRequest { RegionId = regionId }), Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
+
         public void CollectTerritory(Action<MailListResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryCollect(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
@@ -172,6 +175,10 @@ namespace Game.Online
                 done?.Invoke(status == 200 || status == 422 ? Parse<DefenseResponse>(body) : null));
 
         /// <summary>200 = 꽂음, 422 = 못 꽂음(까닭 · 공성전 대상). 그 밖은 null.</summary>
+        public void RecallFlag(RecallRequest request, Action<RecallResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryRecall(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<RecallResponse>(body) : null));
+
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryPlant(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<PlantResponse>(body) : null));

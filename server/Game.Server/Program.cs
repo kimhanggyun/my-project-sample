@@ -187,6 +187,15 @@ app.MapPost("/v1/games/{game}/territory/plant", async (string game, HttpRequest 
         return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
     });
 });
+app.MapPost("/v1/games/{game}/territory/recall", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<RecallRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.RecallFlag(id, body);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
 // 연합 (R-49)
 app.MapGet("/v1/games/{game}/alliances", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.Alliances(id))));
@@ -204,8 +213,13 @@ app.MapPost("/v1/games/{game}/alliances/manage", async (string game, HttpRequest
 });
 app.MapPost("/v1/games/{game}/alliances/{alliance}/join", (string game, string alliance, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => AllianceResult(g.JoinAlliance(id, alliance))));
-app.MapPost("/v1/games/{game}/territory/collect", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
-    InGame(req, p, r, game, Now(), (id, g) => Json(g.CollectTerritory(id))));
+app.MapPost("/v1/games/{game}/territory/collect", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    // 몸이 있으면 그 지역 · 깃발만 (지도에서 깃발마다 받기), 없으면 모두
+    CollectRequest body = null;
+    if (req.ContentLength > 0) { try { body = await Body<CollectRequest>(req); } catch (Exception) { body = null; } }
+    return InGame(req, p, r, game, Now(), (id, g) => Json(g.CollectTerritory(id, body?.RegionId)));
+});
 
 app.Run();
 

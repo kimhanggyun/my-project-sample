@@ -115,7 +115,7 @@ namespace Game.Unity.Screens
             if (corps != null) foreach (var p in corps.Picks) { var u = ctx.State.FindUnit(p.UnitId); if (u != null && !myTypes.Contains(u.UnitId)) myTypes.Add(u.UnitId); }
             Ui.Label(card, corps == null ? ctx.T("ui.merc.noCorps") : ctx.T("ui.merc.myCorps", string.Join(" · ", myTypes.ConvertAll(id => FormationTabView.TroopName(ctx, ctx.State.FindUnit(id).TroopType)))), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             bool onFlag = false;
-            if (TerritoryTabView.Owners != null) foreach (var o in TerritoryTabView.Owners.Values) if (o.OwnerAccountId == ctx.AccountId && o.GeneralId == me.GeneralId) onFlag = true;
+            if (TerritoryTabView.Owners != null) foreach (var o in TerritoryTabView.Owners.Values) if (o.OwnerAccountId == ctx.AccountId && TerritoryFlags.GeneralsOf(o).Contains(me.GeneralId)) onFlag = true;
             if (onFlag)
             {
                 Ui.Label(card, Ui.Colored(ctx.T("ui.merc.blocked"), Palette.Bad), Ui.FontSmall);

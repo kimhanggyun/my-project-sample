@@ -10,11 +10,27 @@ using Game.Territory;
 namespace Game.Flow
 {
     /// <summary>
-    /// 영토 깃발 (territory-v2.md 2장, verification R-96 · R-97): 깃발 = 장수 1명 + 병력, 깃발 둘레 원(반지름 = 계정 계급)이 땅.
+    /// 영토 깃발 (territory-v2.md 2장, verification R-96 · R-97 · R-109): 깃발 = 장수 1명 이상 + 그 군단 병력, 깃발 둘레 원(반지름 = 계정 계급)이 땅. 장수는 회수할 수 있고 모두 회수하면 깃발이 사라진다.
     /// 저장소와 무관한 계산 — 참고 서버 · 가짜 서버 · 기기가 같이 쓴다. 깃발은 영토 주인 장부(TerritoryOwner)에 "flag:" 키로 둔다.
     /// </summary>
     public static class TerritoryFlags
     {
+        /// <summary>깃발에 나간 장수들 (예전 깃발은 GeneralId 하나).</summary>
+        public static List<string> GeneralsOf(TerritoryOwner o)
+        {
+            if (o?.GeneralIds != null && o.GeneralIds.Count > 0) return new List<string>(o.GeneralIds);
+            return o?.GeneralId != null ? new List<string> { o.GeneralId } : new List<string>();
+        }
+
+        /// <summary>꽂기 요청의 장수들 (겹친 것 빼고 차례대로, 없으면 GeneralId 하나).</summary>
+        public static List<string> RequestGenerals(PlantRequest req)
+        {
+            var list = new List<string>();
+            if (req?.GeneralIds != null) foreach (var id in req.GeneralIds) if (!string.IsNullOrEmpty(id) && !list.Contains(id)) list.Add(id);
+            if (list.Count == 0 && !string.IsNullOrEmpty(req?.GeneralId)) list.Add(req.GeneralId);
+            return list;
+        }
+
         /// <summary>그 계정 계급의 깃발 원 반지름 (m).</summary>
         public static long RadiusOf(DefinitionSet defs, CampaignState state) => defs.Campaign.RankFor(state?.LordLevel ?? 1).FlagRadiusM;
 
@@ -48,12 +64,18 @@ namespace Game.Flow
             var cell = fd.CellOf(target);
             if (!fd.Within(here, cell, radius)) return new PlantCheck { Reason = PlantReasons.OutOfRange, RadiusM = radius };
 
-            var g = state?.FindGeneral(req.GeneralId ?? "");
-            if (g == null) return new PlantCheck { Reason = PlantReasons.NoGeneral, RadiusM = radius };
-            if (!GeneralStatus.CanDeploy(g.Status)) return new PlantCheck { Reason = PlantReasons.GeneralBusy, RadiusM = radius };
-            foreach (var o in owners.Values)
-                if (FlagDefs.IsFlagKey(o.RegionId) && o.OwnerAccountId == accountId && o.GeneralId == req.GeneralId) return new PlantCheck { Reason = PlantReasons.GeneralBusy, RadiusM = radius };
-            if (CorpsOf(state, req.GeneralId) == null) return new PlantCheck { Reason = PlantReasons.NotInFormation, RadiusM = radius };
+            // 장수 1명 이상 (R-109): 모두 있고 · 출전 가능 · 다른 내 깃발에 없고 · 기본 편성에 군단이 있어야
+            var gids = RequestGenerals(req);
+            if (gids.Count == 0) return new PlantCheck { Reason = PlantReasons.NoGeneral, RadiusM = radius };
+            foreach (var gid in gids)
+            {
+                var g = state?.FindGeneral(gid);
+                if (g == null) return new PlantCheck { Reason = PlantReasons.NoGeneral, RadiusM = radius };
+                if (!GeneralStatus.CanDeploy(g.Status)) return new PlantCheck { Reason = PlantReasons.GeneralBusy, RadiusM = radius };
+                foreach (var o in owners.Values)
+                    if (FlagDefs.IsFlagKey(o.RegionId) && o.OwnerAccountId == accountId && GeneralsOf(o).Contains(gid)) return new PlantCheck { Reason = PlantReasons.GeneralBusy, RadiusM = radius };
+                if (CorpsOf(state, gid) == null) return new PlantCheck { Reason = PlantReasons.NotInFormation, RadiusM = radius };
+            }
 
             string key = FlagDefs.KeyOf(cell);
             string myAlliance = allianceOf?.Invoke(accountId);
@@ -99,7 +121,8 @@ namespace Game.Flow
         {
             var check = Check(territory, defs, state, accountId, allianceOf, owners, req, now);
             if (!check.Ok) return new PlantResponse { Ok = false, Reason = check.Reason, AttackKey = check.AttackKey };
-            var defense = TerritoryDefenses.SnapshotGeneral(defs, state, req.GeneralId, out _);
+            var gids = RequestGenerals(req);
+            var defense = TerritoryDefenses.SnapshotGenerals(defs, state, gids, out _);
             if (defense == null) return new PlantResponse { Ok = false, Reason = PlantReasons.NotInFormation };
             defense.Version = 1;
             defense.RegisteredAtUnixSeconds = now;
@@ -107,10 +130,32 @@ namespace Game.Flow
             var flag = new TerritoryOwner
             {
                 RegionId = check.FlagKey, OwnerAccountId = accountId, SinceUnixSeconds = now, CollectedUnixSeconds = now,
-                GeneralId = req.GeneralId, RadiusM = check.RadiusM, Defense = defense,
+                GeneralId = gids[0], GeneralIds = gids, RadiusM = check.RadiusM, Defense = defense,
             };
             owners[check.FlagKey] = flag;
             return new PlantResponse { Ok = true, Reason = PlantReasons.Ok, Flag = flag };
+        }
+
+        /// <summary>
+        /// 장수 회수 (R-109): 내 깃발에서 고른 장수들을 돌려받는다 (null · 빈 목록 = 모두). 남은 장수가 있으면 수비 = 남은 장수 군단 스냅샷(판 + 1),
+        /// 모두 회수하면 깃발을 거둔다 — 쌓인 수입을 우편으로 보내고 장부에서 지운다.
+        /// </summary>
+        public static RecallResponse Recall(TerritoryDefs territory, DefinitionSet defs, CampaignState state, string accountId, Dictionary<string, TerritoryOwner> owners,
+            RecallRequest req, long now, Action<string, Mail> sendMail)
+        {
+            if (req?.FlagKey == null || !FlagDefs.IsFlagKey(req.FlagKey) || !owners.TryGetValue(req.FlagKey, out var flag)) return new RecallResponse { Ok = false, Reason = RecallReasons.NoFlag };
+            if (flag.OwnerAccountId != accountId) return new RecallResponse { Ok = false, Reason = RecallReasons.NotMine };
+            var on = GeneralsOf(flag);
+            var take = req.GeneralIds == null || req.GeneralIds.Count == 0 ? new List<string>(on) : new List<string>(req.GeneralIds);
+            foreach (var id in take) if (!on.Contains(id)) return new RecallResponse { Ok = false, Reason = RecallReasons.NotOnFlag };
+            var left = on.FindAll(id => !take.Contains(id));
+            if (left.Count == 0)
+                return new RecallResponse { Ok = true, Reason = RecallReasons.Ok, Flag = null, Mail = TerritoryLedger.Release(territory, owners, req.FlagKey, now, sendMail) };
+            var d = TerritoryDefenses.SnapshotGenerals(defs, state, left, out _);
+            if (d != null) { d.Version = (flag.Defense?.Version ?? 0) + 1; d.RegisteredAtUnixSeconds = now; d.OwnerAccountId = accountId; flag.Defense = d; }
+            flag.GeneralIds = left;
+            flag.GeneralId = left[0];
+            return new RecallResponse { Ok = true, Reason = RecallReasons.Ok, Flag = flag };
         }
 
         /// <summary>
@@ -146,6 +191,7 @@ namespace Game.Flow
             TerritoryLedger.Capture(territory, owners, flagKey, attackerId, at, sendMail);
             var flag = owners[flagKey];
             flag.GeneralId = attackerGeneralId;
+            flag.GeneralIds = attackerGeneralId == null ? null : new List<string> { attackerGeneralId };
             flag.RadiusM = RadiusOf(defs, attackerState);
             flag.ProtectedUntilUnixSeconds = until;
             var d = TerritoryDefenses.SnapshotGeneral(defs, attackerState, attackerGeneralId, out _);

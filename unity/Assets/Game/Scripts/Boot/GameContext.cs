@@ -652,6 +652,8 @@ namespace Game.Unity.Boot
 
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47). 받기는 우편함에서.</summary>
         public void CollectTerritory(Action<MailListResponse> done) => Online.CollectTerritory(done);
+        /// <summary>깃발 하나만 수입 받기 (지도의 수입 표시 · 깃발 판).</summary>
+        public void CollectFlag(string regionId, Action<MailListResponse> done) => Online.CollectFlag(regionId, done);
 
         // ---- 연합 (R-49) ----
         public void LoadAlliances(Action<AllianceListResponse> done) => Online.GetAlliances(done);
@@ -666,6 +668,15 @@ namespace Game.Unity.Boot
 
         /// <summary>깃발 꽂기 (R-96).</summary>
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => Online.PlantFlag(request, done);
+        private const string LocationConsentKey = "prefs.locationConsent";
+
+        /// <summary>영토 위치 확인에 동의했다 (이 기기, 깃발 꽂기 · 공격 때 한 번 묻는다, 위치정보 안내).</summary>
+        public bool LocationConsented => _saveStore.Exists(LocationConsentKey) && _saveStore.Read(LocationConsentKey) == "1";
+
+        public void SetLocationConsent(bool on) => _saveStore.Write(LocationConsentKey, on ? "1" : "0");
+
+        /// <summary>깃발에서 장수 회수 (R-109).</summary>
+        public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => Online.RecallFlag(request, done);
 
         /// <summary>우편 받기 = 행동 mail.claim (서버가 우편이 있는지 확인하고 같은 규칙으로 더한다).</summary>
         public bool ClaimMail(Mail mail)
