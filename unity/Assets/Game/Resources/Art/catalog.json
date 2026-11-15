@@ -1,45 +1,9 @@
 {
   "_comment": "임시 3D 아트 목록 (docs/impl/unity/art.md). 키 → model(또는 models: 여러 변형) = Resources 아래 경로(확장자 없이). 파일이 없으면 단순 도형. height = 목표 높이(전장 1칸 = 1), yaw = 모델 방향 보정(도), tint = 팀 색 섞는 비율(병사), perCell = 칸마다 소품 수(소수면 확률), jitter = 크기 흔들림",
   "models": {
-    "soldier.default": {
-      "model": "Art/Models/soldier",
-      "height": 0.42,
-      "yaw": 0,
-      "tint": 0.8
-    },
-    "soldier.infantry": {
-      "model": "Art/Models/soldier_infantry",
-      "height": 0.42,
-      "tint": 0.8
-    },
-    "soldier.spearman": {
-      "model": "Art/Models/soldier_spearman",
-      "height": 0.42,
-      "tint": 0.8
-    },
-    "soldier.archer": {
-      "model": "Art/Models/soldier_archer",
-      "height": 0.42,
-      "tint": 0.8
-    },
-    "soldier.cavalry": {
-      "model": "Art/Models/soldier_cavalry",
-      "height": 0.5,
-      "tint": 0.8
-    },
-    "soldier.scout": {
-      "model": "Art/Models/soldier_scout",
-      "height": 0.45,
-      "tint": 0.8
-    },
     "soldier.catapult": {
       "model": "Art/Models/soldier_catapult",
       "height": 0.5
-    },
-    "soldier.engineer": {
-      "model": "Art/Models/soldier_engineer",
-      "height": 0.42,
-      "tint": 0.8
     },
     "soldier.warship": {
       "model": "Art/Models/ship",
