@@ -33,6 +33,8 @@ namespace Game.Unity.Boot
                 ("01_title", () => new TitleScreen(), 0f),
                 ("02_signin", () => new SignInScreen(), 0f),
                 ("03_terms", () => new TermsScreen(), 0f),
+                ("03b_status_update", () => new AppStatusScreen(new AppStatusResult { UpdateRequired = true }, StartupSteps.VersionCheck), 0f), // 버전 · 점검 (R-118, 2026-11-16)
+                ("03c_status_maintenance", () => new AppStatusScreen(new AppStatusResult { Maintenance = true, MessageKey = AppStatus.DefaultMaintenanceKey, MaintenanceEndsAtUnixSeconds = Ctx.Clock.UtcNow.ToUnixTimeSeconds() + 7200 }, StartupSteps.VersionCheck), 0f),
                 ("04_main_story", () => new MainScreen("story"), 0f),
                 ("05_main_general", () => new MainScreen("general"), 0f),
                 ("06_main_troop", () => new MainScreen("troop"), 0f),
