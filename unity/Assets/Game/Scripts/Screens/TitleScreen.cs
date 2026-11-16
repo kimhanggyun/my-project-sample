@@ -78,6 +78,55 @@ namespace Game.Unity.Screens
     }
 
     /// <summary>부팅·화면 오류. 규칙 데이터가 잘못되었을 때 원인을 화면에 보여준다.</summary>
+    /// <summary>
+    /// 시작 때 버전 · 점검 안내 (R-118): 업데이트 필요 = [스토어로]만 (닫을 수 없음), 점검 = 문구 · 끝 시각 · [다시 확인] (개발 빌드는 [그래도 들어가기]),
+    /// 새 버전 = [업데이트] [나중에]. 점검이 업데이트보다 먼저 보이지는 않는다 (업데이트 필요가 앞).
+    /// </summary>
+    public sealed class AppStatusScreen : GameScreen
+    {
+        private readonly Game.Flow.AppStatusResult _r;
+        private readonly string _step;
+        public AppStatusScreen(Game.Flow.AppStatusResult r, string step) { _r = r; _step = step; }
+
+        public override bool OnBack() => false; // 맨 위 화면: 뒤로 = 종료 확인
+
+        public override void Build()
+        {
+            Ui.Column(Root, 24, 48).childAlignment = TextAnchor.MiddleCenter;
+            Ui.Size(Ui.Rect(Root, "Top"), flexibleHeight: 1);
+            string kind = _r.UpdateRequired ? "updateRequired" : _r.Maintenance ? "maintenance" : "updateAvailable";
+            Ui.Size(Ui.Label(Root, T("ui.status." + kind + ".title"), Ui.FontTitle, TextAnchor.MiddleCenter, _r.UpdateAvailable && !_r.Maintenance ? Palette.Text : Palette.Bad), 140);
+            string body = _r.Maintenance && !_r.UpdateRequired ? T(_r.MessageKey ?? Game.Flow.AppStatus.DefaultMaintenanceKey) : T("ui.status." + kind + ".body");
+            if (_r.Maintenance && !_r.UpdateRequired && _r.MaintenanceEndsAtUnixSeconds > 0)
+                body += "\n\n" + T("ui.status.endsAt", System.DateTimeOffset.FromUnixTimeSeconds(_r.MaintenanceEndsAtUnixSeconds).ToLocalTime().ToString("MM.dd HH:mm"));
+            var card = Ui.Card(Root, "Message", 24, 8);
+            Ui.Label(card, body, Ui.FontBody, TextAnchor.MiddleCenter);
+            Ui.Label(Root, T("ui.status.version", Application.version), 22, TextAnchor.MiddleCenter, Palette.TextDim);
+            Ui.Size(Ui.Rect(Root, "Bottom"), flexibleHeight: 1);
+            if (_r.UpdateRequired) Ui.PrimaryButton(Root, T("ui.status.toStore"), OpenStore, 110, 34);
+            else if (_r.Maintenance)
+            {
+                Ui.PrimaryButton(Root, T("ui.status.retry"), () => App.NextStartup(Game.Flow.StartupSteps.Splash), 110, 34); // 다시 버전 · 점검 확인
+                if (Debug.isDebugBuild) Ui.SecondaryButton(Root, T("ui.status.enterAnyway"), () => App.NextStartup(_step), 90, 26);
+            }
+            else
+            {
+                Ui.PrimaryButton(Root, T("ui.status.update"), OpenStore, 110, 34);
+                Ui.SecondaryButton(Root, T("ui.status.later"), () => App.NextStartup(_step), 96, 28);
+            }
+        }
+
+        /// <summary>스토어의 이 앱 (안드로이드 market://, 안 되면 웹 주소).</summary>
+        private static void OpenStore()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            Application.OpenURL("market://details?id=" + Application.identifier);
+#else
+            Application.OpenURL("https://play.google.com/store/apps/details?id=" + Application.identifier);
+#endif
+        }
+    }
+
     public sealed class ErrorScreen : GameScreen
     {
         /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
