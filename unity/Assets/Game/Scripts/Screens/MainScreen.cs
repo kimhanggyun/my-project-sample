@@ -126,6 +126,7 @@ namespace Game.Unity.Screens
             var tabs = new List<MainTabEntry>();
             var alerts = Game.Flow.TabAlerts.Compute(Ctx.Defs, Ctx.State, Ctx.Flow, Ctx.Clock.UtcNow.ToUnixTimeSeconds());
             bool dev = Ctx.DevToolsVisible;
+            if (Ctx.CodexHasNew) alerts.Add("codex"); // 도감 NEW (13 시안)
             foreach (var row in new[] { MainTabEntry.RowDev, MainTabEntry.RowRelease })
             {
                 if (row == MainTabEntry.RowDev && !dev) continue;

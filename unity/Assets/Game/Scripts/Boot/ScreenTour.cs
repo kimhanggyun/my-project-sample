@@ -44,7 +44,7 @@ namespace Game.Unity.Boot
                 ("08_main_territory", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; Game.Unity.Screens.TerritoryTabView.PanM = Vector2.zero; return new MainScreen("territory"); }, 0f),
                 ("08b_territory_mid", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 3; return new MainScreen("territory"); }, 0f), // 지도 바탕: 중간 줌 (한강)
                 ("08c_territory_far", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 6; return new MainScreen("territory"); }, 0f), // 멀리 줌 (서해 · 반도)
-                ("09_main_hiring", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; return new MainScreen("hiring"); }, 0f),
+                ("09_main_hiring", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; return new MainScreen("hiring"); }, 2f), // 목록을 받아 온 뒤 찍기
                 ("10_step", () => new StepScreen(FirstStep()), 0f),
             };
             if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => { TroopGrowthTabView.PreparePromote(Ctx.State.Units[0].UnitId); return new MainScreen("troop"); }, 0f)); // 시안 06 승급 화면
