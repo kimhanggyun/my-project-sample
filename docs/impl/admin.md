@@ -3,12 +3,14 @@
 > 2026-11-16 사용자 요청. 게임 서버가 함께 내놓는 웹 페이지 하나: **`<서버 주소>/unitygame1.html`**
 > (지금: https://game-server-883012601666.asia-northeast3.run.app/unitygame1.html)
 
-## 1. 들어가기 (둘 다 맞아야)
+## 1. 들어가기
+
+> **지금 (개발 중, 2026-11-16 사용자): 접속 ID만** — 서버 설정 `Game:AdminGoogle=off` (배포 기본, 저장소 변수 `ADMIN_GOOGLE`이 없으면 off). 구글 로그인 확인(②)은 **출시 전에 켠다** ([backlog.md](../design/backlog.md) F): 변수 `ADMIN_GOOGLE` = `on` + 아래 3장 2번(OAuth 원본).
 
 | 단계 | 무엇 | 어디서 확인 |
 |---|---|---|
 | ① 접속 ID | 관리자 키. 페이지 첫 칸에 입력 | 서버 설정 `Game:AdminKey` (Cloud Run 환경 변수 `Game__AdminKey` ← GitHub 저장소 **비밀값** `GAME_ADMIN_KEY`) |
-| ② 구글 로그인 | 마스터 구글 계정 (R-86) | 서버 설정 `Game:Masters` (저장소 변수 `GAME_MASTERS`) |
+| ② 구글 로그인 (출시 전에 켬) | 마스터 구글 계정 (R-86) | 서버 설정 `Game:Masters` (저장소 변수 `GAME_MASTERS`), `Game:AdminGoogle`이 off가 아닐 때만 |
 
 - **접속 ID는 저장소 · 페이지 어디에도 적지 않는다** (저장소가 공개). 서버만 안다. 바꾸려면 GitHub 비밀값을 바꾸고 배포를 다시 돌린다.
 - 키 설정이 없으면 관리자 주소(`/v1/admin/*`)는 모두 404 = 꺼짐 (로컬 참고 서버 기본).
@@ -28,6 +30,8 @@
 - 세이브를 직접 고치는 기능은 없다 (보기만). 자원은 우편으로만 준다 → 서버 규칙(`mail.claim`)을 그대로 거친다.
 
 ## 3. 처음 한 번 (사용자)
+
+지금(개발 중)은 1 · 4번만. 2 · 3번은 출시 전에 구글 확인을 켤 때.
 
 1. GitHub 저장소 → Settings → Secrets and variables → Actions → **Secrets**에 `GAME_ADMIN_KEY` = 접속 ID. (또는 `gh secret set GAME_ADMIN_KEY`)
 2. GCP 콘솔 → API 및 서비스 → 사용자 인증 정보 → OAuth 2.0 클라이언트 **웹 클라이언트** (`googleWebClientId`와 같은 것) → **승인된 JavaScript 원본**에 서버 주소 `https://game-server-883012601666.asia-northeast3.run.app` 추가. (없으면 구글 버튼이 "origin not allowed")
