@@ -45,6 +45,12 @@ namespace Game.Server
         bool CancelDeletion(string accountId);
         /// <summary>유예가 지난 계정을 모두 지운다 (토큰 · 외부 로그인 · 이메일 · 닉네임 · 가입 · 게임별 세이브 · 고용 등록 · 우편 · 고용 기록 · 영토 · 공유 녹화). 지운 수.</summary>
         int PurgeDeleted(long nowUnixSeconds);
+
+        // ---- 버전 · 점검 안내 (R-118) ----
+        /// <summary>관리자 페이지가 정한 값 (없으면 null = 서버 설정 그대로).</summary>
+        ServerStatusResponse StatusOverride();
+        /// <summary>null이면 지운다 (서버 설정으로 돌아감).</summary>
+        void SetStatusOverride(ServerStatusResponse status);
     }
 
     public interface IGameStore
@@ -135,6 +141,8 @@ namespace Game.Server
             public Dictionary<string, List<SharedReplayEntry>> SharedReplays { get; set; } = new Dictionary<string, List<SharedReplayEntry>>();
             /// <summary>게임 코드 → (계정 → 출석 기록, R-112).</summary>
             public Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>> Attendance { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>();
+            /// <summary>관리자 페이지가 정한 버전 · 점검 안내 (R-118, null = 서버 설정).</summary>
+            public ServerStatusResponse StatusOverride { get; set; }
             /// <summary>게임 코드 → (거래 id → 반영한 결제, R-116).</summary>
             public Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>> Receipts { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>>();
         }
@@ -205,6 +213,20 @@ namespace Game.Server
                 if (Data.Deletions == null) Data.Deletions = new Dictionary<string, long>();
                 if (!Data.Deletions.TryGetValue(accountId, out var at)) { Data.Deletions[accountId] = at = nowUnixSeconds; Persist(); }
                 return at + AccountDeletion.GraceSeconds;
+            }
+        }
+
+        public ServerStatusResponse StatusOverride()
+        {
+            lock (_lock) return Data.StatusOverride == null ? null : OnlineJson.Read<ServerStatusResponse>(OnlineJson.Write(Data.StatusOverride));
+        }
+
+        public void SetStatusOverride(ServerStatusResponse status)
+        {
+            lock (_lock)
+            {
+                Data.StatusOverride = status;
+                Persist();
             }
         }
 

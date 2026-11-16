@@ -101,3 +101,4 @@
 - 2026-11-16 [데스크탑] desktop/tabs-tidy — 아래 탭 정리: 도감 → 배포 줄, 상점 · 우편 · 설정은 row top (위 아이콘으로만), 줄에 없는 탭도 id로 열기
 - 2026-11-16 [원격] claude/play-receipts — Google Play 영수증 실제 검증 R-116: purchases.products.get(서비스 계정 JWT), 쓴 거래는 저장소에(재시작에도 used), 반영 뒤 acknowledge/consume, 배포 변수 RECEIPT_VERIFIER · GOOGLE_PLAY_PACKAGE · Secret Manager 키
 - 2026-11-16 [원격] claude/purchase-restore — 결제 복원 R-117: store.restore 행동(영구 상품만, 다시 확인 → 없으면 반영 · 있으면 지급 없이 Ok, 다른 계정 거래는 otherAccount)
+- 2026-11-16 [원격] claude/server-status — 버전 확인 · 점검 안내 R-118: GET /v1/status(인증 없음, 설정 Game:Status:* + 관리자 /v1/admin/notice), 기기 판정 AppStatus.Evaluate

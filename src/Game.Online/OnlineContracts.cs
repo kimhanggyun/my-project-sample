@@ -32,6 +32,8 @@ namespace Game.Online
         /// <summary>지금 계정(게스트)에 구글(Firebase) 로그인을 붙인다 (R-105): 계정 번호 · 진행 그대로.</summary>
         public const string LinkFirebase = "/v1/me/link/firebase";
         public const string Time = "/v1/time";
+        /// <summary>버전 확인 · 점검 안내 (GET, 인증 없음, R-118).</summary>
+        public const string Status = "/v1/status";
         public const string Games = "/v1/games";
         public const string MyGames = "/v1/me/games";
         /// <summary>내 계정 (GET), 닉네임 정하기 (POST /v1/me/nickname).</summary>
@@ -176,6 +178,29 @@ namespace Game.Online
     public sealed class ServerTimeResponse
     {
         public long UnixSeconds { get; set; }
+    }
+
+    /// <summary>
+    /// 버전 확인 · 점검 안내 (GET /v1/status, 인증 없음, R-118). 값은 서버 설정(Game:Status:*) 또는 관리자 페이지가 바꾼 값.
+    /// 기기는 시작 때 한 번 묻는다. 닿지 않으면 확인 없이 그대로 시작한다 (서버가 꺼져도 게임은 동작).
+    /// </summary>
+    public sealed class ServerStatusResponse
+    {
+        public long NowUnixSeconds { get; set; }
+        /// <summary>이보다 낮은 앱은 업데이트해야 들어갈 수 있다 ("1.2.3", 없으면 검사 없음).</summary>
+        public string MinVersion { get; set; }
+        /// <summary>최신 앱 버전 (낮으면 "업데이트가 있습니다" 안내만).</summary>
+        public string LatestVersion { get; set; }
+        public MaintenanceInfo Maintenance { get; set; } = new MaintenanceInfo();
+    }
+
+    public sealed class MaintenanceInfo
+    {
+        public bool On { get; set; }
+        /// <summary>안내 문구 키 (테마 문자열, 없으면 기본 ui.status.maintenance).</summary>
+        public string MessageKey { get; set; }
+        /// <summary>끝나는 예정 시각 (unix 초, 0 = 모름). 지나면 점검이 아닌 것으로 본다.</summary>
+        public long EndsAtUnixSeconds { get; set; }
     }
 
     /// <summary>
@@ -901,6 +926,8 @@ namespace Game.Online
         string AccountId { get; }
         void SignIn(Action<bool> done);
         void GetTime(Action<ServerTimeResponse> done);
+        /// <summary>버전 확인 · 점검 안내 (R-118, 인증 없음). 닿지 않으면 null (그대로 시작).</summary>
+        void GetStatus(Action<ServerStatusResponse> done);
         void LoadSave(Action<CloudSave> done);
         void PutSave(SavePutRequest request, Action<SavePutResponse> done);
         void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done);
@@ -958,6 +985,7 @@ namespace Game.Online
         public string AccountId => null;
         public void SignIn(Action<bool> done) => done?.Invoke(false);
         public void GetTime(Action<ServerTimeResponse> done) => done?.Invoke(null);
+        public void GetStatus(Action<ServerStatusResponse> done) => done?.Invoke(null);
         public void LoadSave(Action<CloudSave> done) => done?.Invoke(null);
         public void PutSave(SavePutRequest request, Action<SavePutResponse> done) => done?.Invoke(null);
         public void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done) => done?.Invoke(null);
