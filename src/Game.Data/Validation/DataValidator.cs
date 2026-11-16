@@ -62,7 +62,7 @@ namespace Game.Data.Validation
             foreach (var t in d.Traits.Traits.Values) { CheckString(d, t.NameKey, errors); CheckString(d, t.DescKey, errors); }
 
             foreach (var p in d.Products.Values)
-                if (!p.Convenience && p.PlayPaths.Count == 0)
+                if (!p.PlayPathExempt && p.PlayPaths.Count == 0) // 편의 기능·치장은 결제 전용 허용 (R-30, R-111)
                     errors.Add($"상품 '{p.Id}': 편의 기능이 아닌데 플레이로 얻는 경로가 없습니다 (R-30).");
 
             var kit = d.StartingKit;

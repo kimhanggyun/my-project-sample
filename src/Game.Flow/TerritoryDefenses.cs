@@ -65,7 +65,8 @@ namespace Game.Flow
                     u.Troops = st.Troops;
                     u.Wounded = 0;
                     u.WoundedRecoverAtUnixSeconds = 0;
-                    dc.Units.Add(new DefenseUnit { Slot = st.Slot, UnitJson = OnlineJson.Write(u) });
+                    string line = CosmeticService.LineOf(defs, u.TroopType); // 겉모습 (R-111): 주인이 그 계열에 입힌 치장
+                    dc.Units.Add(new DefenseUnit { Slot = st.Slot, UnitJson = OnlineJson.Write(u), Armor = CosmeticService.Worn(owner, line, CosmeticKinds.Armor), Horse = CosmeticService.Worn(owner, line, CosmeticKinds.Horse) });
                 }
                 if (dc.Units.Count > 0) d.Corps.Add(dc);
             }

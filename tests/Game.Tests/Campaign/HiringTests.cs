@@ -20,6 +20,8 @@ namespace Game.Tests.Campaign
         {
             var s = Kit.Veteran();
             s.FindGeneral(AvatarGeneral.GeneralId).Level = 3; // 닉네임 장수 (R-98: 용병 장수는 이것뿐)
+            // 닉네임 장수가 기병 묶음 전부를 직접 이끄는 군단 (R-110: 부대는 이 군단의 병종 칸만)
+            s.Compositions.Add(new CorpsComposition { GeneralId = AvatarGeneral.GeneralId, Formation = "square", Role = "rear", Picks = { new TroopPick { UnitId = "cavalry", Troops = 6000 } } });
             return s;
         }
 
@@ -56,7 +58,29 @@ namespace Game.Tests.Campaign
 
             var unit = rules.Register(owner, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = ResourceIds.Supply }, 0);
             Assert.True(unit.Ok);
-            Assert.Equal(("cavalry", 6000L), (unit.Listing.TroopType, unit.Listing.Troops)); // 병종 묶음 전부 등록
+            Assert.Equal(("cavalry", 6000L), (unit.Listing.TroopType, unit.Listing.Troops)); // 닉네임 장수가 이끄는 칸 인원 전부
+        }
+
+        [Fact(DisplayName = "R-110 부대 등록: 닉네임 장수가 기본 편성에서 직접 이끄는 병종만, 인원은 그 칸 인원까지. 닉네임 장수가 영토 깃발에 나가 있으면 장수·부대 모두 거절")]
+        public void RegisterLimits()
+        {
+            var owner = Owner();
+            var rules = Rules();
+            var avatar = owner.Compositions.Single(c => c.GeneralId == AvatarGeneral.GeneralId);
+            Assert.Equal(HireReasons.NotAvatarCorps, rules.Register(owner, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "infantry", Price = 1, PayWith = ResourceIds.Gold }, 0).Reason); // 다른 장수의 병종
+            avatar.Picks[0].Troops = 2500; // 묶음 6000 중 2500만 이끈다
+            var part = rules.Register(owner, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 1, PayWith = ResourceIds.Gold }, 0);
+            Assert.True(part.Ok, part.Reason);
+            Assert.Equal(2500L, part.Listing.Troops);
+            Assert.Equal(2500L, OnlineJson.Read<Game.Campaign.Roster.UnitState>(part.Listing.SnapshotJson).Troops);
+            owner.Compositions.Remove(avatar); // 군단이 없으면 부대 등록 불가
+            Assert.Equal(HireReasons.NotAvatarCorps, rules.Register(owner, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 1, PayWith = ResourceIds.Gold }, 0).Reason);
+
+            var flags = new HashSet<string> { AvatarGeneral.GeneralId };
+            var owner2 = Owner();
+            Assert.Equal(HireReasons.OnFlag, rules.Register(owner2, new HireListingRequest { Kind = HireKinds.General, GeneralId = AvatarGeneral.GeneralId, Price = 1, PayWith = ResourceIds.Gold }, 0, flags).Reason);
+            Assert.Equal(HireReasons.OnFlag, rules.Register(owner2, new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 1, PayWith = ResourceIds.Gold }, 0, flags).Reason);
+            Assert.True(rules.Register(owner2, new HireListingRequest { Kind = HireKinds.General, GeneralId = AvatarGeneral.GeneralId, Price = 1, PayWith = ResourceIds.Gold }, 0, new HashSet<string> { "general_a" }).Ok); // 다른 장수의 깃발은 상관없음
         }
 
         /// <summary>고용한 쪽 편성: general_a 군단의 정찰 칸(u05 500명)을 고용 부대 500명으로, general_c 대신 고용 장수(u11만).</summary>
@@ -177,7 +201,7 @@ namespace Game.Tests.Campaign
             var a = PlayerActionRunner.ClaimMail(new Mail { Id = "m1", Resource = ResourceIds.Gold, Amount = 70 });
             Assert.True(new PlayerActionRunner(Kit.D).Apply(state, a));
             Assert.Equal(gold + 70, new Wallet(state.Wallet).Get(ResourceIds.Gold));
-            Assert.False(new PlayerActionRunner(Kit.D).Apply(state, PlayerActionRunner.ClaimMail(new Mail { Id = "m2", Resource = "gem", Amount = 5 })));
+            Assert.False(new PlayerActionRunner(Kit.D).Apply(state, PlayerActionRunner.ClaimMail(new Mail { Id = "m2", Resource = "wood", Amount = 5 }))); // 모르는 자원 (금괴는 출석 우편으로 받는다, R-112)
 
             var save = new CloudSave { Revision = 1, Json = SaveJson.Write(Kit.Veteran()) };
             var v = ActionVerifier.Apply(new PlayerActionRunner(Kit.D), save, new ActionSubmission { BaseRevision = 1, Actions = { a } }, 0, out _, out _, x => false);

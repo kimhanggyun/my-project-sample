@@ -47,6 +47,35 @@ namespace Game.Tests.Campaign
             Assert.False(new ReceiptCheck(allowFake: false).Check(Buy("gold_pack_small", "fake:b")));
         }
 
+        private sealed class StoreLike : IReceiptVerifier
+        {
+            // 스토어처럼: "ok:<주문>"만 진짜, 같은 주문이면 영수증 문자열이 달라도 같은 거래
+            public ReceiptVerdict Verify(string productId, string receipt) =>
+                receipt.StartsWith("ok:") ? ReceiptVerdict.Ok(receipt.Split('#')[0]) : ReceiptVerdict.No(ReceiptReasons.Rejected);
+        }
+
+        [Fact(DisplayName = "R-114 영수증 검증기: 인터페이스로 바꿔 끼움 (가짜 · 모두 거절 · 스토어), 한 번만 쓰기는 거래 id로, 까닭은 Last")]
+        public void ReceiptVerifiers()
+        {
+            var fake = new ReceiptCheck(new FakeReceiptVerifier());
+            Assert.True(fake.Check(Buy("gold_pack_small", "fake:1")));
+            Assert.False(fake.Check(Buy("gold_pack_small", "fake:1")));
+            Assert.Equal(ReceiptReasons.Used, fake.Last.Reason);
+            Assert.False(fake.Check(Buy("gold_pack_small", "store:x")));
+            Assert.Equal(ReceiptReasons.NotAccepted, fake.Last.Reason);
+            Assert.False(fake.Check(Buy("gold_pack_small", "")));
+            Assert.Equal(ReceiptReasons.Empty, fake.Last.Reason);
+
+            Assert.False(new ReceiptCheck(new RejectAllReceiptVerifier()).Check(Buy("gold_pack_small", "fake:2")));
+
+            var store = new ReceiptCheck(new StoreLike());
+            Assert.True(store.Check(Buy("gold_pack_small", "ok:order1#a")));
+            Assert.False(store.Check(Buy("gold_pack_small", "ok:order1#b"))); // 같은 거래
+            Assert.True(store.Check(Buy("gold_pack_small", "ok:order2")));
+            Assert.False(store.Check(Buy("gold_pack_small", "bad")));
+            Assert.Equal(ReceiptReasons.Rejected, store.Last.Reason);
+        }
+
         [Fact]
         public void ListedProductsHavePricesAndStrings()
         {
@@ -56,7 +85,7 @@ namespace Game.Tests.Campaign
             {
                 Assert.True(p.PriceKrw > 0, p.Id);
                 Assert.True(Kit.D.Strings.ContainsKey("product." + p.Id), p.Id);
-                Assert.True(p.Grants.Count > 0 || p.AdFreeDays.HasValue, p.Id);
+                Assert.True(p.Grants.Count > 0 || p.AdFreeDays.HasValue || p.CosmeticId != null, p.Id); // 치장 상품은 치장을 준다 (R-111)
             }
         }
 

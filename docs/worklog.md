@@ -77,3 +77,10 @@
 - 2026-11-15 [데스크탑] desktop/flag-multi-recall — 영토 위치는 꽂기 · 공격 때만 (동의 한 번), [내 위치 확인] 띠 없앰
 - 2026-11-15 [데스크탑] desktop/territory-fullmap — 영토 지도 화면 가득 · 알림 토스트 · 연합 없으면 [연합 가입] · 내 땅 안을 누르면 깃발 판(+ 더 꽂기)
 - 2026-11-15 [데스크탑] desktop/flag-view-generals — 영토 목록 보기에 깃발 장수들 복사 (3명 꽂아도 1명만 보이던 것)
+- 2026-11-15 [원격] claude/mercenary-checks — 용병 등록 서버 검사 R-110: 깃발에 나간 닉네임 장수 거절(onFlag), 부대는 닉네임 장수 군단 병종 칸만(notAvatarCorps)
+- 2026-11-15 [원격] claude/cosmetics-2 — 치장 2단계 R-111: 스텝·숨은 보상 치장(중복이면 엽전), 치장 상품(결제 전용 허용), 용병·수비 스냅샷에 주인 겉모습
+- 2026-11-15 [원격] claude/economy-daily — 출석·교환·금괴 해금 R-112 (economy.json 임시값): 출석 우편(서버 시각, POST /attendance), economy.exchange(손실·하루 한도), skill.unlockLearn, 선호 구매는 미결 · 머지 뒤 서버 배포 필요
+- 2026-11-15 [원격] claude/siege-prep — 공성전 준비 1분 R-113: POST /territory/siege(시작 시각 기록·수비자 siegeAlert 우편), 1분 전 제출 거절, 준비 중 취소 · 머지 뒤 서버 배포 필요
+- 2026-11-15 [원격] claude/receipt-verifier — 영수증 검증기 뼈대 R-114: IReceiptVerifier (Game:ReceiptVerifier fake 기본 · off · googlePlay 자리), 거래 id로 한 번만 · 머지 뒤 서버 배포 필요
+- 2026-11-15 [원격] claude/auto-deploy — main에 합치면 서버 자동 배포: deploy-cloudrun push 트리거(server·src·data·config 경로), test job 통과해야 deploy(needs), 손 실행 유지 · backlog G 정리
+- 2026-11-15 [원격] claude/auto-deploy — 공성전 준비 siegePrepSeconds 0 (카운트다운 화면 전까지, 사용자): 지금 화면의 공성전이 배포 뒤에도 그대로 되게

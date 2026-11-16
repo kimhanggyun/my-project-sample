@@ -54,6 +54,11 @@ namespace Game.Campaign
         public List<string> OwnedCosmetics { get; set; } = new List<string>();
         public Dictionary<string, string> EquippedArmor { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> EquippedHorse { get; set; } = new Dictionary<string, string>();
+        /// <summary>교환 한도를 센 날 (economy.json 하루 기준)과 그날 비율(from&gt;to) → 낸 양 (R-112). 예전 세이브는 0 · 빈 것.</summary>
+        public long ExchangeDay { get; set; }
+        public Dictionary<string, long> ExchangeUsed { get; set; } = new Dictionary<string, long>();
+        /// <summary>금괴로 얻기 조건을 해금한 스킬 id (R-112): 습득 최소 조건 없이 배운다. 예전 세이브는 빈 것.</summary>
+        public List<string> SkillLearnUnlocks { get; set; } = new List<string>();
 
         public GeneralState FindGeneral(string id) => Generals.Find(g => g.GeneralId == id);
         public UnitState FindUnit(string id) => Units.Find(u => u.UnitId == id);

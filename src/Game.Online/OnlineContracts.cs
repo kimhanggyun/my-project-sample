@@ -54,6 +54,8 @@ namespace Game.Online
         public static string SharedReplays(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/replays";
         public static string SharedReplay(string game, string id) => SharedReplays(game) + "/" + Uri.EscapeDataString(id);
         public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
+        /// <summary>출석 (POST, R-112).</summary>
+        public static string Attendance(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/attendance";
         /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
         public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
         /// <summary>내 지역의 쌓인 수입을 우편으로 받기 (POST).</summary>
@@ -64,6 +66,9 @@ namespace Game.Online
         public static string TerritoryPlant(string game) => Territory(game) + "/plant";
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public static string TerritoryRecall(string game) => Territory(game) + "/recall";
+        /// <summary>공성전 준비 시작 · 취소 (POST, R-113).</summary>
+        public static string TerritorySiege(string game) => Territory(game) + "/siege";
+        public static string TerritorySiegeCancel(string game) => Territory(game) + "/siege/cancel";
         /// <summary>연합 목록 (GET) / 만들기 (POST, R-49).</summary>
         public static string Alliances(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/alliances";
         public static string AllianceJoin(string game, string id) => Alliances(game) + "/" + Uri.EscapeDataString(id) + "/join";
@@ -256,6 +261,9 @@ namespace Game.Online
         public long RadiusM { get; set; }
         /// <summary>이 시각까지 공격받지 않음 (공성전 뒤 보호, R-97).</summary>
         public long ProtectedUntilUnixSeconds { get; set; }
+        /// <summary>공성전 준비 중인 공격자와 준비 시작 시각 (R-113, 없으면 null · 0). 서버가 기록한다.</summary>
+        public string SiegeAttackerId { get; set; }
+        public long SiegeStartedAtUnixSeconds { get; set; }
     }
 
     /// <summary>연합 하나 (territory.md 6장, R-49). 한 계정은 한 연합에만.</summary>
@@ -351,6 +359,9 @@ namespace Game.Online
         public string Slot { get; set; }
         /// <summary>부대 상태 JSON (부상병 없이).</summary>
         public string UnitJson { get; set; }
+        /// <summary>주인이 그 병종 계열에 입힌 갑옷 · 말 색 (겉모습만, R-111). 예전 스냅샷은 null = 기본 모습.</summary>
+        public string Armor { get; set; }
+        public string Horse { get; set; }
     }
 
     /// <summary>수비 편성 등록: 내 지역에, 내 서버 세이브의 편성(상황, null = 기본)으로.</summary>
@@ -405,6 +416,33 @@ namespace Game.Online
     {
         public string FlagKey { get; set; }
         public List<string> GeneralIds { get; set; }
+    }
+
+    /// <summary>공성전 준비 시작 (R-113): 칠 깃발과 내 위치.</summary>
+    public sealed class SiegeRequest
+    {
+        public string FlagKey { get; set; }
+        public string Location { get; set; }
+    }
+
+    public static class SiegeReasons
+    {
+        public const string Ok = "ok";
+        /// <summary>칠 수 없는 깃발 (없음 · 내 것 · 보호 중 · 반지름 밖, Message에 까닭).</summary>
+        public const string BadTarget = "badTarget";
+        /// <summary>다른 공격자가 이미 준비 · 공격 중.</summary>
+        public const string Busy = "busy";
+    }
+
+    public sealed class SiegeResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary><see cref="SiegeReasons"/>.</summary>
+        public string Reason { get; set; }
+        public string Message { get; set; }
+        /// <summary>준비가 끝나 공성전을 낼 수 있는 시각, 그 뒤 이 시각까지 내야 함 (unix 초).</summary>
+        public long StartsAtUnixSeconds { get; set; }
+        public long ExpiresAtUnixSeconds { get; set; }
     }
 
     public static class RecallReasons
@@ -474,6 +512,9 @@ namespace Game.Online
         public string TroopType { get; set; }
         public long Troops { get; set; }
         public long TrainingRaw { get; set; }
+        /// <summary>부대 등록: 주인이 그 병종 계열에 입힌 갑옷 · 말 색 (겉모습만, R-111). 없으면 기본 모습.</summary>
+        public string Armor { get; set; }
+        public string Horse { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
         /// <summary>이력 (hiring.md 4장): 서버가 재현해 확정한 전투로만 쌓인다. 다시 등록해도 이어진다.</summary>
         public HireStats Stats { get; set; } = new HireStats();
@@ -536,6 +577,10 @@ namespace Game.Online
         public const string BadRequest = "badRequest";
         /// <summary>장수는 닉네임 장수만 용병으로 등록 (hiring-v2.md 1장, R-98).</summary>
         public const string NotAvatar = "notAvatar";
+        /// <summary>닉네임 장수가 영토 깃발에 나가 있어 장수·부대 모두 등록할 수 없다 (hiring-v2.md 1장, R-110).</summary>
+        public const string OnFlag = "onFlag";
+        /// <summary>부대는 닉네임 장수가 기본 편성에서 직접 이끄는 병종만 (hiring-v2.md 1장, R-110).</summary>
+        public const string NotAvatarCorps = "notAvatarCorps";
     }
 
     public sealed class HireListingResponse
@@ -578,6 +623,8 @@ namespace Game.Online
         public string ListingId { get; set; }
         /// <summary>영토 수입이면 지역 id.</summary>
         public string RegionId { get; set; }
+        /// <summary>공성전 알림이면 공격자 계정.</summary>
+        public string FromAccountId { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
     }
 
@@ -586,6 +633,29 @@ namespace Game.Online
         public const string HireReward = "hireReward";
         /// <summary>영토 수입 (차지한 지역에서 쌓인 자원, R-47). ListingId 칸 대신 RegionId.</summary>
         public const string TerritoryIncome = "territoryIncome";
+        /// <summary>출석 보상 (하루 한 번, 서버 시각, R-112).</summary>
+        public const string Attendance = "attendance";
+        /// <summary>내 깃발이 공격받는다 (공성전 준비 시작, R-113): RegionId = 깃발 키, FromAccountId = 공격자, Amount 0 (받을 것 없음). 공성전이 끝나거나 취소되면 지워진다.</summary>
+        public const string SiegeAlert = "siegeAlert";
+    }
+
+    /// <summary>출석 결과 (R-112). 받았으면 Mail이 우편함에 들어가 있다.</summary>
+    public sealed class AttendanceResponse
+    {
+        /// <summary>받음 / already(오늘 이미) / off(출석 없음).</summary>
+        public string Result { get; set; }
+        /// <summary>받은 날의 차례 (0부터), 보낸 우편 (받기는 우편 목록에서: 서버는 Id를 우편함에 넣을 때 정한다).</summary>
+        public int Index { get; set; }
+        public Mail Mail { get; set; }
+        /// <summary>다음 하루가 시작하는 시각 (unix 초, 화면 남은 시간용).</summary>
+        public long NextDayAtUnixSeconds { get; set; }
+    }
+
+    public static class AttendanceResults
+    {
+        public const string Ok = "ok";
+        public const string Already = "already";
+        public const string Off = "off";
     }
 
     /// <summary>공유한 녹화 하나의 요약 (목록에 보이는 것, R-81).</summary>
@@ -715,6 +785,11 @@ namespace Game.Online
         /// <summary>치장 입히기 (TroopType = 계열 id, Situation = 종류 armor/horse, CosmeticId = 치장 id, 없으면 벗기, R-108).</summary>
         public const string CosmeticEquip = "cosmetic.equip";
 
+        /// <summary>자원 교환 (R-112): PayWith = 내는 자원, Situation = 받는 자원, Count = 내는 양. 하루 한도는 DoneAtUnixSeconds의 날로 센다.</summary>
+        public const string Exchange = "economy.exchange";
+        /// <summary>금괴로 스킬 얻기 조건 해금 (SkillId, R-112).</summary>
+        public const string SkillUnlockLearn = "skill.unlockLearn";
+
         public static bool IsDev(string kind) => kind != null && kind.StartsWith(DevPrefix, System.StringComparison.Ordinal);
     }
 
@@ -826,6 +901,8 @@ namespace Game.Online
         /// <summary>해제: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
         void Unregister(string listingId, Action<bool?> done);
         void GetMail(Action<MailListResponse> done);
+        /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편. 닿지 않으면 null.</summary>
+        void CheckIn(Action<AttendanceResponse> done);
 
         // ---- 계정 (닿지 않으면 null) ----
         void GetProfile(Action<ProfileResponse> done);
@@ -849,6 +926,10 @@ namespace Game.Online
         void PlantFlag(PlantRequest request, Action<PlantResponse> done);
         /// <summary>깃발에서 장수 회수 (R-109). 서버에 닿지 않으면 null.</summary>
         void RecallFlag(RecallRequest request, Action<RecallResponse> done);
+        /// <summary>공성전 준비 시작 (R-113): 서버가 시각을 기록하고 수비자에게 알림 우편. 닿지 않으면 null.</summary>
+        void StartSiege(SiegeRequest request, Action<SiegeResponse> done);
+        /// <summary>준비 중 공격 취소: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
+        void CancelSiege(string flagKey, Action<bool?> done);
 
         // ---- 연합 (R-49). 닿지 않으면 null ----
         void GetAlliances(Action<AllianceListResponse> done);
@@ -873,6 +954,7 @@ namespace Game.Online
         public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => done?.Invoke(null);
         public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
+        public void CheckIn(Action<AttendanceResponse> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
@@ -884,6 +966,8 @@ namespace Game.Online
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);
+        public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) => done?.Invoke(null);
+        public void CancelSiege(string flagKey, Action<bool?> done) => done?.Invoke(null);
         public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);
         public void CreateAlliance(string name, Action<AllianceResponse> done) => done?.Invoke(null);
         public void JoinAlliance(string allianceId, Action<AllianceResponse> done) => done?.Invoke(null);

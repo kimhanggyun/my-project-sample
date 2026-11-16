@@ -29,6 +29,8 @@ namespace Game.Flow
 
         /// <summary>서버 재현이 맞은 뒤: 고용마다 전투 결과 (이력용, R-44).</summary>
         public List<HireOutcome> Outcomes { get; } = new List<HireOutcome>();
+        /// <summary>고용 부대 id("hire." + 등록 id) → 주인의 겉모습 (갑옷, 말 색). R-111.</summary>
+        public Dictionary<string, (string armor, string horse)> Looks { get; } = new Dictionary<string, (string, string)>();
         /// <summary>그 전투의 스텝 id (이력용).</summary>
         public string StepId { get; internal set; }
 
@@ -83,9 +85,12 @@ namespace Game.Flow
         /// 등록: 등록자 세이브(서버 세이브)에서 스냅샷을 만든다. 출전할 수 있는 장수, 병력이 있는 부대만. 가격은 0 이상, 추천 × 상한 배수 이하 (R-27).
         /// 등록 수 상한은 종류별 (existingOfKind = 이미 등록한 수, 같은 대상 갱신이면 세지 않는다).
         /// </summary>
-        public HireListingResponse Register(CampaignState owner, HireListingRequest req, int existingOfKind)
+        /// <param name="generalsOnFlags">등록하는 계정의 영토 깃발에 나가 있는 장수 id (서버·가짜 서버가 채움, R-110). null = 검사 안 함.</param>
+        public HireListingResponse Register(CampaignState owner, HireListingRequest req, int existingOfKind, ICollection<string> generalsOnFlags = null)
         {
             if (owner == null || req == null || !IsPayResource(req.PayWith)) return Fail(HireReasons.BadRequest);
+            // 닉네임 장수가 깃발에 나가 있으면 장수·부대 모두 등록 불가 (R-110)
+            if (generalsOnFlags != null && generalsOnFlags.Contains(AvatarGeneral.GeneralId)) return Fail(HireReasons.OnFlag);
             var listing = new HireListing { Kind = req.Kind, Price = req.Price, PayWith = req.PayWith, SourceId = req.Kind == HireKinds.General ? req.GeneralId : req.UnitId };
             long recommended;
             if (req.Kind == HireKinds.General)
@@ -110,12 +115,20 @@ namespace Game.Flow
                 var u = owner.FindUnit(req.UnitId);
                 if (u == null) return Fail(HireReasons.NotOwned);
                 if (u.Troops <= 0) return Fail(HireReasons.NotAvailable);
+                // 부대 = 닉네임 장수가 기본 편성에서 직접 이끄는 병종 칸만, 인원은 그 칸 인원까지 (R-110)
+                long led = AvatarLeads(owner, u.UnitId);
+                if (led <= 0) return Fail(HireReasons.NotAvatarCorps);
                 var snap = Copy(u);
                 snap.Wounded = 0;
                 snap.WoundedRecoverAtUnixSeconds = 0;
+                snap.Troops = Math.Min(u.Troops, led);
                 listing.SnapshotJson = OnlineJson.Write(snap);
                 listing.TroopType = u.TroopType;
-                listing.Troops = u.Troops; // 부대원 전부 등록 (hiring.md 2.2)
+                listing.Troops = snap.Troops;
+                // 겉모습 (R-111): 주인이 그 계열에 입힌 치장을 같이 보낸다 (빌린 쪽 전투에서 그 모습으로)
+                string line = CosmeticService.LineOf(_defs, u.TroopType);
+                listing.Armor = CosmeticService.Worn(owner, line, CosmeticKinds.Armor);
+                listing.Horse = CosmeticService.Worn(owner, line, CosmeticKinds.Horse);
                 listing.TrainingRaw = u.Training.Raw;
                 recommended = RecommendedPrice(u, req.PayWith);
             }
@@ -124,6 +137,23 @@ namespace Game.Flow
             if (existingOfKind >= _defs.Balance.HireMaxListingsPerKind) return Fail(HireReasons.TooMany, recommended);
             if (!HireCalculator.IsPriceAllowed(_defs.Balance, req.Price, recommended)) return Fail(HireReasons.BadPrice, recommended);
             return new HireListingResponse { Ok = true, Reason = HireReasons.Ok, Listing = listing, RecommendedPrice = recommended };
+        }
+
+        /// <summary>
+        /// 닉네임 장수가 기본 편성에서 그 병종 묶음(보유 부대)에서 데려가는 인원 (R-110). 군단이 없거나 그 병종 칸이 없으면 0.
+        /// 예전 칸 편성(Slots)만 있으면 그 칸의 부대 전부.
+        /// </summary>
+        public static long AvatarLeads(CampaignState owner, string unitId)
+        {
+            Game.Campaign.Roster.CorpsComposition corps = null;
+            foreach (var c in owner?.CompositionsFor(null) ?? new List<Game.Campaign.Roster.CorpsComposition>())
+                if (c.GeneralId == AvatarGeneral.GeneralId) { corps = c; break; }
+            if (corps == null) return 0;
+            long n = 0;
+            foreach (var p in corps.Picks) if (p.UnitId == unitId && !p.Hired) n += Math.Max(0, p.Troops);
+            if (n == 0 && corps.Slots != null)
+                foreach (var kv in corps.Slots) if (kv.Value == unitId) n = owner.FindUnit(unitId)?.Troops ?? 0;
+            return n;
         }
 
         private static HireListingResponse Fail(string reason, long recommended = 0) => new HireListingResponse { Ok = false, Reason = reason, RecommendedPrice = recommended };
@@ -168,6 +198,7 @@ namespace Game.Flow
                     u.Troops = use.Count;
                     u.Wounded = 0;
                     forces.Units.Add(u);
+                    forces.Looks[u.UnitId] = (l.Armor, l.Horse);
                     cost = HireCalculator.UnitHireCost(l.Price, use.Count);
                     forces.Uses.Add(new HireUse { ListingId = l.Id, Version = l.Version, Count = use.Count });
                 }

@@ -338,7 +338,8 @@ namespace Game.Flow
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
             _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
             string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
-            if (flagKey != null && TerritoryFlags.CheckSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, flagKey, s.Location, Now) != null)
+            if (flagKey != null && (TerritoryFlags.CheckSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, flagKey, s.Location, Now) != null
+                || TerritoryFlags.CheckSiegeReady(TerritoryData, _owners, flagKey, AccountId, Now) != null))
             { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = Copy(_save) }); return; }
             var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog,
                 region => TerritoryLedger.DefenseOf(_owners, region));
@@ -346,7 +347,7 @@ namespace Game.Flow
             if (v.Valid && flagKey != null)
             {
                 var after = SaveJson.Read(json);
-                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail);
+                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail, TakeAlert);
             }
             else if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
             if (v.Valid && hired != null)
@@ -428,7 +429,7 @@ namespace Game.Flow
             LoadSave(_ => { });
             string source = req?.Kind == HireKinds.General ? req.GeneralId : req?.UnitId;
             int existing = _market.FindAll(l => l.OwnerAccountId == AccountId && l.Kind == req?.Kind && l.SourceId != source).Count;
-            var r = _hire.Register(SaveJson.Read(_save.Json), req, existing);
+            var r = _hire.Register(SaveJson.Read(_save.Json), req, existing, TerritoryFlags.GeneralsOnFlags(_owners, AccountId));
             if (r.Ok)
             {
                 var old = _market.Find(l => l.OwnerAccountId == AccountId && l.Kind == r.Listing.Kind && l.SourceId == r.Listing.SourceId);
@@ -524,6 +525,21 @@ namespace Game.Flow
             done?.Invoke(TerritoryFlags.Plant(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, a => AllianceBook.Of(_alliances, a)?.Id, _owners, req, Now));
         }
 
+        /// <summary>공성전 준비 시작 (R-113): 서버와 같은 코드 · 서버 시각.</summary>
+        public void StartSiege(SiegeRequest req, Action<SiegeResponse> done)
+        {
+            LoadSave(_ => { });
+            done?.Invoke(TerritoryFlags.StartSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, req, Now, SendMail));
+        }
+
+        public void CancelSiege(string flagKey, Action<bool?> done) =>
+            done?.Invoke(TerritoryFlags.CancelSiege(TerritoryData, _owners, flagKey, AccountId, Now, TakeAlert));
+
+        private void TakeAlert(string account, string flagKey)
+        {
+            if (account == AccountId) _mail.RemoveAll(m => m.Kind == MailKinds.SiegeAlert && m.RegionId == flagKey);
+        }
+
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public void RecallFlag(RecallRequest req, Action<RecallResponse> done)
         {
@@ -543,6 +559,12 @@ namespace Game.Flow
 
         /// <summary>우편: 영토 수입만 (가짜 시장의 등록자는 내 등록을 고용하지 않는다).</summary>
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse { Mail = new List<Mail>(_mail) });
+
+        /// <summary>출석 기록 (가짜: 메모리, 서버와 같은 규칙 · 서버 시각, R-112).</summary>
+        private readonly AttendanceRecord _attendance = new AttendanceRecord();
+
+        public void CheckIn(Action<AttendanceResponse> done) =>
+            done?.Invoke(new DailyEconomy(_defs).CheckIn(_attendance, Now, m => SendMail(AccountId, m)));
 
         // ---- 녹화 공유 (R-81): 기기 안 메모리. 서버와 같은 검사·고르기 ----
         private readonly List<(SharedReplaySummary summary, string json)> _shared = new List<(SharedReplaySummary, string)>();

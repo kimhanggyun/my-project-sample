@@ -163,6 +163,11 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, long> Grants { get; internal set; } = new Dictionary<string, long>();
         /// <summary>배너 광고 제거 기간 (일, 0 = 영구). 광고 제거 상품이 아니면 null.</summary>
         public int? AdFreeDays { get; internal set; }
+        /// <summary>치장 상품 (kind cosmetic, R-111): 결제하면 이 치장을 얻는다. 이미 가졌으면 엽전 (cosmetics.json duplicateGold).</summary>
+        public string CosmeticId { get; internal set; }
+        public const string KindCosmetic = "cosmetic";
+        /// <summary>플레이 경로 없이 팔 수 있다 (R-30): 편의 기능이거나 치장 (economy.md 0장, cosmetics.md 9장 1 — 치장은 결제 전용 허용).</summary>
+        public bool PlayPathExempt => Convenience || Kind == KindCosmetic;
     }
 
     public static class SlotIds

@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Linq;
 using Game.Battle.Model.Simulation;
 using Game.Campaign;
+using Game.Campaign.Roster;
 using Game.Flow;
 using Game.Online;
 using Xunit;
@@ -17,6 +19,17 @@ namespace Game.Tests.Campaign
             return r.Listings;
         }
 
+        /// <summary>가짜 서버 세이브의 기본 편성을 "닉네임 장수가 기병 1000을 이끄는 군단" 하나로 (편성 저장 행동).</summary>
+        internal static void LeadCavalryWithAvatar(LocalOnlineService fake)
+        {
+            CloudSave save = null;
+            fake.LoadSave(x => save = x);
+            var corps = new List<CorpsComposition> { new CorpsComposition { GeneralId = AvatarGeneral.GeneralId, Formation = "square", Role = "vanguard", Commander = true, Picks = { new TroopPick { UnitId = "cavalry", Troops = 1000 } } } };
+            ActionVerdict v = null;
+            fake.SubmitActions(new ActionSubmission { BaseRevision = save.Revision, Actions = { PlayerActionRunner.SaveFormation(null, corps) } }, x => v = x);
+            Assert.True(v.Valid, v.Reason);
+        }
+
         [Fact(DisplayName = "가짜 시장: 예시 등록(장수 2·부대 2)이 보이고, 내 것을 등록·갱신·해제할 수 있다")]
         public void FakeMarket()
         {
@@ -28,7 +41,10 @@ namespace Game.Tests.Campaign
 
             HireListingResponse reg = null;
             fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = "gold" }, x => reg = x);
-            Assert.True(reg.Ok);
+            Assert.Equal(HireReasons.NotAvatarCorps, reg.Reason); // 닉네임 장수 군단이 없으면 부대 등록 불가 (R-110)
+            LeadCavalryWithAvatar(fake);
+            fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 2, PayWith = "gold" }, x => reg = x);
+            Assert.True(reg.Ok, reg.Reason);
             fake.RegisterHire(new HireListingRequest { Kind = HireKinds.Unit, UnitId = "cavalry", Price = 1, PayWith = "gold" }, x => reg = x);
             Assert.Equal(2, reg.Listing.Version); // 같은 부대 → 갱신
             Assert.Equal(5, Market(fake).Count);
