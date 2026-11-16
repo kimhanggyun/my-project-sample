@@ -91,6 +91,17 @@ namespace Game.Unity.Battle3D
         private readonly LineRenderer _ringLine;
         private const int RingSegments = 40;
         private const float RingRadius = 1.8f;
+        // 바닥 링 게이지 (18·19 시안): 고른 군단 = 바깥 병력(초록 남음 · 붉은 잃음) + 안 사기(주황), 다른 우리 군단 = 가는 병력 고리
+        private static readonly Color GaugeTroops = new Color(0.25f, 0.68f, 0.3f);
+        private static readonly Color GaugeLost = new Color(0.62f, 0.2f, 0.16f);
+        private static readonly Color GaugeMorale = new Color(0.93f, 0.62f, 0.18f);
+        private static readonly Color GaugeBack = new Color(0.18f, 0.2f, 0.16f);
+        private LineRenderer _gaugeLost, _gaugeTroops, _gaugeMoraleBack, _gaugeMorale;
+        private readonly Dictionary<CorpsState, (LineRenderer lost, LineRenderer troops)> _allyGauges = new Dictionary<CorpsState, (LineRenderer, LineRenderer)>();
+        // 남은 이동 경로 = 파란 점선 (18·19 시안 mock_path)
+        private static readonly Color DashColor = new Color(0.22f, 0.4f, 0.78f);
+        private readonly List<LineRenderer> _dashes = new List<LineRenderer>();
+        private const float DashLen = 0.55f, DashGap = 0.35f;
         private readonly Transform _target;
 
         public BattleCameraRig Rig { get; }
@@ -173,6 +184,11 @@ namespace Game.Unity.Battle3D
             _ring.gameObject.SetActive(false); // 원판은 쓰지 않는다 (테두리 _ringLine)
             _ringLine = Line("SelectRing", SelectedColor, 0.12f, true);
             _ringLine.positionCount = RingSegments;
+            _ringLine.gameObject.SetActive(false); // 바닥 링 게이지로 바꿈
+            _gaugeLost = Line("GaugeLost", GaugeLost, 0.2f, false);
+            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.2f, false);
+            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.14f, false);
+            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.14f, false);
             _cylinder = cylinder;
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _objAlly = Own(NewMaterial(AllyColor));
@@ -564,15 +580,34 @@ namespace Game.Unity.Battle3D
 
             var sel = _ctl.Selected;
             bool ring = sel != null && sel.InBattle;
-            _ringLine.gameObject.SetActive(ring);
+            // 바닥 링 게이지: 고른 군단 (바깥 병력 · 안 사기)
+            foreach (var l in new[] { _gaugeLost, _gaugeTroops, _gaugeMoraleBack, _gaugeMorale }) l.gameObject.SetActive(ring);
             if (ring)
             {
                 var center = ToWorld(sel.Anchor) + new Vector3(0f, 0.08f, 0f);
-                for (int i = 0; i < RingSegments; i++)
+                float troops = sel.StartTroops > 0 ? Mathf.Clamp01((float)sel.Troops / sel.StartTroops) : 0f;
+                float morale = Mathf.Clamp01((float)sel.Morale.ToDisplayDouble() / 100f);
+                Arc(_gaugeLost, center, RingRadius, 0f, 1f);
+                Arc(_gaugeTroops, center + Vector3.up * 0.01f, RingRadius, 0f, troops);
+                Arc(_gaugeMoraleBack, center, RingRadius - 0.32f, 0f, 1f);
+                Arc(_gaugeMorale, center + Vector3.up * 0.01f, RingRadius - 0.32f, 0f, morale);
+            }
+            // 다른 우리 군단: 가는 병력 고리 (남음 초록 · 잃음 붉은)
+            foreach (var c in ctx.Corps)
+            {
+                bool show = c.InBattle && c.Team == _ctl.Team && c != sel;
+                if (!_allyGauges.TryGetValue(c, out var g))
                 {
-                    float a = i * Mathf.PI * 2f / RingSegments;
-                    _ringLine.SetPosition(i, center + new Vector3(Mathf.Cos(a) * RingRadius, 0f, Mathf.Sin(a) * RingRadius));
+                    if (!show) continue;
+                    g = _allyGauges[c] = (Line("AllyLost " + c.Id, GaugeLost, 0.1f, false), Line("AllyTroops " + c.Id, GaugeTroops, 0.1f, false));
                 }
+                g.lost.gameObject.SetActive(show);
+                g.troops.gameObject.SetActive(show);
+                if (!show) continue;
+                var center = ToWorld(c.Anchor) + new Vector3(0f, 0.06f, 0f);
+                float t = c.StartTroops > 0 ? Mathf.Clamp01((float)c.Troops / c.StartTroops) : 0f;
+                Arc(g.lost, center, RingRadius * 0.85f, 0f, 1f);
+                Arc(g.troops, center + Vector3.up * 0.01f, RingRadius * 0.85f, 0f, t);
             }
             bool target = ring && sel.Order.Kind == OrderKinds.MoveTo;
             _target.gameObject.SetActive(target);
@@ -599,8 +634,8 @@ namespace Game.Unity.Battle3D
                     wi++;
                 }
             for (; wi < _waypoints.Count; wi++) _waypoints[wi].gameObject.SetActive(false);
-            _path.positionCount = _pathPoints.Count;
-            for (int i = 0; i < _pathPoints.Count; i++) _path.SetPosition(i, _pathPoints[i]);
+            _path.positionCount = 0; // 실선 대신 점선 조각들
+            Dashes(_pathPoints);
 
             // 지정 중인 스킬의 사거리
             Fix? range = ring && _ctl.TargetingSkill != null && ctx.Defs.Skills.TryGetValue(_ctl.TargetingSkill, out var skill) ? skill.Range : null;
@@ -956,6 +991,56 @@ namespace Game.Unity.Battle3D
             Part(flag, cylinder, pole, new Vector3(0f, 0.9f, 0f), new Vector3(0.06f, 0.9f, 0.06f));
             Part(flag, _cube, cloth, new Vector3(0.35f, 1.55f, 0f), new Vector3(0.7f, 0.45f, 0.04f));
             return flag;
+        }
+
+        /// <summary>호: 위(12시)에서 시계 방향으로 전체의 frac만큼 (0이면 숨김).</summary>
+        private static void Arc(LineRenderer line, Vector3 center, float r, float from, float frac)
+        {
+            frac = Mathf.Clamp01(frac);
+            int n = Mathf.Max(2, Mathf.CeilToInt(RingSegments * frac) + 1);
+            if (frac <= 0.001f) { line.positionCount = 0; return; }
+            line.positionCount = n;
+            for (int i = 0; i < n; i++)
+            {
+                float a = Mathf.PI * 0.5f - (from + frac * i / (n - 1)) * Mathf.PI * 2f;
+                line.SetPosition(i, center + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
+            }
+        }
+
+        /// <summary>꺾은선을 같은 길이 점선 조각으로 (조각마다 선 하나, 모자라면 더 만든다).</summary>
+        private void Dashes(List<Vector3> pts)
+        {
+            int used = 0;
+            float carry = 0f; // 앞 꼭짓점에서 넘어온 자리 (조각+틈 주기 안의 위치)
+            for (int i = 1; i < pts.Count; i++)
+            {
+                Vector3 a = pts[i - 1], b = pts[i];
+                float len = Vector3.Distance(a, b);
+                float s = 0f;
+                while (s < len)
+                {
+                    float period = DashLen + DashGap;
+                    float phase = carry % period;
+                    if (phase < DashLen)
+                    {
+                        float d = Mathf.Min(DashLen - phase, len - s);
+                        if (used >= _dashes.Count) _dashes.Add(Line("Dash", DashColor, 0.16f, false));
+                        var line = _dashes[used++];
+                        line.gameObject.SetActive(true);
+                        line.positionCount = 2;
+                        line.SetPosition(0, Vector3.Lerp(a, b, s / len));
+                        line.SetPosition(1, Vector3.Lerp(a, b, (s + d) / len));
+                        s += d; carry += d;
+                    }
+                    else
+                    {
+                        float d = Mathf.Min(period - phase, len - s);
+                        s += d; carry += d;
+                    }
+                    if (used > 400) break; // 아주 긴 길 막기
+                }
+            }
+            for (int i = used; i < _dashes.Count; i++) _dashes[i].gameObject.SetActive(false);
         }
 
         private Material LineMaterial(Color color)
