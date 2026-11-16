@@ -1,0 +1,21 @@
+{
+  "_comment": "영토 깃발 공성전 출진 직전 짧은 대사 (17 시안, 2026-11-17 원격, 모든 공성전 공통 — DialogueScript.SiegeFile). speaker $attacker = 내 첫 군단 장수, $defender = 상대(수비) 첫 군단 장수. 임시 대사",
+  "before": [
+    {
+      "speaker": "$attacker",
+      "side": "ally",
+      "key": "dialogue.siege.before.1"
+    },
+    {
+      "speaker": "$defender",
+      "side": "enemy",
+      "key": "dialogue.siege.before.2"
+    },
+    {
+      "speaker": "$attacker",
+      "side": "ally",
+      "key": "dialogue.siege.before.3"
+    }
+  ],
+  "after": []
+}

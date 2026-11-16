@@ -112,3 +112,4 @@
 - 2026-11-16 [데스크탑] desktop/remote-asks — 원격 요청: 녹화 [내 용병 고용됨] 탭 (R-120, HiredBattles · GetHireReplay → 확인 뒤 재생), 설정 알림 세 칸 서버 저장 · 시작 때 서버 값으로 (R-119)
 - 2026-11-17 [데스크탑] collab.md 2.1.1: 모양 변화가 적은 화면 일은 원격도 (PR에 캡처할 화면, 데스크탑이 캡처 확인 뒤 머지), 원격 PR은 main 기준 (사용자)
 - 2026-11-17 [데스크탑] desktop/battle-2 — 전투: 바닥 링 게이지(병력 · 사기), 병력 칩, 이동 경로 파란 점선 (18·19 시안 2단계)
+- 2026-11-17 [원격] claude/siege-dialogue — 17 공성전 짧은 대사: 깃발 공성전 공통 data/Dialogue/siege.json 3줄, $attacker · $defender를 그 전투 장수로 (DialogueScript.Resolve)

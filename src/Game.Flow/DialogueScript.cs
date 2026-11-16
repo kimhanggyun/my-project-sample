@@ -22,7 +22,30 @@ namespace Game.Flow
         public IReadOnlyList<DialogueLine> Before { get; private set; } = new List<DialogueLine>();
         public IReadOnlyList<DialogueLine> After { get; private set; } = new List<DialogueLine>();
 
-        public static string FileOf(string stepId) => "Dialogue/" + stepId + ".json";
+        /// <summary>깃발 공성전(territory.flag:…)은 스텝마다가 아니라 공통 파일 하나 (17 시안 공성전 짧은 대사).</summary>
+        public const string SiegeFile = "Dialogue/siege.json";
+
+        /// <summary>대사에서 그 전투의 장수로 바꿀 자리: 공격 = 내 첫 군단 장수, 수비 = 상대 첫 군단 장수.</summary>
+        public const string AttackerToken = "$attacker", DefenderToken = "$defender";
+
+        public static string FileOf(string stepId) =>
+            TerritoryBattles.IsTerritoryStep(stepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(stepId)) ? SiegeFile : "Dialogue/" + stepId + ".json";
+
+        /// <summary>
+        /// 자리 표시 장수($attacker · $defender)를 그 전투 장수로 바꾼 사본. 바꿀 장수가 없으면 그 줄은 해설(말하는 장수 없음)로.
+        /// 편(side)은 데이터 그대로 (공격 = ally, 수비 = enemy).
+        /// </summary>
+        public static List<DialogueLine> Resolve(IEnumerable<DialogueLine> lines, string attackerGeneralId, string defenderGeneralId)
+        {
+            var list = new List<DialogueLine>();
+            if (lines == null) return list;
+            foreach (var l in lines)
+            {
+                string who = l.Speaker == AttackerToken ? attackerGeneralId : l.Speaker == DefenderToken ? defenderGeneralId : l.Speaker;
+                list.Add(new DialogueLine { Speaker = who, Key = l.Key, Side = who == null ? null : l.Side });
+            }
+            return list;
+        }
 
         public const string Ally = "ally", Enemy = "enemy", Narration = "narration";
 
