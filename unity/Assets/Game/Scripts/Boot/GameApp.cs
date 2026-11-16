@@ -59,6 +59,10 @@ namespace Game.Unity.Boot
                 Game.Unity.UI.Sfx.Init(gameObject); // 임시 합성 효과음
                 Context.ApplyVolumes(); // 설정의 배경음 · 효과음 (15)
                 Context.Reverted += r => OnReverted(r);
+                Context.DeletionCancelled += () =>
+                {
+                    if (_screenRoot != null) Ui.Confirm(_screenRoot, Context.T("ui.settings.deleteCancelled.title"), Context.T("ui.settings.deleteCancelled.body"), Context.T("ui.common.ok"), () => { });
+                };
             }
             catch (Exception e)
             {

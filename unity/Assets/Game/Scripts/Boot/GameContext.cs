@@ -494,8 +494,12 @@ namespace Game.Unity.Boot
         {
             if (p != null) { Nickname = p.Nickname; IsMaster = p.IsMaster; Linked = p.Linked; }
             EnsureAvatar();
+            if (p != null && p.DeletionCancelled) DeletionCancelled?.Invoke(); // R-102: 유예 안에 다시 들어와 삭제가 취소됨 → 알림 (15 시안)
             done?.Invoke(p);
         });
+
+        /// <summary>계정 삭제 요청이 있었는데 다시 들어와 취소됐다 (R-102, 서버가 /me에서 한 번 알려 줌).</summary>
+        public event Action DeletionCancelled;
 
         public void SetNickname(string nickname, Action<NicknameResponse> done) => Online.SetNickname(nickname, r =>
         {
