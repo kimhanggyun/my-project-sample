@@ -209,5 +209,32 @@ namespace Game.Tests.Campaign
             Assert.Equal(SaveJson.Write(a), SaveJson.Write(c));
             Assert.False(runner.Apply(a, PlayerActionRunner.DrawGachaFree("standard", 6, now + 60)));
         }
+
+        [Fact(DisplayName = "R-121 기간 배너: 기간 안에서만 모집 (시작 전 · 끝난 뒤 · 시각 없음은 closed, 상시 배너는 시각을 보지 않음), 열린 배너 목록 · 남은 날")]
+        public void PeriodBanner()
+        {
+            var lim = Kit.D.Gacha.Banners["limited_winter"];
+            var std = Kit.D.Gacha.Banners["standard"];
+            Assert.True(lim.Limited);
+            Assert.False(std.Limited);
+            long start = lim.StartsAtUnixSeconds, end = lim.EndsAtUnixSeconds;
+            var svc = new GachaService(Kit.D);
+            var s = Game.Campaign.StartingKitService.CreateNewGame(Kit.D);
+            s.Wallet["gem"] = 10_000;
+            Assert.Equal(GachaService.Closed, svc.Draw(s, lim.Id, 1, 1, start - 1).Reason);
+            Assert.Equal(GachaService.Closed, svc.Draw(s, lim.Id, 1, 1, end).Reason);
+            Assert.Equal(GachaService.Closed, svc.Draw(s, lim.Id, 1, 1, 0).Reason);
+            Assert.True(svc.Draw(s, lim.Id, 1, 1, start).Ok);
+            Assert.True(svc.Draw(s, std.Id, 1, 1).Ok); // 상시 = 시각 없어도
+            Assert.True(new PlayerActionRunner(Kit.D).Apply(s, new Game.Online.PlayerAction { Kind = Game.Online.ActionKinds.GachaDraw, BannerId = lim.Id, Count = 1, Seed = 2, DoneAtUnixSeconds = end - 1 }));
+            Assert.False(new PlayerActionRunner(Kit.D).Apply(s, new Game.Online.PlayerAction { Kind = Game.Online.ActionKinds.GachaDraw, BannerId = lim.Id, Count = 1, Seed = 2, DoneAtUnixSeconds = end + 1 }));
+
+            Assert.Equal(new[] { "standard", "limited_winter" }, svc.OpenBanners(start).ConvertAll(b => b.Id));
+            Assert.Equal(new[] { "standard" }, svc.OpenBanners(end).ConvertAll(b => b.Id));
+            Assert.Equal(1, GachaService.DaysLeft(lim, end - 10));
+            Assert.Equal(2, GachaService.DaysLeft(lim, end - 86400 - 1));
+            Assert.Equal(-1, GachaService.DaysLeft(std, start));
+            Assert.True(Kit.D.Strings.ContainsKey(lim.NameKey));
+        }
     }
 }
