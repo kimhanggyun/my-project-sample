@@ -275,6 +275,33 @@ namespace Game.Tests.Campaign
             Assert.Equal(new[] { "general_a", "general_b" }, view.Owners.Find(o => o.RegionId == r.Flag.RegionId).GeneralIds);
         }
 
+        [Fact(DisplayName = "R-115 추가 파견: 내 깃발에 장수를 더 보내면 수비 = 모두의 군단 (판 + 1), 위치 없이 됨, 이미 나간 장수 · 남의 깃발 · 없는 깃발 · 공격받는 중은 거절, 보낸 뒤 원래 장수 회수 = 바꾸기")]
+        public void Reinforce()
+        {
+            var state = Kit.Veteran();
+            var owners = new Dictionary<string, TerritoryOwner>();
+            var flag = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Req("general_a"), Now).Flag;
+            PlantRequest Add(string key, params string[] ids) => new PlantRequest { FlagKey = key, GeneralIds = new List<string>(ids) }; // Location 없음
+            Assert.Equal(PlantReasons.GeneralBusy, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Add(flag.RegionId, "general_a"), Now).Reason);
+            Assert.Equal(PlantReasons.NotMine, TerritoryFlags.Plant(Defs, Kit.D, state, "other", null, owners, Add(flag.RegionId, "general_b"), Now).Reason);
+            Assert.Equal(PlantReasons.NoFlag, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Add("flag:1,2", "general_b"), Now).Reason);
+            Assert.Equal(PlantReasons.NoGeneral, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Add(flag.RegionId), Now).Reason);
+
+            var r = TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Add(flag.RegionId, "general_b"), Now + 60);
+            Assert.True(r.Ok, r.Reason);
+            Assert.Equal(new[] { "general_a", "general_b" }, owners[flag.RegionId].GeneralIds);
+            Assert.Equal(2, owners[flag.RegionId].Defense.Corps.Count);
+            Assert.Equal(2, owners[flag.RegionId].Defense.Version);
+            Assert.Equal(Now, owners[flag.RegionId].SinceUnixSeconds); // 깃발은 그대로 (꽂은 때 · 수입)
+
+            // 바꾸기 = 추가 파견 뒤 원래 장수 회수
+            var swap = TerritoryFlags.Recall(Defs, Kit.D, state, "me", owners, new RecallRequest { FlagKey = flag.RegionId, GeneralIds = new List<string> { "general_a" } }, Now + 120, (w, m) => { });
+            Assert.Equal(new[] { "general_b" }, swap.Flag.GeneralIds);
+
+            owners[flag.RegionId].SiegeAttackerId = "enemy";
+            Assert.Equal(PlantReasons.UnderSiege, TerritoryFlags.Plant(Defs, Kit.D, state, "me", null, owners, Add(flag.RegionId, "general_a"), Now + 180).Reason);
+        }
+
         [Fact(DisplayName = "R-109 회수: 한 명 회수하면 남은 장수로 수비 다시 (판 + 1), 모두 회수하면 깃발이 사라지고 쌓인 수입 우편, 남의 깃발 · 없는 장수는 거절")]
         public void Recall()
         {
