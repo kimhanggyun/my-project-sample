@@ -190,6 +190,21 @@ app.MapPost("/v1/games/{game}/territory/plant", async (string game, HttpRequest 
         return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
     });
 });
+// 공성전 준비 1분 · 취소 (R-113)
+app.MapPost("/v1/games/{game}/territory/siege", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<SiegeRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.StartSiege(id, body);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
+app.MapPost("/v1/games/{game}/territory/siege/cancel", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<SiegeRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) => g.CancelSiege(id, body?.FlagKey) ? Results.Ok() : Results.StatusCode(StatusCodes.Status422UnprocessableEntity));
+});
 app.MapPost("/v1/games/{game}/territory/recall", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
 {
     var body = await Body<RecallRequest>(req);
@@ -279,9 +294,9 @@ namespace Game.Server
             if (!any)
                 registry.Register(new StrategyGameModule(DefaultGame, new[] { "net.itgold.unitygame1" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
-            bool allowFake = !string.Equals(config["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase);
+            var receipts = ReceiptVerifiers.FromConfig(config);
             foreach (var code in registry.Codes)
-                if (registry.Find(code) is StrategyGameModule m) { m.AllowFakeReceipts = allowFake; if (masters != null) m.Masters = masters; }
+                if (registry.Find(code) is StrategyGameModule m) { m.Receipts = receipts; if (masters != null) m.Masters = masters; }
             return registry;
         }
     }

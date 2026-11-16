@@ -338,7 +338,8 @@ namespace Game.Flow
             if (s == null || s.BaseRevision != _save.Revision) { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = Copy(_save) }); return; }
             _hireLog.RemoveAll(e => Now - e.AtUnixSeconds >= HireBook.DaySeconds);
             string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
-            if (flagKey != null && TerritoryFlags.CheckSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, flagKey, s.Location, Now) != null)
+            if (flagKey != null && (TerritoryFlags.CheckSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, flagKey, s.Location, Now) != null
+                || TerritoryFlags.CheckSiegeReady(TerritoryData, _owners, flagKey, AccountId, Now) != null))
             { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = Copy(_save) }); return; }
             var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog,
                 region => TerritoryLedger.DefenseOf(_owners, region));
@@ -346,7 +347,7 @@ namespace Game.Flow
             if (v.Valid && flagKey != null)
             {
                 var after = SaveJson.Read(json);
-                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail);
+                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail, TakeAlert);
             }
             else if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
             if (v.Valid && hired != null)
@@ -522,6 +523,21 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             done?.Invoke(TerritoryFlags.Plant(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, a => AllianceBook.Of(_alliances, a)?.Id, _owners, req, Now));
+        }
+
+        /// <summary>공성전 준비 시작 (R-113): 서버와 같은 코드 · 서버 시각.</summary>
+        public void StartSiege(SiegeRequest req, Action<SiegeResponse> done)
+        {
+            LoadSave(_ => { });
+            done?.Invoke(TerritoryFlags.StartSiege(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, req, Now, SendMail));
+        }
+
+        public void CancelSiege(string flagKey, Action<bool?> done) =>
+            done?.Invoke(TerritoryFlags.CancelSiege(TerritoryData, _owners, flagKey, AccountId, Now, TakeAlert));
+
+        private void TakeAlert(string account, string flagKey)
+        {
+            if (account == AccountId) _mail.RemoveAll(m => m.Kind == MailKinds.SiegeAlert && m.RegionId == flagKey);
         }
 
         /// <summary>깃발에서 장수 회수 (R-109).</summary>

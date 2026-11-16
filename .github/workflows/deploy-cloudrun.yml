@@ -1,17 +1,49 @@
 name: deploy-cloudrun
 
-# 게임 서버를 Google Cloud Run에 올린다 (docs/impl/deploy-cloudrun.md). 손으로만 실행 (Actions 탭 → Run workflow).
+# 게임 서버를 Google Cloud Run에 올린다 (docs/impl/deploy-cloudrun.md).
+# main에 합치면 자동 배포 (서버에 영향 있는 경로가 바뀔 때만, 2026-11-15 사용자 결정). 손으로도 실행 가능 (Actions 탭 → Run workflow).
+# 배포 전에 테스트(core-tests와 같은 dotnet test)를 돌리고, 실패하면 배포하지 않는다.
 # 저장소 설정 → Secrets and variables → Actions → Variables에 아래 값이 있어야 한다 (비밀값 없음: 키 대신 Workload Identity 사용).
 #   GCP_PROJECT_ID, GCP_REGION(asia-northeast3), GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT(배포용), GCP_RUNTIME_SA(서버 실행용), GCS_BUCKET, FIREBASE_PROJECT_ID
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'src/**'
+      - 'data/**'
+      - 'config/**'
+      - 'GameCore.sln'
+      - '.github/workflows/deploy-cloudrun.yml'
   workflow_dispatch:
+
+# 배포는 한 번에 하나씩 (인스턴스 1대 · 버킷 저장소). 뒤에 온 배포는 앞 배포가 끝날 때까지 기다린다.
+concurrency:
+  group: deploy-cloudrun
+  cancel-in-progress: false
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  test:
+    # core-tests.yml과 같은 검사. 실패한 커밋은 배포하지 않는다 (deploy needs test).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore GameCore.sln
+      - name: Build
+        run: dotnet build GameCore.sln --no-restore -c Release
+      - name: Test
+        run: dotnet test GameCore.sln --no-build -c Release
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     if: ${{ vars.GCP_PROJECT_ID != '' }}
     env:

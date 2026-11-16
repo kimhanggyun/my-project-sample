@@ -949,6 +949,7 @@
   "ui.result.toTerritory": "영토로",
   "ui.mail.territoryIncome": "영토 수입: {0} {1} ({2})",
   "ui.mail.attendance": "출석 보상: {0} {1}",
+  "ui.mail.siegeAlert": "{0} 깃발이 공격받습니다",
   "ui.territory.collect": "수입 받기",
   "ui.territory.nothing": "받을 수입이 아직 없습니다.",
   "ui.territory.collected": "수입을 우편 {0}통으로 보냈습니다. 여기서 받으세요.",

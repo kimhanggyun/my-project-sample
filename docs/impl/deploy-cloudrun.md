@@ -11,9 +11,10 @@
 | 저장 | **Cloud Storage 버킷**을 `/data/store`에 붙여 지금 폴더 저장소(store.json) 그대로 | 테스트 단계용. 인스턴스 1대로 제한. 사용자가 늘면 Firestore 또는 Cloud SQL로 바꾼다 (`IGameStore` 구현 추가) |
 | 로그인 | **Firebase Authentication** (구글, 나중에 애플) | 기기가 받은 Firebase ID 토큰을 서버가 확인 → 서버 계정 토큰 (3장) |
 | 이미지 저장 | Artifact Registry 저장소 `game` | |
-| 배포 | GitHub Actions `deploy-cloudrun` (손으로 실행) | 비밀 키 대신 Workload Identity |
+| 배포 | GitHub Actions `deploy-cloudrun`: **main에 합치면 서버 자동 배포** (2026-11-15) + 손으로도 실행 | 비밀 키 대신 Workload Identity |
 
-- 결제 영수증: 배포 서버는 `Game__AllowFakeReceipts=false` (가짜 영수증 거절). 실제 스토어 검증은 다음 단계.
+- 결제 영수증: 배포 서버는 `Game__AllowFakeReceipts=false` (가짜 영수증 거절 = 검증기 `off`). 검증기는 `Game__ReceiptVerifier`로 고른다 (`fake` · `off` · `googlePlay`, R-114). 실제 Google Play 검증은 7장 (자리만 있음).
+- **main에 합치면 서버 자동 배포** (2026-11-15 사용자 결정): `main`에 push(= PR 합치기)되고 바뀐 파일이 `server/**` · `src/**` · `data/**` · `config/**` · `GameCore.sln` · 이 워크플로 파일 중 하나면 `deploy-cloudrun`이 돈다. 먼저 `test` job(core-tests와 같은 `dotnet test GameCore.sln`)을 돌리고, **실패하면 배포하지 않는다** (`deploy`가 `needs: test`). 배포는 한 번에 하나씩 (`concurrency`, 인스턴스 1대 · 버킷 저장소). 문서 · 테스트 · Unity 화면만 바꾼 PR은 배포하지 않는다. 손 실행(Run workflow)은 그대로 — 변수(`GAME_MASTERS` 등)만 바꿨을 때 쓴다.
 - 마스터 계정 (R-86): 저장소 변수 `GAME_MASTERS`(계정 id 또는 구글 로그인 이메일 — 확인된 이메일, 대소문자 무시, 섞어 적어도 됨, 여럿이면 쉼표. 게스트는 이메일이 없어 계정 id로) → `Game__Masters`. 바꾼 뒤 배포를 다시 돌린다.
 
 ## 2. 사용자가 할 일 (한 번)
@@ -110,5 +111,26 @@ echo "FIREBASE_PROJECT_ID=$PROJECT"
 
 1. ~~폰에서 구글 로그인 확인~~ — **확인됨 (2026-11-11)**: 안드로이드 빌드 성공, 구글 로그인 → 클라우드 서버 계정, 앱 삭제·재설치 후 같은 구글 계정으로 닉네임·진행(스텝 클리어) 복구.
 2. 애플 로그인 (같은 흐름, providerId apple.com).
-3. 결제 영수증 실제 검증 (Google Play Developer API).
+3. 결제 영수증 실제 검증 (Google Play Developer API) — 뼈대 · 설정은 있음, 켜는 순서는 7장.
 4. 사용자가 늘면 저장소를 Firestore로 (`IGameStore` 구현 추가) → 인스턴스 여러 대.
+
+## 7. 결제 영수증 검증 (Google Play, 자리만 — R-114)
+
+서버는 `IReceiptVerifier`(src/Game.Flow/Purchases.cs) 하나로 영수증을 본다. 고르는 설정 `Game:ReceiptVerifier` (Cloud Run 환경 변수 `Game__ReceiptVerifier`):
+
+| 값 | 뜻 | 쓰는 곳 |
+|---|---|---|
+| `fake` (기본) | 개발용 영수증 `fake:…`만 받는다 | 참고 서버 · 테스트 · 개발 빌드 |
+| `off` | 모두 거절 | 지금 배포 서버 (`Game__AllowFakeReceipts=false`이고 ReceiptVerifier가 없으면 off) |
+| `googlePlay` | Google Play Developer API로 확인 | **아직 자리만**: 설정이 있어도 모두 거절 (`notConfigured`) |
+
+같은 영수증 두 번 막기는 검증기가 돌려준 거래 id(`TransactionId`, 구글은 orderId)로 한다.
+
+**구글 플레이 검증을 켤 때 (다음 단계)**:
+
+1. Play Console → 설정 → API 액세스에서 Google Cloud 프로젝트를 연결하고, 서비스 계정을 만들어 "재무 데이터 보기 · 주문 관리" 권한을 준다.
+2. 서비스 계정 키(JSON)는 **Secret Manager**에 넣고, Cloud Run에 비밀로 붙인다 (`Game__GooglePlay__ServiceAccountJson`). 키 값은 저장소 · 채팅 · 워크플로 파일에 적지 않는다.
+3. `Game__GooglePlay__PackageName` = 앱 패키지 이름, `Game__ReceiptVerifier=googlePlay`.
+4. 서버 `GooglePlayReceiptVerifier.Verify`를 구현한다: 기기가 보낸 구매 토큰으로 `purchases.products.get(packageName, productId, token)` → `purchaseState == 0`(구매됨)이고 상품 id가 같을 때만 통과, orderId를 TransactionId로. 소모성 상품은 반영 뒤 `consume`, 아니면 `acknowledge`.
+5. 기기 쪽: Unity IAP(구글 결제)의 구매 토큰을 `store.purchase` 행동의 Receipt로 보낸다 (지금은 가짜 스토어).
+

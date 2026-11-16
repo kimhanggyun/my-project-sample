@@ -182,6 +182,15 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.TerritoryRecall(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<RecallResponse>(body) : null));
 
+        /// <summary>200 = 준비 시작, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritorySiege(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<SiegeResponse>(body) : null));
+
+        public void CancelSiege(string flagKey, Action<bool?> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritorySiegeCancel(_game), OnlineJson.Write(new SiegeRequest { FlagKey = flagKey }), Token, (status, body) =>
+                done?.Invoke(status == 200 ? true : status == 422 ? false : (bool?)null));
+
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryPlant(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<PlantResponse>(body) : null));

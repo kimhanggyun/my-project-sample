@@ -56,6 +56,8 @@
 | `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
 | `POST /v1/games/{game}/territory/collect` | 내 지역의 쌓인 수입을 우편으로 (받은 시각 = 지금, R-47) | `MailListResponse` (보낸 우편) |
 | `POST /v1/games/{game}/territory/defense` | 내 지역에 수비 편성 등록 (서버 세이브의 기본 편성 스냅샷, 판 +1, R-48). 내 지역이 아니거나 편성에 문제가 있으면 422 | `DefenseResponse` |
+| `POST /v1/games/{game}/territory/siege` | 공성전 준비 시작 (R-113): 서버가 시각 기록, 수비자에게 우편 `siegeAlert`. 준비 1분 전 공성전 제출은 거절 | `SiegeResponse` (200 / 422 `badTarget` · `busy`) |
+| `POST /v1/games/{game}/territory/siege/cancel` | 준비 중 공격 취소 (본문 `SiegeRequest.FlagKey`): 기록 · 수비자 알림 지움 | 200 / 422 |
 | `GET /v1/games/{game}/alliances` | 연합 목록, 내 연합 id, 인원 상한 (R-49) | `AllianceListResponse` |
 | `POST /v1/games/{game}/alliances` | 연합 만들기 (이름). 이름 규칙·이미 연합원이면 422 | `AllianceResponse` |
 | `POST /v1/games/{game}/alliances/{id}/join` · `/alliances/leave` | 가입 (인원 상한) · 탈퇴 (연합장 넘김, 마지막이면 없앰) | `AllianceResponse` |
@@ -134,7 +136,7 @@ docker run -p 8080:8080 -v game-store:/data/store game-server
 ## 5.6 클라우드 배포 (2026-11-11)
 
 - **Google Cloud Run + Firebase 로그인**으로 정했다. 배포 순서·사용자가 할 일·로그인 흐름은 [deploy-cloudrun.md](deploy-cloudrun.md).
-- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. `Game:AllowFakeReceipts=false`면 가짜 결제 영수증을 거절한다. `Game:Masters`(쉼표로 나눈 **계정 id 또는 구글 로그인 이메일** — 구글이 확인한 이메일만, 대소문자 무시, 섞어 적어도 됨. 게스트는 이메일이 없어 계정 id로)는 마스터 계정: 개발 행동 `dev.*`을 받아 주고 `/v1/me`에 IsMaster (R-86). Cloud Run은 환경 변수 `Game__Masters`.
+- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. 결제 영수증 검증기는 `Game:ReceiptVerifier` (`fake` 기본 · `off` · `googlePlay` 자리, R-114, [deploy-cloudrun.md](deploy-cloudrun.md) 7장). 예전 설정 `Game:AllowFakeReceipts=false`는 ReceiptVerifier가 없을 때 `off`. `Game:Masters`(쉼표로 나눈 **계정 id 또는 구글 로그인 이메일** — 구글이 확인한 이메일만, 대소문자 무시, 섞어 적어도 됨. 게스트는 이메일이 없어 계정 id로)는 마스터 계정: 개발 행동 `dev.*`을 받아 주고 `/v1/me`에 IsMaster (R-86). Cloud Run은 환경 변수 `Game__Masters`.
 
 ## 6. 다음 단계
 
