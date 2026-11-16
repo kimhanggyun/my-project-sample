@@ -218,12 +218,12 @@ namespace Game.Server
 
         public ServerStatusResponse StatusOverride()
         {
-            lock (_lock) return Data.StatusOverride == null ? null : OnlineJson.Read<ServerStatusResponse>(OnlineJson.Write(Data.StatusOverride));
+            lock (Fresh()) return Data.StatusOverride == null ? null : OnlineJson.Read<ServerStatusResponse>(OnlineJson.Write(Data.StatusOverride));
         }
 
         public void SetStatusOverride(ServerStatusResponse status)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 Data.StatusOverride = status;
                 Persist();
