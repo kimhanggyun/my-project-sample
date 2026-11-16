@@ -208,6 +208,25 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await b.GetAsync(OnlineRoutes.SharedReplay(ServerSetup.DefaultGame, "nope"))).StatusCode);
         }
 
+        [Fact(DisplayName = "R-112 출석: 서버 시각으로 하루 한 번, 보상은 우편 → mail.claim으로 받기, 같은 날 두 번은 already")]
+        public async Task AttendanceFlow()
+        {
+            var c = await SignedIn();
+            var url = OnlineRoutes.Attendance(ServerSetup.DefaultGame);
+            var first = await Read<AttendanceResponse>(await c.PostAsync(url, null));
+            Assert.Equal((AttendanceResults.Ok, 0), (first.Result, first.Index));
+            Assert.Equal(AttendanceResults.Already, (await Read<AttendanceResponse>(await c.PostAsync(url, null))).Result);
+            var box = await Read<MailListResponse>(await c.GetAsync(OnlineRoutes.Mail(ServerSetup.DefaultGame)));
+            var mail = Assert.Single(box.Mail, m => m.Kind == MailKinds.Attendance);
+            Assert.Equal((first.Mail.Resource, first.Mail.Amount), (mail.Resource, mail.Amount));
+            var save = await Read<CloudSave>(await c.GetAsync(Save));
+            var claim = await c.PostAsync(OnlineRoutes.Actions(ServerSetup.DefaultGame), Body(new ActionSubmission { BaseRevision = save.Revision, Actions = { PlayerActionRunner.ClaimMail(mail) } }));
+            Assert.True(claim.StatusCode == HttpStatusCode.OK, await claim.Content.ReadAsStringAsync());
+            var after = SaveJson.Read((await Read<ActionVerdict>(claim)).Save.Json);
+            var before = SaveJson.Read(save.Json);
+            Assert.Equal(before.Wallet[mail.Resource] + mail.Amount, after.Wallet[mail.Resource]);
+        }
+
         [Fact(DisplayName = "R-43 고용: A가 부대 등록 → B가 목록에서 골라 고용해 전투(200) → A 우편에 보상 → A가 받으면 지갑에, 두 번은 422")]
         public async Task HireFlow()
         {

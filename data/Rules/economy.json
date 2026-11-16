@@ -1,0 +1,30 @@
+{
+  "_comment": "출석 · 교환 · 금괴 해금 (economy.md 1장 · 1.0장 · 6장, verification R-112). **모든 수치는 임시값** (2026-11-15 원격, 사용자가 정하기 전, open-values.md). dayStartUtcOffsetHours = 하루가 바뀌는 시각의 UTC 차이 (9 = 한국 자정)",
+  "dayStartUtcOffsetHours": 9,
+  "attendance": {
+    "_comment": "하루 한 번, 서버 시각. cycle 차례로 받고 끝나면 처음부터. missedResets = 하루라도 빠지면 처음부터 (false면 이어서). 보상은 우편 (kind attendance)",
+    "missedResets": false,
+    "cycle": [
+      { "resource": "supply", "amount": 100000 },
+      { "resource": "gold", "amount": 300 },
+      { "resource": "supply", "amount": 150000 },
+      { "resource": "gold", "amount": 500 },
+      { "resource": "supply", "amount": 200000 },
+      { "resource": "gold", "amount": 800 },
+      { "resource": "gem", "amount": 30 }
+    ]
+  },
+  "exchange": {
+    "_comment": "바꾸기: 낸 양 × get / give (내림) × (100 − lossPct) / 100 (내림). dailyLimit = 하루에 낼 수 있는 양 (낸 자원 단위, 0 = 없음). 금괴 → 엽전 · 곡식은 한 방향 (되돌리는 길이 없음). 엽전 ↔ 곡식은 손실 + 하루 한도",
+    "rates": [
+      { "from": "gem", "to": "gold", "give": 1, "get": 100, "lossPct": 0, "dailyLimit": 0 },
+      { "from": "gem", "to": "supply", "give": 1, "get": 50000, "lossPct": 0, "dailyLimit": 0 },
+      { "from": "gold", "to": "supply", "give": 1, "get": 500, "lossPct": 10, "dailyLimit": 5000 },
+      { "from": "supply", "to": "gold", "give": 5000, "get": 10, "lossPct": 10, "dailyLimit": 2500000 }
+    ]
+  },
+  "skillLearnUnlock": {
+    "_comment": "금괴로 스킬 얻기 조건(습득 최소 조건 R-31, 기록 카운터) 해금: 계정에서 그 스킬은 조건 없이 배울 수 있다 (스킬북 · 요구 능력치는 그대로). 스킬 단계별 금괴",
+    "gemByTier": { "basic": 30, "intermediate": 60, "advanced": 120 }
+  }
+}

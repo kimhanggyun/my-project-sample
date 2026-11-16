@@ -85,10 +85,14 @@ namespace Game.Flow
             // 우편 받기: 서버는 우편이 있는지·양이 맞는지 먼저 본다 (ActionVerifier의 serverCheck)
             Register(new Handler(ActionKinds.MailClaim, (s, a) =>
             {
-                if (a.MailId == null || a.Count <= 0 || (a.PayWith != Economy.ResourceIds.Gold && a.PayWith != Economy.ResourceIds.Supply)) return false;
+                if (a.MailId == null || a.Count <= 0 || (a.PayWith != Economy.ResourceIds.Gold && a.PayWith != Economy.ResourceIds.Supply && a.PayWith != Economy.ResourceIds.Gem)) return false; // 금괴는 출석 우편 (R-112)
                 new Economy.Wallet(s.Wallet).Add(a.PayWith, a.Count);
                 return true;
             }));
+            // 교환 · 금괴 해금 (R-112): 하루 한도는 행동 시각의 날 (시각 없는 교환은 거절: 0과 지금을 섞어 한도를 비우지 못하게)
+            var daily = new DailyEconomy(defs);
+            Register(new Handler(ActionKinds.Exchange, (s, a) => a.DoneAtUnixSeconds > 0 && daily.Exchange(s, a.PayWith, a.Situation, a.Count, a.DoneAtUnixSeconds) > 0));
+            Register(new Handler(ActionKinds.SkillUnlockLearn, (s, a) => daily.UnlockLearn(s, a.SkillId)));
             // 개발 행동 (R-86): 서버는 마스터 계정의 것만 받는다 (StrategyGameModule). 기기는 개발 빌드·마스터일 때만 화면에 둔다.
             Register(new Handler(ActionKinds.DevGrant, (s, a) =>
             {
@@ -228,6 +232,9 @@ namespace Game.Flow
         public static PlayerAction BuyCosmetic(string id) => new PlayerAction { Kind = ActionKinds.CosmeticBuy, CosmeticId = id };
         /// <param name="id">null = 벗기 (기본 모습).</param>
         public static PlayerAction EquipCosmetic(string line, string kind, string id) => new PlayerAction { Kind = ActionKinds.CosmeticEquip, TroopType = line, Situation = kind, CosmeticId = id };
+        public static PlayerAction Exchange(string from, string to, long amount, long nowUnixSeconds) =>
+            new PlayerAction { Kind = ActionKinds.Exchange, PayWith = from, Situation = to, Count = amount, DoneAtUnixSeconds = nowUnixSeconds };
+        public static PlayerAction UnlockSkillLearn(string skillId) => new PlayerAction { Kind = ActionKinds.SkillUnlockLearn, SkillId = skillId };
         public static PlayerAction DisbandUnit(string unitId) => new PlayerAction { Kind = ActionKinds.UnitDisband, UnitId = unitId };
 
         private sealed class Handler : IPlayerActionHandler

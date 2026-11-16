@@ -160,6 +160,9 @@ namespace Game.Online
         public void GetMail(Action<MailListResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Mail(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
+        public void CheckIn(Action<AttendanceResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.Attendance(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<AttendanceResponse>(body) : null));
+
         public void GetTerritory(Action<TerritoryResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Territory(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<TerritoryResponse>(body) : null));
 

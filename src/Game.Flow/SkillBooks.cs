@@ -111,7 +111,7 @@ namespace Game.Flow
             if (Knows(g, skill.Id)) return LearnCheck.AlreadyKnown;
             if (Owned(state, skill.Id) <= 0) return LearnCheck.NoBook;
             if (!MeetsStats(g, skill)) return LearnCheck.StatTooLow;
-            if (!ConditionsMet(g, skill)) return LearnCheck.ConditionNotMet;
+            if (!state.SkillLearnUnlocks.Contains(skill.Id) && !ConditionsMet(g, skill)) return LearnCheck.ConditionNotMet; // 금괴 해금은 조건 없이 (R-112)
             return LearnCheck.Ok;
         }
 
