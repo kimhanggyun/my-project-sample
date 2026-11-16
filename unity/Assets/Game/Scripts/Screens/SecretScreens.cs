@@ -223,7 +223,18 @@ namespace Game.Unity.Screens
             var cond = Ui.Card(body, "Condition", 18, 6);
             Ui.Label(cond, T("ui.codex.condition"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Label(cond, T("secret.condition." + def.Id), 24);
+            // 그 전투 녹화가 남아 있으면 바로 보기 (녹화 목록의 재생과 같은 확인 경로)
+            var battle = find == null ? null : Ctx.Replays.FindNear(find.StepId, find.AtUnixSeconds);
+            if (battle != null) Ui.Button(body, T("ui.codex.watchBattle"), () => PlayBattle(battle), 88, fontSize: 26);
             Ui.Button(body, T("ui.common.close"), () => App.Show(new CodexScreen()), 96, fontSize: 28);
+        }
+
+        private void PlayBattle(Game.Flow.ReplayRecord rec)
+        {
+            var playback = Ctx.ReplayService.Check(rec);
+            if (playback.Ok) { App.Show(new BattleScreen(playback)); return; }
+            Ctx.MarkReplayUnplayable(rec.Id);
+            App.Show(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
         }
 
         // ---- 장수 도감 ----
