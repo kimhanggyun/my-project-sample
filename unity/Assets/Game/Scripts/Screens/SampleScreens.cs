@@ -162,21 +162,23 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 24, 48).childAlignment = TextAnchor.MiddleCenter;
             bool won = _result.Winner == StoryFlow.PlayerTeam;
             Sfx.Play(won ? "cheer" : "gong");
-            Ui.Size(Ui.Label(Root, T(Ctx.Flow.LoadStep(_stepId).NameKey) + "  " + Ui.Colored(T("ui.sample.tag"), Palette.TextDim), Ui.FontBody, TextAnchor.MiddleCenter), 80);
-            Ui.Size(Ui.Label(Root, won ? Ui.Colored(T("ui.result.win"), Palette.Good) : Ui.Colored(T("ui.result.lose"), Palette.Bad), Ui.FontTitle, TextAnchor.MiddleCenter), 130);
-            Ui.Size(Ui.Label(Root, T("ui.result.time", _result.ElapsedSeconds.FloorToLong(), T("ui.result.endReason." + _result.EndReason)), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 56);
-            Ui.Label(Root, T("ui.sample.noReward"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
-            var error = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad);
-            Ui.Button(Root, T("ui.sample.again"), () =>
+            // 공통 타이틀 (← 스텝 이름 · 샘플) · 몸통 승패 · 아래 [다시] [목록으로]
+            var (_, body, footer, _) = Ui.TitledPage(Root, T(Ctx.Flow.LoadStep(_stepId).NameKey) + "  " + Ui.Colored(T("ui.sample.tag"), Palette.TextDim), () => App.ShowMain("sampleBattle"), 120, infoGap: false);
+            Ui.Size(Ui.Label(body, won ? Ui.Colored(T("ui.result.win"), Palette.Good) : Ui.Colored(T("ui.result.lose"), Palette.Bad), Ui.FontTitle, TextAnchor.MiddleCenter), 130);
+            Ui.Size(Ui.Label(body, T("ui.result.time", _result.ElapsedSeconds.FloorToLong(), T("ui.result.endReason." + _result.EndReason)), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 56);
+            Ui.Label(body, T("ui.sample.noReward"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            var error = Ui.Label(body, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad);
+            Ui.Button(footer, T("ui.sample.backToList"), () => App.ShowMain("sampleBattle"), 92);
+            Ui.Button(footer, T("ui.sample.again"), () =>
             {
                 var plan = SampleBattles.Prepare(Ctx.Defs, Ctx.Flow, Ctx.State, _stepId, Ctx.NewSeed());
                 if (plan.Ok) App.Show(BattleScreen.Sample(plan, _stepId));
                 else error.text = plan.Errors.Count > 0 ? plan.Errors[0] : "";
-            }, 110, Palette.ButtonActive);
-            Ui.Button(Root, T("ui.sample.backToList"), () => App.ShowMain("sampleBattle"), 110);
+            }, 92, Palette.ButtonActive);
         }
+
+        public override bool OnBack() { App.ShowMain("sampleBattle"); return true; }
     }
 }
