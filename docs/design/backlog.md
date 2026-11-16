@@ -47,7 +47,9 @@
 - [x] 영토 실제 지도 (Natural Earth 나라 · 시도 · 도로 · 도시, 한국 근처) — #186
 - [x] 관리자 페이지 `/unitygame1.html` (지금은 접속 ID만) — #201 · #202, [impl/admin.md](../impl/admin.md)
 - [ ] **관리자 페이지 구글 확인 켜기** — 저장소 변수 `ADMIN_GOOGLE`=on + GCP 웹 OAuth 클라이언트 승인된 JavaScript 원본에 서버 주소
-- [ ] 실제 결제: Google Play 영수증 검증 ([../impl/deploy-cloudrun.md](../impl/deploy-cloudrun.md) 7장), 복원, 애플
+- [ ] **서버 저장소 → Firestore** (2026-11-16 사용자 결정, [impl/db.md](../impl/db.md) 7장 4단계: 인터페이스 나누기 → FirestoreStore → 옮기기 도구 → 실제 옮기기, 출시 전)
+- [x] 실제 결제: Google Play 영수증 검증 서버 (R-116 #211) · 결제 복원 서버 (R-117) — 켜기는 deploy-cloudrun.md 7장 사용자 할 일, 기기 IAP 연결 남음
+- [ ] 실제 결제 (기기): Unity IAP 연결 (구매 → 서버 영수증 확인 → ConfirmPending), 설정 [구매 복원] 연결, 애플
 - [ ] 광고 (배너 · 보상형 · ATT)
 - [ ] 버전 확인 · 점검 안내
 - [ ] 푸시 알림 (설정 화면 알림 설정 서버 전송 포함)
