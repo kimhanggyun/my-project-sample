@@ -625,6 +625,8 @@ namespace Game.Online
         public string RegionId { get; set; }
         /// <summary>공성전 알림이면 공격자 계정.</summary>
         public string FromAccountId { get; set; }
+        /// <summary>운영 선물이면 관리자가 적은 짧은 말 (없으면 null).</summary>
+        public string Note { get; set; }
         public long CreatedAtUnixSeconds { get; set; }
     }
 
@@ -637,6 +639,8 @@ namespace Game.Online
         public const string Attendance = "attendance";
         /// <summary>내 깃발이 공격받는다 (공성전 준비 시작, R-113): RegionId = 깃발 키, FromAccountId = 공격자, Amount 0 (받을 것 없음). 공성전이 끝나거나 취소되면 지워진다.</summary>
         public const string SiegeAlert = "siegeAlert";
+        /// <summary>운영 선물 (관리자 페이지에서 보냄, docs/impl/admin.md): 자원 · 양 · Note. [받기] = mail.claim.</summary>
+        public const string AdminGift = "adminGift";
     }
 
     /// <summary>출석 결과 (R-112). 받았으면 Mail이 우편함에 들어가 있다.</summary>

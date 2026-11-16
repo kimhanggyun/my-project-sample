@@ -1,0 +1,227 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using Game.Economy;
+using Game.Foundation.Time;
+using Game.Online;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Game.Server
+{
+    /// <summary>
+    /// 관리자 페이지 (docs/impl/admin.md, 2026-11-16 사용자): /unitygame1.html + /v1/admin/*.
+    /// 들어가려면 둘 다: ① 관리자 키 (설정 Game:AdminKey, Cloud Run 비밀값 — 저장소에 적지 않는다) 헤더 X-Admin-Key,
+    /// ② 마스터 계정 (Game:Masters, 구글 로그인) 토큰. 키 설정이 없으면 관리자 주소는 모두 404 (꺼짐).
+    /// </summary>
+    public static class AdminRoutes
+    {
+        public const string KeyHeader = "X-Admin-Key";
+        public const string Prefix = "/v1/admin";
+        /// <summary>한 번에 보낼 수 있는 자원 상한 (실수로 0을 더 붙이는 것 막기).</summary>
+        public const long MaxAmount = 100_000_000;
+
+        public static void Map(WebApplication app)
+        {
+            var time = app.Services.GetRequiredService<ITimeProvider>();
+            long Now() => time.UtcNow.ToUnixTimeSeconds();
+            string key = app.Configuration["Game:AdminKey"];
+
+            // 키 확인만 (페이지 첫 칸): 맞으면 204, 아니면 404 — 로그인 전에 키가 틀렸는지 알려 준다
+            app.MapPost(Prefix + "/key", (HttpRequest req) => KeyOk(req, key) ? Results.NoContent() : Results.NotFound());
+
+            app.MapGet(Prefix + "/status", (HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters, IServiceProvider sp) =>
+                Guard(req, key, store, masters, id => Json(new AdminStatus
+                {
+                    NowUnixSeconds = Now(),
+                    Revision = Environment.GetEnvironmentVariable("K_REVISION"),
+                    Games = new List<string>(r.Codes),
+                    Accounts = store.AdminAccounts().Count,
+                    Store = store is FolderStore ? "folder" : "memory",
+                    Masters = app.Configuration["Game:Masters"],
+                    ReceiptVerifier = app.Configuration["Game:ReceiptVerifier"] ?? (string.Equals(app.Configuration["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase) ? "off" : "fake"),
+                    FirebaseProjectId = app.Configuration["Game:Firebase:ProjectId"],
+                    You = id,
+                })));
+
+            app.MapGet(Prefix + "/accounts", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
+                Guard(req, key, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
+
+            app.MapGet(Prefix + "/games/{game}/accounts/{account}", (string game, string account, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+                Guard(req, key, store, masters, _ =>
+                {
+                    if (r.Find(game) == null) return Results.NotFound();
+                    var save = store.GetSave(game, account);
+                    var detail = new AdminAccountDetail { AccountId = account, Mail = store.MailOf(game, account) };
+                    if (save != null)
+                    {
+                        detail.Revision = save.Revision;
+                        detail.SavedAtUnixSeconds = save.SavedAtUnixSeconds;
+                        detail.SaveJson = save.Json;
+                        try
+                        {
+                            var s = Game.Flow.SaveJson.Read(save.Json);
+                            detail.Wallet = s.Wallet;
+                            detail.LordLevel = s.LordLevel;
+                            detail.ClearedSteps = s.ClearedSteps.Count;
+                            detail.Generals = s.Generals.Count;
+                            detail.Units = s.Units.Count;
+                        }
+                        catch (Exception) { /* 읽지 못하는 세이브는 원문만 */ }
+                    }
+                    return Json(detail);
+                }));
+
+            // 우편 보내기: 계정 목록 (비면 그 게임의 모든 계정)에 자원 우편. 받는 사람이 [받기]로 지갑에 (mail.claim, R-41)
+            app.MapPost(Prefix + "/games/{game}/mail", async (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminMailRequest>(req);
+                return Guard(req, key, store, masters, _ =>
+                {
+                    if (r.Find(game) == null) return Results.NotFound();
+                    if (body == null || !IsResource(body.Resource) || body.Amount <= 0 || body.Amount > MaxAmount)
+                        return Json(new AdminMailResponse { Reason = "badRequest" }, StatusCodes.Status422UnprocessableEntity);
+                    var targets = new List<string>();
+                    if (body.AccountIds == null || body.AccountIds.Count == 0)
+                    {
+                        foreach (var a in store.AdminAccounts()) if (a.Games.ContainsKey(game)) targets.Add(a.AccountId);
+                    }
+                    else
+                    {
+                        var known = new HashSet<string>(StringComparer.Ordinal);
+                        foreach (var a in store.AdminAccounts()) known.Add(a.AccountId);
+                        foreach (var id in body.AccountIds) if (known.Contains(id)) targets.Add(id);
+                    }
+                    foreach (var id in targets)
+                        store.AddMail(game, id, new Mail { Kind = MailKinds.AdminGift, Resource = body.Resource, Amount = body.Amount, Note = Trim(body.Note), CreatedAtUnixSeconds = Now() });
+                    return Json(new AdminMailResponse { Ok = targets.Count > 0, Reason = targets.Count > 0 ? "ok" : "noTarget", Sent = targets.Count });
+                });
+            });
+
+            app.MapGet(Prefix + "/games/{game}/territory", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+                Guard(req, key, store, masters, _ =>
+                {
+                    if (r.Find(game) == null) return Results.NotFound();
+                    var res = new AdminTerritory();
+                    store.WithTerritory(game, owners => { foreach (var o in owners.Values) res.Owners.Add(OnlineJson.Read<TerritoryOwner>(OnlineJson.Write(o))); return 0; });
+                    store.WithAlliances(game, all => { foreach (var a in all.Values) res.Alliances.Add(OnlineJson.Read<Alliance>(OnlineJson.Write(a))); return 0; });
+                    res.Owners.Sort((a, b) => string.CompareOrdinal(a.RegionId, b.RegionId));
+                    res.Alliances.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
+                    return Json(res);
+                }));
+        }
+
+        /// <summary>키 설정이 없으면 언제나 거절. 같은 길이 비교 (시간으로 키를 알아내지 못하게).</summary>
+        public static bool KeyOk(HttpRequest req, string key)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+            string given = req.Headers[KeyHeader].ToString();
+            var a = SHA256.HashData(Encoding.UTF8.GetBytes(given ?? ""));
+            var b = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+            return CryptographicOperations.FixedTimeEquals(a, b);
+        }
+
+        /// <summary>키 → 404, 토큰 없음 → 401, 마스터 아님 → 403, 통과면 처리.</summary>
+        private static IResult Guard(HttpRequest req, string key, InMemoryStore store, MasterAccounts masters, Func<string, IResult> handle)
+        {
+            if (!KeyOk(req, key)) return Results.NotFound();
+            string auth = req.Headers.Authorization.ToString();
+            string token = auth.StartsWith("Bearer ", StringComparison.Ordinal) ? auth.Substring(7) : null;
+            var id = store.AccountOf(token);
+            if (id == null) return Results.Unauthorized();
+            if (!masters.Contains(id)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            return handle(id);
+        }
+
+        private static bool IsResource(string r) => r == ResourceIds.Supply || r == ResourceIds.Gold || r == ResourceIds.Gem;
+
+        private static string Trim(string note)
+        {
+            if (string.IsNullOrWhiteSpace(note)) return null;
+            note = note.Trim();
+            return note.Length > 60 ? note.Substring(0, 60) : note;
+        }
+
+        private static IResult Json(object o, int status = StatusCodes.Status200OK) =>
+            Results.Content(OnlineJson.Write(o), "application/json", null, status);
+
+        private static async Task<T> Body<T>(HttpRequest req) where T : class
+        {
+            using var reader = new StreamReader(req.Body);
+            var text = await reader.ReadToEndAsync();
+            try { return OnlineJson.Read<T>(text); } catch (Exception) { return null; }
+        }
+    }
+
+    public sealed class AdminAccount
+    {
+        public string AccountId { get; set; }
+        public string Nickname { get; set; }
+        public string Email { get; set; }
+        public bool Linked { get; set; }
+        /// <summary>게임 코드 → 가입 시각.</summary>
+        public Dictionary<string, long> Games { get; set; } = new Dictionary<string, long>();
+        /// <summary>삭제 요청 시각 (R-102, 0 = 없음).</summary>
+        public long DeletionRequestedAtUnixSeconds { get; set; }
+    }
+
+    public sealed class AdminAccountList
+    {
+        public List<AdminAccount> Accounts { get; set; } = new List<AdminAccount>();
+    }
+
+    public sealed class AdminAccountDetail
+    {
+        public string AccountId { get; set; }
+        public long Revision { get; set; }
+        public long SavedAtUnixSeconds { get; set; }
+        public Dictionary<string, long> Wallet { get; set; }
+        public int LordLevel { get; set; }
+        public int ClearedSteps { get; set; }
+        public int Generals { get; set; }
+        public int Units { get; set; }
+        public List<Mail> Mail { get; set; } = new List<Mail>();
+        public string SaveJson { get; set; }
+    }
+
+    public sealed class AdminMailRequest
+    {
+        /// <summary>받을 계정 (비면 그 게임에 들어온 모든 계정).</summary>
+        public List<string> AccountIds { get; set; }
+        public string Resource { get; set; }
+        public long Amount { get; set; }
+        /// <summary>우편에 보일 짧은 말 (60자까지).</summary>
+        public string Note { get; set; }
+    }
+
+    public sealed class AdminMailResponse
+    {
+        public bool Ok { get; set; }
+        public string Reason { get; set; }
+        public int Sent { get; set; }
+    }
+
+    public sealed class AdminTerritory
+    {
+        public List<TerritoryOwner> Owners { get; set; } = new List<TerritoryOwner>();
+        public List<Alliance> Alliances { get; set; } = new List<Alliance>();
+    }
+
+    public sealed class AdminStatus
+    {
+        public long NowUnixSeconds { get; set; }
+        public string Revision { get; set; }
+        public List<string> Games { get; set; } = new List<string>();
+        public int Accounts { get; set; }
+        public string Store { get; set; }
+        public string Masters { get; set; }
+        public string ReceiptVerifier { get; set; }
+        public string FirebaseProjectId { get; set; }
+        public string You { get; set; }
+    }
+}

@@ -510,6 +510,28 @@ namespace Game.Server
             }
         }
 
+        /// <summary>관리자 페이지 (admin.md): 모든 계정 한 줄씩 (닉네임 · 확인된 이메일 · 구글 연동 · 가입한 게임 · 삭제 요청 시각).</summary>
+        public List<AdminAccount> AdminAccounts()
+        {
+            lock (_lock)
+            {
+                var linked = new HashSet<string>(Data.External.Values, StringComparer.Ordinal);
+                var list = new List<AdminAccount>();
+                foreach (var kv in Data.Memberships)
+                    list.Add(new AdminAccount
+                    {
+                        AccountId = kv.Key,
+                        Nickname = Data.Nicknames != null && Data.Nicknames.TryGetValue(kv.Key, out var n) ? n : null,
+                        Email = Data.Emails != null && Data.Emails.TryGetValue(kv.Key, out var e) ? e : null,
+                        Linked = linked.Contains(kv.Key),
+                        Games = new Dictionary<string, long>(kv.Value),
+                        DeletionRequestedAtUnixSeconds = Data.Deletions != null && Data.Deletions.TryGetValue(kv.Key, out var d) ? d : 0,
+                    });
+                list.Sort((a, b) => string.CompareOrdinal(a.AccountId, b.AccountId));
+                return list;
+            }
+        }
+
         public List<Mail> MailOf(string gameCode, string accountId)
         {
             lock (_lock) return Box(gameCode, accountId).ConvertAll(Copy);
