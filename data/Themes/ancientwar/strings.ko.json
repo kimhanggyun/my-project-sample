@@ -636,7 +636,7 @@
   "ui.attend.day": "{0}일",
   "ui.attend.hint": "하루 한 번 [출석 받기] — 보상은 우편으로 옵니다.",
   "ui.attend.got": "{0}일째 출석 — 보상이 우편에 왔습니다.",
-  "ui.attend.already": "오늘은 이미 받았습니다 · 다음까지 {0}시간 {1}분",
+  "ui.attend.already": "오늘은 이미 받았습니다 · 다음까지 {0}",
   "ui.attend.left": "{0}시간 {1}분",
   "ui.attend.off": "지금은 출석 보상이 없습니다.",
   "ui.attend.check": "출석 받기",
