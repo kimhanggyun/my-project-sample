@@ -493,7 +493,10 @@ namespace Game.Unity.Screens
                 close();
                 ctx.RecallFlag(new RecallRequest { FlagKey = flag.RegionId, GeneralIds = which }, r =>
                 {
-                    Notice = r == null ? ctx.T("ui.hire.failed") : !r.Ok ? ctx.T("ui.terr.recall." + r.Reason) : r.Flag == null ? ctx.T("ui.terr.recall.removed", r.Mail.Count) : ctx.T("ui.terr.recall.ok");
+                    // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
+                    string got = r != null && r.Ok ? ClaimNow(ctx, r.Mail) : null;
+                    Notice = r == null ? ctx.T("ui.hire.failed") : !r.Ok ? ctx.T("ui.terr.recall." + r.Reason)
+                        : r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
                     NamesFetched = false;
                     if (root != null) app.ShowMain("territory");
                 });
@@ -563,15 +566,30 @@ namespace Game.Unity.Screens
             Object.Destroy(t.gameObject, 3f);
         }
 
-        /// <summary>깃발 하나 수입 받기 → 우편함.</summary>
+        /// <summary>
+        /// 깃발 하나 수입 받기 → 바로 자원에 (2026-11-16 사용자: 깃발 위 수입 · [수입 받기]를 누르면 받아지게).
+        /// 서버가 수입을 우편으로 만들고(R-47), 기기가 그 우편을 곧바로 받는다 (mail.claim, 서버가 같은 규칙으로 확인). 영토 화면에 남는다.
+        /// </summary>
         private static void CollectOne(GameApp app, RectTransform root, string regionId)
         {
             var ctx = app.Context;
             ctx.CollectFlag(regionId, r =>
             {
-                if (root == null) return;
-                app.Show(new MailScreen(r == null ? ctx.T("ui.hire.failed") : r.Mail.Count == 0 ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.collected", r.Mail.Count), "territory"));
+                string got = r == null ? null : ClaimNow(ctx, r.Mail);
+                Notice = r == null ? ctx.T("ui.hire.failed") : got == null ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.got", got);
+                if (root != null) app.ShowMain("territory");
             });
+        }
+
+        /// <summary>우편들을 바로 받고 "곡식 1,234 · 엽전 5" (받은 것이 없으면 null). 못 받은 우편은 우편함에 남는다.</summary>
+        internal static string ClaimNow(GameContext ctx, List<Mail> mail)
+        {
+            if (mail == null) return null;
+            var sum = new SortedDictionary<string, long>(System.StringComparer.Ordinal);
+            foreach (var m in mail)
+                if (m.Amount > 0 && m.Resource != null && ctx.ClaimMail(m))
+                    sum[m.Resource] = (sum.TryGetValue(m.Resource, out var v) ? v : 0) + m.Amount;
+            return MailScreen.Amounts(ctx, sum);
         }
 
         /// <summary>남의 깃발 판: 주인 · 연합 · 장수 · 병력 · 거리 · 보호, [공격] (연합이 아니고 공성전 검사를 통과하면).</summary>
