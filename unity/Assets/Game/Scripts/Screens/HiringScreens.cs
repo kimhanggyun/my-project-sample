@@ -316,6 +316,32 @@ namespace Game.Unity.Screens
             }), 72, Palette.ButtonActive, 26);
         }
 
+        /// <summary>거점 이름: 깃발이면 "내 깃발 (37.571, 126.973)", 지역이면 지역 이름.</summary>
+        private string PlaceName(string key)
+        {
+            if (Game.Territory.FlagDefs.TryParseKey(key, out var c))
+                return T("ui.mail.flagAt", (c.LatE6 / 1e6).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture), (c.LonE6 / 1e6).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture));
+            return T("region." + key);
+        }
+
+        /// <summary>여러 우편 받기 → 알림 문구.</summary>
+        private string ClaimSome(List<Mail> mail)
+        {
+            var sum = new SortedDictionary<string, long>(System.StringComparer.Ordinal);
+            foreach (var m in mail)
+                if (m.Resource != null && Ctx.ClaimMail(m)) sum[m.Resource] = (sum.TryGetValue(m.Resource, out var v) ? v : 0) + m.Amount;
+            string got = Amounts(Ctx, sum);
+            return got == null ? T("ui.hire.failed") : T("ui.territory.got", got);
+        }
+
+        /// <summary>자원별 합 → "곡식 1,234 · 엽전 5" (비었으면 null).</summary>
+        internal static string Amounts(GameContext ctx, SortedDictionary<string, long> sum)
+        {
+            var parts = new List<string>();
+            foreach (var kv in sum) if (kv.Value > 0) parts.Add(ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+
         private string Left(long untilUnix)
         {
             long s = System.Math.Max(0, untilUnix - Ctx.Clock.UtcNow.ToUnixTimeSeconds());
@@ -335,8 +361,31 @@ namespace Game.Unity.Screens
                 if (mail == null) { Ui.Label(list, T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
                 mail.RemoveAll(m => Ctx.ClaimedMail.Contains(m.Id));
                 if (mail.Count == 0) Ui.Label(list, T("ui.hire.mailEmpty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+                // [모두 받기]: 받을 것이 있는 우편 전부
+                var claimable = mail.FindAll(m => m.Kind != MailKinds.SiegeAlert && m.Amount > 0);
+                if (claimable.Count > 1)
+                    Ui.Button(list, T("ui.mail.claimAll", claimable.Count), () => App.Show(new MailScreen(ClaimSome(claimable), _backTab)), 80, Palette.ButtonActive, 28);
+                // 영토 수입은 거점(깃발 · 지역)마다 한 통으로 묶어 보인다 (2026-11-16 사용자)
+                var incomeCards = new Dictionary<string, List<Mail>>();
+                foreach (var m in mail)
+                    if (m.Kind == MailKinds.TerritoryIncome && m.RegionId != null)
+                    {
+                        if (!incomeCards.TryGetValue(m.RegionId, out var g)) incomeCards[m.RegionId] = g = new List<Mail>();
+                        g.Add(m);
+                    }
                 foreach (var m in mail)
                 {
+                    if (m.Kind == MailKinds.TerritoryIncome && m.RegionId != null)
+                    {
+                        var group = incomeCards[m.RegionId];
+                        if (group[0] != m) continue; // 거점마다 첫 우편 자리에 한 장
+                        var sum = new SortedDictionary<string, long>(System.StringComparer.Ordinal);
+                        foreach (var x in group) if (x.Resource != null) sum[x.Resource] = (sum.TryGetValue(x.Resource, out var v) ? v : 0) + x.Amount;
+                        var gcard = Ui.Card(list, "Income " + m.RegionId, 20, 6);
+                        Ui.Label(gcard, T("ui.mail.territoryIncomeAt", PlaceName(m.RegionId), Amounts(Ctx, sum) ?? "0"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Text);
+                        Ui.Button(gcard, T("ui.hire.claim"), () => App.Show(new MailScreen(ClaimSome(group), _backTab)), 72, fontSize: 26);
+                        continue;
+                    }
                     var item = m;
                     var card = Ui.Card(list, m.Id, 20, 6);
                     // 종류별 줄 (R-112 출석 · R-113 공성전 알림, 영토 수입, 그 밖 = 고용 보상)
