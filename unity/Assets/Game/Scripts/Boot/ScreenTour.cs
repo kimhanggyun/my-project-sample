@@ -64,7 +64,9 @@ namespace Game.Unity.Boot
             shots.Add(("24_main_prisoner", () => new MainScreen("prisoner"), 0f));
             shots.Add(("25_mail", () => new MailScreen(null, null), 1f));
             shots.Add(("26_main_alliance", () => new MainScreen("alliance"), 1f));
-            shots.Add(("27_main_shop", () => new MainScreen("shop"), 0f));
+            shots.Add(("27_main_shop", () => { ShopTabView.Tab = ShopTabView.Gold; return new MainScreen("shop"); }, 0f));
+            shots.Add(("27b_shop_gem", () => { ShopTabView.Tab = ShopTabView.Gem; return new MainScreen("shop"); }, 0f)); // 상점 위 탭 (2026-11-16)
+            shots.Add(("27c_shop_cash", () => { ShopTabView.Tab = ShopTabView.Cash; return new MainScreen("shop"); }, 0f));
             shots.Add(("28_main_pvp", () => new MainScreen("pvp"), 0f));
 
             foreach (var s in shots) yield return Shot(s.name, s.make, s.wait);
