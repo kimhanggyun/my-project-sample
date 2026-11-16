@@ -116,7 +116,6 @@ namespace Game.Server
 
         /// <summary>마스터 계정 (R-86, 설정 Game:Masters). 개발 행동 dev.*은 여기 있는 계정의 것만 받는다.</summary>
         public MasterAccounts Masters { get; set; } = new MasterAccounts();
-        private readonly HashSet<string> _usedReceipts = new HashSet<string>(StringComparer.Ordinal);
 
         public StrategyGameModule(string code, IReadOnlyList<string> packageIds, IDataSource source, string theme, ITimeProvider time, IGameStore store)
         {
@@ -230,7 +229,7 @@ namespace Game.Server
             // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 하고, 한 묶음에서 두 번 받을 수 없다
             var box = _store.MailOf(Code, accountId);
             var claimed = new HashSet<string>(StringComparer.Ordinal);
-            var receipts = new ReceiptCheck(Receipts, _usedReceipts);
+            var receipts = new ReceiptCheck(Receipts, tx => _store.ReceiptOf(Code, tx) != null); // 쓴 거래는 저장소에 (서버를 다시 띄워도 남음, R-116)
             bool ServerCheck(PlayerAction a)
             {
                 if (!receipts.Check(a)) return false;
@@ -244,7 +243,22 @@ namespace Game.Server
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             foreach (var id in claimed) _store.TakeMail(Code, accountId, id);
+            if (receipts.Pending.Count > 0) SettleReceipts(accountId, receipts.Pending, at);
             return new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current };
+        }
+
+        /// <summary>반영한 결제를 저장소에 남기고 스토어에 알린다 (영구 = acknowledge, 소모성 = consume, R-116). 알리기 실패는 지급에 영향 없음.</summary>
+        private void SettleReceipts(string accountId, List<ReceiptRecord> pending, long at)
+        {
+            foreach (var r in pending) { r.AccountId = accountId; r.AtUnixSeconds = at; }
+            _store.RecordReceipts(Code, pending);
+            if (!(Receipts is IReceiptSettler settler)) return;
+            foreach (var r in pending)
+            {
+                _defs.Products.TryGetValue(r.ProductId ?? "", out var p);
+                if (!settler.Settle(r.ProductId, r.Receipt, consumable: p == null || !p.Permanent))
+                    Console.Error.WriteLine($"[결제] 스토어 확인 처리 실패: 상품 {r.ProductId}, 거래 {r.TransactionId} (3일 안에 다시 확인 필요)");
+            }
         }
 
         public HireListingResponse RegisterHire(string accountId, HireListingRequest req)

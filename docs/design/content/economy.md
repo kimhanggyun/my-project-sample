@@ -141,7 +141,7 @@
 - 결제 영수증은 서버 도입 후 서버에서 검증.
 - **지금 (2026-11-10, R-64)**: "상점(테스트)" 탭. `priceKRW`가 있는 상품만 나온다. 가격·구성(`grants`, `adFreeDays`)은 **임시 테스트 값** (군량 30만·돈 1,000·보석 100 꾸러미 각 1,200원, 광고 제거 30일 1,000원·영구 5,000원). 가격은 테스트해 보고 나중에 정한다.
   - 결제 흐름: 스토어 서비스로 결제 → 성공하면 행동 `store.purchase`(상품 id, 영수증) → 서버가 영수증을 검증한 뒤에만 반영 (같은 영수증은 한 번만). 개발 빌드는 가짜 스토어 + 가짜 영수증(`fake:`)이다.
-  - **영수증 검증 뼈대 (2026-11-15, R-114)**: 서버는 `IReceiptVerifier` 하나로 영수증을 본다. 설정 `Game:ReceiptVerifier`로 바꾼다 — `fake`(기본, 가짜 영수증만) · `off`(모두 거절, 지금 배포 서버) · `googlePlay`(Google Play Developer API, **자리만**: 지금은 거절). 한 번만 쓰기는 검증기가 돌려준 거래 id로. 구글 검증을 켜는 순서는 [../../impl/deploy-cloudrun.md](../../impl/deploy-cloudrun.md) 7장. 애플은 나중에 같은 인터페이스로.
+  - **영수증 검증 뼈대 (2026-11-15, R-114)**: 서버는 `IReceiptVerifier` 하나로 영수증을 본다. 설정 `Game:ReceiptVerifier`로 바꾼다 — `fake`(기본, 가짜 영수증만) · `off`(모두 거절, 지금 배포 서버) · `googlePlay`(Google Play Developer API, **구현됨 R-116**: 구매됨 · 소모 안 함만 통과, 반영 뒤 영구 상품은 확인 · 소모성은 소모). 한 번만 쓰기는 검증기가 돌려준 거래 id로, 쓴 거래는 서버 저장소에 남는다 (R-116). 구글 검증을 켜는 순서는 [../../impl/deploy-cloudrun.md](../../impl/deploy-cloudrun.md) 7장. 애플은 나중에 같은 인터페이스로.
   - 광고 제거는 세이브에 기록 (`AdFreeForever`, `AdFreeUntilUnixSeconds`, 기간제는 이어 붙임). 광고 자체는 나중에.
 
 ## 5. 교체·확장 포인트

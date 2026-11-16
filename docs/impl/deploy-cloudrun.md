@@ -115,23 +115,33 @@ echo "FIREBASE_PROJECT_ID=$PROJECT"
 3. 결제 영수증 실제 검증 (Google Play Developer API) — 뼈대 · 설정은 있음, 켜는 순서는 7장.
 4. 사용자가 늘면 저장소를 Firestore로 (`IGameStore` 구현 추가) → 인스턴스 여러 대.
 
-## 7. 결제 영수증 검증 (Google Play, 자리만 — R-114)
+## 7. 결제 영수증 검증 (Google Play — R-114 · R-116)
 
-서버는 `IReceiptVerifier`(src/Game.Flow/Purchases.cs) 하나로 영수증을 본다. 고르는 설정 `Game:ReceiptVerifier` (Cloud Run 환경 변수 `Game__ReceiptVerifier`):
+서버는 `IReceiptVerifier`(src/Game.Flow/Purchases.cs) 하나로 영수증을 본다. 고르는 설정 `Game:ReceiptVerifier` (Cloud Run 환경 변수 `Game__ReceiptVerifier`, 배포 워크플로에서는 저장소 변수 `RECEIPT_VERIFIER`):
 
 | 값 | 뜻 | 쓰는 곳 |
 |---|---|---|
-| `fake` (기본) | 개발용 영수증 `fake:…`만 받는다 | 참고 서버 · 테스트 · 개발 빌드 |
-| `off` | 모두 거절 | 지금 배포 서버 (`Game__AllowFakeReceipts=false`이고 ReceiptVerifier가 없으면 off) |
-| `googlePlay` | Google Play Developer API로 확인 | **아직 자리만**: 설정이 있어도 모두 거절 (`notConfigured`) |
+| `fake` (참고 서버 기본) | 개발용 영수증 `fake:…`만 받는다 | 로컬 서버 · 테스트 · 개발 빌드 |
+| `off` | 모두 거절 | **지금 배포 서버** (`RECEIPT_VERIFIER`가 없으면 off) |
+| `googlePlay` | Google Play Developer API로 확인 (R-116, `server/Game.Server/GooglePlay.cs`) | 출시 · 내부 테스트 트랙 |
 
-같은 영수증 두 번 막기는 검증기가 돌려준 거래 id(`TransactionId`, 구글은 orderId)로 한다.
+**검사 (googlePlay)**: 기기가 보낸 영수증(구매 토큰, 또는 Unity IAP 영수증 JSON — 안의 `purchaseToken`)으로 `purchases.products.get(패키지, 상품 id, 토큰)`.
+- 통과: `purchaseState` 0(구매됨) · 아직 소모 안 함. 거래 id = `orderId` (없으면 `gp:토큰`).
+- 거절: 취소(rejected) · 결제 대기(pending) · 이미 소모(used) · 없는 토큰이나 다른 상품(rejected) · 스토어에 닿지 않음(unavailable, 다시 시도).
+- 테스트 구매(라이선스 테스터, `purchaseType` 0)는 받는다. 출시 뒤 막으려면 `Game__GooglePlay__AllowTestPurchases=false`.
+- **Play 상품 id = `data/Rules/products.json`의 id** (예: `gold_pack_small`, `remove_banner_permanent`, `cosmetic_armor_gold`). Play Console에 같은 id로 "인앱 상품"을 만든다.
+- 반영한 거래는 서버 저장소에 남는다 (같은 거래는 서버를 다시 띄워도, 다른 계정에서도 다시 못 씀). 계정을 지워도 거래 기록은 남긴다.
+- 반영한 뒤 서버가 스토어에 알린다: 영구 상품(광고 영구 제거 · 결제 치장)은 **acknowledge**, 나머지(꾸러미 · 30일 광고 제거)는 **consume** (다시 살 수 있게). 구글은 3일 안에 확인되지 않은 구매를 환불하므로, 실패하면 서버 기록에 `[결제] 스토어 확인 처리 실패`가 남는다.
 
-**구글 플레이 검증을 켤 때 (다음 단계)**:
+**사용자가 할 일 (한 번, 키 값은 저장소 · 채팅 · 워크플로에 적지 않는다)**:
 
-1. Play Console → 설정 → API 액세스에서 Google Cloud 프로젝트를 연결하고, 서비스 계정을 만들어 "재무 데이터 보기 · 주문 관리" 권한을 준다.
-2. 서비스 계정 키(JSON)는 **Secret Manager**에 넣고, Cloud Run에 비밀로 붙인다 (`Game__GooglePlay__ServiceAccountJson`). 키 값은 저장소 · 채팅 · 워크플로 파일에 적지 않는다.
-3. `Game__GooglePlay__PackageName` = 앱 패키지 이름, `Game__ReceiptVerifier=googlePlay`.
-4. 서버 `GooglePlayReceiptVerifier.Verify`를 구현한다: 기기가 보낸 구매 토큰으로 `purchases.products.get(packageName, productId, token)` → `purchaseState == 0`(구매됨)이고 상품 id가 같을 때만 통과, orderId를 TransactionId로. 소모성 상품은 반영 뒤 `consume`, 아니면 `acknowledge`.
-5. 기기 쪽: Unity IAP(구글 결제)의 구매 토큰을 `store.purchase` 행동의 Receipt로 보낸다 (지금은 가짜 스토어).
+1. Play Console → 앱 → 수익 창출 → 인앱 상품에서 위 id로 상품을 만든다 (가격은 products.json `priceKRW`와 맞춘다).
+2. Google Cloud 콘솔(서버와 같은 프로젝트) → IAM → 서비스 계정 만들기 (예: `play-receipts`). 키 → JSON 키 만들기 (내려받은 파일은 비밀).
+3. Google Cloud 콘솔 → API 및 서비스 → **Google Play Android Developer API** 사용 설정.
+4. Play Console → 사용자 및 권한 → 새 사용자 초대: 2의 서비스 계정 이메일, 앱 권한 "재무 데이터 보기" · "주문 및 구독 관리". (반영까지 최대 하루 걸릴 수 있다.)
+5. Secret Manager → 비밀 만들기 이름 `google-play-service-account`, 값 = 2의 JSON 파일 내용. 서버 실행용 서비스 계정(`GCP_RUNTIME_SA`)에 이 비밀의 **Secret Manager 보안 비밀 접근자** 역할을 준다.
+6. GitHub 저장소 → Settings → Secrets and variables → Actions → **Variables**: `RECEIPT_VERIFIER` = `googlePlay`, `GOOGLE_PLAY_PACKAGE` = 앱 패키지 이름 (예: `net.itgold.unitygame1`). 비밀 이름을 바꿨으면 `GOOGLE_PLAY_SA_SECRET`.
+7. Actions → `deploy-cloudrun` → Run workflow (변수만 바꾼 것이라 손으로 한 번). 끝.
+- 되돌리기: `RECEIPT_VERIFIER`를 `off`로 바꾸고 다시 배포.
 
+**기기 쪽 (데스크탑)**: Unity IAP 구매 성공 → `ProcessPurchase`에서 `Pending`을 돌려주고, 영수증(`product.receipt`)을 `store.purchase` 행동으로 서버에 보낸다 → 서버가 받아들이면 `ConfirmPendingPurchase`. 서버가 `unavailable`이면 나중에 다시 보낸다 (구매는 남아 있음).
