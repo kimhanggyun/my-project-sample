@@ -225,17 +225,21 @@ namespace Game.Server.Tests
             var r = await attacker.PostAsync(siege, Body(new SiegeRequest { FlagKey = flagKey, Location = here }));
             Assert.True(r.StatusCode == HttpStatusCode.OK, await r.Content.ReadAsStringAsync());
             var started = await Read<SiegeResponse>(r);
-            Assert.Equal(Clock.ToUnixTimeSeconds() + 60, started.StartsAtUnixSeconds);
+            long prep = Game.Territory.TerritoryDefs.Load(new FileDataSource(DataRoot)).Flags.SiegePrepSeconds; // 지금 데이터 0 (화면 전까지 준비 없음)
+            Assert.Equal(Clock.ToUnixTimeSeconds() + prep, started.StartsAtUnixSeconds);
             var alert = Assert.Single((await Read<MailListResponse>(await defender.GetAsync(mailUrl))).Mail, m => m.Kind == MailKinds.SiegeAlert);
             Assert.Equal(flagKey, alert.RegionId);
 
             var busy = await third.PostAsync(siege, Body(new SiegeRequest { FlagKey = flagKey, Location = here }));
             Assert.Equal(SiegeReasons.Busy, (await Read<SiegeResponse>(busy)).Reason);
 
-            // 준비 1분이 지나지 않은 공성전 제출은 거절 (서버 시각 고정 = 시작 시각)
-            var aSave = await Read<CloudSave>(await attacker.GetAsync(Save));
-            var early = await attacker.PostAsync(Battles, Body(new BattleSubmission { BaseRevision = aSave.Revision, StepId = "territory." + flagKey, Location = here }));
-            Assert.Equal(VerdictReasons.BadSortie, (await Read<BattleVerdict>(early)).Reason);
+            // 준비 시간이 지나지 않은 공성전 제출은 거절 (서버 시각 고정 = 시작 시각). 준비 0이면 이 검사는 없다 (규칙 검사는 TerritoryFlagTests.SiegePrep)
+            if (prep > 0)
+            {
+                var aSave = await Read<CloudSave>(await attacker.GetAsync(Save));
+                var early = await attacker.PostAsync(Battles, Body(new BattleSubmission { BaseRevision = aSave.Revision, StepId = "territory." + flagKey, Location = here }));
+                Assert.Equal(VerdictReasons.BadSortie, (await Read<BattleVerdict>(early)).Reason);
+            }
 
             var cancel = await attacker.PostAsync(OnlineRoutes.TerritorySiegeCancel(ServerSetup.DefaultGame), Body(new SiegeRequest { FlagKey = flagKey }));
             Assert.Equal(HttpStatusCode.OK, cancel.StatusCode);

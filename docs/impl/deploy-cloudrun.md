@@ -11,9 +11,10 @@
 | 저장 | **Cloud Storage 버킷**을 `/data/store`에 붙여 지금 폴더 저장소(store.json) 그대로 | 테스트 단계용. 인스턴스 1대로 제한. 사용자가 늘면 Firestore 또는 Cloud SQL로 바꾼다 (`IGameStore` 구현 추가) |
 | 로그인 | **Firebase Authentication** (구글, 나중에 애플) | 기기가 받은 Firebase ID 토큰을 서버가 확인 → 서버 계정 토큰 (3장) |
 | 이미지 저장 | Artifact Registry 저장소 `game` | |
-| 배포 | GitHub Actions `deploy-cloudrun` (손으로 실행) | 비밀 키 대신 Workload Identity |
+| 배포 | GitHub Actions `deploy-cloudrun`: **main에 합치면 서버 자동 배포** (2026-11-15) + 손으로도 실행 | 비밀 키 대신 Workload Identity |
 
 - 결제 영수증: 배포 서버는 `Game__AllowFakeReceipts=false` (가짜 영수증 거절 = 검증기 `off`). 검증기는 `Game__ReceiptVerifier`로 고른다 (`fake` · `off` · `googlePlay`, R-114). 실제 Google Play 검증은 7장 (자리만 있음).
+- **main에 합치면 서버 자동 배포** (2026-11-15 사용자 결정): `main`에 push(= PR 합치기)되고 바뀐 파일이 `server/**` · `src/**` · `data/**` · `config/**` · `GameCore.sln` · 이 워크플로 파일 중 하나면 `deploy-cloudrun`이 돈다. 먼저 `test` job(core-tests와 같은 `dotnet test GameCore.sln`)을 돌리고, **실패하면 배포하지 않는다** (`deploy`가 `needs: test`). 배포는 한 번에 하나씩 (`concurrency`, 인스턴스 1대 · 버킷 저장소). 문서 · 테스트 · Unity 화면만 바꾼 PR은 배포하지 않는다. 손 실행(Run workflow)은 그대로 — 변수(`GAME_MASTERS` 등)만 바꿨을 때 쓴다.
 - 마스터 계정 (R-86): 저장소 변수 `GAME_MASTERS`(계정 id 또는 구글 로그인 이메일 — 확인된 이메일, 대소문자 무시, 섞어 적어도 됨, 여럿이면 쉼표. 게스트는 이메일이 없어 계정 id로) → `Game__Masters`. 바꾼 뒤 배포를 다시 돌린다.
 
 ## 2. 사용자가 할 일 (한 번)
