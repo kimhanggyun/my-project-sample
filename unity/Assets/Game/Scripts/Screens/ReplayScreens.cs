@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Game.Flow;
+using Game.Online;
 using Game.Unity.UI;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,7 +46,11 @@ namespace Game.Unity.Screens
         // ---- 내 녹화 ----
         private void BuildMine(RectTransform header, RectTransform body)
         {
-            Ui.SegmentTabs(header, new[] { ("all", T("ui.codex.cat.all")), ("story", T("ui.replay.cat.story")), ("territory", T("ui.replay.cat.territory")), ("merc", T("ui.replay.cat.merc")) }, _cat, id => { _cat = id; App.Show(new ReplayListScreen()); }, 60, 180);
+            var cats = new List<(string, string)> { ("all", T("ui.codex.cat.all")), ("story", T("ui.replay.cat.story")), ("territory", T("ui.replay.cat.territory")), ("merc", T("ui.replay.cat.merc")) };
+            if (Ctx.OnlineEnabled) cats.Add(("hired", T("ui.replay.cat.hired"))); // 내 용병이 고용된 전투 (R-120, 서버에 있는 녹화)
+            else if (_cat == "hired") _cat = "all";
+            Ui.SegmentTabs(header, cats, _cat, id => { _cat = id; App.Show(new ReplayListScreen()); }, 60, 170);
+            if (_cat == "hired") { BuildHired(body); return; }
             bool Match(ReplayRecord r) => _cat == "all" || ReplayService.CategoryOf(r) == _cat;
             var recent = Ctx.Replays.Recent.FindAll(Match);
             var saved = Ctx.Replays.Items.FindAll(Match);
@@ -118,6 +123,58 @@ namespace Game.Unity.Screens
         {
             var g = card.gameObject.AddComponent<CanvasGroup>();
             g.alpha = 0.5f;
+        }
+
+        /// <summary>
+        /// [내 용병 고용됨] (R-120, 14 시안): 남이 내 등록(닉네임 장수 · 부대)을 고용해 싸운 전투. 내 등록들의 최근 전투(HireBook.HiredBattles)를
+        /// 늦은 것부터, 줄마다 스텝 · 시각 · 결과 · 잃은 병력 · ▶ (서버 녹화를 받아 지금 규칙으로 확인한 뒤 재생). 녹화가 지워졌으면 안내.
+        /// </summary>
+        private void BuildHired(RectTransform body)
+        {
+            var loading = Ui.Label(body, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            Ctx.LoadListings(HireKinds.General, gres => Ctx.LoadListings(HireKinds.Unit, ures =>
+            {
+                if (body == null) return;
+                UnityEngine.Object.Destroy(loading.gameObject);
+                if (gres == null || ures == null) { Ui.Label(body, T("ui.hire.failed"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad); return; }
+                var all = new List<HireListing>(gres.Listings);
+                all.AddRange(ures.Listings);
+                var battles = HireBook.HiredBattles(all, Ctx.AccountId);
+                if (battles.Count == 0) { Ui.Label(body, T("ui.replay.hiredEmpty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim); return; }
+                foreach (var (listing, b) in battles)
+                {
+                    var card = Ui.Card(body, "Hired", 14, 4);
+                    var line = Ui.Row(card, "Line", 110, 12);
+                    var info = Ui.Rect(line, "Info");
+                    Ui.Size(info, flexibleWidth: 1);
+                    Ui.Column(info, 4, 0);
+                    var title = Ui.Row(info, "Title", 44, 8);
+                    Ui.Size(Ui.Label(title, StepName(b.StepId), 26), flexibleWidth: 1);
+                    bool good = b.Result == HireResults.Win;
+                    Ui.Size(Ui.Tag(title, T("ui.hire.result." + b.Result), good ? Palette.Good : Palette.Bad, 20, 40), width: 100);
+                    Ui.Label(info, HireText.Line(Ctx, listing) + "  ·  " + T("ui.replay.hiredLost", b.TroopsLost.ToString("N0"), b.TroopsStart.ToString("N0")), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                    Ui.Label(info, DateTimeOffset.FromUnixTimeSeconds(b.AtUnixSeconds).ToLocalTime().ToString("MM.dd HH:mm"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                    string rid = b.ReplayId;
+                    var play = Ui.Button(line, "▶", () => PlayHired(rid), 100, Palette.ButtonActive, 40);
+                    Ui.Size(play, width: 100);
+                    Ui.SetEnabled(play, !string.IsNullOrEmpty(rid));
+                }
+            }));
+        }
+
+        private void PlayHired(string replayId)
+        {
+            Ctx.LoadHireReplay(replayId, res =>
+            {
+                if (Root == null) return;
+                if (res?.ReplayJson == null) { App.Show(new ReplayListScreen(T("ui.replay.hiredGone"))); return; }
+                ReplayRecord rec;
+                try { rec = ReplayService.Read(res.ReplayJson); }
+                catch (Exception) { App.Show(new ReplayListScreen(T("ui.replay.broken"))); return; }
+                var playback = Ctx.ReplayService.Check(rec);
+                if (playback.Ok) { App.Show(new BattleScreen(playback)); return; }
+                App.Show(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
+            });
         }
 
         private void WinTag(Transform parent, ReplayRecord rec) =>
