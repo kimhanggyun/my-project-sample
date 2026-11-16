@@ -199,9 +199,34 @@ namespace Game.Unity.Boot
             Game.Unity.UI.Sfx.SfxVolume = SfxVolume / 100f;
         }
 
-        /// <summary>알림 종류별 켜기 (attacked · allyHelp · incomeFull, 기본 켜짐). 푸시 서비스가 생기면 서버에도 보낸다.</summary>
+        /// <summary>
+        /// 알림 종류별 켜기 (attacked · allyHelp · incomeFull, 기본 켜짐). 기기에 두고, 온라인이면 서버에도 저장한다 (R-119 — 서버가 보낼지 고를 때 본다).
+        /// 시작 때 <see cref="SyncPushSettings"/>로 서버 값을 기기에 맞춘다 (다른 기기에서 바꾼 것).
+        /// </summary>
         public bool NotifyOn(string kind) => !_saveStore.Exists(NotifyPrefix + kind) || _saveStore.Read(NotifyPrefix + kind) != "off";
-        public void SetNotify(string kind, bool on) => _saveStore.Write(NotifyPrefix + kind, on ? "on" : "off");
+        public void SetNotify(string kind, bool on)
+        {
+            _saveStore.Write(NotifyPrefix + kind, on ? "on" : "off");
+            if (OnlineEnabled) Online.SetPushSettings(LocalPushSettings(), _ => { });
+        }
+
+        private PushSettings LocalPushSettings() => new PushSettings
+        {
+            Attacked = NotifyOn(PushKinds.Attacked), AllyHelp = NotifyOn(PushKinds.AllyHelp), IncomeFull = NotifyOn(PushKinds.IncomeFull),
+        };
+
+        /// <summary>서버의 알림 설정을 기기에 (닿지 않으면 기기 값 그대로).</summary>
+        public void SyncPushSettings()
+        {
+            if (!OnlineEnabled) return;
+            Online.GetPushSettings(s =>
+            {
+                if (s == null) return;
+                _saveStore.Write(NotifyPrefix + PushKinds.Attacked, s.Attacked ? "on" : "off");
+                _saveStore.Write(NotifyPrefix + PushKinds.AllyHelp, s.AllyHelp ? "on" : "off");
+                _saveStore.Write(NotifyPrefix + PushKinds.IncomeFull, s.IncomeFull ? "on" : "off");
+            });
+        }
 
         /// <summary>로그아웃: 이 기기의 로그인 수단을 지운다 (다시 시작하면 로그인 화면).</summary>
         public void SignOut()
@@ -494,7 +519,8 @@ namespace Game.Unity.Boot
         {
             if (p != null) { Nickname = p.Nickname; IsMaster = p.IsMaster; Linked = p.Linked; }
             EnsureAvatar();
-            if (p != null && p.DeletionCancelled) DeletionCancelled?.Invoke(); // R-102: 유예 안에 다시 들어와 삭제가 취소됨 → 알림 (15 시안)
+            if (p != null && p.DeletionCancelled) DeletionCancelled?.Invoke();
+            if (p != null) SyncPushSettings(); // 알림 설정 (R-119): 서버 값으로 // R-102: 유예 안에 다시 들어와 삭제가 취소됨 → 알림 (15 시안)
             done?.Invoke(p);
         });
 
@@ -644,6 +670,8 @@ namespace Game.Unity.Boot
 
         /// <summary>등록 목록 + 내 하루 고용 수·대기시간 (닿지 않으면 null).</summary>
         public void LoadListings(string kind, Action<HireListResponse> done) => Online.GetListings(kind, done);
+        /// <summary>내 용병이 고용된 전투 녹화 (R-120, 서버가 검증 때 떠 둔 것). 없거나 볼 수 없으면 null.</summary>
+        public void LoadHireReplay(string id, Action<HireReplayResponse> done) => Online.GetHireReplay(id, done);
 
         public void RegisterHire(HireListingRequest request, Action<HireListingResponse> done) => Online.RegisterHire(request, done);
 
