@@ -294,9 +294,9 @@ namespace Game.Server
             if (!any)
                 registry.Register(new StrategyGameModule(DefaultGame, new[] { "net.itgold.unitygame1" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
-            bool allowFake = !string.Equals(config["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase);
+            var receipts = ReceiptVerifiers.FromConfig(config);
             foreach (var code in registry.Codes)
-                if (registry.Find(code) is StrategyGameModule m) { m.AllowFakeReceipts = allowFake; if (masters != null) m.Masters = masters; }
+                if (registry.Find(code) is StrategyGameModule m) { m.Receipts = receipts; if (masters != null) m.Masters = masters; }
             return registry;
         }
     }

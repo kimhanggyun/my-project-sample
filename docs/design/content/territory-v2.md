@@ -56,7 +56,7 @@
 6. 같은 깃발은 공성전이 끝나고 **보호 시간**(예시 30분) 동안 다시 공격받지 않는다.
 7. 결과 확정은 서버 재현 (명령 기록 + 시드, R-29·R-46).
 
-**구현 (2026-11-15, R-113)**: [공격]을 누르면 기기가 `POST /territory/siege`(`StartSiege`)를 부르고, 서버가 준비 시작 시각을 깃발 기록(`SiegeAttackerId` · `SiegeStartedAtUnixSeconds`)에 남긴다. 수비자에게는 우편 종류 `siegeAlert` (깃발 키 · 공격자, 받을 것 없음, 문구 `ui.mail.siegeAlert` "{0} 깃발이 공격받습니다")가 간다. 공성전 제출은 **준비 시작 + `siegePrepSeconds`(60초) 전이면 거절**, 준비가 끝나고 `siegeWindowMinutes`(임시 30분) 안에 내야 한다 (지나면 다시 준비). 준비 중에는 [공격 취소](`/territory/siege/cancel`)로 기록과 수비자 알림을 지운다. 다른 공격자가 준비 · 공격 중인 깃발은 `busy`. 공성전이 끝나면(이기든 지든) 기록과 알림을 지운다. 수비자가 1분 안에 들어와 직접 싸우는 3번(유저 대전)은 아직 없다 — 지금은 늘 AI 수비. 값: `data/Territory/flags.json` (`siegePrepSeconds` 0 = 준비 없음).
+**구현 (2026-11-15, R-113)**: [공격]을 누르면 기기가 `POST /territory/siege`(`StartSiege`)를 부르고, 서버가 준비 시작 시각을 깃발 기록(`SiegeAttackerId` · `SiegeStartedAtUnixSeconds`)에 남긴다. 수비자에게는 우편 종류 `siegeAlert` (깃발 키 · 공격자, 받을 것 없음, 문구 `ui.mail.siegeAlert` "{0} 깃발이 공격받습니다")가 간다. 공성전 제출은 **준비 시작 + `siegePrepSeconds`(60초) 전이면 거절**, 준비가 끝나고 `siegeWindowMinutes`(임시 30분) 안에 내야 한다 (지나면 다시 준비). 준비 중에는 [공격 취소](`/territory/siege/cancel`)로 기록과 수비자 알림을 지운다. 다른 공격자가 준비 · 공격 중인 깃발은 `busy`. 공성전이 끝나면(이기든 지든) 기록과 알림을 지운다. 수비자가 1분 안에 들어와 직접 싸우는 3번(유저 대전)은 아직 없다 — 지금은 늘 AI 수비. 값: `data/Territory/flags.json` (`siegePrepSeconds` 0 = 준비 없음). **지금 데이터는 0** (2026-11-15 사용자): 기기 카운트다운 화면이 들어오면 60으로 바꾼다. 0이어도 준비 시작 · 수비자 알림 · 취소는 동작한다.
 
 ### 2.4 유저 대전 (단계적)
 
