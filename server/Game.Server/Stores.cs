@@ -475,12 +475,12 @@ private Dictionary<string, Game.Flow.ReceiptRecord> ReceiptBook(string gameCode)
         public Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId)
         {
             if (transactionId == null) return null;
-            lock (_lock) return ReceiptBook(gameCode).TryGetValue(transactionId, out var r) ? r : null;
+            lock (Fresh()) return ReceiptBook(gameCode).TryGetValue(transactionId, out var r) ? r : null;
         }
 
         public void RecordReceipts(string gameCode, IEnumerable<Game.Flow.ReceiptRecord> records)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var book = ReceiptBook(gameCode);
                 bool any = false;
@@ -491,7 +491,7 @@ private Dictionary<string, Game.Flow.ReceiptRecord> ReceiptBook(string gameCode)
 
         public List<Game.Flow.ReceiptRecord> ReceiptsOf(string gameCode, string accountId)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var list = new List<Game.Flow.ReceiptRecord>();
                 foreach (var r in ReceiptBook(gameCode).Values) if (r.AccountId == accountId) list.Add(r);
