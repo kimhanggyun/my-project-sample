@@ -21,7 +21,7 @@ namespace Game.Unity.Screens
         private const float TopBarHeight = 110f;
         private const float TabBarHeight = 104f;
         private const float MinTabWidth = 160f;
-        private const int VisibleTabs = 5; // 배포 탭 5개가 한 줄에 다 보이게 (더 많으면 가로 스크롤)
+        private const int VisibleTabs = 6; // 배포 탭 6개(도감 포함, 2026-11-16)가 한 줄에 다 보이게 (더 많으면 가로 스크롤)
         private const float DevTabBarHeight = 72f;
         private const float MinDevTabWidth = 120f;
         private const int VisibleDevTabs = 7;
@@ -131,7 +131,7 @@ namespace Game.Unity.Screens
                 if (row == MainTabEntry.RowDev && !dev) continue;
                 var rowTabs = new List<MainTabEntry>();
                 foreach (var t in Ctx.MainTabs)
-                    if (t.Status != MainTabEntry.Hidden && (t.Row == row || (row == MainTabEntry.RowRelease && t.Row != MainTabEntry.RowDev))) rowTabs.Add(t);
+                    if (t.Status != MainTabEntry.Hidden && (t.Row == row || (row == MainTabEntry.RowRelease && t.Row != MainTabEntry.RowDev && t.Row != MainTabEntry.RowTop))) rowTabs.Add(t);
                 if (rowTabs.Count == 0) continue;
                 if (row == MainTabEntry.RowRelease) tabs.InsertRange(0, rowTabs); else tabs.AddRange(rowTabs); // 처음 열 탭은 배포 줄에서 먼저 찾는다
                 bool small = row == MainTabEntry.RowDev;
@@ -163,6 +163,10 @@ namespace Game.Unity.Screens
                 if (t.Id == _initial) { first = t; break; }
                 if (first == null && t.Status == MainTabEntry.Active) first = t;
             }
+            // 줄에 없는 탭(위 아이콘 줄 상점 · 우편 · 설정, 개발 줄이 안 보일 때 개발 탭)도 id로 열면 연다
+            if ((first == null || first.Id != _initial) && _initial != null)
+                foreach (var t in Ctx.MainTabs)
+                    if (t.Id == _initial && t.Status == MainTabEntry.Active) { first = t; break; }
             if (first != null) Select(first);
         }
 
