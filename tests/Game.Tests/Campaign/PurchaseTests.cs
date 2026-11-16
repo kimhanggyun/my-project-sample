@@ -76,7 +76,41 @@ namespace Game.Tests.Campaign
             Assert.Equal(ReceiptReasons.Rejected, store.Last.Reason);
         }
 
-        [Fact]
+[Fact(DisplayName = "R-117 복원 행동: 영구 상품만 (광고 영구 제거 · 치장), 없으면 반영 · 있으면 그대로 true, 치장은 중복 엽전 없음, 소모성 · 기간제는 false")]
+        public void RestoreAction()
+        {
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            var runner = new PlayerActionRunner(Kit.D);
+            long gold = s.Wallet["gold"];
+            Assert.True(runner.Apply(s, PlayerActionRunner.RestorePurchase("remove_banner_permanent", "r1")));
+            Assert.True(s.AdFreeForever);
+            Assert.True(runner.Apply(s, PlayerActionRunner.RestorePurchase("remove_banner_permanent", "r1"))); // 이미 있음 = 그대로
+            Assert.True(runner.Apply(s, PlayerActionRunner.RestorePurchase("cosmetic_armor_gold", "r2")));
+            Assert.Contains("armor_gold", s.OwnedCosmetics);
+            Assert.True(runner.Apply(s, PlayerActionRunner.RestorePurchase("cosmetic_armor_gold", "r2")));
+            Assert.Equal(gold, s.Wallet["gold"]); // 중복 엽전 없음
+            Assert.False(runner.Apply(s, PlayerActionRunner.RestorePurchase("gold_pack_small", "r3")));
+            Assert.False(runner.Apply(s, PlayerActionRunner.RestorePurchase("remove_banner_30d", "r4")));
+            Assert.False(runner.Apply(s, PlayerActionRunner.RestorePurchase("remove_banner_permanent", "")));
+            Assert.Equal(new[] { "cosmetic_armor_gold", "remove_banner_permanent" }, new PurchaseService(Kit.D).Restorable().ConvertAll(p => p.Id));
+        }
+
+        [Fact(DisplayName = "R-117 복원 검사: 다시 확인해 진짜면 통과, 이 계정에 반영된 거래는 그대로 · 다른 계정이면 otherAccount, 처음 보는 거래는 기록할 것에")]
+        public void RestoreCheck()
+        {
+            var owners = new System.Collections.Generic.Dictionary<string, string> { ["fake:mine"] = "me", ["fake:theirs"] = "other" };
+            var check = new ReceiptCheck(new FakeReceiptVerifier(), tx => owners.ContainsKey(tx)) { OwnerOf = tx => owners.TryGetValue(tx, out var o) ? o : null, AccountId = "me" };
+            Assert.True(check.Check(PlayerActionRunner.RestorePurchase("remove_banner_permanent", "fake:mine")));
+            Assert.Empty(check.Pending);
+            Assert.False(check.Check(PlayerActionRunner.RestorePurchase("remove_banner_permanent", "fake:theirs")));
+            Assert.Equal(ReceiptReasons.OtherAccount, check.Last.Reason);
+            Assert.True(check.Check(PlayerActionRunner.RestorePurchase("remove_banner_permanent", "fake:new")));
+            Assert.Single(check.Pending);
+            Assert.False(check.Check(PlayerActionRunner.RestorePurchase("remove_banner_permanent", "store:x")));
+            Assert.False(check.Check(PlayerActionRunner.Purchase("remove_banner_permanent", "fake:mine"))); // 산 거래로 다시 사기는 used
+        }
+
+                [Fact]
         public void ListedProductsHavePricesAndStrings()
         {
             var listed = new PurchaseService(Kit.D).Listed();
