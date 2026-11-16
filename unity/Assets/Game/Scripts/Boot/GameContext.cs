@@ -803,6 +803,43 @@ namespace Game.Unity.Boot
         }
 
         /// <summary>최근 녹화를 저장 목록으로 (한도를 넘으면 가장 오래된 저장을 지운다).</summary>
+        /// <summary>재생 확인에서 다시 볼 수 없던 녹화를 표시해 둔다 (목록에서 흐리게, 14 시안). 이미 표시됐으면 그대로.</summary>
+        public void MarkReplayUnplayable(string id)
+        {
+            var r = Replays.Find(id);
+            if (r == null || r.Unplayable) return;
+            r.Unplayable = true;
+            Replays.Write(_saveStore);
+        }
+
+        // ---- 도감 NEW (13 시안): 새로 찾은 숨은 보상은 눌러 볼 때까지 NEW. 기기에 본 것 목록 ----
+        private const string CodexSeenKey = "prefs.codexSeen";
+        private HashSet<string> _codexSeen;
+        private HashSet<string> CodexSeen
+        {
+            get
+            {
+                if (_codexSeen != null) return _codexSeen;
+                if (_saveStore.Exists(CodexSeenKey))
+                    _codexSeen = new HashSet<string>(_saveStore.Read(CodexSeenKey).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
+                else
+                {
+                    // 처음: 이미 찾은 것은 본 것으로 (NEW가 한꺼번에 뜨지 않게)
+                    _codexSeen = new HashSet<string>(State?.FoundSecrets ?? new List<string>());
+                    _saveStore.Write(CodexSeenKey, string.Join(",", _codexSeen));
+                }
+                return _codexSeen;
+            }
+        }
+
+        public bool CodexIsNew(string secretId) => State != null && State.FoundSecrets.Contains(secretId) && !CodexSeen.Contains(secretId);
+        public bool CodexHasNew { get { if (State == null) return false; foreach (var id in State.FoundSecrets) if (!CodexSeen.Contains(id)) return true; return false; } }
+        public void SeeCodex(string secretId)
+        {
+            if (secretId == null || !CodexSeen.Add(secretId)) return;
+            _saveStore.Write(CodexSeenKey, string.Join(",", CodexSeen));
+        }
+
         public bool KeepReplay(string id)
         {
             if (!Replays.Keep(id, ReplayRules.MaxSaved)) return false;
