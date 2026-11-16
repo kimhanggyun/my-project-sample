@@ -669,6 +669,7 @@
   "ui.mail.territoryIncomeAt": "영토 수입 · {0}\n{1}",
   "ui.mail.flagAt": "내 깃발 ({0}, {1})",
   "ui.mail.claimAll": "모두 받기 ({0}통)",
+  "ui.mail.adminGift": "운영 선물: {0} {1}",
   "ui.settings.header": "설정",
   "ui.settings.version": "버전 {0} / Unity {1}",
   "ui.settings.services": "외부 서비스 설정",

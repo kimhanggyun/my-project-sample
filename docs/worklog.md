@@ -88,3 +88,4 @@
 - 2026-11-16 [데스크탑] desktop/to-be-doc — 추후 업데이트 목록 to-be.md (출시 뒤로 미룬 것, 분류는 데스크탑 제안 · 사용자 확인 ?)
 - 2026-11-16 [데스크탑] desktop/siege-no-wait — 공성전 준비 60초 끔 (siegePrepSeconds 0: 서버 기록 · 수비자 우편 알림만), 영토 유저 대전 · 60초 대기는 to-be (사용자)
 - 2026-11-16 [데스크탑] desktop/territory-income-direct — 영토 수입 [수입 받기] · 깃발 위 수입 · 깃발 거두기 = 바로 자원에 (서버 우편 → 기기 즉시 mail.claim), 우편함 영토 수입은 거점마다 한 장 + [모두 받기] (사용자)
+- 2026-11-16 [데스크탑] desktop/admin-page — 관리자 페이지 /unitygame1.html (접속 ID = 서버 비밀값 GAME_ADMIN_KEY + 마스터 구글 로그인): 서버 상태 · 계정/세이브 · 운영 선물 우편 · 영토/연합 (docs/impl/admin.md)

@@ -1,0 +1,42 @@
+# 관리자 페이지
+
+> 2026-11-16 사용자 요청. 게임 서버가 함께 내놓는 웹 페이지 하나: **`<서버 주소>/unitygame1.html`**
+> (지금: https://game-server-883012601666.asia-northeast3.run.app/unitygame1.html)
+
+## 1. 들어가기 (둘 다 맞아야)
+
+| 단계 | 무엇 | 어디서 확인 |
+|---|---|---|
+| ① 접속 ID | 관리자 키. 페이지 첫 칸에 입력 | 서버 설정 `Game:AdminKey` (Cloud Run 환경 변수 `Game__AdminKey` ← GitHub 저장소 **비밀값** `GAME_ADMIN_KEY`) |
+| ② 구글 로그인 | 마스터 구글 계정 (R-86) | 서버 설정 `Game:Masters` (저장소 변수 `GAME_MASTERS`) |
+
+- **접속 ID는 저장소 · 페이지 어디에도 적지 않는다** (저장소가 공개). 서버만 안다. 바꾸려면 GitHub 비밀값을 바꾸고 배포를 다시 돌린다.
+- 키 설정이 없으면 관리자 주소(`/v1/admin/*`)는 모두 404 = 꺼짐 (로컬 참고 서버 기본).
+- 키가 틀리면 404, 로그인 안 하면 401, 마스터가 아니면 403. 키는 같은 시간 비교.
+- 페이지는 이 탭(sessionStorage)에만 키 · 토큰을 둔다. [나가기]로 지운다.
+- 구글 로그인은 기기와 같은 길 (deploy-cloudrun.md 5장): 구글 ID 토큰(Google Identity Services 웹 버튼) → Firebase `signInWithIdp` → 서버 `/v1/auth/firebase` → 게임 토큰.
+
+## 2. 할 수 있는 것
+
+| 탭 | 내용 | 서버 |
+|---|---|---|
+| 서버 상태 | 서버 시각 · 배포 판(K_REVISION) · 게임 · 계정 수 · 저장소 · 마스터 · 결제 검증 · Firebase 프로젝트 | `GET /v1/admin/status` |
+| 계정 · 세이브 | 모든 계정 (닉네임 · 이메일 · 구글/게스트 · 가입한 게임 · 삭제 요청), 찾기. 누르면 세이브 요약(지갑 · 군주 레벨 · 깬 스텝 · 장수/부대 수) · 우편함 · 세이브 원문 | `GET /v1/admin/accounts`, `GET /v1/admin/games/{game}/accounts/{id}` |
+| 우편 보내기 | 지정 계정(쉼표) 또는 그 게임의 모든 계정에 곡식 · 엽전 · 금괴 우편 (짧은 말 60자). 한 번에 1억까지. 받는 사람이 [받기] = `mail.claim` | `POST /v1/admin/games/{game}/mail` (우편 종류 `adminGift`) |
+| 영토 · 연합 | 꽂힌 깃발 (주인 · 연합 · 장수 · 병력 · 보호 · 공성전 중), 연합 목록 | `GET /v1/admin/games/{game}/territory` |
+
+- 세이브를 직접 고치는 기능은 없다 (보기만). 자원은 우편으로만 준다 → 서버 규칙(`mail.claim`)을 그대로 거친다.
+
+## 3. 처음 한 번 (사용자)
+
+1. GitHub 저장소 → Settings → Secrets and variables → Actions → **Secrets**에 `GAME_ADMIN_KEY` = 접속 ID. (또는 `gh secret set GAME_ADMIN_KEY`)
+2. GCP 콘솔 → API 및 서비스 → 사용자 인증 정보 → OAuth 2.0 클라이언트 **웹 클라이언트** (`googleWebClientId`와 같은 것) → **승인된 JavaScript 원본**에 서버 주소 `https://game-server-883012601666.asia-northeast3.run.app` 추가. (없으면 구글 버튼이 "origin not allowed")
+3. `GAME_MASTERS`에 내 구글 이메일이 있는지 확인.
+4. 배포를 다시 돌린다 (main에 머지하거나 Actions에서 deploy-cloudrun 수동 실행).
+
+## 4. 코드
+
+- 서버: `server/Game.Server/Admin.cs` (`AdminRoutes`), 계정 목록 `InMemoryStore.AdminAccounts`, 페이지 `server/Game.Server/wwwroot/unitygame1.html` (정적 파일, `Cache-Control: no-store`, `noindex`).
+- 기기 우편함: `adminGift` 줄 "운영 선물: n 자원" + 짧은 말.
+- 테스트: `tests/Game.Server.Tests/AdminTests.cs`.
+- 출시 전에: 이 API 키(`firebaseApiKey`)를 안드로이드로만 제한하면 웹 로그인이 막힌다 → 웹 출처(서버 주소)도 허용 목록에 넣는다.

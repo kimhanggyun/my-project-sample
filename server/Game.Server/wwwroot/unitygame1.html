@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자</title>
+<!-- 관리자 페이지 (docs/impl/admin.md). 관리자 키 + 마스터 구글 계정 둘 다 서버가 확인한다. 키는 이 파일에 없다. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root { --bg:#f3ede0; --card:#fffaf0; --line:#cdbf9f; --text:#2b2418; --dim:#7a6d55; --accent:#b8432f; --good:#2f7a3a; --bad:#a62d22; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, "Malgun Gothic", sans-serif; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; flex:1; }
+  main { max-width:1100px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:14px; }
+  input, select, button, textarea { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); }
+  button { background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
+  button.sub { background:#fff; color:var(--text); border-color:var(--line); }
+  button:disabled { opacity:.5; cursor:default; }
+  nav { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  nav button { background:#fff; color:var(--text); border-color:var(--line); }
+  nav button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #e6dcc6; vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  tr.click { cursor:pointer; } tr.click:hover { background:#f6efe0; }
+  .dim { color:var(--dim); } .good { color:var(--good); } .bad { color:var(--bad); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  .scroll { overflow-x:auto; }
+  pre { white-space:pre-wrap; word-break:break-all; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; max-height:360px; overflow:auto; font-size:12px; }
+  .hidden { display:none; }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:0; }
+  dt { color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>관리자</h1>
+  <span id="who" class="dim"></span>
+  <button id="logout" class="sub hidden">나가기</button>
+</header>
+<main>
+  <!-- 1. 관리자 키 -->
+  <section id="stepKey" class="card">
+    <h2>접속 ID</h2>
+    <div class="row">
+      <input id="keyInput" type="password" autocomplete="off" placeholder="접속 ID" style="flex:1;min-width:200px">
+      <button id="keyBtn">확인</button>
+    </div>
+    <p id="keyMsg" class="dim"></p>
+  </section>
+
+  <!-- 2. 마스터 구글 로그인 -->
+  <section id="stepGoogle" class="card hidden">
+    <h2>구글 로그인 (마스터 계정)</h2>
+    <div id="gsiButton"></div>
+    <p id="googleMsg" class="dim">게임 마스터로 등록된 구글 계정으로 로그인하세요.</p>
+  </section>
+
+  <!-- 3. 관리 -->
+  <section id="app" class="hidden">
+    <nav>
+      <button data-tab="status">서버 상태</button>
+      <button data-tab="accounts">계정 · 세이브</button>
+      <button data-tab="mail">우편 보내기</button>
+      <button data-tab="territory">영토 · 연합</button>
+    </nav>
+    <div class="row"><span class="dim">게임</span><select id="game"></select><button class="sub" id="reload">새로고침</button></div>
+
+    <div id="tab-status" class="card"></div>
+
+    <div id="tab-accounts" class="hidden">
+      <div class="card">
+        <div class="row"><input id="accFilter" placeholder="계정 id · 닉네임 · 이메일 찾기" style="flex:1;min-width:200px"><span id="accCount" class="dim"></span></div>
+        <div class="scroll"><table id="accTable"></table></div>
+      </div>
+      <div id="accDetail" class="card hidden"></div>
+    </div>
+
+    <div id="tab-mail" class="card hidden">
+      <h2>우편 보내기</h2>
+      <p class="dim">받는 사람이 우편함에서 [받기]를 누르면 지갑에 들어갑니다.</p>
+      <div class="row">
+        <label><input type="radio" name="mailTo" value="one" checked> 계정 지정</label>
+        <label><input type="radio" name="mailTo" value="all"> 이 게임 모든 계정</label>
+      </div>
+      <div class="row"><input id="mailIds" placeholder="계정 id (여럿이면 쉼표)" style="flex:1;min-width:240px"></div>
+      <div class="row">
+        <select id="mailRes"><option value="supply">곡식</option><option value="gold">엽전</option><option value="gem">금괴</option></select>
+        <input id="mailAmount" type="number" min="1" step="1" placeholder="양" style="width:160px">
+        <input id="mailNote" maxlength="60" placeholder="우편에 보일 말 (선택, 60자)" style="flex:1;min-width:200px">
+      </div>
+      <div class="row"><button id="mailBtn">보내기</button><span id="mailMsg"></span></div>
+    </div>
+
+    <div id="tab-territory" class="hidden">
+      <div class="card"><h2>깃발</h2><div class="scroll"><table id="flagTable"></table></div></div>
+      <div class="card"><h2>연합</h2><div class="scroll"><table id="allyTable"></table></div></div>
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  // 공개 식별자 (config/services.*.json과 같음 — 앱에 들어가는 값). 비밀값 아님.
+  const FIREBASE_API_KEY = "AIzaSyAK84d22_dgmKqZScKNJKxrrm2umAm-350";
+  const GOOGLE_WEB_CLIENT_ID = "883012601666-4gr1puv0185nntko94gj29r97ihf41a0.apps.googleusercontent.com";
+  const RES = { supply: "곡식", gold: "엽전", gem: "금괴" };
+  const $ = id => document.getElementById(id);
+  const ss = {
+    get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} },
+  };
+  let adminKey = ss.get("adminKey"), token = ss.get("adminToken"), accounts = [];
+
+  function el(tag, attrs, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+    }
+    for (const c of kids) if (c != null) e.append(c instanceof Node ? c : String(c));
+    return e;
+  }
+  const time = s => s ? new Date(s * 1000).toLocaleString("ko-KR") : "-";
+  const num = n => (n ?? 0).toLocaleString("ko-KR");
+  const wallet = w => w ? Object.entries(w).map(([k, v]) => (RES[k] || k) + " " + num(v)).join(" · ") : "-";
+
+  async function api(path, opt = {}) {
+    const headers = { "X-Admin-Key": adminKey || "" };
+    if (token) headers["Authorization"] = "Bearer " + token;
+    if (opt.body) headers["Content-Type"] = "application/json";
+    const r = await fetch(path, { method: opt.method || "GET", headers, body: opt.body ? JSON.stringify(opt.body) : undefined });
+    if (r.status === 401) { signOut("로그인이 끝났습니다. 다시 로그인하세요."); throw new Error("401"); }
+    if (r.status === 403) { signOut("이 구글 계정은 마스터가 아닙니다."); throw new Error("403"); }
+    if (r.status === 404 && path.startsWith("/v1/admin")) { signOut("접속 ID가 맞지 않습니다.", true); throw new Error("404"); }
+    const text = await r.text();
+    return { status: r.status, data: text ? JSON.parse(text) : null };
+  }
+
+  function show(step) {
+    $("stepKey").classList.toggle("hidden", step !== "key");
+    $("stepGoogle").classList.toggle("hidden", step !== "google");
+    $("app").classList.toggle("hidden", step !== "app");
+    $("logout").classList.toggle("hidden", step === "key");
+  }
+
+  function signOut(msg, keyToo) {
+    token = null; ss.set("adminToken", null);
+    if (keyToo) { adminKey = null; ss.set("adminKey", null); }
+    $("who").textContent = "";
+    if (adminKey) { show("google"); $("googleMsg").textContent = msg || ""; renderGoogle(); }
+    else { show("key"); $("keyMsg").textContent = msg || ""; }
+  }
+
+  // 1. 키
+  async function checkKey() {
+    const v = $("keyInput").value.trim();
+    if (!v) return;
+    $("keyBtn").disabled = true;
+    try {
+      const r = await fetch("/v1/admin/key", { method: "POST", headers: { "X-Admin-Key": v } });
+      if (r.status === 204) { adminKey = v; ss.set("adminKey", v); $("keyInput").value = ""; show("google"); renderGoogle(); }
+      else $("keyMsg").textContent = "접속 ID가 맞지 않습니다.";
+    } catch (e) { $("keyMsg").textContent = "서버에 닿지 못했습니다."; }
+    $("keyBtn").disabled = false;
+  }
+  $("keyBtn").onclick = checkKey;
+  $("keyInput").addEventListener("keydown", e => { if (e.key === "Enter") checkKey(); });
+
+  // 2. 구글 → Firebase → 게임 서버 토큰 (기기와 같은 길, deploy-cloudrun.md 5장)
+  let gsiReady = false;
+  function renderGoogle() {
+    if (!window.google || !google.accounts) { setTimeout(renderGoogle, 300); return; }
+    if (!gsiReady) { google.accounts.id.initialize({ client_id: GOOGLE_WEB_CLIENT_ID, callback: onGoogle }); gsiReady = true; }
+    $("gsiButton").innerHTML = "";
+    google.accounts.id.renderButton($("gsiButton"), { theme: "outline", size: "large", text: "signin_with" });
+  }
+  async function onGoogle(resp) {
+    $("googleMsg").textContent = "로그인 중…";
+    try {
+      const fb = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=" + FIREBASE_API_KEY, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postBody: "id_token=" + resp.credential + "&providerId=google.com", requestUri: location.origin, returnSecureToken: true, returnIdpCredential: true }),
+      }).then(r => r.json());
+      if (!fb.idToken) throw new Error(fb.error ? fb.error.message : "firebase");
+      const r = await fetch("/v1/auth/firebase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ IdToken: fb.idToken }) });
+      if (!r.ok) throw new Error("server " + r.status);
+      const s = await r.json();
+      token = s.Token; ss.set("adminToken", token);
+      await enter();
+    } catch (e) { $("googleMsg").textContent = "로그인하지 못했습니다: " + e.message; }
+  }
+
+  // 3. 관리
+  async function enter() {
+    const st = (await api("/v1/admin/status")).data;
+    $("who").textContent = st.You;
+    const g = $("game"); g.innerHTML = "";
+    for (const c of st.Games) g.append(el("option", { value: c }, c));
+    show("app");
+    tab("status", st);
+  }
+  $("logout").onclick = () => { adminKey = null; ss.set("adminKey", null); signOut(""); };
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => tab(b.dataset.tab));
+  $("reload").onclick = () => tab(current);
+  $("game").onchange = () => tab(current);
+
+  let current = "status";
+  async function tab(name, preloaded) {
+    current = name;
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+    for (const t of ["status", "accounts", "mail", "territory"]) $("tab-" + t).classList.toggle("hidden", t !== name);
+    try {
+      if (name === "status") drawStatus(preloaded || (await api("/v1/admin/status")).data);
+      if (name === "accounts") { accounts = (await api("/v1/admin/accounts")).data.Accounts || []; drawAccounts(); }
+      if (name === "territory") drawTerritory((await api("/v1/admin/games/" + $("game").value + "/territory")).data);
+    } catch (e) { /* api가 화면을 바꿈 */ }
+  }
+
+  function drawStatus(st) {
+    const box = $("tab-status"); box.innerHTML = "";
+    box.append(el("h2", null, "서버 상태"), el("dl", null,
+      el("dt", null, "서버 시각"), el("dd", null, time(st.NowUnixSeconds)),
+      el("dt", null, "배포 판"), el("dd", null, st.Revision || "(로컬)"),
+      el("dt", null, "게임"), el("dd", null, (st.Games || []).join(", ")),
+      el("dt", null, "계정 수"), el("dd", null, num(st.Accounts)),
+      el("dt", null, "저장소"), el("dd", null, st.Store),
+      el("dt", null, "마스터"), el("dd", null, st.Masters || "-"),
+      el("dt", null, "결제 검증"), el("dd", null, st.ReceiptVerifier),
+      el("dt", null, "Firebase 프로젝트"), el("dd", null, st.FirebaseProjectId || "-"),
+      el("dt", null, "나"), el("dd", null, st.You)));
+  }
+
+  function drawAccounts() {
+    const q = $("accFilter").value.trim().toLowerCase();
+    const list = accounts.filter(a => !q || [a.AccountId, a.Nickname, a.Email].some(x => x && x.toLowerCase().includes(q)));
+    $("accCount").textContent = list.length + " / " + accounts.length + "명";
+    const t = $("accTable"); t.innerHTML = "";
+    t.append(el("tr", null, ...["계정 id", "닉네임", "이메일", "구글", "가입한 게임", "삭제 요청"].map(h => el("th", null, h))));
+    for (const a of list) {
+      const games = Object.entries(a.Games || {}).map(([g, at]) => g + " (" + time(at) + ")").join(", ");
+      t.append(el("tr", { class: "click", onclick: () => detail(a.AccountId) },
+        el("td", null, a.AccountId), el("td", null, a.Nickname || "-"), el("td", null, a.Email || "-"),
+        el("td", { class: a.Linked ? "good" : "dim" }, a.Linked ? "연동" : "게스트"), el("td", null, games || "-"),
+        el("td", { class: a.DeletionRequestedAtUnixSeconds ? "bad" : "dim" }, a.DeletionRequestedAtUnixSeconds ? time(a.DeletionRequestedAtUnixSeconds) : "-")));
+    }
+  }
+  $("accFilter").addEventListener("input", drawAccounts);
+
+  async function detail(id) {
+    const d = (await api("/v1/admin/games/" + $("game").value + "/accounts/" + encodeURIComponent(id))).data;
+    const box = $("accDetail"); box.innerHTML = ""; box.classList.remove("hidden");
+    const mail = (d.Mail || []).map(m => el("li", null, (m.Kind || "") + " · " + (RES[m.Resource] || m.Resource || "") + " " + num(m.Amount) + (m.RegionId ? " · " + m.RegionId : "") + (m.Note ? " · " + m.Note : "") + " · " + time(m.CreatedAtUnixSeconds)));
+    box.append(el("h2", null, id),
+      el("dl", null,
+        el("dt", null, "세이브 판"), el("dd", null, d.Revision || "(없음)"),
+        el("dt", null, "저장 시각"), el("dd", null, time(d.SavedAtUnixSeconds)),
+        el("dt", null, "지갑"), el("dd", null, wallet(d.Wallet)),
+        el("dt", null, "군주 레벨"), el("dd", null, d.LordLevel || "-"),
+        el("dt", null, "깬 스텝"), el("dd", null, num(d.ClearedSteps)),
+        el("dt", null, "장수 · 부대"), el("dd", null, num(d.Generals) + " · " + num(d.Units)),
+        el("dt", null, "우편함"), el("dd", null, (d.Mail || []).length + "통")),
+      el("ul", null, ...mail),
+      el("div", { class: "row" },
+        el("button", { class: "sub", onclick: () => { document.querySelector('input[name=mailTo][value=one]').checked = true; $("mailIds").value = id; tab("mail"); } }, "이 계정에 우편 보내기")),
+      el("details", null, el("summary", null, "세이브 원문"), el("pre", null, d.SaveJson ? JSON.stringify(JSON.parse(d.SaveJson), null, 2) : "(없음)")));
+    box.scrollIntoView({ behavior: "smooth" });
+  }
+
+  $("mailBtn").onclick = async () => {
+    const all = document.querySelector("input[name=mailTo]:checked").value === "all";
+    const ids = all ? [] : $("mailIds").value.split(",").map(s => s.trim()).filter(Boolean);
+    const amount = parseInt($("mailAmount").value, 10);
+    const res = $("mailRes").value, note = $("mailNote").value.trim();
+    if (!all && ids.length === 0) { $("mailMsg").textContent = "계정 id를 넣으세요."; return; }
+    if (!(amount > 0)) { $("mailMsg").textContent = "양을 넣으세요."; return; }
+    const whom = all ? "이 게임의 모든 계정" : ids.length + "명";
+    if (!confirm(whom + "에게 " + RES[res] + " " + num(amount) + "을(를) 우편으로 보낼까요?")) return;
+    $("mailBtn").disabled = true;
+    try {
+      const r = await api("/v1/admin/games/" + $("game").value + "/mail", { method: "POST", body: { AccountIds: ids, Resource: res, Amount: amount, Note: note || null } });
+      $("mailMsg").className = r.data && r.data.Ok ? "good" : "bad";
+      $("mailMsg").textContent = r.data && r.data.Ok ? r.data.Sent + "명에게 보냈습니다." : "보내지 못했습니다 (" + (r.data ? r.data.Reason : r.status) + ")";
+    } catch (e) { }
+    $("mailBtn").disabled = false;
+  };
+
+  function drawTerritory(d) {
+    const name = id => { const a = accounts.find(x => x.AccountId === id); return a && a.Nickname ? a.Nickname + " (" + id + ")" : id; };
+    const f = $("flagTable"); f.innerHTML = "";
+    f.append(el("tr", null, ...["깃발 · 지역", "주인", "연합", "장수", "병력", "꽂은 때", "보호 끝", "공성전"].map(h => el("th", null, h))));
+    for (const o of d.Owners || []) {
+      let troops = 0;
+      for (const c of (o.Defense && o.Defense.Corps) || []) for (const u of c.Units || []) { try { troops += JSON.parse(u.UnitJson).Troops || 0; } catch (e) {} }
+      f.append(el("tr", null, el("td", null, o.RegionId), el("td", null, name(o.OwnerAccountId)), el("td", null, o.OwnerAllianceName || "-"),
+        el("td", null, (o.GeneralIds || (o.GeneralId ? [o.GeneralId] : [])).join(", ") || "-"), el("td", null, troops ? num(troops) : "-"),
+        el("td", null, time(o.SinceUnixSeconds)), el("td", null, time(o.ProtectedUntilUnixSeconds)),
+        el("td", { class: o.SiegeAttackerId ? "bad" : "dim" }, o.SiegeAttackerId ? name(o.SiegeAttackerId) + " · " + time(o.SiegeStartedAtUnixSeconds) : "-")));
+    }
+    if (!(d.Owners || []).length) f.append(el("tr", null, el("td", { class: "dim" }, "꽂힌 깃발이 없습니다.")));
+    const a = $("allyTable"); a.innerHTML = "";
+    a.append(el("tr", null, ...["이름", "연합장", "인원", "가입", "신청", "만든 때"].map(h => el("th", null, h))));
+    for (const x of d.Alliances || [])
+      a.append(el("tr", null, el("td", null, x.Name), el("td", null, name(x.LeaderAccountId)), el("td", null, (x.Members || []).length),
+        el("td", null, x.Open ? "바로" : "신청"), el("td", null, (x.Requests || []).length), el("td", null, time(x.CreatedAtUnixSeconds))));
+    if (!(d.Alliances || []).length) a.append(el("tr", null, el("td", { class: "dim" }, "연합이 없습니다.")));
+  }
+
+  // 처음: 이 탭에서 이미 들어온 적이 있으면 이어서
+  if (adminKey && token) enter().catch(() => {});
+  else if (adminKey) { show("google"); renderGoogle(); }
+  else show("key");
+})();
+</script>
+</body>
+</html>

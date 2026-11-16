@@ -239,6 +239,10 @@ app.MapPost("/v1/games/{game}/territory/collect", async (string game, HttpReques
     return InGame(req, p, r, game, Now(), (id, g) => Json(g.CollectTerritory(id, body?.RegionId)));
 });
 
+// 관리자 페이지 (docs/impl/admin.md): /unitygame1.html (wwwroot) + /v1/admin/* (Game:AdminKey + 마스터 로그인)
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-store" });
+AdminRoutes.Map(app);
+
 app.Run();
 
 static IResult AllianceResult(AllianceResponse res) => res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);

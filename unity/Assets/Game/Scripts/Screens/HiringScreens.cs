@@ -391,6 +391,7 @@ namespace Game.Unity.Screens
                     // 종류별 줄 (R-112 출석 · R-113 공성전 알림, 영토 수입, 그 밖 = 고용 보상)
                     string line = m.Kind == MailKinds.SiegeAlert ? T("ui.mail.siegeAlert", T("ui.mail.myFlag"))
                         : m.Kind == MailKinds.Attendance ? T("ui.mail.attendance", m.Amount.ToString("N0"), T("resource." + m.Resource))
+                        : m.Kind == MailKinds.AdminGift ? T("ui.mail.adminGift", m.Amount.ToString("N0"), T("resource." + m.Resource)) + (string.IsNullOrEmpty(m.Note) ? "" : " · " + m.Note)
                         : T(m.Kind == MailKinds.TerritoryIncome ? "ui.mail.territoryIncome" : "ui.hire.mailLine", m.Amount.ToString("N0"), T("resource." + m.Resource), m.RegionId != null ? T("region." + m.RegionId) : "");
                     Ui.Label(card, line, Ui.FontSmall, TextAnchor.MiddleLeft, m.Kind == MailKinds.SiegeAlert ? Palette.Bad : Palette.Text);
                     // 받을 것이 있는 우편만 [받기] (공성전 알림은 알림뿐)
