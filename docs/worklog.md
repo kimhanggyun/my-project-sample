@@ -105,5 +105,6 @@
 - 2026-11-16 [원격] claude/push-server — 푸시 알림 서버 쪽 R-119: 설정 · 토큰 API, 공성전 시작 → attacked · allyHelp, 수입 가득 훑기(관리자 sweep), IPushSender off · fake · fcm, 배포 변수 PUSH
 - 2026-11-16 [데스크탑] desktop/replay-codex-marks — 녹화: 다시 볼 수 없던 녹화 흐림 · ▶ 꺼짐 (ReplayRecord.Unplayable), 도감: 새로 찾은 숨은 보상 [NEW] · [도감] 탭 빨간 점
 - 2026-11-16 [데스크탑] desktop/merc-2 — 용병 고용: 정렬(승률 · 레벨 · 가격) · 병종 거르기 · 카드 이력 막대 · 카드 누르면 자세히 아래 판
+- 2026-11-16 [원격] claude/db-design — 서버 저장소 DB 설계 제안 docs/impl/db.md (Firestore 제안 · 자료 나누기 · 영토 깃발 단위 · 옮기기 · 비용), 결정 대기
 - 2026-11-16 [원격] claude/hire-replays — 내 용병이 고용된 전투 녹화 R-120: 서버가 고용 전투 검증 때 녹화를 떠 둠(등록자 · 고용한 사람만), HireRecent.ReplayId, GET /hire/replays/{id}, HireBook.HiredBattles
 - 2026-11-16 [데스크탑] desktop/status-screens — 원격 요청 (#213): 시작 버전 확인 단계에서 GET /v1/status → 업데이트 필요 · 새 버전 · 점검 안내 화면 (AppStatusScreen, 5초 넘으면 그대로 시작), 관리자 페이지 [버전 · 점검] 탭 (GET/POST /v1/admin/notice)
