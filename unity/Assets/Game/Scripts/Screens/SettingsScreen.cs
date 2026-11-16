@@ -264,7 +264,33 @@ namespace Game.Unity.Screens
             var card = Section(body, "location");
             bool available = Ctx.Location != null && Ctx.Location.IsAvailable;
             var row = Line(card, "地", T("ui.settings.locationPerm"), T("ui.settings.locationSub"));
-            Ui.Size(Ui.Tag(row, T(available ? "ui.settings.allowed" : "ui.settings.off"), available ? Palette.Good : Palette.TextDim, 20, 44), width: 150);
+            Ui.Size(Ui.Tag(row, T(available ? "ui.settings.allowed" : "ui.settings.off"), available ? Palette.Good : Palette.TextDim, 20, 44), width: 130);
+            // 권한은 기기 설정에서만 바꿀 수 있다 (한 번 거절하면 앱이 다시 묻지 못함) → [기기 설정 ›]
+            Arrow(row, T("ui.settings.osSettings"), OpenAppSettings);
+        }
+
+        /// <summary>이 앱의 기기 설정 화면 (안드로이드: 앱 정보 → 권한, iOS: 설정 앱의 이 앱). 에디터에서는 없음.</summary>
+        public static void OpenAppSettings()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (var unity = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = unity.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var uriClass = new AndroidJavaClass("android.net.Uri"))
+                using (var uri = uriClass.CallStatic<AndroidJavaObject>("parse", "package:" + Application.identifier))
+                using (var intent = new AndroidJavaObject("android.content.Intent", "android.settings.APPLICATION_DETAILS_SETTINGS", uri))
+                {
+                    intent.Call<AndroidJavaObject>("addFlags", 0x10000000); // FLAG_ACTIVITY_NEW_TASK
+                    activity.Call("startActivity", intent);
+                }
+            }
+            catch (System.Exception e) { Debug.LogException(e); }
+#elif UNITY_IOS && !UNITY_EDITOR
+            Application.OpenURL("app-settings:");
+#else
+            Debug.Log("기기 설정 열기 — 에디터에서는 없음 (폰에서 앱 정보 → 권한)");
+#endif
         }
 
         // ---- 구매 ----
