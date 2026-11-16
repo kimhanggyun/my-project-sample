@@ -12,6 +12,8 @@ namespace Game.Flow
     /// <summary>이 전투에 고용한 것 (출진 준비에 넘긴다, R-43).</summary>
     public sealed class HiredForces
     {
+        /// <summary>검증한 전투의 녹화 (R-120): 서버가 등록자에게 보여 줄 수 있게 떠 둔다. 고용 결과가 있을 때만.</summary>
+        public ReplayRecord Replay { get; set; }
         /// <summary>고용 장수 (GeneralId = 장수 정의 id).</summary>
         public List<GeneralState> Generals { get; } = new List<GeneralState>();
         /// <summary>고용 부대 (UnitId = "hire." + 등록 id, Troops = 고용 인원).</summary>

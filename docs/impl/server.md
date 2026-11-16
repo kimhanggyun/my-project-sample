@@ -48,6 +48,7 @@
 | `POST /v1/games/{game}/actions` | 행동 묶음 제출 (R-41). 서버 세이브에 차례로 적용, 옛 세이브 위면 409(`staleSave`), 하나라도 안 되면 422(`badAction` + 순번, 아무것도 반영 안 함), 맞으면 새 세이브 | `ActionVerdict` |
 | `GET /v1/games/{game}/hire/listings?kind=general\|unit` | 고용 등록 목록 + 이력 (R-43, R-44), 요청한 계정의 지난 24시간 고용 수·상한·대기 중인 등록 | `HireListResponse` |
 | `POST /v1/games/{game}/hire/listings` | 내 서버 세이브의 장수·부대 등록 (같은 대상이면 갱신, Version +1). 가격이 추천 × 상한을 넘거나 · 내 것이 아니거나 · 출전 불가거나 · 등록 수 상한이면 422 | `HireListingResponse` |
+| `GET /v1/games/{game}/hire/replays/{id}` | 내 용병이 고용된 전투 녹화 (R-120): 등록의 `Recent[].ReplayId`. 그 전투의 등록자 · 고용한 사람만, 아니면 404. 게임마다 500개까지 | `HireReplayResponse` (ReplayJson) |
 | `DELETE /v1/games/{game}/hire/listings/{id}` | 내 등록 해제 (남의 것·없는 것은 404) | 204 |
 | `POST /v1/games/{game}/replays` | 녹화 공유 (R-81). 지금 규칙으로 다시 돌려 같을 때만 200, 아니면 422 (broken / versionChanged) | `ShareReplayRequest` → `ShareReplayResponse` |
 | `GET /v1/games/{game}/replays?step=` | 그 스텝의 공유 녹화 요약 (고르기 R-81) | `SharedReplayListResponse` |

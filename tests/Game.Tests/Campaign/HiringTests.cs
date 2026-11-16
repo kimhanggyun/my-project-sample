@@ -193,7 +193,20 @@ namespace Game.Tests.Campaign
             Assert.Equal(6000, listing.Troops); // R-26
         }
 
-        [Fact(DisplayName = "우편 받기 행동: 받는 자원·양만큼 지갑에 (서버는 우편이 있는지 먼저 확인)")]
+[Fact(DisplayName = "R-120 내 용병이 고용된 전투: 내 등록들의 최근 전투를 늦은 것부터, 남의 등록은 빼고, 녹화 id는 그대로")]
+        public void HiredBattles()
+        {
+            var mine1 = new HireListing { Id = "l1", OwnerAccountId = "me", Recent = { new HireRecent { AtUnixSeconds = 10, ReplayId = "r1" }, new HireRecent { AtUnixSeconds = 30 } } };
+            var mine2 = new HireListing { Id = "l2", OwnerAccountId = "me", Recent = { new HireRecent { AtUnixSeconds = 20, ReplayId = "r2" } } };
+            var other = new HireListing { Id = "l3", OwnerAccountId = "you", Recent = { new HireRecent { AtUnixSeconds = 40 } } };
+            var list = HireBook.HiredBattles(new[] { mine1, mine2, other }, "me");
+            Assert.Equal(new long[] { 30, 20, 10 }, list.ConvertAll(x => x.battle.AtUnixSeconds));
+            Assert.Equal(new[] { "l1", "l2", "l1" }, list.ConvertAll(x => x.listing.Id));
+            Assert.Equal("r2", list[1].battle.ReplayId);
+            Assert.Empty(HireBook.HiredBattles(null, "me"));
+        }
+
+                [Fact(DisplayName = "우편 받기 행동: 받는 자원·양만큼 지갑에 (서버는 우편이 있는지 먼저 확인)")]
         public void MailClaim()
         {
             var state = Kit.Veteran();

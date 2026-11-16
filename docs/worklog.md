@@ -105,3 +105,4 @@
 - 2026-11-16 [원격] claude/push-server — 푸시 알림 서버 쪽 R-119: 설정 · 토큰 API, 공성전 시작 → attacked · allyHelp, 수입 가득 훑기(관리자 sweep), IPushSender off · fake · fcm, 배포 변수 PUSH
 - 2026-11-16 [데스크탑] desktop/replay-codex-marks — 녹화: 다시 볼 수 없던 녹화 흐림 · ▶ 꺼짐 (ReplayRecord.Unplayable), 도감: 새로 찾은 숨은 보상 [NEW] · [도감] 탭 빨간 점
 - 2026-11-16 [데스크탑] desktop/merc-2 — 용병 고용: 정렬(승률 · 레벨 · 가격) · 병종 거르기 · 카드 이력 막대 · 카드 누르면 자세히 아래 판
+- 2026-11-16 [원격] claude/hire-replays — 내 용병이 고용된 전투 녹화 R-120: 서버가 고용 전투 검증 때 녹화를 떠 둠(등록자 · 고용한 사람만), HireRecent.ReplayId, GET /hire/replays/{id}, HireBook.HiredBattles

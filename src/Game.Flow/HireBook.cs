@@ -27,6 +27,20 @@ namespace Game.Flow
     /// </summary>
     public static class HireBook
     {
+        /// <summary>
+        /// 내 용병이 고용된 전투 (R-120, 녹화 화면 분류): 내 등록들의 최근 전투를 시각 늦은 것부터. 녹화가 있으면 ReplayId로 받는다.
+        /// </summary>
+        public static List<(HireListing listing, HireRecent battle)> HiredBattles(IEnumerable<HireListing> listings, string ownerAccountId)
+        {
+            var list = new List<(HireListing, HireRecent)>();
+            if (listings == null) return list;
+            foreach (var l in listings)
+                if (l?.Recent != null && l.OwnerAccountId == ownerAccountId)
+                    foreach (var r in l.Recent) list.Add((l, r));
+            list.Sort((a, b) => b.Item2.AtUnixSeconds.CompareTo(a.Item2.AtUnixSeconds));
+            return list;
+        }
+
         public const long DaySeconds = 24 * 3600;
 
         /// <summary>
@@ -90,7 +104,7 @@ namespace Game.Flow
         }
 
         /// <summary>등록의 이력에 결과 하나를 더한다 (최근 전투는 앞에, recentMax개까지).</summary>
-        public static void Record(HireListing listing, HireOutcome o, string stepId, long at, int recentMax)
+        public static void Record(HireListing listing, HireOutcome o, string stepId, long at, int recentMax, string replayId = null)
         {
             if (listing.Stats == null) listing.Stats = new HireStats();
             if (listing.Recent == null) listing.Recent = new List<HireRecent>();
@@ -106,7 +120,7 @@ namespace Game.Flow
             }
             s.TroopsLost += o.TroopsLost;
             s.TroopsHired += o.TroopsStart;
-            listing.Recent.Insert(0, new HireRecent { AtUnixSeconds = at, StepId = stepId, Result = o.Result, TroopsStart = o.TroopsStart, TroopsLost = o.TroopsLost });
+            listing.Recent.Insert(0, new HireRecent { AtUnixSeconds = at, StepId = stepId, Result = o.Result, TroopsStart = o.TroopsStart, TroopsLost = o.TroopsLost, ReplayId = replayId });
             if (recentMax >= 0 && listing.Recent.Count > recentMax) listing.Recent.RemoveRange(recentMax, listing.Recent.Count - recentMax);
         }
 

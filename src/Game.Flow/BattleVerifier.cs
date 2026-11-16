@@ -111,6 +111,7 @@ namespace Game.Flow
                 hired.StepId = s.StepId;
                 hired.Outcomes.Clear();
                 hired.Outcomes.AddRange(HireBook.Outcomes(plan, result, hired));
+                hired.Replay = hired.Outcomes.Count > 0 ? ReplayService.Capture(plan, s.Commands, result, 0) : null; // 내 용병이 고용된 전투 녹화 (R-120)
             }
             verdict.Valid = true;
             verdict.Reason = VerdictReasons.Ok;

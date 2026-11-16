@@ -43,6 +43,8 @@ namespace Game.Server
         bool RegisterPushToken(string accountId, PushTokenRequest request);
         /// <summary>수입이 다 찬 깃발 주인에게 알림 (관리자 · 예약 호출, R-119). 보낸 기기 수.</summary>
         int SweepIncomeFull();
+        /// <summary>내 용병이 고용된 전투 녹화 (R-120): 그 전투의 등록자 · 고용한 사람만. 아니면 null.</summary>
+        HireReplayResponse HireReplay(string accountId, string id);
 
         /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
         TerritoryResponse Territory(string accountId);
@@ -216,7 +218,16 @@ namespace Game.Server
                 var log = new List<HireLogEntry>();
                 foreach (var u in hired.Uses) log.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
                 _store.AddHireLog(Code, accountId, log);
-                foreach (var o in hired.Outcomes) _store.RecordHire(Code, o.ListingId, o, hired.StepId, at, _defs.Balance.HireRecentMax);
+                // 그 전투 녹화를 등록자들 · 고용한 사람이 볼 수 있게 (R-120)
+                string replayId = null;
+                if (hired.Replay != null && hired.Outcomes.Count > 0)
+                {
+                    hired.Replay.SavedAtUnixSeconds = at;
+                    var viewers = new HashSet<string>(StringComparer.Ordinal) { accountId };
+                    foreach (var o in hired.Outcomes) { var l = _store.GetListing(Code, o.ListingId); if (l?.OwnerAccountId != null) viewers.Add(l.OwnerAccountId); }
+                    replayId = _store.AddHireReplay(Code, ReplayService.Write(hired.Replay), viewers, at, HireReplayMax);
+                }
+                foreach (var o in hired.Outcomes) _store.RecordHire(Code, o.ListingId, o, hired.StepId, at, _defs.Balance.HireRecentMax, replayId);
             }
             if (hired != null)
                 foreach (var c in hired.Charges)
@@ -323,6 +334,15 @@ namespace Game.Server
                 }
                 return true;
             });
+        }
+
+        /// <summary>남겨 두는 고용된 전투 녹화 수 (게임마다, 오래된 것부터 지움, R-120).</summary>
+        public const int HireReplayMax = 500;
+
+        public HireReplayResponse HireReplay(string accountId, string id)
+        {
+            string json = _store.HireReplayFor(Code, id, accountId);
+            return json == null ? null : new HireReplayResponse { Id = id, ReplayJson = json };
         }
 
         public int SweepIncomeFull() => Push.Send(_store.WithTerritory(Code, owners => PushRules.IncomeFullDue(_territory, owners, Now)));
