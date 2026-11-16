@@ -84,6 +84,44 @@ namespace Game.Tests
             Assert.True(missing.Count == 0, "없는 문구 키: " + string.Join(", ", missing));
         }
 
+        [Fact(DisplayName = "화면 코드의 T(\"ui.*\", 인자…)가 문구의 {n} 개수만큼 인자를 넘긴다 (모자라면 FormatException)")]
+        public void UiStringFormatArgsSuffice()
+        {
+            var strings = JObject.Parse(File.ReadAllText(Path.Combine(TestData.RepoRoot, "data", "Themes", "ancientwar", "strings.ko.json")));
+            var bad = new List<string>();
+            foreach (var file in Directory.GetFiles(Path.Combine(TestData.RepoRoot, "unity", "Assets", "Game"), "*.cs", SearchOption.AllDirectories))
+            {
+                string src = File.ReadAllText(file);
+                foreach (Match m in Regex.Matches(src, "\\bT\\(\\s*\"(ui\\.[A-Za-z0-9_.]+)\""))
+                {
+                    string text = strings.Value<string>(m.Groups[1].Value);
+                    if (text == null) continue;
+                    int need = 0;
+                    foreach (Match p in Regex.Matches(text, "\\{(\\d+)")) need = System.Math.Max(need, int.Parse(p.Groups[1].Value) + 1);
+                    if (need == 0) continue;
+                    int args = CountArgs(src, m.Index + m.Length);
+                    if (args < need) bad.Add($"{Path.GetFileName(file)}: {m.Groups[1].Value} {{n}} {need}개, 인자 {args}개");
+                }
+            }
+            Assert.True(bad.Count == 0, "인자 모자람: " + string.Join("; ", bad));
+        }
+
+        /// <summary>키 문자열 바로 뒤부터 닫는 괄호까지 맨 바깥 쉼표 수 = 넘긴 인자 수.</summary>
+        private static int CountArgs(string src, int i)
+        {
+            int depth = 0, args = 0;
+            for (; i < src.Length; i++)
+            {
+                char c = src[i];
+                if (c == '"') { i++; while (i < src.Length && src[i] != '"') { if (src[i] == '\\') i++; i++; } continue; }
+                if (c == '\'') { i++; while (i < src.Length && src[i] != '\'') { if (src[i] == '\\') i++; i++; } continue; }
+                if (c == '(' || c == '[' || c == '{') depth++;
+                else if (c == ')' || c == ']' || c == '}') { if (depth == 0) break; depth--; }
+                else if (c == ',' && depth == 0) args++;
+            }
+            return args;
+        }
+
         [Fact(DisplayName = "Unity 프로젝트가 src 패키지와 Newtonsoft 패키지를 쓴다")]
         public void ManifestReferencesPackage()
         {
