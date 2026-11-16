@@ -155,6 +155,51 @@ namespace Game.Tests.Campaign
             Assert.Null(TerritoryFlags.CheckSiege(Defs, Kit.D, state, "me", null, rival.RegionId, Here, Now));
         }
 
+        [Fact(DisplayName = "R-113 공성전 준비 1분: 서버가 시작 시각 기록 + 수비자 알림, 1분 전 · 시간 지난 제출은 거절, 다른 공격자는 busy, 준비 중엔 취소(알림도 거둠), 끝나면 정리")]
+        public void SiegePrep()
+        {
+            var me = Kit.Veteran();
+            var rival = Other("rival", "37.568,126.978", 3000);
+            var owners = new Dictionary<string, TerritoryOwner> { [rival.RegionId] = rival };
+            var mails = new List<(string who, Mail m)>();
+            var taken = new List<(string who, string flag)>();
+            var req = new SiegeRequest { FlagKey = rival.RegionId, Location = Here };
+            // 데이터는 화면(카운트다운)이 들어올 때까지 0 = 준비 없음 (2026-11-15). 규칙은 설계 값 60초로 본다.
+            Assert.Null(TerritoryFlags.CheckSiegeReady(Defs, owners, rival.RegionId, "me", Now)); // 0이면 준비 없이 바로
+            var defs = Defs;
+            typeof(FlagDefs).GetProperty(nameof(FlagDefs.SiegePrepSeconds)).SetValue(defs.Flags, 60L);
+            long prep = defs.Flags.SiegePrepSeconds, window = defs.Flags.SiegeWindowSeconds;
+
+            Assert.Equal("공성전 준비를 먼저 해야 합니다.", TerritoryFlags.CheckSiegeReady(defs, owners, rival.RegionId, "me", Now)); // 준비 없이 낸 공성전
+            var r = TerritoryFlags.StartSiege(defs, Kit.D, me, "me", owners, req, Now, (w, m) => mails.Add((w, m)));
+            Assert.True(r.Ok, r.Message);
+            Assert.Equal((Now + prep, Now + prep + window), (r.StartsAtUnixSeconds, r.ExpiresAtUnixSeconds));
+            var alert = Assert.Single(mails);
+            Assert.Equal(("rival", MailKinds.SiegeAlert, rival.RegionId, "me"), (alert.who, alert.m.Kind, alert.m.RegionId, alert.m.FromAccountId));
+            Assert.True(Kit.D.Strings.ContainsKey("ui.mail.siegeAlert"));
+
+            Assert.NotNull(TerritoryFlags.CheckSiegeReady(defs, owners, rival.RegionId, "me", Now + prep - 1)); // 1분 전
+            Assert.Null(TerritoryFlags.CheckSiegeReady(defs, owners, rival.RegionId, "me", Now + prep));
+            Assert.NotNull(TerritoryFlags.CheckSiegeReady(defs, owners, rival.RegionId, "other", Now + prep));
+            Assert.NotNull(TerritoryFlags.CheckSiegeReady(defs, owners, rival.RegionId, "me", Now + prep + window + 1)); // 시간 지남
+            Assert.Equal(SiegeReasons.Busy, TerritoryFlags.StartSiege(defs, Kit.D, Kit.Veteran(), "other", owners, req, Now + 10, (w, m) => mails.Add((w, m))).Reason);
+            Assert.True(TerritoryFlags.StartSiege(defs, Kit.D, me, "me", owners, req, Now + 10, (w, m) => mails.Add((w, m))).Ok); // 같은 공격자: 기록 그대로
+            Assert.Single(mails);
+
+            Assert.False(TerritoryFlags.CancelSiege(defs, owners, rival.RegionId, "other", Now + 10, (w, f) => taken.Add((w, f))));
+            Assert.True(TerritoryFlags.CancelSiege(defs, owners, rival.RegionId, "me", Now + 10, (w, f) => taken.Add((w, f))));
+            Assert.Equal(("rival", rival.RegionId), Assert.Single(taken));
+            Assert.Null(rival.SiegeAttackerId);
+
+            // 다시 준비 → 준비가 끝나면 취소 없음 → 공성전이 끝나면 기록 · 알림 정리
+            Assert.True(TerritoryFlags.StartSiege(defs, Kit.D, me, "me", owners, req, Now + 20, (w, m) => mails.Add((w, m))).Ok);
+            Assert.False(TerritoryFlags.CancelSiege(defs, owners, rival.RegionId, "me", Now + 20 + prep, (w, f) => taken.Add((w, f))));
+            TerritoryFlags.AfterSiege(defs, Kit.D, owners, rival.RegionId, false, "me", me, "general_a", Now + 200, (w, m) => mails.Add((w, m)), (w, f) => taken.Add((w, f)));
+            Assert.Equal(2, taken.Count);
+            Assert.Null(owners[rival.RegionId].SiegeAttackerId);
+            Assert.Equal(SiegeReasons.BadTarget, TerritoryFlags.StartSiege(defs, Kit.D, me, "me", owners, req, Now + 300, null).Reason); // 보호 중
+        }
+
         [Fact(DisplayName = "R-97 공성전 뒤: 이기면 이전 주인에게 쌓인 수입 우편 + 그 자리에 내 깃발(공격 장수 · 내 계급 반지름), 지든 이기든 보호 시간")]
         public void AfterSiege()
         {

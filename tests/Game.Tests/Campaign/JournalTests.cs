@@ -29,6 +29,7 @@ namespace Game.Tests.Campaign
             public void RegisterHire(HireListingRequest r, Action<HireListingResponse> done) { if (Down) done(null); else _inner.RegisterHire(r, done); }
             public void Unregister(string id, Action<bool?> done) { if (Down) done(null); else _inner.Unregister(id, done); }
             public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
+            public void CheckIn(Action<AttendanceResponse> done) { if (Down) done(null); else _inner.CheckIn(done); }
             public void ShareReplay(ShareReplayRequest r, Action<ShareReplayResponse> done) { if (Down) done(null); else _inner.ShareReplay(r, done); }
             public void GetSharedReplays(string s, Action<SharedReplayListResponse> done) { if (Down) done(null); else _inner.GetSharedReplays(s, done); }
             public void GetSharedReplay(string id, Action<SharedReplayResponse> done) { if (Down) done(null); else _inner.GetSharedReplay(id, done); }
@@ -43,6 +44,8 @@ namespace Game.Tests.Campaign
             public void RegisterDefense(DefenseRequest r, Action<DefenseResponse> done) { if (Down) done(null); else _inner.RegisterDefense(r, done); }
             public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
             public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);
+            public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) => done?.Invoke(null);
+            public void CancelSiege(string flagKey, Action<bool?> done) => done?.Invoke(null);
             public void GetAlliances(Action<AllianceListResponse> done) { if (Down) done(null); else _inner.GetAlliances(done); }
             public void CreateAlliance(string n, Action<AllianceResponse> done) { if (Down) done(null); else _inner.CreateAlliance(n, done); }
             public void JoinAlliance(string id, Action<AllianceResponse> done) { if (Down) done(null); else _inner.JoinAlliance(id, done); }

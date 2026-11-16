@@ -95,6 +95,10 @@ namespace Game.Flow
         public List<string> UnlockedSkills { get; } = new List<string>();
         /// <summary>합류한 장수 (첫 클리어 보상). 이미 있던 장수면 JoinedAsShard에.</summary>
         public List<string> JoinedGenerals { get; } = new List<string>();
+        /// <summary>새로 얻은 치장 (R-111).</summary>
+        public List<string> Cosmetics { get; } = new List<string>();
+        /// <summary>이미 가진 치장 보상 대신 받은 엽전 (R-111).</summary>
+        public long CosmeticRefundGold { get; set; }
         public List<string> JoinedAsShard { get; } = new List<string>();
         public Dictionary<string, long> RewardResources { get; } = new Dictionary<string, long>();
         public List<(string generalId, GrowthReward reward)> GrowthRewards { get; } = new List<(string, GrowthReward)>();
@@ -282,10 +286,22 @@ namespace Game.Flow
                 foreach (var st in Army.Layout(_defs, picks))
                 {
                     var u = state.FindUnit(st.UnitId);
-                    // 겉모습 (R-108): 내 병종 계열이 입은 갑옷 · 말 색. 빌린 부대(용병)는 기본 모습 (주인의 치장 전달은 나중)
-                    string line = hiredUnits.Contains(u.UnitId) ? null : CosmeticService.LineOf(_defs, u.TroopType);
+                    // 겉모습 (R-108·R-111): 내 병종 계열이 입은 갑옷 · 말 색. 빌린 부대(용병)는 주인이 입힌 모습 (등록 때 함께 보낸 것)
+                    string armor, horse;
+                    if (hiredUnits.Contains(u.UnitId))
+                    {
+                        (string a, string h) look = default;
+                        hired?.Looks.TryGetValue(u.UnitId, out look);
+                        armor = look.a; horse = look.h;
+                    }
+                    else
+                    {
+                        string line = CosmeticService.LineOf(_defs, u.TroopType);
+                        armor = CosmeticService.Worn(state, line, CosmeticKinds.Armor);
+                        horse = CosmeticService.Worn(state, line, CosmeticKinds.Horse);
+                    }
                     cs.Units.Add(new UnitSetup { UnitId = u.UnitId + SubUnitMark + st.Slot, Slot = st.Slot, TroopType = u.TroopType, Troops = st.Troops, Cohesion = u.Cohesion, Training = u.Training,
-                        Armor = CosmeticService.Worn(state, line, CosmeticKinds.Armor), Horse = CosmeticService.Worn(state, line, CosmeticKinds.Horse) });
+                        Armor = armor, Horse = horse });
                     if (_defs.TroopTypes.TryGetValue(u.TroopType, out var tt)) d = checked(d + st.Troops * tt.SupplyPerDay);
                 }
                 daily.Add(d);
@@ -404,7 +420,8 @@ namespace Game.Flow
                     UnitState u = null;
                     try { u = OnlineJson.Read<UnitState>(du.UnitJson); } catch (System.Exception) { }
                     if (u == null || !_defs.TroopTypes.TryGetValue(u.TroopType ?? "", out var tt) || !SlotIds.IsValid(du.Slot)) { errors.Add("수비 편성의 부대를 읽을 수 없습니다."); return; }
-                    cs.Units.Add(new UnitSetup { UnitId = id + "_" + du.Slot, Slot = du.Slot, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion, Training = u.Training });
+                    cs.Units.Add(new UnitSetup { UnitId = id + "_" + du.Slot, Slot = du.Slot, TroopType = u.TroopType, Troops = u.Troops, Cohesion = u.Cohesion, Training = u.Training,
+                        Armor = du.Armor, Horse = du.Horse }); // 수비 주인의 겉모습 (R-111)
                     daily = checked(daily + u.Troops * tt.SupplyPerDay);
                 }
                 cs.Supply = (Fix.FromInt(10) * (daily * balance.SupplyDaysPerMinute)).CeilToLong();
@@ -603,6 +620,17 @@ namespace Game.Flow
                 }
                 state.Generals.Add(GeneralState.Join(def));
                 report.JoinedGenerals.Add(id);
+            }
+            // 치장 (R-111): 없으면 얻고, 이미 가졌으면 엽전 n
+            if (step.RewardCosmetics.Count > 0)
+            {
+                var cos = new CosmeticService(_defs);
+                foreach (var id in step.RewardCosmetics)
+                {
+                    long gold = cos.GrantOrRefund(state, id);
+                    if (gold > 0) report.CosmeticRefundGold += gold;
+                    else if (gold == 0 && CosmeticService.Owns(state, id)) report.Cosmetics.Add(id);
+                }
             }
         }
 

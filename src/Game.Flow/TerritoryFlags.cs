@@ -190,13 +190,69 @@ namespace Game.Flow
         }
 
         /// <summary>
+        /// 공성전 준비 시작 (territory-v2.md 2.3, R-113): <see cref="CheckSiege"/>를 지나면 서버 시각으로 준비 시작을 기록하고 수비자에게 알림 우편.
+        /// 다른 공격자가 준비 · 공격 시간 안이면 busy. 같은 공격자가 다시 부르면 기록 그대로 (알림 다시 안 보냄).
+        /// </summary>
+        public static SiegeResponse StartSiege(TerritoryDefs territory, DefinitionSet defs, CampaignState state, string accountId, Dictionary<string, TerritoryOwner> owners,
+            SiegeRequest req, long now, Action<string, Mail> sendMail)
+        {
+            string err = CheckSiege(territory, defs, state, accountId, owners, req?.FlagKey, req?.Location, now);
+            if (err != null) return new SiegeResponse { Reason = SiegeReasons.BadTarget, Message = err };
+            var fd = territory.Flags;
+            var o = owners[req.FlagKey];
+            bool active = o.SiegeAttackerId != null && now <= o.SiegeStartedAtUnixSeconds + fd.SiegePrepSeconds + fd.SiegeWindowSeconds;
+            if (active && o.SiegeAttackerId != accountId) return new SiegeResponse { Reason = SiegeReasons.Busy };
+            if (!active)
+            {
+                o.SiegeAttackerId = accountId;
+                o.SiegeStartedAtUnixSeconds = now;
+                sendMail?.Invoke(o.OwnerAccountId, new Mail { Kind = MailKinds.SiegeAlert, RegionId = o.RegionId, FromAccountId = accountId, CreatedAtUnixSeconds = now });
+            }
+            long starts = o.SiegeStartedAtUnixSeconds + fd.SiegePrepSeconds;
+            return new SiegeResponse { Ok = true, Reason = SiegeReasons.Ok, StartsAtUnixSeconds = starts, ExpiresAtUnixSeconds = starts + fd.SiegeWindowSeconds };
+        }
+
+        /// <summary>
+        /// 공성전 제출 시 준비 검사 (서버, R-113): 준비가 없으면(siegePrepSeconds 0) 통과. 아니면 내가 준비했고, 준비 시간이 지났고, 낼 시간 안이어야 한다. 되면 null, 아니면 까닭.
+        /// </summary>
+        public static string CheckSiegeReady(TerritoryDefs territory, IReadOnlyDictionary<string, TerritoryOwner> owners, string flagKey, string accountId, long now)
+        {
+            var fd = territory?.Flags;
+            if (fd == null || fd.SiegePrepSeconds <= 0) return null;
+            if (owners == null || !owners.TryGetValue(flagKey ?? "", out var o) || o.SiegeAttackerId != accountId) return "공성전 준비를 먼저 해야 합니다.";
+            if (now < o.SiegeStartedAtUnixSeconds + fd.SiegePrepSeconds) return "공성전 준비 중입니다.";
+            if (now > o.SiegeStartedAtUnixSeconds + fd.SiegePrepSeconds + fd.SiegeWindowSeconds) return "공성전 준비 시간이 지났습니다. 다시 준비하세요.";
+            return null;
+        }
+
+        /// <summary>준비 중 공격 취소 (R-113): 내가 준비 중이고 아직 준비 시간 안이면 기록을 지우고 true. 수비자의 알림은 takeAlert로 지운다.</summary>
+        public static bool CancelSiege(TerritoryDefs territory, Dictionary<string, TerritoryOwner> owners, string flagKey, string accountId, long now, Action<string, string> takeAlert)
+        {
+            var fd = territory?.Flags;
+            if (fd == null || owners == null || !owners.TryGetValue(flagKey ?? "", out var o) || o.SiegeAttackerId == null || o.SiegeAttackerId != accountId) return false;
+            if (now >= o.SiegeStartedAtUnixSeconds + fd.SiegePrepSeconds && fd.SiegePrepSeconds > 0) return false; // 준비가 끝나면 취소 없음 (공성전 진행)
+            EndSiege(o, takeAlert);
+            return true;
+        }
+
+        /// <summary>공성전 기록을 지우고 수비자 알림을 거둔다.</summary>
+        public static void EndSiege(TerritoryOwner o, Action<string, string> takeAlert)
+        {
+            if (o == null || o.SiegeAttackerId == null) return;
+            takeAlert?.Invoke(o.OwnerAccountId, o.RegionId);
+            o.SiegeAttackerId = null;
+            o.SiegeStartedAtUnixSeconds = 0;
+        }
+
+        /// <summary>
         /// 공성전이 끝난 뒤 (R-97): 어느 쪽이 이기든 그 자리는 보호 시간 동안 다시 공격받지 않는다.
         /// 공격자가 이기면 이전 주인에게 쌓인 수입을 우편으로 보내고, 그 자리에 공격자의 깃발 (장수 = 공격 군단 첫 장수, 수비 = 그 장수 군단 스냅샷, 반지름 = 공격자 계급).
         /// </summary>
         public static void AfterSiege(TerritoryDefs territory, DefinitionSet defs, Dictionary<string, TerritoryOwner> owners, string flagKey, bool attackerWon,
-            string attackerId, CampaignState attackerState, string attackerGeneralId, long at, Action<string, Mail> sendMail)
+            string attackerId, CampaignState attackerState, string attackerGeneralId, long at, Action<string, Mail> sendMail, Action<string, string> takeAlert = null)
         {
             if (territory?.Flags == null || !owners.TryGetValue(flagKey ?? "", out var old)) return;
+            EndSiege(old, takeAlert); // 준비 기록 · 수비자 알림 정리 (R-113)
             long until = at + territory.Flags.ProtectSeconds;
             if (!attackerWon) { old.ProtectedUntilUnixSeconds = until; return; }
             TerritoryLedger.Capture(territory, owners, flagKey, attackerId, at, sendMail);

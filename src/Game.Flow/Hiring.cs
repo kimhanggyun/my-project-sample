@@ -29,6 +29,8 @@ namespace Game.Flow
 
         /// <summary>서버 재현이 맞은 뒤: 고용마다 전투 결과 (이력용, R-44).</summary>
         public List<HireOutcome> Outcomes { get; } = new List<HireOutcome>();
+        /// <summary>고용 부대 id("hire." + 등록 id) → 주인의 겉모습 (갑옷, 말 색). R-111.</summary>
+        public Dictionary<string, (string armor, string horse)> Looks { get; } = new Dictionary<string, (string, string)>();
         /// <summary>그 전투의 스텝 id (이력용).</summary>
         public string StepId { get; internal set; }
 
@@ -123,6 +125,10 @@ namespace Game.Flow
                 listing.SnapshotJson = OnlineJson.Write(snap);
                 listing.TroopType = u.TroopType;
                 listing.Troops = snap.Troops;
+                // 겉모습 (R-111): 주인이 그 계열에 입힌 치장을 같이 보낸다 (빌린 쪽 전투에서 그 모습으로)
+                string line = CosmeticService.LineOf(_defs, u.TroopType);
+                listing.Armor = CosmeticService.Worn(owner, line, CosmeticKinds.Armor);
+                listing.Horse = CosmeticService.Worn(owner, line, CosmeticKinds.Horse);
                 listing.TrainingRaw = u.Training.Raw;
                 recommended = RecommendedPrice(u, req.PayWith);
             }
@@ -192,6 +198,7 @@ namespace Game.Flow
                     u.Troops = use.Count;
                     u.Wounded = 0;
                     forces.Units.Add(u);
+                    forces.Looks[u.UnitId] = (l.Armor, l.Horse);
                     cost = HireCalculator.UnitHireCost(l.Price, use.Count);
                     forces.Uses.Add(new HireUse { ListingId = l.Id, Version = l.Version, Count = use.Count });
                 }

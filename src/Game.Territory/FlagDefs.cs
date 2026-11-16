@@ -21,6 +21,10 @@ namespace Game.Territory
         public long MetersPerDegreeLon { get; private set; }
         public long ProtectSeconds { get; private set; }
         public long IncomeCapHours { get; private set; }
+        /// <summary>공성전 준비 (초, R-113). 0이면 준비 없이 바로.</summary>
+        public long SiegePrepSeconds { get; private set; }
+        /// <summary>준비가 끝난 뒤 공성전을 낼 수 있는 시간 (초).</summary>
+        public long SiegeWindowSeconds { get; private set; }
         public IReadOnlyDictionary<string, long> IncomePerHour { get; private set; }
         /// <summary>공성전 전투 틀 (스텝 형식).</summary>
         public JObject Battle { get; private set; }
@@ -36,6 +40,8 @@ namespace Game.Territory
                 MetersPerDegreeLon = JsonUtil.RequireLong(o, "metersPerDegreeLon", File),
                 ProtectSeconds = (o.Value<long?>("protectMinutes") ?? 30) * 60,
                 IncomeCapHours = o.Value<long?>("incomeCapHours") ?? 24,
+                SiegePrepSeconds = o.Value<long?>("siegePrepSeconds") ?? 0,
+                SiegeWindowSeconds = (o.Value<long?>("siegeWindowMinutes") ?? 30) * 60,
                 Battle = JsonUtil.RequireObject(o, "battle", File),
             };
             var inc = new Dictionary<string, long>();
@@ -46,8 +52,8 @@ namespace Game.Territory
                 inc[p.Name] = v;
             }
             d.IncomePerHour = inc;
-            if (d.CellLatE6 < 1 || d.CellLonE6 < 1 || d.MetersPerDegreeLat < 1 || d.MetersPerDegreeLon < 1 || d.ProtectSeconds < 0 || d.IncomeCapHours < 1)
-                throw new DataException($"{File}: 칸 크기 · 1도당 미터 · 보호 시간 · 수입 상한이 잘못되었습니다.");
+            if (d.CellLatE6 < 1 || d.CellLonE6 < 1 || d.MetersPerDegreeLat < 1 || d.MetersPerDegreeLon < 1 || d.ProtectSeconds < 0 || d.IncomeCapHours < 1 || d.SiegePrepSeconds < 0 || d.SiegeWindowSeconds < 60)
+                throw new DataException($"{File}: 칸 크기 · 1도당 미터 · 보호 시간 · 수입 상한 · 공성전 준비가 잘못되었습니다.");
             if (!(d.Battle["enemy"] is JArray en) || en.Count == 0) throw new DataException($"{File}.battle: 적(enemy)이 있어야 합니다.");
             return d;
         }

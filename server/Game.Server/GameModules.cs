@@ -33,6 +33,8 @@ namespace Game.Server
         HireListResponse Listings(string kind, string accountId);
         bool Unregister(string accountId, string listingId);
         MailListResponse MailOf(string accountId);
+        /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편.</summary>
+        AttendanceResponse CheckIn(string accountId);
 
         /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
         TerritoryResponse Territory(string accountId);
@@ -45,6 +47,9 @@ namespace Game.Server
         PlantResponse PlantFlag(string accountId, PlantRequest request);
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         RecallResponse RecallFlag(string accountId, RecallRequest request);
+        /// <summary>공성전 준비 시작 · 준비 중 취소 (R-113).</summary>
+        SiegeResponse StartSiege(string accountId, SiegeRequest request);
+        bool CancelSiege(string accountId, string flagKey);
 
         // ---- 연합 (R-49) ----
         AllianceListResponse Alliances(string accountId);
@@ -105,10 +110,9 @@ namespace Game.Server
         private readonly Game.Territory.TerritoryDefs _territory;
 
         /// <summary>
-        /// 결제 영수증 (R-64): 개발용 가짜 영수증("fake:")을 받을지 (설정 Game:AllowFakeReceipts, 기본 true = 참고·테스트 서버).
-        /// 실제 스토어 검증은 백엔드를 정한 뒤 더한다. 쓴 영수증은 지금은 메모리에만 (실제 서버는 저장소에).
+        /// 결제 영수증 검증기 (R-64 · R-114): 설정 Game:ReceiptVerifier (fake 기본 · off · googlePlay). 참고 · 테스트 서버는 가짜 영수증("fake:")을 받는다.
         /// </summary>
-        public bool AllowFakeReceipts { get; set; } = true;
+        public IReceiptVerifier Receipts { get; set; } = new FakeReceiptVerifier();
 
         /// <summary>마스터 계정 (R-86, 설정 Game:Masters). 개발 행동 dev.*은 여기 있는 계정의 것만 받는다.</summary>
         public MasterAccounts Masters { get; set; } = new MasterAccounts();
@@ -184,7 +188,8 @@ namespace Game.Server
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
             // 깃발 공성전 (R-97): 깃발 · 보호 · 범위 검사
             string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
-            if (flagKey != null && _store.WithTerritory(Code, owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)) != null)
+            if (flagKey != null && _store.WithTerritory(Code, owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)
+                    ?? TerritoryFlags.CheckSiegeReady(_territory, owners, flagKey, accountId, Now)) != null) // 준비 1분 (R-113)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = save };
             var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
                 _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, owners => TerritoryLedger.DefenseOf(owners, region)));
@@ -194,7 +199,7 @@ namespace Game.Server
             if (flagKey != null)
             {
                 var after = FromJson(json);
-                _store.WithTerritory(Code, owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
+                _store.WithTerritory(Code, owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m), TakeAlert); return 0; });
             }
             else if (TerritoryBattles.Captures(s, verdict))
                 _store.WithTerritory(Code, owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
@@ -225,7 +230,7 @@ namespace Game.Server
             // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 하고, 한 묶음에서 두 번 받을 수 없다
             var box = _store.MailOf(Code, accountId);
             var claimed = new HashSet<string>(StringComparer.Ordinal);
-            var receipts = new ReceiptCheck(AllowFakeReceipts, _usedReceipts);
+            var receipts = new ReceiptCheck(Receipts, _usedReceipts);
             bool ServerCheck(PlayerAction a)
             {
                 if (!receipts.Check(a)) return false;
@@ -263,6 +268,9 @@ namespace Game.Server
         }
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
+
+        public AttendanceResponse CheckIn(string accountId) =>
+            _store.WithAttendance(Code, accountId, rec => new DailyEconomy(_defs).CheckIn(rec, Now, m => _store.AddMail(Code, accountId, m)));
         public TerritoryResponse Territory(string accountId)
         {
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
@@ -298,6 +306,22 @@ namespace Game.Server
             var state = FromJson(LoadOrCreate(accountId).Json);
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
             return _store.WithTerritory(Code, owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
+        }
+
+        public SiegeResponse StartSiege(string accountId, SiegeRequest req)
+        {
+            var state = FromJson(LoadOrCreate(accountId).Json);
+            return _store.WithTerritory(Code, owners => TerritoryFlags.StartSiege(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
+        }
+
+        public bool CancelSiege(string accountId, string flagKey) =>
+            _store.WithTerritory(Code, owners => TerritoryFlags.CancelSiege(_territory, owners, flagKey, accountId, Now, TakeAlert));
+
+        /// <summary>수비자의 그 깃발 공성전 알림 우편을 지운다 (공성전이 끝나거나 취소, R-113).</summary>
+        private void TakeAlert(string who, string flagKey)
+        {
+            foreach (var m in _store.MailOf(Code, who))
+                if (m.Kind == MailKinds.SiegeAlert && m.RegionId == flagKey) _store.TakeMail(Code, who, m.Id);
         }
 
         public RecallResponse RecallFlag(string accountId, RecallRequest req)

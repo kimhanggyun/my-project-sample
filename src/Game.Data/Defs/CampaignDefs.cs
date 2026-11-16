@@ -177,6 +177,8 @@ namespace Game.Data.Defs
         public string CasterSkill { get; internal set; }
         public string RewardSkill { get; internal set; }
         public string RewardTrait { get; internal set; }
+        /// <summary>치장 보상 (cosmetics.md 5장, R-111). 계정이 얻는다 (받는 장수와 상관없이). 이미 가졌으면 엽전.</summary>
+        public string RewardCosmetic { get; internal set; }
         public string HintKey { get; internal set; }
         /// <summary>분류 (13 도감 칩): story · battle · duel · land · merc. 없으면 스텝이 있으면 story, 아니면 battle.</summary>
         public string Category { get; internal set; }
@@ -205,6 +207,7 @@ namespace Game.Data.Defs
                     CasterSkill = reward.Value<string>("casterSkill"),
                     RewardSkill = reward.Value<string>("skill"),
                     RewardTrait = reward.Value<string>("trait"),
+                    RewardCosmetic = reward.Value<string>("cosmetic"),
                     HintKey = s.Value<string>("hintKey"),
                     Category = s.Value<string>("category") ?? (cond.Value<string>("step") != null ? "story" : "battle"),
                 });
@@ -409,6 +412,8 @@ namespace Game.Data.Defs
         public IReadOnlyList<string> RewardSkills { get; private set; }
         /// <summary>첫 클리어에 합류하는 장수 (rewards.joinGenerals, generals.md 1장: 뽑기에서만 나오는 장수 없음). 이미 있으면 조각 1개.</summary>
         public IReadOnlyList<string> RewardGenerals { get; private set; }
+        /// <summary>첫 클리어 치장 보상 (cosmetics.md 5장, R-111): 치장 id. 이미 가졌으면 엽전으로 바꿔 준다.</summary>
+        public IReadOnlyList<string> RewardCosmetics { get; private set; } = new List<string>();
         public IReadOnlyDictionary<string, long> RewardResources { get; private set; }
         /// <summary>승리 시 출전 장수 경험치 (전투 레벨업 배율 적용 전).</summary>
         public long RewardExp { get; private set; }
@@ -520,6 +525,7 @@ namespace Game.Data.Defs
                 RewardFormations = JsonUtil.StringList(rewards, "unlockFormations"),
                 RewardSkills = JsonUtil.StringList(rewards, "unlockSkills"),
                 RewardGenerals = JsonUtil.StringList(rewards, "joinGenerals"),
+                RewardCosmetics = JsonUtil.StringList(rewards, "cosmetics"),
                 RewardResources = res,
                 RewardExp = rewards.Value<long?>("exp") ?? 0,
                 Events = events,

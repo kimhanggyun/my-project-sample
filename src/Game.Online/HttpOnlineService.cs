@@ -160,6 +160,9 @@ namespace Game.Online
         public void GetMail(Action<MailListResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Mail(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
+        public void CheckIn(Action<AttendanceResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.Attendance(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<AttendanceResponse>(body) : null));
+
         public void GetTerritory(Action<TerritoryResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Territory(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<TerritoryResponse>(body) : null));
 
@@ -178,6 +181,15 @@ namespace Game.Online
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryRecall(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<RecallResponse>(body) : null));
+
+        /// <summary>200 = 준비 시작, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritorySiege(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<SiegeResponse>(body) : null));
+
+        public void CancelSiege(string flagKey, Action<bool?> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritorySiegeCancel(_game), OnlineJson.Write(new SiegeRequest { FlagKey = flagKey }), Token, (status, body) =>
+                done?.Invoke(status == 200 ? true : status == 422 ? false : (bool?)null));
 
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritoryPlant(_game), OnlineJson.Write(request), Token, (status, body) =>
