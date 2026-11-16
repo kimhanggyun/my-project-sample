@@ -99,3 +99,4 @@
 - 2026-11-16 [데스크탑] desktop/settings-2 — 설정 위치 [기기 설정 ›] (안드로이드 앱 정보 · iOS 설정 앱), 삭제 취소 알림 창 (/me DeletionCancelled). 초상 바꾸기는 그림이 없어 보류
 - 2026-11-16 [데스크탑] desktop/shop-tabs — 상점 위 탭 [엽전구매] [금괴] [현금], 바꾸기 버튼 하나(열 묶음), 캡처 27b · 27c
 - 2026-11-16 [데스크탑] desktop/tabs-tidy — 아래 탭 정리: 도감 → 배포 줄, 상점 · 우편 · 설정은 row top (위 아이콘으로만), 줄에 없는 탭도 id로 열기
+- 2026-11-16 [데스크탑] desktop/replay-codex-marks — 녹화: 다시 볼 수 없던 녹화 흐림 · ▶ 꺼짐 (ReplayRecord.Unplayable), 도감: 새로 찾은 숨은 보상 [NEW] · [도감] 탭 빨간 점

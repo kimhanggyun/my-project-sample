@@ -50,6 +50,20 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class CodexScreen : GameScreen
     {
+        /// <summary>타일 오른쪽 위 [NEW] (레이아웃 밖).</summary>
+        private void NewMark(RectTransform tile)
+        {
+            var tag = Ui.Rect(tile, "New");
+            tag.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            tag.anchorMin = tag.anchorMax = tag.pivot = new Vector2(1f, 1f);
+            tag.anchoredPosition = new Vector2(-8f, -8f);
+            tag.sizeDelta = new Vector2(80f, 36f);
+            Ui.Round(Ui.Background(tag, Palette.Seal));
+            var t = Ui.Label(tag, T("ui.codex.new"), 20, TextAnchor.MiddleCenter, Color.white);
+            t.fontStyle = FontStyle.Bold;
+            Ui.Fill(t.rectTransform);
+        }
+
         private static string _tab = "secrets";
         /// <summary>캡처 도구: 처음 열 탭 (secrets / generals).</summary>
         public static string Tab { set => _tab = value; }
@@ -156,7 +170,8 @@ namespace Game.Unity.Screens
                     Ui.Fill(seal.rectTransform);
                     Ui.Label(tile, SecretText.Name(Ctx, id), 24, TextAnchor.MiddleCenter);
                     Ui.Tag(tile, T(def.RewardSkill != null ? "ui.codex.skill" : "ui.codex.trait"), Palette.Ally, 18, 34);
-                    tile.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new CodexScreen(null, id)));
+                    if (Ctx.CodexIsNew(id)) NewMark(tile); // 새로 찾은 것 (13 시안 3): 눌러 볼 때까지
+                    tile.gameObject.AddComponent<Button>().onClick.AddListener(() => { Ctx.SeeCodex(id); App.Show(new CodexScreen(null, id)); });
                 }
                 else
                 {
