@@ -692,6 +692,23 @@ namespace Game.Unity.Boot
             return true;
         }
 
+        /// <summary>
+        /// 우편함을 다시 읽어 맞는 우편을 모두 바로 받는다 → 자원별 합 (닿지 않으면 null).
+        /// 수입 받기 · 출석 직후에 쓴다: 서버 응답의 우편에는 id가 없으므로 우편함에서 id를 얻는다 (2026-11-16).
+        /// </summary>
+        public void ClaimMailWhere(Func<Mail, bool> match, Action<SortedDictionary<string, long>> done)
+        {
+            LoadMail(list =>
+            {
+                if (list == null) { done?.Invoke(null); return; }
+                var sum = new SortedDictionary<string, long>(StringComparer.Ordinal);
+                foreach (var m in list)
+                    if (m.Amount > 0 && m.Resource != null && match(m) && ClaimMail(m))
+                        sum[m.Resource] = (sum.TryGetValue(m.Resource, out var v) ? v : 0) + m.Amount;
+                done?.Invoke(sum);
+            });
+        }
+
         /// <summary>이번 실행에서 받은 우편 (서버가 지우기 전에 다시 보여 두 번 받지 않게).</summary>
         public HashSet<string> ClaimedMail { get; } = new HashSet<string>();
 

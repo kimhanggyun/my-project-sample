@@ -493,12 +493,21 @@ namespace Game.Unity.Screens
                 close();
                 ctx.RecallFlag(new RecallRequest { FlagKey = flag.RegionId, GeneralIds = which }, r =>
                 {
-                    // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
-                    string got = r != null && r.Ok ? ClaimNow(ctx, r.Mail) : null;
-                    Notice = r == null ? ctx.T("ui.hire.failed") : !r.Ok ? ctx.T("ui.terr.recall." + r.Reason)
-                        : r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
                     NamesFetched = false;
-                    if (root != null) app.ShowMain("territory");
+                    if (r == null || !r.Ok)
+                    {
+                        Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.recall." + r.Reason);
+                        if (root != null) app.ShowMain("territory");
+                        return;
+                    }
+                    // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
+                    string flagKey = flag.RegionId;
+                    ctx.ClaimMailWhere(m => m.Kind == MailKinds.TerritoryIncome && m.RegionId == flagKey, sum =>
+                    {
+                        string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
+                        Notice = r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
+                        if (root != null) app.ShowMain("territory");
+                    });
                 });
             }
             foreach (var gid in ids)
@@ -575,21 +584,15 @@ namespace Game.Unity.Screens
             var ctx = app.Context;
             ctx.CollectFlag(regionId, r =>
             {
-                string got = r == null ? null : ClaimNow(ctx, r.Mail);
-                Notice = r == null ? ctx.T("ui.hire.failed") : got == null ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.got", got);
-                if (root != null) app.ShowMain("territory");
+                if (r == null) { Notice = ctx.T("ui.hire.failed"); if (root != null) app.ShowMain("territory"); return; }
+                // 이 깃발의 수입 우편 (방금 것 + 전에 남은 것)을 우편함에서 찾아 바로 받는다
+                ctx.ClaimMailWhere(m => m.Kind == MailKinds.TerritoryIncome && m.RegionId == regionId, sum =>
+                {
+                    string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
+                    Notice = sum == null ? ctx.T("ui.hire.failed") : got == null ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.got", got);
+                    if (root != null) app.ShowMain("territory");
+                });
             });
-        }
-
-        /// <summary>우편들을 바로 받고 "곡식 1,234 · 엽전 5" (받은 것이 없으면 null). 못 받은 우편은 우편함에 남는다.</summary>
-        internal static string ClaimNow(GameContext ctx, List<Mail> mail)
-        {
-            if (mail == null) return null;
-            var sum = new SortedDictionary<string, long>(System.StringComparer.Ordinal);
-            foreach (var m in mail)
-                if (m.Amount > 0 && m.Resource != null && ctx.ClaimMail(m))
-                    sum[m.Resource] = (sum.TryGetValue(m.Resource, out var v) ? v : 0) + m.Amount;
-            return MailScreen.Amounts(ctx, sum);
         }
 
         /// <summary>남의 깃발 판: 주인 · 연합 · 장수 · 병력 · 거리 · 보호, [공격] (연합이 아니고 공성전 검사를 통과하면).</summary>

@@ -309,11 +309,20 @@ namespace Game.Unity.Screens
                 : _lastAttendance.Result == AttendanceResults.Already ? T("ui.attend.already", Left(_lastAttendance.NextDayAtUnixSeconds))
                 : T("ui.attend.off");
             Ui.Label(card, status, 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Button(card, T("ui.attend.check"), () => Ctx.CheckIn(r =>
+            // 오늘 이미 받았으면 [출석 받기]를 끈다. 받으면 보상 우편을 곧바로 받는다 (2026-11-16 사용자: 우편함에 따로 남지 않게)
+            bool doneToday = _lastAttendance != null && (_lastAttendance.Result == AttendanceResults.Already || _lastAttendance.Result == AttendanceResults.Ok)
+                && Ctx.Clock.UtcNow.ToUnixTimeSeconds() < _lastAttendance.NextDayAtUnixSeconds;
+            var check = Ui.Button(card, doneToday ? T("ui.attend.done") : T("ui.attend.check"), () => Ctx.CheckIn(r =>
             {
                 _lastAttendance = r;
-                App.Show(new MailScreen(r == null ? T("ui.hire.failed") : null, _backTab));
+                if (r == null) { App.Show(new MailScreen(T("ui.hire.failed"), _backTab)); return; }
+                Ctx.ClaimMailWhere(m => m.Kind == MailKinds.Attendance, sum =>
+                {
+                    string got = sum == null ? null : Amounts(Ctx, sum);
+                    App.Show(new MailScreen(got != null ? T("ui.attend.claimed", got) : null, _backTab));
+                });
             }), 72, Palette.ButtonActive, 26);
+            Ui.SetEnabled(check, !doneToday);
         }
 
         /// <summary>거점 이름: 깃발이면 "내 깃발 (37.571, 126.973)", 지역이면 지역 이름.</summary>
