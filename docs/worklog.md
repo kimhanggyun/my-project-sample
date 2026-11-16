@@ -93,3 +93,4 @@
 - 2026-11-16 [데스크탑] desktop/admin-key-only — 관리자 페이지 개발 중엔 접속 ID만 (Game:AdminGoogle=off 배포 기본), 구글 확인은 출시 전 (backlog F)
 - 2026-11-16 [데스크탑] desktop/flag-reinforce — 깃발 추가 파견 R-115 (꽂기 요청 FlagKey, 바꾸기 = 추가 파견 + 회수), to-be 병력 바꾸기 줄 지움
 - 2026-11-16 [데스크탑] backlog 정리: F = 출시 전 할 일 목록으로, G 끝난 줄 [x] · to-be로 간 줄 표시
+- 2026-11-16 [데스크탑] desktop/territory-refresh — 수입 받기 · 꽂기 · 추가 파견 · 회수 뒤 영토 장부를 다시 받아 그림 (옛 수입 표가 남던 것), 통신 대기 10 → 30초

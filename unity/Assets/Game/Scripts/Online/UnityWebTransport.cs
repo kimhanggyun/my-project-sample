@@ -13,7 +13,7 @@ namespace Game.Unity.Online
     /// </summary>
     public sealed class UnityWebTransport : IOnlineTransport
     {
-        public const int TimeoutSeconds = 10;
+        public const int TimeoutSeconds = 30; // Cloud Run 첫 요청(0대에서 깨어남)이 10초를 넘을 수 있다 (2026-11-16)
 
         private readonly MonoBehaviour _host;
         private readonly string _baseUrl;
