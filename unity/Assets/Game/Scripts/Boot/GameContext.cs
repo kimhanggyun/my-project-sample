@@ -881,6 +881,8 @@ namespace Game.Unity.Boot
         public string Row { get; private set; }
         public const string RowRelease = "release";
         public const string RowDev = "dev";
+        /// <summary>아래 줄에 그리지 않고 위 아이콘(상점 · 우편 · 설정)으로만 여는 탭 (2026-11-16 사용자).</summary>
+        public const string RowTop = "top";
 
         public static List<MainTabEntry> Load(IDataSource data)
         {

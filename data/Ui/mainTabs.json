@@ -1,5 +1,5 @@
 {
-  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포 탭) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임). 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 2026-11-15 사용자 결정: 배포 줄 = 영토 · 군대(장수 · 병력 · 편성) · 대전연습 · 모집(장수 · 용병) · 연합. 상점은 우상단 아이콘이 있어 개발 줄로, 맵은 샘플전투 카드에 합침. 묶음 안 탭(general · troop · formation · gacha · hiring)은 탭 줄에서 숨기고 묶음 세그먼트로 연다.",
+  "_comment": "메인 화면 하단 탭 (main-screen.md 2·3장). row: release(아래 줄, 배포 탭) / dev(그 위 줄, 개발 빌드·마스터 계정에서만 보임) / top(아래 줄에 그리지 않고 위 아이콘으로만 엶: 상점 · 우편 · 설정, 2026-11-16 사용자). 2026-11-16: 도감은 배포 줄로. 줄마다 순서대로, 첫 번째 사용 탭이 처음 열린다. status: active(사용) / tobe(준비 중 화면) / hidden(숨김). 2026-11-15 사용자 결정: 배포 줄 = 영토 · 군대(장수 · 병력 · 편성) · 대전연습 · 모집(장수 · 용병) · 연합. 상점은 우상단 아이콘이 있어 개발 줄로, 맵은 샘플전투 카드에 합침. 묶음 안 탭(general · troop · formation · gacha · hiring)은 탭 줄에서 숨기고 묶음 세그먼트로 연다.",
   "tabs": [
     {
       "id": "territory",
@@ -32,6 +32,12 @@
       "row": "release"
     },
     {
+      "id": "codex",
+      "nameKey": "ui.tab.codex",
+      "status": "active",
+      "row": "release"
+    },
+    {
       "id": "story",
       "nameKey": "ui.tab.story",
       "status": "active",
@@ -41,7 +47,7 @@
       "id": "shop",
       "nameKey": "ui.tab.shop",
       "status": "active",
-      "row": "dev"
+      "row": "top"
     },
     {
       "id": "sampleBattle",
@@ -56,16 +62,10 @@
       "row": "dev"
     },
     {
-      "id": "codex",
-      "nameKey": "ui.tab.codex",
-      "status": "active",
-      "row": "dev"
-    },
-    {
       "id": "mail",
       "nameKey": "ui.tab.mail",
       "status": "active",
-      "row": "dev"
+      "row": "top"
     },
     {
       "id": "prisoner",
@@ -77,7 +77,7 @@
       "id": "settings",
       "nameKey": "ui.tab.settings",
       "status": "active",
-      "row": "dev"
+      "row": "top"
     },
     {
       "id": "master",
