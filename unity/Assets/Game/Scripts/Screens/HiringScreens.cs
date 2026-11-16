@@ -298,7 +298,7 @@ namespace Game.Unity.Screens
                 var r = econ.Cycle[i];
                 bool today = _lastAttendance != null && _lastAttendance.Index == i && _lastAttendance.Result != AttendanceResults.Off;
                 var cell = Ui.Rect(days, "Day" + (i + 1));
-                var bg = Ui.Background(cell, today ? new Color(0.24f, 0.48f, 0.25f) : Palette.Card);
+                var bg = Ui.Background(cell, today ? new Color(0.24f, 0.48f, 0.25f) : new Color(0.9f, 0.86f, 0.76f));
                 bg.sprite = UiShapes.Rounded(10);
                 bg.type = UnityEngine.UI.Image.Type.Sliced;
                 var t = Ui.Label(cell, T("ui.attend.day", i + 1) + "\n" + T("resource." + r.Resource) + " " + Ui.Compact(r.Amount), 18, TextAnchor.MiddleCenter, today ? Color.white : Palette.Text);

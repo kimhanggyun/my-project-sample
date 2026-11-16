@@ -663,6 +663,7 @@
   "ui.siege.busy": "다른 군대가 이 깃발을 공격 중입니다.",
   "ui.siege.cannot": "이 깃발은 지금 칠 수 없습니다.",
   "ui.siege.underAttack": "⚔ 공격받는 중",
+  "ui.shop.cosmeticPaidNote": "갑옷 한 벌 · 병력 탭 [꾸미기]에서 입힘",
   "ui.settings.header": "설정",
   "ui.settings.version": "버전 {0} / Unity {1}",
   "ui.settings.services": "외부 서비스 설정",

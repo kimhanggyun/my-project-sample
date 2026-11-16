@@ -39,7 +39,7 @@ namespace Game.Unity.Screens
                 string what = "";
                 foreach (var kv in p.Grants) what += ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0") + "  ";
                 if (p.AdFreeDays.HasValue) what += p.AdFreeDays.Value <= 0 ? ctx.T("ui.shop.adFreeForeverItem") : ctx.T("ui.shop.adFreeDaysItem", p.AdFreeDays.Value);
-                if (p.CosmeticId != null) what += ctx.T("ui.shop.cosmeticItem", ctx.T("cos." + p.CosmeticId)) + (CosmeticService.Owns(ctx.State, p.CosmeticId) ? "  " + ctx.T("ui.shop.owned") : "");
+                if (p.CosmeticId != null) what += ctx.T("ui.shop.cosmeticPaidNote") + (CosmeticService.Owns(ctx.State, p.CosmeticId) ? "  " + ctx.T("ui.shop.owned") : "");
                 Ui.Size(Ui.Label(row, ctx.T("product." + id) + "\n" + Ui.Colored(what, Palette.TextDim), 26), flexibleWidth: 3);
                 var buy = Ui.Button(row, ctx.T("ui.shop.buy", p.PriceKrw.Value.ToString("N0")), () => Buy(app, id), 96, Palette.ButtonActive, 26);
                 Ui.Size(buy, width: 300);
