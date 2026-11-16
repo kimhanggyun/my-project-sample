@@ -481,7 +481,7 @@ private Dictionary<string, Game.Flow.ReceiptRecord> ReceiptBook(string gameCode)
 
         public T WithPush<T>(string gameCode, string accountId, Func<PushProfile, T> use)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Push == null) Data.Push = new Dictionary<string, Dictionary<string, PushProfile>>(); // 예전 저장 파일
                 if (!Data.Push.TryGetValue(gameCode, out var g)) Data.Push[gameCode] = g = new Dictionary<string, PushProfile>();
