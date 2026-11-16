@@ -34,7 +34,8 @@
 | 확인 | 항목 | 내용 | 왜 미뤘나 | 문서 |
 |---|---|---|---|---|
 | ✓ | 유저 대전 (1:1 · N:N) | 실시간 · 비동기 대전 서버 | "확장 예정, 구조만 대비" | [pvp.md](content/pvp.md) |
-| ? | 영토 유저 대전 · 전장 지원 | 공성전을 상대가 직접 지휘, 연합원이 전장에 지원 | 대전 서버가 먼저 | [territory-v2.md](content/territory-v2.md) |
+| ✓ | 영토 유저 대전 (수비자 입장 · 직접 지휘) | 공격 알림 → 수비자가 준비 60초 안에 들어와 직접 지휘 (안 오면 AI 수비). 필요: 푸시 알림, 실시간 명령 중계 서버, 원격 지휘 주체, 끊김 · 지연 처리, 대전 규칙 세트 (약 20~25% — 결정적 전투 · 명령 기록 · 서버 재현 · 공성전 기록은 있음) | 2026-11-16 사용자: 지금은 우편 알림 수준만, 60초 대기도 함께 뺌 (`siegePrepSeconds` 0, 카운트다운 화면 `SiegePrepScreen`은 남김) | [territory-v2.md](content/territory-v2.md) 2.3 · 2.4, [pvp.md](content/pvp.md) |
+| ? | 영토 전장 지원 | 겹친 내 깃발 · 연합원 지원군이 전장에 늦게 입장 | 공성전 기본이 먼저 | [territory-v2.md](content/territory-v2.md) 2.5 |
 | ? | 영토 병력 바꾸기 | 꽂아 둔 깃발의 병력 갈기 | 지금은 회수 → 다시 꽂기로 가능 | [08_territory/변경점.md](mockups/08_territory/변경점.md) |
 | ? | 한국 밖 지도 세부 층 | 시도 경계 · 도로 · 도시를 다른 지역에도 | 지금은 한국 근처 칸만 (용량) | [territory-v2.md](content/territory-v2.md) · `tools/naturalearth_detail.js` |
 | ? | 동네 길 수준 지도 | OpenStreetMap 등 세밀한 지도 | 자료 크기 · 출처 표시 · 수묵 스타일 작업 | [territory-v2.md](content/territory-v2.md) |

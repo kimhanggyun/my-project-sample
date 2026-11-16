@@ -164,8 +164,8 @@ namespace Game.Tests.Campaign
             var mails = new List<(string who, Mail m)>();
             var taken = new List<(string who, string flag)>();
             var req = new SiegeRequest { FlagKey = rival.RegionId, Location = Here };
-            // 데이터 = 설계 값 60초 (2026-11-16 카운트다운 화면과 함께 켬): 준비 없이 바로 내면 거절
-            Assert.NotNull(TerritoryFlags.CheckSiegeReady(Defs, owners, rival.RegionId, "me", Now)); // 준비를 먼저
+            // 데이터 = 0 (2026-11-16 사용자: 기다림 없이 바로, 기록 · 알림만). 규칙은 60초로도 본다
+            Assert.Null(TerritoryFlags.CheckSiegeReady(Defs, owners, rival.RegionId, "me", Now)); // 0이면 준비 없이 바로
             var defs = Defs;
             typeof(FlagDefs).GetProperty(nameof(FlagDefs.SiegePrepSeconds)).SetValue(defs.Flags, 60L);
             long prep = defs.Flags.SiegePrepSeconds, window = defs.Flags.SiegeWindowSeconds;
