@@ -20,6 +20,10 @@ namespace Game.Unity.Screens
     {
         private static string _tab = "hire";
         private static string _unit = "both";
+        /// <summary>정렬 (09 시안 2): 승률 · 레벨 · 가격(싼 것).</summary>
+        private static string _sort = "win";
+        /// <summary>병종 거르기 (null = 모두): 그 병종 부대를 등록한 사람만.</summary>
+        private static string _troop;
 
         public void Build(GameApp app, RectTransform root)
         {
@@ -63,6 +67,25 @@ namespace Game.Unity.Screens
                     ul.Add(l);
                 }
                 ctx.LoadNames(owners, () => { });
+                // 거르기 줄 (09 시안 2): [정렬: 승률 · 레벨 · 가격] [병종 ▾] (병종은 누를 때마다 다음 병종, 모두 → 병종들 → 모두)
+                var troopTypes = new List<string>();
+                foreach (var ul0 in units.Values) foreach (var u in ul0) if (!troopTypes.Contains(u.TroopType)) troopTypes.Add(u.TroopType);
+                if (_troop != null && !troopTypes.Contains(_troop)) _troop = null;
+                var filters = Ui.Row(body, "Filters", 58, 8);
+                Ui.Size(Ui.SegmentTabs(filters, new[] { ("win", ctx.T("ui.merc.sort.win")), ("level", ctx.T("ui.merc.sort.level")), ("price", ctx.T("ui.merc.sort.price")) }, _sort,
+                    id => { _sort = id; app.ShowMain("hiring"); }, 54, 150), flexibleWidth: 1);
+                var tb = Ui.Button(filters, (_troop == null ? ctx.T("ui.merc.troopAll") : FormationTabView.TroopName(ctx, _troop)) + " ▾", () =>
+                {
+                    int i = _troop == null ? -1 : troopTypes.IndexOf(_troop);
+                    _troop = i + 1 < troopTypes.Count ? troopTypes[i + 1] : null;
+                    app.ShowMain("hiring");
+                }, 54, fontSize: 22);
+                Ui.Size(tb, width: 230);
+                Ui.SetEnabled(tb, troopTypes.Count > 0);
+                long Win(string o) { var s = gen.TryGetValue(o, out var gg) ? gg.Stats : units.TryGetValue(o, out var uu) ? uu[0].Stats : null; return s == null || s.Hires == 0 ? -1 : s.Wins * 1000 / s.Hires; }
+                long Level(string o) => gen.TryGetValue(o, out var gg) ? gg.Level : 0;
+                long Price(string o) => gen.TryGetValue(o, out var gg) ? gg.Price : units.TryGetValue(o, out var uu) ? uu[0].Price : long.MaxValue;
+                owners.Sort((a, b) => _sort == "level" ? Level(b).CompareTo(Level(a)) : _sort == "price" ? Price(a).CompareTo(Price(b)) : Win(b).CompareTo(Win(a)));
                 int shown = 0;
                 foreach (var owner in owners)
                 {
@@ -71,14 +94,18 @@ namespace Game.Unity.Screens
                     if (_unit == "both" && (g == null || ul == null)) continue;
                     if (_unit == "general" && g == null) continue;
                     if (_unit == "troops" && ul == null) continue;
+                    if (_troop != null && (ul == null || !ul.Exists(x => x.TroopType == _troop))) continue;
                     shown++;
                     var card = Ui.Card(body, owner, 20, 6);
+                    // 카드를 누르면 자세히 (아래 판, 09 시안 4)
+                    { var dg = g; var dul = ul; string downer = owner; card.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => OpenDetail(app, root, downer, dg, dul)); }
                     var top = Ui.Row(card, "Top", 60, 10);
                     Ui.Size(Ui.Tag(top, ctx.DisplayName(owner).Substring(0, 1), new Color(0.59f, 0.43f, 0.24f), 30, 56), width: 70);
                     Ui.Size(Ui.Label(top, ctx.DisplayName(owner) + (g != null ? "  " + ctx.T("ui.hire.generalLine", ctx.T("general.avatar_hired"), g.Level) : ""), Ui.FontSmall), flexibleWidth: 1);
                     if (g != null && _unit != "troops")
                     {
                         Ui.Label(card, HireText.Stats(ctx, g), 22, TextAnchor.MiddleLeft, Palette.Good);
+                        HistoryBar(ctx, card, g.Stats, 14);
                         Ui.Label(card, HireText.Price(ctx, g), 22, TextAnchor.MiddleLeft, Palette.TextDim);
                     }
                     if (ul != null && _unit != "general")
@@ -101,6 +128,72 @@ namespace Game.Unity.Screens
                 if (shown == 0) Ui.Label(body, ctx.T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
                 if (!next.IsEmpty) Ui.Button(body, ctx.T("ui.merc.clearQueued"), () => { ctx.ClearNextHires(); app.ShowMain("hiring"); }, 72, fontSize: 24);
             }));
+        }
+
+        /// <summary>
+        /// 이력 막대 (09 시안 4, 공통 부품): 고용 전투를 승 · 패 · 퇴각 · 포로 · 궤멸로 나눈 가로 막대. 기록이 없으면 그리지 않는다.
+        /// </summary>
+        internal static void HistoryBar(GameContext ctx, RectTransform parent, HireStats s, float height, bool legend = false)
+        {
+            if (s == null || s.Hires <= 0) return;
+            long lose = s.Losses; // 고용 한 번 = 결과 하나 (HireBook: 승 · 패 · 퇴각 · 포로 · 궤멸)
+            var parts = new (string key, long n, Color c)[]
+            {
+                ("win", s.Wins, Palette.Good), ("lose", lose, new Color(0.55f, 0.5f, 0.45f)), ("retreat", s.Retreats, new Color(0.85f, 0.62f, 0.2f)),
+                ("captured", s.Captured, new Color(0.45f, 0.35f, 0.6f)), ("destroyed", s.Destroyed, Palette.Bad),
+            };
+            var bar = Ui.Row(parent, "HistoryBar", height, 0);
+            long total = 0;
+            foreach (var p in parts) total += p.n;
+            foreach (var p in parts)
+            {
+                if (p.n <= 0) continue;
+                var seg = Ui.Rect(bar, p.key);
+                Ui.Background(seg, p.c).raycastTarget = false;
+                Ui.Size(seg, height, -1, -1, p.n * 1000f / total);
+            }
+            if (!legend) return;
+            var words = new List<string>();
+            foreach (var p in parts) if (p.n > 0) words.Add(Ui.Colored("■", p.c) + " " + ctx.T("ui.merc.hist." + p.key) + " " + p.n);
+            Ui.Label(parent, string.Join("   ", words), 20, TextAnchor.MiddleLeft, Palette.TextDim);
+        }
+
+        /// <summary>
+        /// 자세히 아래 판 (09 시안 4): 닉네임 장수(레벨 · 능력치 · 진형) · 등록 부대 · 이력 막대(범례) · 최근 전투 3 · 가격 · [닫기] [고용 ›].
+        /// 고용 단위 · 넣을 군단 · 인원은 출진 준비에서 고친다 (지금처럼 [고용 ›] = 다음 출진에 담기).
+        /// </summary>
+        private static void OpenDetail(GameApp app, RectTransform root, string owner, HireListing g, List<HireListing> ul)
+        {
+            var ctx = app.Context;
+            int lines = 6 + (ul?.Count ?? 0);
+            var (content, close) = Ui.BottomSheet(root, ctx.DisplayName(owner), 260 + 60 * lines);
+            Ui.Column(content, 8, 0);
+            if (g != null)
+            {
+                Ui.Label(content, ctx.T("ui.hire.generalLine", ctx.T("general.avatar_hired"), g.Level), Ui.FontBody);
+                Ui.Label(content, HireText.Stats(ctx, g), 22, TextAnchor.MiddleLeft, Palette.Good);
+                HistoryBar(ctx, content, g.Stats, 22, true);
+                if (g.Recent != null && g.Recent.Count > 0) Ui.Label(content, HireText.Recent(ctx, g), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+                Ui.Label(content, HireText.Price(ctx, g), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            }
+            if (ul != null)
+            {
+                Ui.Label(content, ctx.T("ui.merc.detailUnits"), 22, TextAnchor.MiddleLeft, Palette.TextDim).fontStyle = FontStyle.Bold;
+                foreach (var u in ul) Ui.Label(content, HireText.Line(ctx, u) + "  ·  " + HireText.Price(ctx, u), 22, TextAnchor.MiddleLeft);
+            }
+            var next = ctx.NextHires;
+            bool queued = (g != null && next.Has(g.Id)) || (ul != null && ul.Exists(x => next.Has(x.Id)));
+            var row = Ui.Row(content, "Buttons", 84, 12);
+            Ui.SecondaryButton(row, ctx.T("ui.common.close"), close, 84, 26);
+            var hire = Ui.Button(row, ctx.T(queued ? "ui.merc.queuedOne" : "ui.merc.hire"), () =>
+            {
+                close();
+                int corps = Mathf.Max(0, ctx.State.CompositionsFor(null).Count - 1);
+                if (g != null && _unit != "troops" && !next.Has(g.Id)) next.Picks.Add(new HirePick { Listing = g, CorpsIndex = corps });
+                if (ul != null && _unit != "general" && !next.Has(ul[0].Id)) next.Picks.Add(new HirePick { Listing = ul[0], CorpsIndex = corps, Count = System.Math.Min(ul[0].Troops, 1000) });
+                app.ShowMain("hiring");
+            }, 84, Palette.ButtonActive, 26);
+            Ui.SetEnabled(hire, !queued);
         }
 
         private static void BuildMine(GameApp app, RectTransform root, RectTransform body)

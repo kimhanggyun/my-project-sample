@@ -35,6 +35,8 @@ namespace Game.Flow
         /// <summary>스텝 규칙(Defs·Map·Balance·Combat·Flags)은 비어 있다.</summary>
         public BattleSetup Setup { get; set; }
         public List<BattleCommand> Commands { get; set; } = new List<BattleCommand>();
+        /// <summary>지금 규칙으로 돌려 보니 지문이 달라 다시 볼 수 없었다 (기기 표시용, 14 시안: 흐림 · ▶ 꺼짐). 규칙 판정에는 쓰지 않는다.</summary>
+        public bool Unplayable { get; set; }
     }
 
     public sealed class ReplayRules

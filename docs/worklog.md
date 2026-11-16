@@ -101,3 +101,5 @@
 - 2026-11-16 [데스크탑] desktop/tabs-tidy — 아래 탭 정리: 도감 → 배포 줄, 상점 · 우편 · 설정은 row top (위 아이콘으로만), 줄에 없는 탭도 id로 열기
 - 2026-11-16 [원격] claude/play-receipts — Google Play 영수증 실제 검증 R-116: purchases.products.get(서비스 계정 JWT), 쓴 거래는 저장소에(재시작에도 used), 반영 뒤 acknowledge/consume, 배포 변수 RECEIPT_VERIFIER · GOOGLE_PLAY_PACKAGE · Secret Manager 키
 - 2026-11-16 [원격] claude/purchase-restore — 결제 복원 R-117: store.restore 행동(영구 상품만, 다시 확인 → 없으면 반영 · 있으면 지급 없이 Ok, 다른 계정 거래는 otherAccount)
+- 2026-11-16 [데스크탑] desktop/replay-codex-marks — 녹화: 다시 볼 수 없던 녹화 흐림 · ▶ 꺼짐 (ReplayRecord.Unplayable), 도감: 새로 찾은 숨은 보상 [NEW] · [도감] 탭 빨간 점
+- 2026-11-16 [데스크탑] desktop/merc-2 — 용병 고용: 정렬(승률 · 레벨 · 가격) · 병종 거르기 · 카드 이력 막대 · 카드 누르면 자세히 아래 판
