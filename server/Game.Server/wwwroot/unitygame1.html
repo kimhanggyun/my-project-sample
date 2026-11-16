@@ -66,6 +66,7 @@
       <button data-tab="accounts">계정 · 세이브</button>
       <button data-tab="mail">우편 보내기</button>
       <button data-tab="territory">영토 · 연합</button>
+      <button data-tab="notice">버전 · 점검</button>
     </nav>
     <div class="row"><span class="dim">게임</span><select id="game"></select><button class="sub" id="reload">새로고침</button></div>
 
@@ -93,6 +94,19 @@
         <input id="mailNote" maxlength="60" placeholder="우편에 보일 말 (선택, 60자)" style="flex:1;min-width:200px">
       </div>
       <div class="row"><button id="mailBtn">보내기</button><span id="mailMsg"></span></div>
+    </div>
+
+    <div id="tab-notice" class="card hidden">
+      <h2>버전 · 점검 (R-118)</h2>
+      <p class="dim">여기서 정한 값이 서버 설정보다 먼저입니다. 저장하면 배포 없이 바로 바뀝니다. 비워 두면 그 검사는 하지 않습니다.</p>
+      <div class="row"><span class="dim" style="width:120px">최소 버전</span><input id="nMin" placeholder="예: 1.0.0 (이보다 낮으면 업데이트 필요)" style="flex:1;min-width:220px"></div>
+      <div class="row"><span class="dim" style="width:120px">최신 버전</span><input id="nLatest" placeholder="예: 1.2.0 (낮으면 새 버전 안내)" style="flex:1;min-width:220px"></div>
+      <div class="row"><label><input type="checkbox" id="nOn"> 점검 중</label></div>
+      <div class="row"><span class="dim" style="width:120px">문구 키</span><input id="nKey" placeholder="비우면 ui.status.maintenance" style="flex:1;min-width:220px"></div>
+      <div class="row"><span class="dim" style="width:120px">끝나는 시각</span><input id="nEnds" type="datetime-local"><span class="dim">비우면 모름 (끌 때까지)</span></div>
+      <div class="row"><button id="nSave">저장</button><button class="sub" id="nClear">지우기 (서버 설정으로)</button><span id="nMsg"></span></div>
+      <h3>지금 적용 중</h3>
+      <pre id="nCurrent"></pre>
     </div>
 
     <div id="tab-territory" class="hidden">
@@ -215,11 +229,12 @@
   async function tab(name, preloaded) {
     current = name;
     document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
-    for (const t of ["status", "accounts", "mail", "territory"]) $("tab-" + t).classList.toggle("hidden", t !== name);
+    for (const t of ["status", "accounts", "mail", "territory", "notice"]) $("tab-" + t).classList.toggle("hidden", t !== name);
     try {
       if (name === "status") drawStatus(preloaded || (await api("/v1/admin/status")).data);
       if (name === "accounts") { accounts = (await api("/v1/admin/accounts")).data.Accounts || []; drawAccounts(); }
       if (name === "territory") drawTerritory((await api("/v1/admin/games/" + $("game").value + "/territory")).data);
+      if (name === "notice") drawNotice((await api("/v1/admin/notice")).data);
     } catch (e) { /* api가 화면을 바꿈 */ }
   }
 
@@ -290,6 +305,37 @@
     } catch (e) { }
     $("mailBtn").disabled = false;
   };
+
+  // ---- 버전 · 점검 (R-118): GET/POST /v1/admin/notice ----
+  function toLocalInput(unix) {
+    if (!unix) return "";
+    const d = new Date(unix * 1000), p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+  function drawNotice(d) {
+    const o = (d && d.Override) || {}, m = o.Maintenance || {};
+    $("nMin").value = o.MinVersion || "";
+    $("nLatest").value = o.LatestVersion || "";
+    $("nOn").checked = !!m.On;
+    $("nKey").value = m.MessageKey || "";
+    $("nEnds").value = toLocalInput(m.EndsAtUnixSeconds);
+    $("nCurrent").textContent = JSON.stringify((d && d.Current) || {}, null, 2) + (d && d.Override ? "\n(관리자 값 사용 중)" : "\n(서버 설정 사용 중)");
+  }
+  async function saveNotice(clear) {
+    const ends = $("nEnds").value ? Math.floor(new Date($("nEnds").value).getTime() / 1000) : 0;
+    const body = clear ? { Clear: true } : { Override: {
+      MinVersion: $("nMin").value.trim() || null, LatestVersion: $("nLatest").value.trim() || null,
+      Maintenance: { On: $("nOn").checked, MessageKey: $("nKey").value.trim() || null, EndsAtUnixSeconds: ends } } };
+    if (!clear && $("nOn").checked && !confirm("점검을 켜면 새로 들어오는 유저가 점검 안내를 봅니다. 저장할까요?")) return;
+    try {
+      const r = await api("/v1/admin/notice", { method: "POST", body });
+      $("nMsg").className = r.status === 200 ? "good" : "bad";
+      $("nMsg").textContent = r.status === 200 ? (clear ? "지웠습니다." : "저장했습니다.") : "실패 (" + r.status + ")";
+      if (r.status === 200) drawNotice(r.data);
+    } catch (e) { }
+  }
+  $("nSave").onclick = () => saveNotice(false);
+  $("nClear").onclick = () => saveNotice(true);
 
   function drawTerritory(d) {
     const name = id => { const a = accounts.find(x => x.AccountId === id); return a && a.Nickname ? a.Nickname + " (" + id + ")" : id; };

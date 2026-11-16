@@ -25,8 +25,10 @@
 | 서버 상태 | 서버 시각 · 배포 판(K_REVISION) · 게임 · 계정 수 · 저장소 · 마스터 · 결제 검증 · Firebase 프로젝트 | `GET /v1/admin/status` |
 | 계정 · 세이브 | 모든 계정 (닉네임 · 이메일 · 구글/게스트 · 가입한 게임 · 삭제 요청), 찾기. 누르면 세이브 요약(지갑 · 군주 레벨 · 깬 스텝 · 장수/부대 수) · 우편함 · 세이브 원문 | `GET /v1/admin/accounts`, `GET /v1/admin/games/{game}/accounts/{id}` |
 | 우편 보내기 | 지정 계정(쉼표) 또는 그 게임의 모든 계정에 곡식 · 엽전 · 금괴 우편 (짧은 말 60자). 한 번에 1억까지. 받는 사람이 [받기] = `mail.claim` | `POST /v1/admin/games/{game}/mail` (우편 종류 `adminGift`) |
+| 버전 · 점검 | 최소 · 최신 버전, 점검 켜기 · 문구 키 · 끝나는 시각 → [저장] (배포 없이 바로), [지우기] = 서버 설정으로 (R-118) | `GET` · `POST /v1/admin/notice` |
 | 영토 · 연합 | 꽂힌 깃발 (주인 · 연합 · 장수 · 병력 · 보호 · 공성전 중), 연합 목록 | `GET /v1/admin/games/{game}/territory` |
 | 버전 · 점검 안내 (R-118) | 최소 · 최신 앱 버전, 점검 켜기(문구 키 · 끝 시각). 저장하면 바로 `GET /v1/status`에 나온다. 지우기(Clear)면 서버 설정 값으로 | `GET` · `POST /v1/admin/notice` (몸 `AdminStatusNotice`: Override · Clear) |
+| 수입 가득 푸시 (R-119) | 수입이 다 찬 깃발 주인에게 알림 보내기 (보낸 기기 수). 예약(Cloud Scheduler)이 한 시간마다 부른다 | `POST /v1/admin/games/{game}/push/sweep` |
 
 - 세이브를 직접 고치는 기능은 없다 (보기만). 자원은 우편으로만 준다 → 서버 규칙(`mail.claim`)을 그대로 거친다.
 

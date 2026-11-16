@@ -363,6 +363,18 @@ namespace Game.Server.Tests
             var withStats = Assert.Single(listed.Listings, l => l.Id == listing.Id);
             Assert.Equal(1, withStats.Stats.Hires);
             Assert.Equal(500, withStats.Recent.Single().TroopsStart);
+            // 내 용병이 고용된 전투 녹화 (R-120): 등록자 · 고용한 사람은 받고, 다른 계정은 404, 받은 녹화는 그대로 다시 돌면 같은 결과
+            string replayId = withStats.Recent.Single().ReplayId;
+            Assert.NotNull(replayId);
+            var mine = HireBook.HiredBattles((await Read<HireListResponse>(await a.GetAsync(listings))).Listings, withStats.OwnerAccountId);
+            Assert.Equal(replayId, Assert.Single(mine).battle.ReplayId);
+            var rep = await Read<HireReplayResponse>(await a.GetAsync(OnlineRoutes.HireReplay(ServerSetup.DefaultGame, replayId)));
+            var record = ReplayService.Read(rep.ReplayJson);
+            Assert.Equal(("step01", true), (record.StepId, record.Hired));
+            Assert.True(new ReplayService(flow).Check(record).Ok);
+            Assert.Equal(HttpStatusCode.OK, (await b.GetAsync(OnlineRoutes.HireReplay(ServerSetup.DefaultGame, replayId))).StatusCode);
+            var stranger = await SignedIn();
+            Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync(OnlineRoutes.HireReplay(ServerSetup.DefaultGame, replayId))).StatusCode);
             Assert.Equal(1, listed.DailyUsed);
             Assert.True(listed.CooldownUntil.ContainsKey(listing.Id));
             var bSave = await Read<CloudSave>(await b.GetAsync(Save));

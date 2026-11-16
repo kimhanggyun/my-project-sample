@@ -31,9 +31,13 @@ namespace Game.Tests.Campaign
             public void Unregister(string id, Action<bool?> done) { if (Down) done(null); else _inner.Unregister(id, done); }
             public void GetMail(Action<MailListResponse> done) { if (Down) done(null); else _inner.GetMail(done); }
             public void CheckIn(Action<AttendanceResponse> done) { if (Down) done(null); else _inner.CheckIn(done); }
+            public void GetPushSettings(Action<PushSettings> done) { if (Down) done(null); else _inner.GetPushSettings(done); }
+            public void SetPushSettings(PushSettings settings, Action<PushSettings> done) { if (Down) done(null); else _inner.SetPushSettings(settings, done); }
+            public void RegisterPushToken(PushTokenRequest request, Action<bool?> done) { if (Down) done(null); else _inner.RegisterPushToken(request, done); }
             public void ShareReplay(ShareReplayRequest r, Action<ShareReplayResponse> done) { if (Down) done(null); else _inner.ShareReplay(r, done); }
             public void GetSharedReplays(string s, Action<SharedReplayListResponse> done) { if (Down) done(null); else _inner.GetSharedReplays(s, done); }
             public void GetSharedReplay(string id, Action<SharedReplayResponse> done) { if (Down) done(null); else _inner.GetSharedReplay(id, done); }
+            public void GetHireReplay(string id, Action<HireReplayResponse> done) { if (Down) done(null); else _inner.GetHireReplay(id, done); }
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
             public void GetProfile(Action<ProfileResponse> done) { if (Down) done(null); else _inner.GetProfile(done); }
             public void SetNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.SetNickname(n, done); }

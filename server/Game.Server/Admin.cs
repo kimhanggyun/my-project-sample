@@ -123,6 +123,10 @@ namespace Game.Server
                 });
             });
 
+            // 수입 가득 알림 보내기 (R-119): 관리자 페이지 또는 예약(Cloud Scheduler, 한 시간마다)이 부른다. 보낸 기기 수.
+            app.MapPost(Prefix + "/games/{game}/push/sweep", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+                Guard(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(new AdminPushSweep { Sent = g.SweepIncomeFull() }) : Results.NotFound()));
+
             app.MapGet(Prefix + "/games/{game}/territory", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
                 Guard(req, store, masters, _ =>
                 {
@@ -214,6 +218,11 @@ namespace Game.Server
         public int Units { get; set; }
         public List<Mail> Mail { get; set; } = new List<Mail>();
         public string SaveJson { get; set; }
+    }
+
+    public sealed class AdminPushSweep
+    {
+        public int Sent { get; set; }
     }
 
     /// <summary>버전 · 점검 안내 (R-118): Override = 관리자 값 (버전 칸은 비우면 설정 값, Maintenance는 통째), Clear = 지우기. 응답의 Current = 지금 /v1/status.</summary>

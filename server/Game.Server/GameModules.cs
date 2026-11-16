@@ -36,6 +36,16 @@ namespace Game.Server
         /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편.</summary>
         AttendanceResponse CheckIn(string accountId);
 
+        // ---- 푸시 (R-119) ----
+        PushSettings PushSettingsOf(string accountId);
+        PushSettings SetPushSettings(string accountId, PushSettings settings);
+        /// <summary>기기 토큰 등록 · 지우기. 토큰이 비었으면 false.</summary>
+        bool RegisterPushToken(string accountId, PushTokenRequest request);
+        /// <summary>수입이 다 찬 깃발 주인에게 알림 (관리자 · 예약 호출, R-119). 보낸 기기 수.</summary>
+        int SweepIncomeFull();
+        /// <summary>내 용병이 고용된 전투 녹화 (R-120): 그 전투의 등록자 · 고용한 사람만. 아니면 null.</summary>
+        HireReplayResponse HireReplay(string accountId, string id);
+
         /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
         TerritoryResponse Territory(string accountId);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47).</summary>
@@ -208,7 +218,16 @@ namespace Game.Server
                 var log = new List<HireLogEntry>();
                 foreach (var u in hired.Uses) log.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
                 _store.AddHireLog(Code, accountId, log);
-                foreach (var o in hired.Outcomes) _store.RecordHire(Code, o.ListingId, o, hired.StepId, at, _defs.Balance.HireRecentMax);
+                // 그 전투 녹화를 등록자들 · 고용한 사람이 볼 수 있게 (R-120)
+                string replayId = null;
+                if (hired.Replay != null && hired.Outcomes.Count > 0)
+                {
+                    hired.Replay.SavedAtUnixSeconds = at;
+                    var viewers = new HashSet<string>(StringComparer.Ordinal) { accountId };
+                    foreach (var o in hired.Outcomes) { var l = _store.GetListing(Code, o.ListingId); if (l?.OwnerAccountId != null) viewers.Add(l.OwnerAccountId); }
+                    replayId = _store.AddHireReplay(Code, ReplayService.Write(hired.Replay), viewers, at, HireReplayMax);
+                }
+                foreach (var o in hired.Outcomes) _store.RecordHire(Code, o.ListingId, o, hired.StepId, at, _defs.Balance.HireRecentMax, replayId);
             }
             if (hired != null)
                 foreach (var c in hired.Charges)
@@ -287,6 +306,47 @@ namespace Game.Server
         public bool Unregister(string accountId, string listingId) => _store.RemoveListing(Code, accountId, listingId);
         public MailListResponse MailOf(string accountId) => new MailListResponse { Mail = _store.MailOf(Code, accountId) };
 
+        /// <summary>푸시 보내기 (R-119, 설정 Game:Push, 기본 꺼짐).</summary>
+        public IPushSender PushSender { get => _pushSender; set { _pushSender = value; _push = null; } }
+        private IPushSender _pushSender = new OffPushSender();
+        private PushService _push;
+        private PushService Push => _push ?? (_push = new PushService(Code, _store, _pushSender, _defs));
+
+        /// <summary>한 계정이 둘 수 있는 기기 토큰 수 (오래된 것부터 지움).</summary>
+        public const int MaxPushTokens = 5;
+
+        public PushSettings PushSettingsOf(string accountId) => _store.WithPush(Code, accountId, p => p.Settings);
+
+        public PushSettings SetPushSettings(string accountId, PushSettings settings) =>
+            _store.WithPush(Code, accountId, p => { if (settings != null) p.Settings = settings; return p.Settings; });
+
+        public bool RegisterPushToken(string accountId, PushTokenRequest req)
+        {
+            string token = req?.Token?.Trim();
+            if (string.IsNullOrEmpty(token) || token.Length > 4096) return false;
+            return _store.WithPush(Code, accountId, p =>
+            {
+                p.Tokens.RemoveAll(t => t.Token == token);
+                if (!req.Remove)
+                {
+                    p.Tokens.Add(new PushTokenEntry { Token = token, Platform = req.Platform, AtUnixSeconds = Now });
+                    while (p.Tokens.Count > MaxPushTokens) p.Tokens.RemoveAt(0);
+                }
+                return true;
+            });
+        }
+
+        /// <summary>남겨 두는 고용된 전투 녹화 수 (게임마다, 오래된 것부터 지움, R-120).</summary>
+        public const int HireReplayMax = 500;
+
+        public HireReplayResponse HireReplay(string accountId, string id)
+        {
+            string json = _store.HireReplayFor(Code, id, accountId);
+            return json == null ? null : new HireReplayResponse { Id = id, ReplayJson = json };
+        }
+
+        public int SweepIncomeFull() => Push.Send(_store.WithTerritory(Code, owners => PushRules.IncomeFullDue(_territory, owners, Now)));
+
         public AttendanceResponse CheckIn(string accountId) =>
             _store.WithAttendance(Code, accountId, rec => new DailyEconomy(_defs).CheckIn(rec, Now, m => _store.AddMail(Code, accountId, m)));
         public TerritoryResponse Territory(string accountId)
@@ -329,7 +389,16 @@ namespace Game.Server
         public SiegeResponse StartSiege(string accountId, SiegeRequest req)
         {
             var state = FromJson(LoadOrCreate(accountId).Json);
-            return _store.WithTerritory(Code, owners => TerritoryFlags.StartSiege(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
+            var pushes = new List<PushMessage>();
+            var res = _store.WithTerritory(Code, owners => TerritoryFlags.StartSiege(_territory, _defs, state, accountId, owners, req, Now, (who, m) =>
+            {
+                _store.AddMail(Code, who, m);
+                // 공성전 준비 시작 = 수비자 · 그 연합원에게 푸시 (R-119)
+                if (m.Kind == MailKinds.SiegeAlert && owners.TryGetValue(m.RegionId ?? "", out var flag))
+                    pushes.AddRange(PushRules.ForSiegeStart(flag, accountId, _store.WithAlliances(Code, a => AllianceBook.Of(a, who)), null));
+            }));
+            Push.Send(pushes);
+            return res;
         }
 
         public bool CancelSiege(string accountId, string flagKey) =>

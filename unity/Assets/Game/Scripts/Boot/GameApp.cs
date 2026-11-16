@@ -86,11 +86,39 @@ namespace Game.Unity.Boot
             switch (step)
             {
                 case Game.Flow.StartupSteps.Splash: Show(new SplashScreen()); break;
-                case Game.Flow.StartupSteps.VersionCheck: NextStartup(step); break;
+                case Game.Flow.StartupSteps.VersionCheck: CheckStatus(step); break;
                 case Game.Flow.StartupSteps.SignIn: Show(new SignInScreen()); break;
                 case Game.Flow.StartupSteps.Terms: Show(new TermsScreen()); break;
                 default: Show(new TitleScreen()); break;
             }
+        }
+
+        /// <summary>
+        /// 버전 · 점검 확인 (R-118, startup.md 1장): 서버 GET /v1/status → AppStatus.Evaluate. 업데이트 필요 · 점검이면 안내 화면,
+        /// 새 버전만 있으면 안내 뒤 계속, 아니면 바로 다음. 서버가 없거나 5초 안에 답이 없으면 그대로 시작 (꺼도 게임이 돌아야 함).
+        /// </summary>
+        private void CheckStatus(string step)
+        {
+            var ctx = Context;
+            bool done = false;
+            void Go(Game.Online.ServerStatusResponse s)
+            {
+                if (done) return;
+                done = true;
+                long now = s != null && s.NowUnixSeconds > 0 ? s.NowUnixSeconds : ctx.Clock.UtcNow.ToUnixTimeSeconds();
+                var r = Game.Flow.AppStatus.Evaluate(s, Application.version, now);
+                if (r.UpdateRequired || r.Maintenance || r.UpdateAvailable) Show(new Game.Unity.Screens.AppStatusScreen(r, step));
+                else NextStartup(step);
+            }
+            if (!ctx.OnlineEnabled) { Go(null); return; }
+            StartCoroutine(StatusTimeout(() => Go(null)));
+            ctx.Online.GetStatus(Go);
+        }
+
+        private static System.Collections.IEnumerator StatusTimeout(Action timeout)
+        {
+            yield return new WaitForSecondsRealtime(5f);
+            timeout();
         }
 
         private void OnApplicationPause(bool paused) => ForwardPause(paused);
