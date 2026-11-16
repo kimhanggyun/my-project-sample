@@ -110,3 +110,4 @@
 - 2026-11-16 [데스크탑] desktop/status-screens — 원격 요청 (#213): 시작 버전 확인 단계에서 GET /v1/status → 업데이트 필요 · 새 버전 · 점검 안내 화면 (AppStatusScreen, 5초 넘으면 그대로 시작), 관리자 페이지 [버전 · 점검] 탭 (GET/POST /v1/admin/notice)
 - 2026-11-16 [데스크탑] 사용자 결정: 서버 저장소 Firestore (db.md 0장 제안 그대로), backlog F에 4단계 줄
 - 2026-11-16 [데스크탑] desktop/remote-asks — 원격 요청: 녹화 [내 용병 고용됨] 탭 (R-120, HiredBattles · GetHireReplay → 확인 뒤 재생), 설정 알림 세 칸 서버 저장 · 시작 때 서버 값으로 (R-119)
+- 2026-11-17 [데스크탑] collab.md 2.1.1: 모양 변화가 적은 화면 일은 원격도 (PR에 캡처할 화면, 데스크탑이 캡처 확인 뒤 머지), 원격 PR은 main 기준 (사용자)
