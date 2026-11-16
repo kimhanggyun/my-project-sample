@@ -212,7 +212,7 @@
 | 연합 인원 상한(지금 30)·이름 길이(2~12) — `data/Territory/regions.json` alliance | territory.md 미결 4 |
 | 녹화 저장 개수, 영상 화질 | replay.md |
 | **출석 · 교환 · 스킬 해금 (임시, 2026-11-15 원격, R-112)** — `data/Rules/economy.json`: 하루 기준 한국 자정(`dayStartUtcOffsetHours` 9), 출석 7일 차례(곡식 10만 · 엽전 300 · 곡식 15만 · 엽전 500 · 곡식 20만 · 엽전 800 · 금괴 30, 빠져도 이어서), 교환(금괴 1 → 엽전 100 · 곡식 5만, 엽전 1 ↔ 곡식 500 손실 10% · 하루 엽전 5,000 / 곡식 250만까지), 스킬 얻기 해금 금괴(초급 30 · 중급 60 · 고급 120) | economy.md 1장 · 1.0장 · 3.1장 |
-| **공성전 준비 (2026-11-15 원격, R-113)**: 준비 60초(설계 값, **지금 데이터 0** — 카운트다운 화면이 들어오면 60), 준비 뒤 공성전을 낼 수 있는 시간 30분(임시) — `data/Territory/flags.json` `siegePrepSeconds` · `siegeWindowMinutes` | territory-v2.md 2.3 |
+| **공성전 준비 (2026-11-15 원격, R-113)**: 준비 60초(설계 값, **지금 데이터 60** (2026-11-16 카운트다운 화면과 함께 켬)), 준비 뒤 공성전을 낼 수 있는 시간 30분(임시) — `data/Territory/flags.json` `siegePrepSeconds` · `siegeWindowMinutes` | territory-v2.md 2.3 |
 | **치장 (임시, 2026-11-15 원격, R-111)**: 보상 중복이면 엽전 200 (`cosmetics.json` `duplicateGold`), 결제 치장 황금 갑옷 3,300원 (`products.json` `cosmetic_armor_gold`, `cosmetics.json` `armor_gold`), 보상 치장 예시: step06 첫 클리어 무쇠 갑옷 · 숨은 보상 '들판의 철벽' 진홍 갑옷 | cosmetics.md 5장 |
 
 ---

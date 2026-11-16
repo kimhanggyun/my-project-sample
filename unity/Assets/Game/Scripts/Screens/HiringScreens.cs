@@ -282,10 +282,51 @@ namespace Game.Unity.Screens
         /// <param name="backTab">[뒤로]로 돌아갈 메인 탭 (고용 / 영토).</param>
         public MailScreen(string notice = null, string backTab = "hiring") { _notice = notice; _backTab = backTab; }
 
+        /// <summary>마지막 출석 결과 (차례 표시 · 이미 받음 안내).</summary>
+        private static AttendanceResponse _lastAttendance;
+
+        /// <summary>우편함 위 출석 칸 (R-112): 7일 차례 · [출석 받기] → 오늘 보상이 우편으로 (이미 받았으면 다음까지 남은 시간).</summary>
+        private void AttendanceCard(RectTransform header)
+        {
+            var econ = new DailyEconomy(Ctx.Defs);
+            if (!econ.AttendanceOn || !Ctx.OnlineEnabled) return;
+            var card = Ui.Card(header, "Attendance", 14, 6);
+            Ui.Label(card, T("ui.attend.title"), 26).fontStyle = FontStyle.Bold;
+            var days = Ui.Row(card, "Days", 84, 6);
+            for (int i = 0; i < econ.Cycle.Count; i++)
+            {
+                var r = econ.Cycle[i];
+                bool today = _lastAttendance != null && _lastAttendance.Index == i && _lastAttendance.Result != AttendanceResults.Off;
+                var cell = Ui.Rect(days, "Day" + (i + 1));
+                var bg = Ui.Background(cell, today ? new Color(0.24f, 0.48f, 0.25f) : Palette.Card);
+                bg.sprite = UiShapes.Rounded(10);
+                bg.type = UnityEngine.UI.Image.Type.Sliced;
+                var t = Ui.Label(cell, T("ui.attend.day", i + 1) + "\n" + T("resource." + r.Resource) + " " + Ui.Compact(r.Amount), 18, TextAnchor.MiddleCenter, today ? Color.white : Palette.Text);
+                Ui.Fill(t.rectTransform);
+            }
+            string status = _lastAttendance == null ? T("ui.attend.hint")
+                : _lastAttendance.Result == AttendanceResults.Ok ? T("ui.attend.got", _lastAttendance.Index + 1)
+                : _lastAttendance.Result == AttendanceResults.Already ? T("ui.attend.already", Left(_lastAttendance.NextDayAtUnixSeconds))
+                : T("ui.attend.off");
+            Ui.Label(card, status, 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Button(card, T("ui.attend.check"), () => Ctx.CheckIn(r =>
+            {
+                _lastAttendance = r;
+                App.Show(new MailScreen(r == null ? T("ui.hire.failed") : null, _backTab));
+            }), 72, Palette.ButtonActive, 26);
+        }
+
+        private string Left(long untilUnix)
+        {
+            long s = System.Math.Max(0, untilUnix - Ctx.Clock.UtcNow.ToUnixTimeSeconds());
+            return T("ui.attend.left", s / 3600, s % 3600 / 60);
+        }
+
         public override void Build()
         {
             var (header, list, _, _) = Ui.TitledPage(Root, T("ui.hire.mailTitle"), () => App.ShowMain(_backTab), infoGap: false);
             if (_notice != null) Ui.Label(header, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
+            AttendanceCard(header);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadMail(mail =>
             {
@@ -298,9 +339,14 @@ namespace Game.Unity.Screens
                 {
                     var item = m;
                     var card = Ui.Card(list, m.Id, 20, 6);
-                    Ui.Label(card, T(m.Kind == MailKinds.TerritoryIncome ? "ui.mail.territoryIncome" : "ui.hire.mailLine", m.Amount.ToString("N0"), T("resource." + m.Resource),
-                        m.RegionId != null ? T("region." + m.RegionId) : ""), Ui.FontSmall);
-                    Ui.Button(card, T("ui.hire.claim"), () => App.Show(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
+                    // 종류별 줄 (R-112 출석 · R-113 공성전 알림, 영토 수입, 그 밖 = 고용 보상)
+                    string line = m.Kind == MailKinds.SiegeAlert ? T("ui.mail.siegeAlert", T("ui.mail.myFlag"))
+                        : m.Kind == MailKinds.Attendance ? T("ui.mail.attendance", m.Amount.ToString("N0"), T("resource." + m.Resource))
+                        : T(m.Kind == MailKinds.TerritoryIncome ? "ui.mail.territoryIncome" : "ui.hire.mailLine", m.Amount.ToString("N0"), T("resource." + m.Resource), m.RegionId != null ? T("region." + m.RegionId) : "");
+                    Ui.Label(card, line, Ui.FontSmall, TextAnchor.MiddleLeft, m.Kind == MailKinds.SiegeAlert ? Palette.Bad : Palette.Text);
+                    // 받을 것이 있는 우편만 [받기] (공성전 알림은 알림뿐)
+                    if (m.Kind != MailKinds.SiegeAlert && m.Amount > 0)
+                        Ui.Button(card, T("ui.hire.claim"), () => App.Show(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
                 }
             });
         }

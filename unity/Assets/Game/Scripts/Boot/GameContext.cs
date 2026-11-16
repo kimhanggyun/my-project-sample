@@ -675,6 +675,12 @@ namespace Game.Unity.Boot
 
         public void SetLocationConsent(bool on) => _saveStore.Write(LocationConsentKey, on ? "1" : "0");
 
+        /// <summary>출석 (R-112): 서버가 오늘 보상을 우편으로. 닿지 않으면 null.</summary>
+        public void CheckIn(Action<AttendanceResponse> done) => Online.CheckIn(done);
+        /// <summary>공성전 준비 시작 (R-113): 준비 시간 뒤 출진. 닿지 않으면 null.</summary>
+        public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) => Online.StartSiege(request, done);
+        public void CancelSiege(string flagKey, Action<bool?> done) => Online.CancelSiege(flagKey, done);
+
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => Online.RecallFlag(request, done);
 
