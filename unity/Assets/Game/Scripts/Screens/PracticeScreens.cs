@@ -116,13 +116,14 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            Ui.Column(Root, 16, 32);
-            Ui.Size(Ui.Label(Root, T("ui.contest." + _contestId) + " · " + Ctx.GeneralName(_generalId), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
-            var card = Ui.Card(Root, "Result");
+            // 공통 타이틀 (← 제목) · 몸통 결과 카드 · 아래 [돌아가기]
+            var (_, body, footer, _) = Ui.TitledPage(Root, T("ui.contest." + _contestId) + " · " + Ctx.GeneralName(_generalId), () => App.ShowMain("practice"), 120, infoGap: false);
+            var card = Ui.Card(body, "Result");
             Ui.Label(card, _outcome == null ? T("ui.practice.cannot") : !_saved ? Ui.Colored(T("ui.practice.notSaved"), Palette.Bad) : ResultText(), Ui.FontBody, TextAnchor.MiddleCenter);
-            Ui.Size(Ui.Rect(Root, "Space"), flexibleHeight: 1);
-            Ui.Button(Root, T("ui.common.back"), () => App.ShowMain("practice"), 100, Palette.ButtonActive);
+            Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("practice"), color: Palette.ButtonActive);
         }
+
+        public override bool OnBack() { App.ShowMain("practice"); return true; }
 
         private string ResultText()
         {

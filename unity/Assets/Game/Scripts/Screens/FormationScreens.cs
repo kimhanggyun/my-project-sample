@@ -592,16 +592,18 @@ namespace Game.Unity.Screens
         private readonly string _unitId;
         public DisbandUnitScreen(string unitId) { _unitId = unitId; }
 
+        public override bool OnBack() { App.ShowMain("formation"); return true; }
+
         public override void Build()
         {
             var u = Ctx.State.FindUnit(_unitId);
             if (u == null) { App.ShowMain("formation"); return; }
-            Ui.Column(Root, 24, 48).childAlignment = TextAnchor.MiddleCenter;
-            Ui.Size(Ui.Label(Root, T("ui.formation.disbandTitle"), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
-            Ui.Label(Root, T("ui.formation.disbandConfirm", Ctx.UnitLabel(u.UnitId), FormationTabView.TroopName(Ctx, u.TroopType), (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
-            var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(row, T("ui.common.cancel"), () => App.ShowMain("formation"));
-            Ui.Button(row, T("ui.formation.disband"), () =>
+            // 공통 타이틀 (← 부대 해산) · 몸통 확인 문구 · 아래 [취소] [해산]
+            var (_, body, footer, _) = Ui.TitledPage(Root, T("ui.formation.disbandTitle"), () => App.ShowMain("formation"), 120, infoGap: false);
+            var card = Ui.Card(body, "Confirm");
+            Ui.Label(card, T("ui.formation.disbandConfirm", Ctx.UnitLabel(u.UnitId), FormationTabView.TroopName(Ctx, u.TroopType), (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
+            Ui.Button(footer, T("ui.common.cancel"), () => App.ShowMain("formation"));
+            Ui.Button(footer, T("ui.formation.disband"), () =>
             {
                 Ctx.Do(PlayerActionRunner.DisbandUnit(_unitId));
                 App.ShowMain("formation");
