@@ -86,3 +86,4 @@
 - 2026-11-15 [원격] claude/auto-deploy — 공성전 준비 siegePrepSeconds 0 (카운트다운 화면 전까지, 사용자): 지금 화면의 공성전이 배포 뒤에도 그대로 되게
 - 2026-11-16 [데스크탑] desktop/remote-screens — 원격 A~D 화면: 우편 종류별 줄 · 출석 칸, 상점 [치장] · [바꾸기], 스킬 금괴 해금, 결과 · 숨은 보상 치장 줄, 공성전 준비 카운트다운 · 취소 (siegePrepSeconds 60)
 - 2026-11-16 [데스크탑] desktop/to-be-doc — 추후 업데이트 목록 to-be.md (출시 뒤로 미룬 것, 분류는 데스크탑 제안 · 사용자 확인 ?)
+- 2026-11-16 [데스크탑] desktop/siege-no-wait — 공성전 준비 60초 끔 (siegePrepSeconds 0: 서버 기록 · 수비자 우편 알림만), 영토 유저 대전 · 60초 대기는 to-be (사용자)
