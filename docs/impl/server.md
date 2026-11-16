@@ -54,6 +54,8 @@
 | `GET /v1/games/{game}/replays/{id}` | 공유 녹화 하나 (녹화 JSON), 없으면 404 | `SharedReplayResponse` |
 | `GET /v1/games/{game}/mail` | 내 우편 (고용 보상). 받기는 행동 `mail.claim` | `MailListResponse` |
 | `POST /v1/games/{game}/attendance` | 출석 (하루 한 번, 서버 시각, R-112). 받으면 보상 우편(`attendance`). 기록은 저장소 `WithAttendance` (세이브 밖) | `AttendanceResponse` (`ok` / `already` / `off`) |
+| `GET` · `POST /v1/games/{game}/push/settings` | 푸시 알림 설정 (R-119): attacked · allyHelp · incomeFull 켬 · 끔 (처음 모두 켬) | `PushSettings` |
+| `POST /v1/games/{game}/push/token` | 기기 푸시 토큰(FCM) 등록 · 지우기 (`PushTokenRequest`: Token · Platform · Remove). 계정당 5개, 무효 토큰은 보낼 때 지움. 빈 토큰은 422 | 200 / 422 |
 | `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
 | `POST /v1/games/{game}/territory/collect` | 내 지역의 쌓인 수입을 우편으로 (받은 시각 = 지금, R-47) | `MailListResponse` (보낸 우편) |
 | `POST /v1/games/{game}/territory/defense` | 내 지역에 수비 편성 등록 (서버 세이브의 기본 편성 스냅샷, 판 +1, R-48). 내 지역이 아니거나 편성에 문제가 있으면 422 | `DefenseResponse` |
@@ -137,7 +139,7 @@ docker run -p 8080:8080 -v game-store:/data/store game-server
 ## 5.6 클라우드 배포 (2026-11-11)
 
 - **Google Cloud Run + Firebase 로그인**으로 정했다. 배포 순서·사용자가 할 일·로그인 흐름은 [deploy-cloudrun.md](deploy-cloudrun.md).
-- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. 결제 영수증 검증기는 `Game:ReceiptVerifier` (`fake` 기본 · `off` · `googlePlay` 실제 검증 R-116, 서비스 계정 키 `Game:GooglePlay:ServiceAccountJson` · 패키지 `Game:GooglePlay:PackageName` · 테스트 구매 `Game:GooglePlay:AllowTestPurchases`(기본 true), R-114, [deploy-cloudrun.md](deploy-cloudrun.md) 7장). 예전 설정 `Game:AllowFakeReceipts=false`는 ReceiptVerifier가 없을 때 `off`. `Game:Masters`(쉼표로 나눈 **계정 id 또는 구글 로그인 이메일** — 구글이 확인한 이메일만, 대소문자 무시, 섞어 적어도 됨. 게스트는 이메일이 없어 계정 id로)는 마스터 계정: 개발 행동 `dev.*`을 받아 주고 `/v1/me`에 IsMaster (R-86). Cloud Run은 환경 변수 `Game__Masters`.
+- 서버 설정 `Game:Firebase:ProjectId`가 있으면 `POST /v1/auth/firebase`(Firebase ID 토큰 → 계정 토큰)가 열린다. 푸시 보내기는 `Game:Push` (`off` 기본 · `fake` · `fcm` — `Game:Push:ServiceAccountJson` 비밀 + `Game:Firebase:ProjectId`, R-119, [deploy-cloudrun.md](deploy-cloudrun.md) 8장). 결제 영수증 검증기는 `Game:ReceiptVerifier` (`fake` 기본 · `off` · `googlePlay` 실제 검증 R-116, 서비스 계정 키 `Game:GooglePlay:ServiceAccountJson` · 패키지 `Game:GooglePlay:PackageName` · 테스트 구매 `Game:GooglePlay:AllowTestPurchases`(기본 true), R-114, [deploy-cloudrun.md](deploy-cloudrun.md) 7장). 예전 설정 `Game:AllowFakeReceipts=false`는 ReceiptVerifier가 없을 때 `off`. `Game:Masters`(쉼표로 나눈 **계정 id 또는 구글 로그인 이메일** — 구글이 확인한 이메일만, 대소문자 무시, 섞어 적어도 됨. 게스트는 이메일이 없어 계정 id로)는 마스터 계정: 개발 행동 `dev.*`을 받아 주고 `/v1/me`에 IsMaster (R-86). Cloud Run은 환경 변수 `Game__Masters`.
 
 ## 6. 다음 단계
 

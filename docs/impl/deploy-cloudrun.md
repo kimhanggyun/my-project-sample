@@ -145,3 +145,26 @@ echo "FIREBASE_PROJECT_ID=$PROJECT"
 - 되돌리기: `RECEIPT_VERIFIER`를 `off`로 바꾸고 다시 배포.
 
 **기기 쪽 (데스크탑)**: Unity IAP 구매 성공 → `ProcessPurchase`에서 `Pending`을 돌려주고, 영수증(`product.receipt`)을 `store.purchase` 행동으로 서버에 보낸다 → 서버가 받아들이면 `ConfirmPendingPurchase`. 서버가 `unavailable`이면 나중에 다시 보낸다 (구매는 남아 있음).
+
+## 8. 푸시 알림 (FCM — R-119)
+
+서버가 고르는 알림: 내 깃발 공격받음(공성전 준비 시작) · 연합원 깃발 공격받음 · 깃발 수입 가득. 받는 사람의 설정에서 그 종류를 껐으면 보내지 않는다. 설정 `Game:Push` (배포 워크플로에서는 저장소 변수 `PUSH`):
+
+| 값 | 뜻 |
+|---|---|
+| `off` (기본) | 보내지 않음 (설정 · 토큰 저장은 된다) |
+| `fake` | 시험용 (서버 메모리에만) |
+| `fcm` | Firebase Cloud Messaging HTTP v1로 보냄. 키나 프로젝트가 없으면 꺼진 채로 |
+
+**사용자가 할 일 (한 번, 키 값은 저장소 · 채팅에 적지 않는다)**:
+
+1. Firebase 콘솔(로그인에 쓰는 프로젝트 `FIREBASE_PROJECT_ID`) → 프로젝트 설정 → 클라우드 메시징: **Firebase Cloud Messaging API (V1)** 사용 설정. 안드로이드 앱이 등록돼 있는지 확인.
+2. Google Cloud 콘솔(같은 프로젝트) → IAM → 서비스 계정 만들기 (예: `fcm-sender`), 역할 **Firebase Cloud Messaging API Admin**. 키 → JSON 키 만들기.
+   - 서버(Cloud Run)와 Firebase가 다른 프로젝트면 서비스 계정은 **Firebase 프로젝트** 쪽에 만든다.
+3. Secret Manager(서버 프로젝트) → 비밀 `fcm-service-account` = 2의 JSON 내용. 서버 실행용 서비스 계정(`GCP_RUNTIME_SA`)에 **Secret Manager 보안 비밀 접근자**.
+4. GitHub 저장소 변수 `PUSH` = `fcm` (비밀 이름을 바꿨으면 `PUSH_SA_SECRET`). Actions → `deploy-cloudrun` → Run workflow.
+5. (수입 가득 알림) Cloud Scheduler → 작업 만들기: 한 시간마다(`0 * * * *`), HTTP `POST https://<서버 주소>/v1/admin/games/ancientwar/push/sweep`, 머리 `X-Admin-Key` = 관리자 키 (관리자 페이지와 같은 `GAME_ADMIN_KEY`). 관리자 구글 확인(`ADMIN_GOOGLE`)을 켜면 이 예약은 막히므로, 그때는 다시 정한다.
+- 되돌리기: `PUSH`를 `off`로 바꾸고 다시 배포.
+
+**기기 쪽 (데스크탑)**: Firebase Messaging(안드로이드) 토큰을 받으면 `RegisterPushToken`, 토큰이 바뀌면 다시, 로그아웃 · 계정 삭제 때 `Remove`. 설정 화면의 세 칸은 `SetPushSettings`로 서버에 저장 (시작 때 `GetPushSettings`로 맞춤). 알림을 누르면 `data.kind` · `data.regionId`로 영토 화면(그 깃발)을 연다.
+

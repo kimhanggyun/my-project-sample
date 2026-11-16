@@ -564,6 +564,19 @@ namespace Game.Flow
         /// <summary>우편: 영토 수입만 (가짜 시장의 등록자는 내 등록을 고용하지 않는다).</summary>
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(new MailListResponse { Mail = new List<Mail>(_mail) });
 
+        /// <summary>푸시 설정 · 토큰 (가짜: 메모리만, 보내지는 않는다, R-119).</summary>
+        private PushSettings _push = new PushSettings();
+        public readonly List<string> PushTokens = new List<string>();
+        public void GetPushSettings(Action<PushSettings> done) => done?.Invoke(_push);
+        public void SetPushSettings(PushSettings settings, Action<PushSettings> done) { if (settings != null) _push = settings; done?.Invoke(_push); }
+        public void RegisterPushToken(PushTokenRequest req, Action<bool?> done)
+        {
+            if (string.IsNullOrWhiteSpace(req?.Token)) { done?.Invoke(false); return; }
+            PushTokens.Remove(req.Token);
+            if (!req.Remove) PushTokens.Add(req.Token);
+            done?.Invoke(true);
+        }
+
         /// <summary>출석 기록 (가짜: 메모리, 서버와 같은 규칙 · 서버 시각, R-112).</summary>
         private readonly AttendanceRecord _attendance = new AttendanceRecord();
 

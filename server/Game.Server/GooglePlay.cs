@@ -140,10 +140,12 @@ namespace Game.Server
             new ServiceAccountCredential { ClientEmail = email, TokenUri = tokenUri, _key = key };
 
         /// <summary>토큰 요청용 JWT (RS256, 1시간).</summary>
-        public string Assertion(long nowUnixSeconds)
+        public string Assertion(long nowUnixSeconds) => Assertion(nowUnixSeconds, Scope);
+
+        public string Assertion(long nowUnixSeconds, string scope)
         {
             string header = B64(Encoding.UTF8.GetBytes("{\"alg\":\"RS256\",\"typ\":\"JWT\"}"));
-            var claims = new JObject { ["iss"] = ClientEmail, ["scope"] = Scope, ["aud"] = TokenUri, ["iat"] = nowUnixSeconds, ["exp"] = nowUnixSeconds + 3600 };
+            var claims = new JObject { ["iss"] = ClientEmail, ["scope"] = scope, ["aud"] = TokenUri, ["iat"] = nowUnixSeconds, ["exp"] = nowUnixSeconds + 3600 };
             string body = B64(Encoding.UTF8.GetBytes(claims.ToString(Newtonsoft.Json.Formatting.None)));
             byte[] sig = _key.SignData(Encoding.ASCII.GetBytes(header + "." + body), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             return header + "." + body + "." + B64(sig);

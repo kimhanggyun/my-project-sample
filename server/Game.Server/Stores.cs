@@ -97,6 +97,10 @@ namespace Game.Server
         /// <summary>계정의 출석 기록을 잠근 채 읽거나 고친다 (고친 뒤 저장, 없으면 새 기록). 우편을 보내도 된다.</summary>
         T WithAttendance<T>(string gameCode, string accountId, Func<Game.Flow.AttendanceRecord, T> use);
 
+        // ---- 푸시 (게임별, R-119) ----
+        /// <summary>계정의 푸시 설정 · 토큰을 잠근 채 읽거나 고친다 (고친 뒤 저장, 없으면 새 것 = 모두 켬 · 토큰 없음).</summary>
+        T WithPush<T>(string gameCode, string accountId, Func<PushProfile, T> use);
+
         // ---- 결제 기록 (게임별, R-116) ----
         /// <summary>반영한 거래 (없으면 null). 같은 거래를 다시 쓰지 못하게 · 복원 때 "이미 반영" 확인.</summary>
         Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId);
@@ -141,6 +145,8 @@ namespace Game.Server
             public Dictionary<string, List<SharedReplayEntry>> SharedReplays { get; set; } = new Dictionary<string, List<SharedReplayEntry>>();
             /// <summary>게임 코드 → (계정 → 출석 기록, R-112).</summary>
             public Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>> Attendance { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>();
+            /// <summary>게임 코드 → (계정 → 푸시 설정 · 토큰, R-119).</summary>
+            public Dictionary<string, Dictionary<string, PushProfile>> Push { get; set; } = new Dictionary<string, Dictionary<string, PushProfile>>();
             /// <summary>관리자 페이지가 정한 버전 · 점검 안내 (R-118, null = 서버 설정).</summary>
             public ServerStatusResponse StatusOverride { get; set; }
             /// <summary>게임 코드 → (거래 id → 반영한 결제, R-116).</summary>
@@ -258,6 +264,7 @@ namespace Game.Server
                 foreach (var g in Data.Mail.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.HireLogs.Values) Drop(g, (k, v) => gone.Contains(k));
                 if (Data.Attendance != null) foreach (var g in Data.Attendance.Values) Drop(g, (k, v) => gone.Contains(k));
+                if (Data.Push != null) foreach (var g in Data.Push.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Territory.Values) Drop(g, (k, v) => v != null && gone.Contains(v.OwnerAccountId));
                 foreach (var l in Data.Listings.Values) l.RemoveAll(x => gone.Contains(x.OwnerAccountId));
                 foreach (var l in Data.SharedReplays.Values) l.RemoveAll(x => x.Summary != null && gone.Contains(x.Summary.OwnerAccountId));
@@ -470,6 +477,21 @@ namespace Game.Server
             if (Data.Receipts == null) Data.Receipts = new Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>>(); // 예전 저장 파일
             if (!Data.Receipts.TryGetValue(gameCode, out var g)) Data.Receipts[gameCode] = g = new Dictionary<string, Game.Flow.ReceiptRecord>();
             return g;
+        }
+
+        public T WithPush<T>(string gameCode, string accountId, Func<PushProfile, T> use)
+        {
+            lock (Fresh())
+            {
+                if (Data.Push == null) Data.Push = new Dictionary<string, Dictionary<string, PushProfile>>(); // 예전 저장 파일
+                if (!Data.Push.TryGetValue(gameCode, out var g)) Data.Push[gameCode] = g = new Dictionary<string, PushProfile>();
+                if (!g.TryGetValue(accountId ?? "", out var p)) g[accountId ?? ""] = p = new PushProfile();
+                if (p.Settings == null) p.Settings = new PushSettings();
+                if (p.Tokens == null) p.Tokens = new List<PushTokenEntry>();
+                var r = use(p);
+                Persist();
+                return r;
+            }
         }
 
         public Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId)
