@@ -37,6 +37,7 @@
 |---|---|---|
 | `POST /v1/auth/guest` | (공통) 게스트 계정 만들기 (개발용, 실제 로그인은 백엔드 인증으로 교체) | `SignInResponse` (토큰 → `Authorization: Bearer`) |
 | `GET /v1/time` | (공통) 서버 시각 | `ServerTimeResponse` |
+| `GET /v1/status` | 버전 확인 · 점검 안내 (인증 없음, R-118): 최소 · 최신 버전, 점검(켬 · 문구 키 · 끝 시각). 설정 `Game:Status:MinVersion` · `LatestVersion` · `Maintenance:On` · `Maintenance:MessageKey` · `Maintenance:EndsAt`(unix 초) 위에 관리자 페이지 값(`/v1/admin/notice`). 점검은 안내만 (요청을 막지 않음). 닿지 않으면 기기는 그대로 시작 | `ServerStatusResponse` |
 | `GET /v1/games` | (공통) 서버에 등록된 게임 코드 | `GameListResponse` |
 | `GET /v1/games/resolve?app=…` | (공통) 앱 id(package명·번들 id) → 게임 코드. 없으면 404 | `ResolveAppResponse` |
 | `GET /v1/me/games` | (공통) 내가 가입한(들어온 적 있는) 게임 | `GameListResponse` |

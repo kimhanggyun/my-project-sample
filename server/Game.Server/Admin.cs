@@ -54,6 +54,21 @@ namespace Game.Server
                     You = id,
                 })));
 
+            // 버전 · 점검 안내 바꾸기 (R-118): 몸 = AdminStatusNotice. Clear면 지우고 서버 설정으로. 바꾼 뒤 지금 /v1/status 값을 돌려준다.
+            var statusFromConfig = ServerStatus.FromConfig(app.Configuration);
+            app.MapGet(Prefix + "/notice", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
+                Guard(req, store, masters, _ => Json(new AdminStatusNotice { Current = ServerStatus.Current(statusFromConfig, store.StatusOverride(), Now()), Override = store.StatusOverride() })));
+            app.MapPost(Prefix + "/notice", async (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminStatusNotice>(req);
+                return Guard(req, store, masters, _ =>
+                {
+                    if (body == null) return Results.StatusCode(StatusCodes.Status422UnprocessableEntity);
+                    store.SetStatusOverride(body.Clear ? null : body.Override);
+                    return Json(new AdminStatusNotice { Current = ServerStatus.Current(statusFromConfig, store.StatusOverride(), Now()), Override = store.StatusOverride() });
+                });
+            });
+
             app.MapGet(Prefix + "/accounts", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
                 Guard(req, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
 
@@ -199,6 +214,14 @@ namespace Game.Server
         public int Units { get; set; }
         public List<Mail> Mail { get; set; } = new List<Mail>();
         public string SaveJson { get; set; }
+    }
+
+    /// <summary>버전 · 점검 안내 (R-118): Override = 관리자 값 (버전 칸은 비우면 설정 값, Maintenance는 통째), Clear = 지우기. 응답의 Current = 지금 /v1/status.</summary>
+    public sealed class AdminStatusNotice
+    {
+        public ServerStatusResponse Override { get; set; }
+        public bool Clear { get; set; }
+        public ServerStatusResponse Current { get; set; }
     }
 
     public sealed class AdminMailRequest

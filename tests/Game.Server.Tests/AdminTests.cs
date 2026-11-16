@@ -66,7 +66,33 @@ namespace Game.Server.Tests
             Assert.Single(box.Mail, m => m.Kind == MailKinds.AdminGift && m.Amount == 100);
         }
 
-        private static StringContent Body(object o) => new StringContent(OnlineJson.Write(o), Encoding.UTF8, "application/json");
+[Fact(DisplayName = "R-118 버전 · 점검: /v1/status는 인증 없이, 관리자가 바꾸면 바로 반영 (버전은 있는 칸만, 점검은 통째), Clear면 서버 설정으로")]
+        public async Task StatusNotice()
+        {
+            var anyone = _keyOnly.CreateClient();
+            var first = await Read<ServerStatusResponse>(await anyone.GetAsync(OnlineRoutes.Status));
+            Assert.Null(first.MinVersion);
+            Assert.False(first.Maintenance.On);
+
+            var admin = _keyOnly.CreateClient();
+            admin.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            var set = await admin.PostAsync(AdminRoutes.Prefix + "/notice", Body(new AdminStatusNotice { Override = new ServerStatusResponse { MinVersion = "1.2.0", Maintenance = new MaintenanceInfo { On = true, EndsAtUnixSeconds = 2_000_000_000 } } }));
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+            var now = await Read<ServerStatusResponse>(await anyone.GetAsync(OnlineRoutes.Status));
+            Assert.Equal(("1.2.0", true, 2_000_000_000L), (now.MinVersion, now.Maintenance.On, now.Maintenance.EndsAtUnixSeconds));
+            Assert.True(Game.Flow.AppStatus.Evaluate(now, "1.1.9", 1_900_000_000).UpdateRequired);
+
+            var wrong = _keyOnly.CreateClient();
+            wrong.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, "wrong");
+            Assert.Equal(HttpStatusCode.NotFound, (await wrong.PostAsync(AdminRoutes.Prefix + "/notice", Body(new AdminStatusNotice { Clear = true }))).StatusCode);
+
+            await admin.PostAsync(AdminRoutes.Prefix + "/notice", Body(new AdminStatusNotice { Clear = true }));
+            var cleared = await Read<ServerStatusResponse>(await anyone.GetAsync(OnlineRoutes.Status));
+            Assert.Null(cleared.MinVersion);
+            Assert.False(cleared.Maintenance.On);
+        }
+
+                private static StringContent Body(object o) => new StringContent(OnlineJson.Write(o), Encoding.UTF8, "application/json");
         private static async Task<T> Read<T>(HttpResponseMessage r) => OnlineJson.Read<T>(await r.Content.ReadAsStringAsync());
 
         private static async Task<(HttpClient c, SignInResponse who)> Guest(WebApplicationFactory<Program> f)

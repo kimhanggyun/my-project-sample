@@ -113,6 +113,9 @@ namespace Game.Online
         public void GetTime(Action<ServerTimeResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Time, null, null, (status, body) => done?.Invoke(status == 200 ? Parse<ServerTimeResponse>(body) : null));
 
+        public void GetStatus(Action<ServerStatusResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.Status, null, null, (status, body) => done?.Invoke(status == 200 ? Parse<ServerStatusResponse>(body) : null));
+
         public void LoadSave(Action<CloudSave> done) =>
             _transport.Send("GET", OnlineRoutes.Save(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<CloudSave>(body) : null));
 

@@ -45,6 +45,32 @@ namespace Game.Flow
             return true;
         }
 
+        /// <summary>
+        /// 결제 복원 (R-117): 영구 상품(광고 영구 제거 · 결제 치장)만. 세이브에 없으면 반영 (치장은 중복 엽전 없이 얻기만), 이미 있으면 바꾸지 않고 true.
+        /// 소모성 · 기간제 · 상점에 없는 상품 · 영수증 없음은 false.
+        /// </summary>
+        public bool Restore(CampaignState state, PlayerAction a)
+        {
+            if (a?.ProductId == null || string.IsNullOrEmpty(a.Receipt)) return false;
+            if (!_defs.Products.TryGetValue(a.ProductId, out var p) || !p.PriceKrw.HasValue || !p.Permanent) return false;
+            if (p.AdFreeDays == 0) state.AdFreeForever = true;
+            if (p.CosmeticId != null)
+            {
+                var cos = new CosmeticService(_defs);
+                if (cos.Find(p.CosmeticId) == null) return false;
+                if (!state.OwnedCosmetics.Contains(p.CosmeticId)) cos.Grant(state, p.CosmeticId);
+            }
+            return true;
+        }
+
+        /// <summary>복원할 수 있는 상품 (영구 · 상점에 있음), id 순.</summary>
+        public List<ProductDef> Restorable()
+        {
+            var list = Listed();
+            list.RemoveAll(p => !p.Permanent);
+            return list;
+        }
+
         public static bool AdFree(CampaignState state, long nowUnixSeconds) => state.AdFreeForever || state.AdFreeUntilUnixSeconds > nowUnixSeconds;
     }
 
@@ -75,6 +101,8 @@ namespace Game.Flow
         public const string Used = "used";
         /// <summary>스토어에 닿지 않음 (네트워크 · 인증 · 스토어 오류). 다시 시도하면 될 수 있다.</summary>
         public const string Unavailable = "unavailable";
+        /// <summary>복원: 이 거래는 다른 계정에 반영되었다 (R-117).</summary>
+        public const string OtherAccount = "otherAccount";
         /// <summary>결제 대기 중 (구글 purchaseState 2: 현금 결제 등).</summary>
         public const string Pending = "pending";
     }
@@ -145,12 +173,18 @@ namespace Game.Flow
         /// <summary>마지막 결제 검사의 결과 (서버 기록 · 문제 찾기용).</summary>
         public ReceiptVerdict Last { get; private set; }
 
+        /// <summary>복원(R-117)용: 거래 id → 반영한 계정 (모르면 null). 없으면 복원은 늘 새 거래로 본다 (기기 안 가짜 서버).</summary>
+        public System.Func<string, string> OwnerOf { get; set; }
+        /// <summary>복원하는 계정.</summary>
+        public string AccountId { get; set; }
+
         /// <summary>이 묶음에서 통과한 결제 (거래 id · 상품 · 영수증).</summary>
         public List<ReceiptRecord> Pending { get; } = new List<ReceiptRecord>();
 
         /// <summary>결제 행동이 아니면 true. 결제면 영수증이 받을 수 있는 것이고 처음 쓰는 것이어야 true.</summary>
         public bool Check(PlayerAction a)
         {
+            if (a?.Kind == ActionKinds.StoreRestore) return CheckRestore(a);
             if (a?.Kind != ActionKinds.StorePurchase) return true;
             if (string.IsNullOrEmpty(a.Receipt)) { Last = ReceiptVerdict.No(ReceiptReasons.Empty); return false; }
             var v = _verifier.Verify(a.ProductId, a.Receipt) ?? ReceiptVerdict.No(ReceiptReasons.Rejected);
@@ -160,6 +194,23 @@ namespace Game.Flow
             bool fresh = _isUsed != null ? !_isUsed(tx) && _batch.Add(tx) : _used.Add(tx);
             if (!fresh) { Last = ReceiptVerdict.No(ReceiptReasons.Used); return false; }
             Pending.Add(new ReceiptRecord { TransactionId = tx, ProductId = a.ProductId, Receipt = a.Receipt });
+            return true;
+        }
+
+        /// <summary>
+        /// 복원 (R-117): 스토어에 다시 확인해 진짜면 통과. 이미 이 계정에 반영된 거래면 그대로 통과 (세이브에 있으면 지급 없음),
+        /// 다른 계정에 반영된 거래면 otherAccount로 거절, 처음 보는 거래면 기록할 것(Pending)에 넣는다.
+        /// </summary>
+        private bool CheckRestore(PlayerAction a)
+        {
+            if (string.IsNullOrEmpty(a.Receipt)) { Last = ReceiptVerdict.No(ReceiptReasons.Empty); return false; }
+            var v = _verifier.Verify(a.ProductId, a.Receipt) ?? ReceiptVerdict.No(ReceiptReasons.Rejected);
+            Last = v;
+            if (!v.Valid) return false;
+            string tx = v.TransactionId ?? a.Receipt;
+            string owner = OwnerOf?.Invoke(tx);
+            if (owner != null && owner != AccountId) { Last = ReceiptVerdict.No(ReceiptReasons.OtherAccount); return false; }
+            if (owner == null && _batch.Add(tx)) Pending.Add(new ReceiptRecord { TransactionId = tx, ProductId = a.ProductId, Receipt = a.Receipt });
             return true;
         }
     }

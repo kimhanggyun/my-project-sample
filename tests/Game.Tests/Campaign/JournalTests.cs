@@ -21,6 +21,7 @@ namespace Game.Tests.Campaign
             public string AccountId => _inner.AccountId;
             public void SignIn(Action<bool> done) { if (Down) done(false); else _inner.SignIn(done); }
             public void GetTime(Action<ServerTimeResponse> done) { if (Down) done(null); else _inner.GetTime(done); }
+            public void GetStatus(Action<ServerStatusResponse> done) { if (Down) done(null); else _inner.GetStatus(done); }
             public void LoadSave(Action<CloudSave> done) { if (Down) done(null); else _inner.LoadSave(done); }
             public void PutSave(SavePutRequest r, Action<SavePutResponse> done) { if (Down) done(null); else _inner.PutSave(r, done); }
             public void SubmitBattle(BattleSubmission s, Action<BattleVerdict> done) { if (Down) done(null); else _inner.SubmitBattle(s, done); }

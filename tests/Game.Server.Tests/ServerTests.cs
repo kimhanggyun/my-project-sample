@@ -108,6 +108,38 @@ namespace Game.Server.Tests
             }
         }
 
+[Fact(DisplayName = "R-117 결제 복원: 영구 상품은 같은 계정이면 지급 없이 Ok (세이브에 있으면 그대로), 다른 계정이면 otherAccount로 422, 소모성은 422")]
+        public async Task RestorePurchase()
+        {
+            var a = await SignedIn();
+            var b = await SignedIn();
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            string receipt = "fake:remove_banner_permanent:" + System.Guid.NewGuid();
+            var first = await Read<CloudSave>(await a.GetAsync(Save));
+            var bought = await Read<ActionVerdict>(await a.PostAsync(actions, Body(new ActionSubmission { BaseRevision = first.Revision, Actions = { PlayerActionRunner.Purchase("remove_banner_permanent", receipt) } })));
+            Assert.True(bought.Valid, bought.Reason);
+            Assert.True(StrategyGameModule.FromJson(bought.Save.Json).AdFreeForever);
+
+            var again = await a.PostAsync(actions, Body(new ActionSubmission { BaseRevision = bought.Save.Revision, Actions = { PlayerActionRunner.RestorePurchase("remove_banner_permanent", receipt) } }));
+            Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+            var restored = await Read<ActionVerdict>(again);
+            Assert.Equal(StrategyGameModule.FromJson(bought.Save.Json).Wallet["gold"], StrategyGameModule.FromJson(restored.Save.Json).Wallet["gold"]);
+
+            var bSave = await Read<CloudSave>(await b.GetAsync(Save));
+            var stolen = await b.PostAsync(actions, Body(new ActionSubmission { BaseRevision = bSave.Revision, Actions = { PlayerActionRunner.RestorePurchase("remove_banner_permanent", receipt) } }));
+            Assert.Equal((HttpStatusCode)422, stolen.StatusCode);
+
+            // 처음 보는 영구 상품 영수증의 복원 = 반영 + 기록 (다시 사기로는 못 씀)
+            string fresh = "fake:remove_banner_permanent:" + System.Guid.NewGuid();
+            var newOne = await Read<ActionVerdict>(await b.PostAsync(actions, Body(new ActionSubmission { BaseRevision = bSave.Revision, Actions = { PlayerActionRunner.RestorePurchase("remove_banner_permanent", fresh) } })));
+            Assert.True(newOne.Valid, newOne.Reason);
+            Assert.True(StrategyGameModule.FromJson(newOne.Save.Json).AdFreeForever);
+            var buyAfter = await b.PostAsync(actions, Body(new ActionSubmission { BaseRevision = newOne.Save.Revision, Actions = { PlayerActionRunner.Purchase("remove_banner_permanent", fresh) } }));
+            Assert.Equal((HttpStatusCode)422, buyAfter.StatusCode);
+            var consumable = await b.PostAsync(actions, Body(new ActionSubmission { BaseRevision = newOne.Save.Revision, Actions = { PlayerActionRunner.RestorePurchase("gold_pack_small", "fake:g:" + System.Guid.NewGuid()) } }));
+            Assert.Equal((HttpStatusCode)422, consumable.StatusCode);
+        }
+
         [Fact(DisplayName = "R-86 마스터: 개발 행동 dev.*은 마스터 계정만 (아니면 422), 프로필에 IsMaster")]
         public async Task MasterOnlyDevActions()
         {

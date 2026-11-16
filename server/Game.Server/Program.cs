@@ -53,6 +53,9 @@ app.MapPost(OnlineRoutes.FirebaseSignIn, async (HttpRequest req, IPlatformStore 
     return who == null ? Results.Unauthorized() : Json(p.SignInExternal(who.Provider, who.Subject, who.Email));
 });
 app.MapGet(OnlineRoutes.Time, () => Json(new ServerTimeResponse { UnixSeconds = Now() }));
+// 버전 확인 · 점검 안내 (R-118): 인증 없이, 설정 + 관리자 값
+var statusFromConfig = ServerStatus.FromConfig(builder.Configuration);
+app.MapGet(OnlineRoutes.Status, (IPlatformStore p) => Json(ServerStatus.Current(statusFromConfig, p.StatusOverride(), Now())));
 app.MapGet(OnlineRoutes.Games, (GameRegistry r) => Json(new GameListResponse { Games = new List<string>(r.Codes) }));
 app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
 {

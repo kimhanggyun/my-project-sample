@@ -316,6 +316,10 @@ namespace Game.Flow
         public void SignIn(Action<bool> done) => done?.Invoke(true);
         public void GetTime(Action<ServerTimeResponse> done) => done?.Invoke(new ServerTimeResponse { UnixSeconds = _time.UtcNow.ToUnixTimeSeconds() });
 
+        /// <summary>가짜 서버: 버전 검사 · 점검 없음 (시험용으로 바꿀 수 있다).</summary>
+        public ServerStatusResponse Status { get; set; } = new ServerStatusResponse();
+        public void GetStatus(Action<ServerStatusResponse> done) { Status.NowUnixSeconds = _time.UtcNow.ToUnixTimeSeconds(); done?.Invoke(Status); }
+
         public void LoadSave(Action<CloudSave> done)
         {
             if (_save == null) Keep(new CloudSave { Revision = 1, Json = SaveJson.Write(StartingKitService.CreateNewGame(_defs)), SavedAtUnixSeconds = Now });
