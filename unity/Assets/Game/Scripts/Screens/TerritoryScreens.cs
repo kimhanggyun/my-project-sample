@@ -432,16 +432,18 @@ namespace Game.Unity.Screens
         /// <summary>
         /// 지도에서 누른 자리에 깃발 꽂기 (R-96 · R-109): 기본 편성의 장수마다 체크 줄 (다른 깃발에 나간 · 출전 못 하는 장수는 못 고름), 1명 이상 → [깃발 꽂기].
         /// </summary>
-        private static void OpenPlantSheet(GameApp app, RectTransform root, GeoPoint here, GeoPoint target, long radius)
+        /// <param name="reinforceKey">있으면 새 깃발이 아니라 이 내 깃발에 장수 추가 파견 (R-115, 위치 필요 없음).</param>
+        private static void OpenPlantSheet(GameApp app, RectTransform root, GeoPoint here, GeoPoint target, long radius, string reinforceKey = null)
         {
             var ctx = app.Context;
             var comps = ctx.State.CompositionsFor(null);
             var busyIds = new List<string>();
             if (Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId) busyIds.AddRange(TerritoryFlags.GeneralsOf(o));
             _plantPick.RemoveAll(id => busyIds.Contains(id) || !comps.Exists(c => c.GeneralId == id));
-            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.plantHere"), 220 + 100 * Mathf.Max(1, comps.Count) + 120);
+            bool reinforce = reinforceKey != null;
+            var (content, close) = Ui.BottomSheet(root, ctx.T(reinforce ? "ui.terr.reinforceTitle" : "ui.terr.plantHere"), 220 + 100 * Mathf.Max(1, comps.Count) + 120);
             Ui.Column(content, 6, 0);
-            Ui.Label(content, ctx.T("ui.terr.plantHereNote", FormatKm(radius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Label(content, reinforce ? ctx.T("ui.terr.reinforceNote") : ctx.T("ui.terr.plantHereNote", FormatKm(radius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             foreach (var c in comps)
             {
                 string gid = c.GeneralId;
@@ -454,18 +456,19 @@ namespace Game.Unity.Screens
                 {
                     if (_plantPick.Contains(gid)) _plantPick.Remove(gid); else _plantPick.Add(gid);
                     close();
-                    OpenPlantSheet(app, root, here, target, radius);
+                    OpenPlantSheet(app, root, here, target, radius, reinforceKey);
                 });
                 if (busy) row.interactable = false;
             }
-            var go = Ui.Button(content, ctx.T("ui.terr.plantGo", _plantPick.Count), () =>
+            var go = Ui.Button(content, ctx.T(reinforce ? "ui.terr.reinforceGo" : "ui.terr.plantGo", _plantPick.Count), () =>
             {
-                var req = new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick) };
+                var req = reinforce ? new PlantRequest { FlagKey = reinforceKey, GeneralIds = new List<string>(_plantPick) }
+                    : new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick) };
                 close();
                 ctx.PlantFlag(req, r =>
                 {
                     if (r != null && r.Ok) _plantPick.Clear();
-                    Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.plant." + r.Reason);
+                    Notice = r == null ? ctx.T("ui.hire.failed") : reinforce && r.Ok ? ctx.T("ui.terr.reinforced") : ctx.T("ui.terr.plant." + r.Reason);
                     NamesFetched = false;
                     if (root != null) app.ShowMain("territory");
                 });
@@ -481,7 +484,7 @@ namespace Game.Unity.Screens
             var fd = ctx.Territory?.Flags;
             long radius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
             bool canPlant = plantAt != null && Last != null && Last.Ok && fd != null && fd.Within(Last.Point, fd.CellOf(plantAt.Value), radius) && FlagDefs.KeyOf(fd.CellOf(plantAt.Value)) != flag.RegionId;
-            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 340 + 96 * ids.Count + 120);
+            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 420 + 96 * ids.Count + 120);
             Ui.Column(content, 8, 0);
             // 쌓인 수입 · [수입 받기]
             var inc = Ui.Row(content, "Income", 76, 12);
@@ -516,6 +519,13 @@ namespace Game.Unity.Screens
                 var row = Ui.Row(content, "General", 84, 12);
                 Ui.Size(Ui.Label(row, ctx.GeneralName(id), 28, TextAnchor.MiddleLeft), flexibleWidth: 1);
                 Ui.Size(Ui.SecondaryButton(row, ctx.T("ui.terr.recall"), () => Recall(new List<string> { id }), 72, 24), 72, 170).flexibleWidth = 0;
+            }
+            // 장수 추가 파견 (R-115): 추가 파견 뒤 회수하면 장수 바꾸기
+            {
+                string key = flag.RegionId;
+                var here0 = Last != null && Last.Ok ? Last.Point : default;
+                var add = Ui.Button(content, ctx.T("ui.terr.reinforce"), () => { close(); OpenPlantSheet(app, root, here0, here0, radius, key); }, 72, fontSize: 24);
+                Ui.SetEnabled(add, flag.SiegeAttackerId == null);
             }
             if (canPlant)
             {

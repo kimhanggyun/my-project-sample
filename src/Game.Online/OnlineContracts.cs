@@ -388,6 +388,8 @@ namespace Game.Online
         public string GeneralId { get; set; }
         /// <summary>꽂을 장수들 (R-109, 1명 이상). 없으면 GeneralId 하나.</summary>
         public List<string> GeneralIds { get; set; }
+        /// <summary>있으면 새로 꽂지 않고 이 내 깃발에 장수를 더 보낸다 (추가 파견, R-115). 위치는 보지 않는다.</summary>
+        public string FlagKey { get; set; }
     }
 
     public static class PlantReasons
@@ -403,6 +405,10 @@ namespace Game.Online
         public const string Siege = "siege";
         public const string Protected = "protected";
         public const string NoFlags = "noFlags";
+        /// <summary>추가 파견 (R-115): 그 깃발이 없다 · 내 깃발이 아니다 · 공격받는 중.</summary>
+        public const string NoFlag = "noFlag";
+        public const string NotMine = "notMine";
+        public const string UnderSiege = "underSiege";
     }
 
     /// <summary>깃발에서 장수 회수 (R-109): 깃발 키, 회수할 장수들 (null = 모두). 모두 회수하면 깃발이 사라진다.</summary>

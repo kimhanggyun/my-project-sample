@@ -75,18 +75,9 @@ namespace Game.Flow
             var cell = fd.CellOf(target);
             if (!fd.Within(here, cell, radius)) return new PlantCheck { Reason = PlantReasons.OutOfRange, RadiusM = radius };
 
-            // 장수 1명 이상 (R-109): 모두 있고 · 출전 가능 · 다른 내 깃발에 없고 · 기본 편성에 군단이 있어야
             var gids = RequestGenerals(req);
-            if (gids.Count == 0) return new PlantCheck { Reason = PlantReasons.NoGeneral, RadiusM = radius };
-            foreach (var gid in gids)
-            {
-                var g = state?.FindGeneral(gid);
-                if (g == null) return new PlantCheck { Reason = PlantReasons.NoGeneral, RadiusM = radius };
-                if (!GeneralStatus.CanDeploy(g.Status)) return new PlantCheck { Reason = PlantReasons.GeneralBusy, RadiusM = radius };
-                foreach (var o in owners.Values)
-                    if (FlagDefs.IsFlagKey(o.RegionId) && o.OwnerAccountId == accountId && GeneralsOf(o).Contains(gid)) return new PlantCheck { Reason = PlantReasons.GeneralBusy, RadiusM = radius };
-                if (CorpsOf(state, gid) == null) return new PlantCheck { Reason = PlantReasons.NotInFormation, RadiusM = radius };
-            }
+            string why = CheckGenerals(state, accountId, owners, gids);
+            if (why != null) return new PlantCheck { Reason = why, RadiusM = radius };
 
             string key = FlagDefs.KeyOf(cell);
             string myAlliance = allianceOf?.Invoke(accountId);
@@ -106,6 +97,49 @@ namespace Game.Flow
             if (nearest != null)
                 return new PlantCheck { Reason = nearest.ProtectedUntilUnixSeconds > now ? PlantReasons.Protected : PlantReasons.Siege, AttackKey = nearest.RegionId, RadiusM = radius };
             return new PlantCheck { Reason = PlantReasons.Ok, FlagKey = key, RadiusM = radius };
+        }
+
+        /// <summary>장수 1명 이상 (R-109): 모두 있고 · 출전 가능 · 다른 내 깃발에 없고 · 기본 편성에 군단이 있어야. 되면 null, 아니면 까닭.</summary>
+        private static string CheckGenerals(CampaignState state, string accountId, IReadOnlyDictionary<string, TerritoryOwner> owners, List<string> gids)
+        {
+            if (gids.Count == 0) return PlantReasons.NoGeneral;
+            foreach (var gid in gids)
+            {
+                var g = state?.FindGeneral(gid);
+                if (g == null) return PlantReasons.NoGeneral;
+                if (!GeneralStatus.CanDeploy(g.Status)) return PlantReasons.GeneralBusy;
+                foreach (var o in owners.Values)
+                    if (FlagDefs.IsFlagKey(o.RegionId) && o.OwnerAccountId == accountId && GeneralsOf(o).Contains(gid)) return PlantReasons.GeneralBusy;
+                if (CorpsOf(state, gid) == null) return PlantReasons.NotInFormation;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 추가 파견 (R-115, 2026-11-16 사용자): 내 깃발에 장수를 더 보낸다. 장수 검사는 꽂기와 같고(R-109), 위치는 보지 않는다 (회수처럼).
+        /// 공격받는 중(공성전 기록이 있음)이면 거절. 수비 = 원래 장수 + 새 장수 군단 스냅샷 (판 + 1). 추가 파견 뒤 회수 = 장수 바꾸기.
+        /// </summary>
+        public static PlantResponse Reinforce(TerritoryDefs territory, DefinitionSet defs, CampaignState state, string accountId,
+            Dictionary<string, TerritoryOwner> owners, PlantRequest req, long now)
+        {
+            if (territory?.Flags == null) return new PlantResponse { Ok = false, Reason = PlantReasons.NoFlags };
+            if (req?.FlagKey == null || !FlagDefs.IsFlagKey(req.FlagKey) || !owners.TryGetValue(req.FlagKey, out var flag)) return new PlantResponse { Ok = false, Reason = PlantReasons.NoFlag };
+            if (flag.OwnerAccountId != accountId) return new PlantResponse { Ok = false, Reason = PlantReasons.NotMine };
+            if (flag.SiegeAttackerId != null) return new PlantResponse { Ok = false, Reason = PlantReasons.UnderSiege };
+            var add = RequestGenerals(req);
+            string why = CheckGenerals(state, accountId, owners, add);
+            if (why != null) return new PlantResponse { Ok = false, Reason = why };
+            var all = GeneralsOf(flag);
+            all.AddRange(add);
+            var d = TerritoryDefenses.SnapshotGenerals(defs, state, all, out _);
+            if (d == null) return new PlantResponse { Ok = false, Reason = PlantReasons.NotInFormation };
+            d.Version = (flag.Defense?.Version ?? 0) + 1;
+            d.RegisteredAtUnixSeconds = now;
+            d.OwnerAccountId = accountId;
+            flag.Defense = d;
+            flag.GeneralIds = all;
+            flag.GeneralId = all[0];
+            return new PlantResponse { Ok = true, Reason = PlantReasons.Ok, Flag = flag };
         }
 
         /// <summary>공성전에서 깃발에 남을 공격 장수: 제출 편성의 첫 군단 장수, 없으면 기본 편성의 첫 군단.</summary>
@@ -130,6 +164,7 @@ namespace Game.Flow
         public static PlantResponse Plant(TerritoryDefs territory, DefinitionSet defs, CampaignState state, string accountId, Func<string, string> allianceOf,
             Dictionary<string, TerritoryOwner> owners, PlantRequest req, long now)
         {
+            if (!string.IsNullOrEmpty(req?.FlagKey)) return Reinforce(territory, defs, state, accountId, owners, req, now); // 추가 파견 (R-115)
             var check = Check(territory, defs, state, accountId, allianceOf, owners, req, now);
             if (!check.Ok) return new PlantResponse { Ok = false, Reason = check.Reason, AttackKey = check.AttackKey };
             var gids = RequestGenerals(req);
