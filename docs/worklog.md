@@ -102,3 +102,4 @@
 - 2026-11-16 [원격] claude/play-receipts — Google Play 영수증 실제 검증 R-116: purchases.products.get(서비스 계정 JWT), 쓴 거래는 저장소에(재시작에도 used), 반영 뒤 acknowledge/consume, 배포 변수 RECEIPT_VERIFIER · GOOGLE_PLAY_PACKAGE · Secret Manager 키
 - 2026-11-16 [원격] claude/purchase-restore — 결제 복원 R-117: store.restore 행동(영구 상품만, 다시 확인 → 없으면 반영 · 있으면 지급 없이 Ok, 다른 계정 거래는 otherAccount)
 - 2026-11-16 [원격] claude/server-status — 버전 확인 · 점검 안내 R-118: GET /v1/status(인증 없음, 설정 Game:Status:* + 관리자 /v1/admin/notice), 기기 판정 AppStatus.Evaluate
+- 2026-11-16 [원격] claude/push-server — 푸시 알림 서버 쪽 R-119: 설정 · 토큰 API, 공성전 시작 → attacked · allyHelp, 수입 가득 훑기(관리자 sweep), IPushSender off · fake · fcm, 배포 변수 PUSH

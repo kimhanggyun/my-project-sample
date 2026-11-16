@@ -56,6 +56,10 @@ namespace Game.Online
         public static string SharedReplays(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/replays";
         public static string SharedReplay(string game, string id) => SharedReplays(game) + "/" + Uri.EscapeDataString(id);
         public static string Mail(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/mail";
+        /// <summary>푸시 알림 설정 (GET · POST, R-119).</summary>
+        public static string PushSettings(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/push/settings";
+        /// <summary>푸시 기기 토큰 등록 · 지우기 (POST, R-119).</summary>
+        public static string PushToken(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/push/token";
         /// <summary>출석 (POST, R-112).</summary>
         public static string Attendance(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/attendance";
         /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
@@ -286,6 +290,8 @@ namespace Game.Online
         public long RadiusM { get; set; }
         /// <summary>이 시각까지 공격받지 않음 (공성전 뒤 보호, R-97).</summary>
         public long ProtectedUntilUnixSeconds { get; set; }
+        /// <summary>수입 가득 알림을 보낸 시각 (R-119). 받은 뒤(CollectedUnixSeconds가 더 늦음) 다시 찰 때 또 보낸다.</summary>
+        public long IncomeFullNotifiedUnixSeconds { get; set; }
         /// <summary>공성전 준비 중인 공격자와 준비 시작 시각 (R-113, 없으면 null · 0). 서버가 기록한다.</summary>
         public string SiegeAttackerId { get; set; }
         public long SiegeStartedAtUnixSeconds { get; set; }
@@ -447,6 +453,37 @@ namespace Game.Online
     {
         public string FlagKey { get; set; }
         public List<string> GeneralIds { get; set; }
+    }
+
+    /// <summary>푸시 알림 종류 (R-119, 기기 설정 화면의 세 칸과 같다).</summary>
+    public static class PushKinds
+    {
+        /// <summary>내 깃발이 공격받음 (공성전 준비 시작 = 서버 기록 시점, R-113).</summary>
+        public const string Attacked = "attacked";
+        /// <summary>연합원의 깃발이 공격받음 (도와 달라는 알림).</summary>
+        public const string AllyHelp = "allyHelp";
+        /// <summary>깃발 수입이 다 참 (쌓이는 최대 시간).</summary>
+        public const string IncomeFull = "incomeFull";
+        public static readonly string[] All = { Attacked, AllyHelp, IncomeFull };
+    }
+
+    /// <summary>푸시 알림 설정 (R-119): 종류마다 켬 · 끔. 처음엔 모두 켬. 서버에 저장해 서버가 보낼지 고른다.</summary>
+    public sealed class PushSettings
+    {
+        public bool Attacked { get; set; } = true;
+        public bool AllyHelp { get; set; } = true;
+        public bool IncomeFull { get; set; } = true;
+
+        public bool Allows(string kind) => kind == PushKinds.Attacked ? Attacked : kind == PushKinds.AllyHelp ? AllyHelp : kind == PushKinds.IncomeFull && IncomeFull;
+    }
+
+    /// <summary>기기 푸시 토큰 등록 (R-119): FCM 등록 토큰. Remove면 지운다 (로그아웃 · 알림 끄기).</summary>
+    public sealed class PushTokenRequest
+    {
+        public string Token { get; set; }
+        /// <summary>android / ios.</summary>
+        public string Platform { get; set; }
+        public bool Remove { get; set; }
     }
 
     /// <summary>공성전 준비 시작 (R-113): 칠 깃발과 내 위치.</summary>
@@ -942,6 +979,11 @@ namespace Game.Online
         void GetMail(Action<MailListResponse> done);
         /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편. 닿지 않으면 null.</summary>
         void CheckIn(Action<AttendanceResponse> done);
+        /// <summary>푸시 알림 설정 읽기 · 저장 (R-119). 닿지 않으면 null.</summary>
+        void GetPushSettings(Action<PushSettings> done);
+        void SetPushSettings(PushSettings settings, Action<PushSettings> done);
+        /// <summary>기기 푸시 토큰 등록 · 지우기 (R-119). 되면 true, 닿지 않으면 null.</summary>
+        void RegisterPushToken(PushTokenRequest request, Action<bool?> done);
 
         // ---- 계정 (닿지 않으면 null) ----
         void GetProfile(Action<ProfileResponse> done);
@@ -995,6 +1037,9 @@ namespace Game.Online
         public void Unregister(string listingId, Action<bool?> done) => done?.Invoke(null);
         public void GetMail(Action<MailListResponse> done) => done?.Invoke(null);
         public void CheckIn(Action<AttendanceResponse> done) => done?.Invoke(null);
+        public void GetPushSettings(Action<PushSettings> done) => done?.Invoke(null);
+        public void SetPushSettings(PushSettings settings, Action<PushSettings> done) => done?.Invoke(null);
+        public void RegisterPushToken(PushTokenRequest request, Action<bool?> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);

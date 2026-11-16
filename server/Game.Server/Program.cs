@@ -168,6 +168,19 @@ app.MapGet("/v1/games/{game}/replays/{replay}", (string game, string replay, Htt
     InGame(req, p, r, game, Now(), (id, g) => { var res = g.SharedReplay(replay); return res == null ? Results.NotFound() : Json(res); }));
 app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.MailOf(id))));
+// 푸시 알림 설정 · 기기 토큰 (R-119)
+app.MapGet("/v1/games/{game}/push/settings", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (id, g) => Json(g.PushSettingsOf(id))));
+app.MapPost("/v1/games/{game}/push/settings", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<PushSettings>(req);
+    return InGame(req, p, r, game, Now(), (id, g) => Json(g.SetPushSettings(id, body)));
+});
+app.MapPost("/v1/games/{game}/push/token", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<PushTokenRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) => g.RegisterPushToken(id, body) ? Results.Ok() : Results.StatusCode(StatusCodes.Status422UnprocessableEntity));
+});
 // 출석 (R-112): 하루 한 번, 서버 시각. 보상은 우편
 app.MapPost("/v1/games/{game}/attendance", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.CheckIn(id))));
@@ -302,8 +315,9 @@ namespace Game.Server
                 registry.Register(new StrategyGameModule(DefaultGame, new[] { "net.itgold.unitygame1" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
             var receipts = ReceiptVerifiers.FromConfig(config, time);
+            var push = PushSenders.FromConfig(config, time);
             foreach (var code in registry.Codes)
-                if (registry.Find(code) is StrategyGameModule m) { m.Receipts = receipts; if (masters != null) m.Masters = masters; }
+                if (registry.Find(code) is StrategyGameModule m) { m.Receipts = receipts; m.PushSender = push; if (masters != null) m.Masters = masters; }
             return registry;
         }
     }

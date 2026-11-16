@@ -163,6 +163,16 @@ namespace Game.Online
         public void GetMail(Action<MailListResponse> done) =>
             _transport.Send("GET", OnlineRoutes.Mail(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<MailListResponse>(body) : null));
 
+        public void GetPushSettings(Action<PushSettings> done) =>
+            _transport.Send("GET", OnlineRoutes.PushSettings(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<PushSettings>(body) : null));
+
+        public void SetPushSettings(PushSettings settings, Action<PushSettings> done) =>
+            _transport.Send("POST", OnlineRoutes.PushSettings(_game), OnlineJson.Write(settings), Token, (status, body) => done?.Invoke(status == 200 ? Parse<PushSettings>(body) : null));
+
+        public void RegisterPushToken(PushTokenRequest request, Action<bool?> done) =>
+            _transport.Send("POST", OnlineRoutes.PushToken(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 ? true : status == 422 ? false : (bool?)null));
+
         public void CheckIn(Action<AttendanceResponse> done) =>
             _transport.Send("POST", OnlineRoutes.Attendance(_game), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<AttendanceResponse>(body) : null));
 
