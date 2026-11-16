@@ -465,7 +465,7 @@ namespace Game.Server
 
         public string NewKey(string prefix) => prefix + NewId(6);
 
-private Dictionary<string, Game.Flow.ReceiptRecord> ReceiptBook(string gameCode)
+        private Dictionary<string, Game.Flow.ReceiptRecord> ReceiptBook(string gameCode)
         {
             if (Data.Receipts == null) Data.Receipts = new Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>>(); // 예전 저장 파일
             if (!Data.Receipts.TryGetValue(gameCode, out var g)) Data.Receipts[gameCode] = g = new Dictionary<string, Game.Flow.ReceiptRecord>();

@@ -73,7 +73,10 @@ namespace Game.Unity.Screens
                     var line = Ui.Row(card, "Line", 60, 8);
                     WinTag(line, rec);
                     Ui.Button(line, T("ui.replay.keep"), () => { Ctx.KeepReplay(rec.Id); App.Show(new ReplayListScreen(T("ui.replay.saved", Ctx.Replays.Items.Count, Ctx.ReplayRules.MaxSaved))); }, 56, fontSize: 22);
-                    Ui.Size(Ui.Button(line, "▶", () => Play(rec), 56, Palette.ButtonActive, 26), width: 70);
+                    var play = Ui.Button(line, "▶", () => Play(rec), 56, Palette.ButtonActive, 26);
+                    Ui.Size(play, width: 70);
+                    Ui.SetEnabled(play, !rec.Unplayable);
+                    if (rec.Unplayable) Dim(card);
                 }
             }
             if (saved.Count > 0) Ui.Label(body, T("ui.replay.savedHead"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -95,11 +98,26 @@ namespace Game.Unity.Screens
                 long pct = rec.PlayerStartTroops <= 0 ? 0 : rec.PlayerLosses * 100 / rec.PlayerStartTroops;
                 Ui.Label(info, T("ui.replay.stat", rec.Seconds / 60, (rec.Seconds % 60).ToString("00"), pct), 24, TextAnchor.MiddleLeft, Palette.TextDim);
                 Ui.Label(info, DateTimeOffset.FromUnixTimeSeconds(rec.SavedAtUnixSeconds).ToLocalTime().ToString("MM.dd HH:mm"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-                Ui.Size(Ui.Button(line, "▶", () => Play(rec), 100, Palette.ButtonActive, 40), width: 100);
+                var play = Ui.Button(line, "▶", () => Play(rec), 100, Palette.ButtonActive, 40);
+                Ui.Size(play, width: 100);
+                if (rec.Unplayable)
+                {
+                    // 옛 규칙 녹화 (14 시안 5): 흐림 + [다시 볼 수 없음] + ▶ 꺼짐. 삭제는 ⋯에서 그대로
+                    Ui.SetEnabled(play, false);
+                    Ui.Size(Ui.Tag(info, T("ui.replay.unplayable"), Palette.TextDim, 20, 38), width: 220);
+                    Dim(card);
+                }
                 Button more = null;
                 more = Ui.Button(line, "⋯", () => Menu((RectTransform)more.transform, rec), 60, fontSize: 32);
                 Ui.Size(more, width: 80);
             }
+        }
+
+        /// <summary>카드를 흐리게 (버튼은 그대로 눌림 — ⋯ 삭제).</summary>
+        private static void Dim(RectTransform card)
+        {
+            var g = card.gameObject.AddComponent<CanvasGroup>();
+            g.alpha = 0.5f;
         }
 
         private void WinTag(Transform parent, ReplayRecord rec) =>
@@ -210,6 +228,7 @@ namespace Game.Unity.Screens
         {
             var playback = Ctx.ReplayService.Check(rec);
             if (playback.Ok) { App.Show(new BattleScreen(playback)); return; }
+            Ctx.MarkReplayUnplayable(rec.Id); // 다음부터 목록에서 흐리게 (미리 확인은 다시 돌려야 해 무거워, 한 번 눌러 본 것만)
             App.Show(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
         }
 
