@@ -19,8 +19,11 @@ namespace Game.Unity.Screens
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
-            var (_, list, _, _) = Ui.TitledPage(root, ctx.T("ui.tab.shop"), null); // 공통 타이틀 (탭이라 뒤로 없음)
+            var (header, list, _, _) = Ui.TitledPage(root, ctx.T("ui.tab.shop"), null); // 공통 타이틀 (탭이라 뒤로 없음)
             InfoButton.Add(root, ctx.T("ui.shop.note"));
+            // 위 탭 = 사는 수단 (economy.md 0장 세 단, 2026-11-16 사용자): 엽전구매 · 금괴 · 현금
+            Ui.SegmentTabs(header, new[] { (Gold, ctx.T("ui.shop.tab.gold")), (Gem, ctx.T("ui.shop.tab.gem")), (Cash, ctx.T("ui.shop.tab.cash")) }, Tab,
+                t => { Tab = t; app.ShowMain(TabId); }, 60, 220);
             long now = ctx.Time.UtcNow.ToUnixTimeSeconds();
             if (PurchaseService.AdFree(ctx.State, now))
                 Ui.Label(list, ctx.State.AdFreeForever ? ctx.T("ui.shop.adFreeForever")
@@ -28,9 +31,25 @@ namespace Game.Unity.Screens
             if (!ctx.Store.IsAvailable) Ui.Label(list, Ui.Colored(ctx.T("ui.shop.unavailable"), Palette.Bad), Ui.FontSmall);
 
             if (_notice != null) { Ui.Label(list, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good); _notice = null; }
-            CosmeticSection(app, list);
-            ExchangeSection(app, list);
-            Ui.Label(list, ctx.T("ui.shop.paid"), 28).fontStyle = FontStyle.Bold;
+            if (Tab == Cash) CashSection(app, list);
+            else
+            {
+                string pay = Tab == Gem ? ResourceIds.Gem : ResourceIds.Gold;
+                int before = list.childCount;
+                CosmeticSection(app, list, pay);
+                ExchangeSection(app, list, pay);
+                if (list.childCount == before) Ui.Label(list, ctx.T("ui.shop.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+            }
+        }
+
+        public const string Gold = "gold", Gem = "gem", Cash = "cash";
+        /// <summary>지금 고른 위 탭 (다시 그려도 유지).</summary>
+        public static string Tab = Gold;
+
+        /// <summary>[현금] 탭: 결제 상품 (economy.md 0장 결제 전용).</summary>
+        private static void CashSection(GameApp app, RectTransform list)
+        {
+            var ctx = app.Context;
             foreach (var p in new PurchaseService(ctx.Defs).Listed())
             {
                 string id = p.Id;
@@ -49,13 +68,13 @@ namespace Game.Unity.Screens
 
         private static string _notice;
 
-        /// <summary>[치장] 묶음 (R-111): 엽전 · 금괴로 사는 갑옷 · 말 색 (결제 치장은 아래 결제 상품에). 산 것은 꾸미기에서 입힌다.</summary>
-        private static void CosmeticSection(GameApp app, RectTransform list)
+        /// <summary>[치장] 묶음 (R-111): 그 탭의 수단(엽전 · 금괴)으로 사는 갑옷 · 말 색 (결제 치장은 [현금] 탭). 산 것은 꾸미기에서 입힌다.</summary>
+        private static void CosmeticSection(GameApp app, RectTransform list, string pay)
         {
             var ctx = app.Context;
             var svc = new CosmeticService(ctx.Defs);
             var items = new List<CosmeticDef>();
-            foreach (var d in svc.Items) if (d.PriceGold != null || d.PriceGem != null) items.Add(d);
+            foreach (var d in svc.Items) if (pay == ResourceIds.Gold ? d.PriceGold != null : d.PriceGold == null && d.PriceGem != null) items.Add(d);
             if (items.Count == 0) return;
             Ui.Label(list, ctx.T("ui.shop.cosmetics"), 28).fontStyle = FontStyle.Bold;
             foreach (var d in items)
@@ -79,15 +98,20 @@ namespace Game.Unity.Screens
             }
         }
 
-        /// <summary>[바꾸기] 묶음 (R-112): 비율마다 한 묶음 · 열 묶음, 받는 양(손실 뒤) · 오늘 남은 한도. 시각은 서버 시각.</summary>
-        private static void ExchangeSection(GameApp app, RectTransform list)
+        /// <summary>
+        /// [바꾸기] 묶음 (R-112): 그 탭의 수단을 내는 비율만 (엽전구매 탭 = 엽전 ↔ 곡식, 금괴 탭 = 금괴 → 엽전 · 곡식). 비율마다 버튼 하나 = 열 묶음
+        /// (2026-11-16 사용자: "금괴 10 → 엽전 1,000" 하나만). 받는 양(손실 뒤) · 오늘 남은 한도. 시각은 서버 시각.
+        /// </summary>
+        private static void ExchangeSection(GameApp app, RectTransform list, string pay)
         {
             var ctx = app.Context;
             var econ = new DailyEconomy(ctx.Defs);
-            if (econ.Rates.Count == 0) return;
+            var rates = new List<ExchangeRate>();
+            foreach (var r in econ.Rates) if (pay == ResourceIds.Gem ? r.From == ResourceIds.Gem : r.From != ResourceIds.Gem) rates.Add(r);
+            if (rates.Count == 0) return;
             Ui.Label(list, ctx.T("ui.shop.exchange"), 28).fontStyle = FontStyle.Bold;
             long now = ctx.Clock.UtcNow.ToUnixTimeSeconds();
-            foreach (var rate in econ.Rates)
+            foreach (var rate in rates)
             {
                 var card = Ui.Card(list, rate.Key, 16, 6);
                 long left = econ.LeftToday(ctx.State, rate, now);
@@ -96,7 +120,7 @@ namespace Game.Unity.Screens
                     + (left == long.MaxValue ? "" : "  " + ctx.T("ui.shop.exchangeLeft", left.ToString("N0")));
                 Ui.Label(card, info, 22, TextAnchor.MiddleLeft, Palette.TextDim);
                 var row = Ui.Row(card, "Buttons", 72, 8);
-                foreach (int k in new[] { 1, 10 })
+                foreach (int k in new[] { 10 })
                 {
                     long amount = rate.Give * k, get = DailyEconomy.Output(rate, amount);
                     string from = rate.From, to = rate.To;
