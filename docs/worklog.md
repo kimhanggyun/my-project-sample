@@ -90,3 +90,4 @@
 - 2026-11-16 [데스크탑] desktop/territory-income-direct — 영토 수입 [수입 받기] · 깃발 위 수입 · 깃발 거두기 = 바로 자원에 (서버 우편 → 기기 즉시 mail.claim), 우편함 영토 수입은 거점마다 한 장 + [모두 받기] (사용자)
 - 2026-11-16 [데스크탑] desktop/admin-page — 관리자 페이지 /unitygame1.html (접속 ID = 서버 비밀값 GAME_ADMIN_KEY + 마스터 구글 로그인): 서버 상태 · 계정/세이브 · 운영 선물 우편 · 영토/연합 (docs/impl/admin.md)
 - 2026-11-16 [데스크탑] 출석 [출석 받기] = 보상 바로 받기 · 오늘 받았으면 버튼 끔, 깃발 수입 바로 받기가 첫 누름에 안 되던 것 (응답 우편에 id 없음 → 우편함에서 찾아 받기)
+- 2026-11-16 [데스크탑] desktop/admin-key-only — 관리자 페이지 개발 중엔 접속 ID만 (Game:AdminGoogle=off 배포 기본), 구글 확인은 출시 전 (backlog F)

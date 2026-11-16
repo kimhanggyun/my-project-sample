@@ -16,8 +16,9 @@ namespace Game.Server
 {
     /// <summary>
     /// 관리자 페이지 (docs/impl/admin.md, 2026-11-16 사용자): /unitygame1.html + /v1/admin/*.
-    /// 들어가려면 둘 다: ① 관리자 키 (설정 Game:AdminKey, Cloud Run 비밀값 — 저장소에 적지 않는다) 헤더 X-Admin-Key,
-    /// ② 마스터 계정 (Game:Masters, 구글 로그인) 토큰. 키 설정이 없으면 관리자 주소는 모두 404 (꺼짐).
+    /// 들어가려면: ① 관리자 키 (설정 Game:AdminKey, Cloud Run 비밀값 — 저장소에 적지 않는다) 헤더 X-Admin-Key,
+    /// ② 마스터 계정 (Game:Masters, 구글 로그인) 토큰 — 설정 Game:AdminGoogle이 "off"면 ②는 묻지 않는다 (개발 중, 2026-11-16 사용자: 출시 전에 켬).
+    /// 키 설정이 없으면 관리자 주소는 모두 404 (꺼짐).
     /// </summary>
     public static class AdminRoutes
     {
@@ -25,18 +26,22 @@ namespace Game.Server
         public const string Prefix = "/v1/admin";
         /// <summary>한 번에 보낼 수 있는 자원 상한 (실수로 0을 더 붙이는 것 막기).</summary>
         public const long MaxAmount = 100_000_000;
+        /// <summary>구글 확인 없이 키로만 들어온 관리자.</summary>
+        public const string KeyOnlyAdmin = "admin-key";
 
         public static void Map(WebApplication app)
         {
             var time = app.Services.GetRequiredService<ITimeProvider>();
             long Now() => time.UtcNow.ToUnixTimeSeconds();
             string key = app.Configuration["Game:AdminKey"];
+            bool google = !string.Equals(app.Configuration["Game:AdminGoogle"], "off", StringComparison.OrdinalIgnoreCase);
 
-            // 키 확인만 (페이지 첫 칸): 맞으면 204, 아니면 404 — 로그인 전에 키가 틀렸는지 알려 준다
-            app.MapPost(Prefix + "/key", (HttpRequest req) => KeyOk(req, key) ? Results.NoContent() : Results.NotFound());
+            // 키 확인만 (페이지 첫 칸): 맞으면 200 + 구글 로그인이 필요한지, 아니면 404
+            app.MapPost(Prefix + "/key", (HttpRequest req) => KeyOk(req, key) ? Json(new AdminKeyResponse { Google = google }) : Results.NotFound());
+            IResult Guard(HttpRequest req, InMemoryStore store, MasterAccounts masters, Func<string, IResult> handle) => GuardWith(req, key, google, store, masters, handle);
 
             app.MapGet(Prefix + "/status", (HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters, IServiceProvider sp) =>
-                Guard(req, key, store, masters, id => Json(new AdminStatus
+                Guard(req, store, masters, id => Json(new AdminStatus
                 {
                     NowUnixSeconds = Now(),
                     Revision = Environment.GetEnvironmentVariable("K_REVISION"),
@@ -50,10 +55,10 @@ namespace Game.Server
                 })));
 
             app.MapGet(Prefix + "/accounts", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
-                Guard(req, key, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
+                Guard(req, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
 
             app.MapGet(Prefix + "/games/{game}/accounts/{account}", (string game, string account, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
-                Guard(req, key, store, masters, _ =>
+                Guard(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     var save = store.GetSave(game, account);
@@ -81,7 +86,7 @@ namespace Game.Server
             app.MapPost(Prefix + "/games/{game}/mail", async (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
             {
                 var body = await Body<AdminMailRequest>(req);
-                return Guard(req, key, store, masters, _ =>
+                return Guard(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     if (body == null || !IsResource(body.Resource) || body.Amount <= 0 || body.Amount > MaxAmount)
@@ -104,7 +109,7 @@ namespace Game.Server
             });
 
             app.MapGet(Prefix + "/games/{game}/territory", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
-                Guard(req, key, store, masters, _ =>
+                Guard(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     var res = new AdminTerritory();
@@ -126,10 +131,11 @@ namespace Game.Server
             return CryptographicOperations.FixedTimeEquals(a, b);
         }
 
-        /// <summary>키 → 404, 토큰 없음 → 401, 마스터 아님 → 403, 통과면 처리.</summary>
-        private static IResult Guard(HttpRequest req, string key, InMemoryStore store, MasterAccounts masters, Func<string, IResult> handle)
+        /// <summary>키 → 404, (구글 확인이 켜져 있으면) 토큰 없음 → 401, 마스터 아님 → 403, 통과면 처리. 구글 확인이 꺼져 있으면 처리 계정 = "admin-key".</summary>
+        private static IResult GuardWith(HttpRequest req, string key, bool google, InMemoryStore store, MasterAccounts masters, Func<string, IResult> handle)
         {
             if (!KeyOk(req, key)) return Results.NotFound();
+            if (!google) return handle(KeyOnlyAdmin);
             string auth = req.Headers.Authorization.ToString();
             string token = auth.StartsWith("Bearer ", StringComparison.Ordinal) ? auth.Substring(7) : null;
             var id = store.AccountOf(token);
@@ -156,6 +162,12 @@ namespace Game.Server
             var text = await reader.ReadToEndAsync();
             try { return OnlineJson.Read<T>(text); } catch (Exception) { return null; }
         }
+    }
+
+    public sealed class AdminKeyResponse
+    {
+        /// <summary>true = 다음에 마스터 구글 로그인이 필요 (Game:AdminGoogle이 off가 아님).</summary>
+        public bool Google { get; set; }
     }
 
     public sealed class AdminAccount

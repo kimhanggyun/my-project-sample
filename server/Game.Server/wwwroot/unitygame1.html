@@ -160,7 +160,12 @@
     $("keyBtn").disabled = true;
     try {
       const r = await fetch("/v1/admin/key", { method: "POST", headers: { "X-Admin-Key": v } });
-      if (r.status === 204) { adminKey = v; ss.set("adminKey", v); $("keyInput").value = ""; show("google"); renderGoogle(); }
+      if (r.status === 200) {
+        adminKey = v; ss.set("adminKey", v); $("keyInput").value = "";
+        const k = await r.json();
+        // 개발 중 (서버 Game:AdminGoogle=off): 구글 로그인 없이 바로
+        if (k.Google) { show("google"); renderGoogle(); } else { ss.set("adminNoGoogle", "1"); await enter(); }
+      }
       else $("keyMsg").textContent = "접속 ID가 맞지 않습니다.";
     } catch (e) { $("keyMsg").textContent = "서버에 닿지 못했습니다."; }
     $("keyBtn").disabled = false;
@@ -201,7 +206,7 @@
     show("app");
     tab("status", st);
   }
-  $("logout").onclick = () => { adminKey = null; ss.set("adminKey", null); signOut(""); };
+  $("logout").onclick = () => { adminKey = null; ss.set("adminKey", null); ss.set("adminNoGoogle", null); signOut(""); };
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => tab(b.dataset.tab));
   $("reload").onclick = () => tab(current);
   $("game").onchange = () => tab(current);
@@ -308,7 +313,7 @@
   }
 
   // 처음: 이 탭에서 이미 들어온 적이 있으면 이어서
-  if (adminKey && token) enter().catch(() => {});
+  if (adminKey && (token || ss.get("adminNoGoogle"))) enter().catch(() => {});
   else if (adminKey) { show("google"); renderGoogle(); }
   else show("key");
 })();
