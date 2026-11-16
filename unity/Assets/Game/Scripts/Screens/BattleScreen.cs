@@ -1277,6 +1277,7 @@ namespace Game.Unity.Screens
             UpdatePathDots();
             var ctx = _sim.Context;
             var cam = _field.Rig.Camera;
+            UpdateTroopChip(cam);
             foreach (var kv in _flagLabels)
             {
                 var c = kv.Key;
@@ -1649,6 +1650,56 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>그리는 중인 길 (자취 · 고른 점)을 전장 위 점으로.</summary>
+        private RectTransform _troopChip;
+        private Text _troopChipText;
+        private RectTransform _troopChipFill;
+
+        /// <summary>
+        /// 병력 칩 (18·19 시안): 고른 군단 오른쪽 아래에 "지금 /처음" · 병력 막대 · "−잃은 수 (%)". 화면 밖 · 안 보이면 숨김.
+        /// </summary>
+        private void UpdateTroopChip(Camera cam)
+        {
+            var sel = _ctl.Selected;
+            bool show = sel != null && sel.InBattle && sel.Team == _ctl.Team;
+            Vector3 sp = show ? cam.WorldToScreenPoint(_field.ToWorld(sel.Anchor)) : Vector3.zero;
+            show = show && sp.z > 0 && cam.pixelRect.Contains(sp);
+            if (_troopChip == null)
+            {
+                if (!show) return;
+                _troopChip = Ui.Rect(_fieldArea, "TroopChip");
+                _troopChip.anchorMin = _troopChip.anchorMax = new Vector2(0.5f, 0.5f);
+                _troopChip.pivot = new Vector2(0f, 1f);
+                _troopChip.sizeDelta = new Vector2(300, 72);
+                var bg = Ui.Background(_troopChip, new Color(0.13f, 0.12f, 0.1f, 0.85f));
+                bg.sprite = UiShapes.Rounded(14);
+                bg.type = Image.Type.Sliced;
+                bg.raycastTarget = false;
+                _troopChipText = Ui.Label(_troopChip, "", 22, TextAnchor.UpperLeft, Color.white);
+                _troopChipText.raycastTarget = false;
+                Ui.Fill(_troopChipText.rectTransform);
+                _troopChipText.rectTransform.offsetMin = new Vector2(14, 6);
+                _troopChipText.rectTransform.offsetMax = new Vector2(-12, -6);
+                var track = Ui.Rect(_troopChip, "Track");
+                track.anchorMin = new Vector2(0.62f, 0.62f); track.anchorMax = new Vector2(0.95f, 0.8f);
+                track.offsetMin = track.offsetMax = Vector2.zero;
+                var tb = Ui.Background(track, new Color(0.62f, 0.2f, 0.16f));
+                tb.raycastTarget = false;
+                _troopChipFill = Ui.Rect(track, "Fill");
+                _troopChipFill.anchorMin = Vector2.zero; _troopChipFill.offsetMin = _troopChipFill.offsetMax = Vector2.zero;
+                var fb = Ui.Background(_troopChipFill, new Color(0.3f, 0.7f, 0.32f));
+                fb.raycastTarget = false;
+            }
+            _troopChip.gameObject.SetActive(show);
+            if (!show) return;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local))
+                _troopChip.anchoredPosition = local + new Vector2(70, -60);
+            long lost = System.Math.Max(0, sel.StartTroops - sel.Troops);
+            long pct = sel.StartTroops <= 0 ? 0 : lost * 100 / sel.StartTroops;
+            _troopChipText.text = "<size=28><b>" + sel.Troops.ToString("N0") + "</b></size> <size=20>/" + sel.StartTroops.ToString("N0") + "</size>\n"
+                + (lost > 0 ? Ui.Colored("−" + lost.ToString("N0") + " (" + pct + "%)", new Color(1f, 0.55f, 0.45f)) : "");
+            _troopChipFill.anchorMax = new Vector2(sel.StartTroops > 0 ? Mathf.Clamp01((float)sel.Troops / sel.StartTroops) : 0f, 1f);
+        }
+
         private void UpdatePathDots()
         {
             var pts = _pickMode == "path" ? (_dragTrail.Count > 0 ? _dragTrail : _path) : null;
