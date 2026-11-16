@@ -146,6 +146,7 @@ namespace Game.Unity.Screens
                         var p = Pos(cell);
                         Disc(layer, p, o.RadiusM * 2 * ppm, new Color(c.r, c.g, c.b, 0.22f));
                         Marker(ctx, layer, p, c, RankLetter(ctx, o.RadiusM), 44);
+                        if (o.SiegeAttackerId != null) Chip(layer, p + new Vector2(0, -52), ctx.T("ui.siege.underAttack"), new Color(0.6f, 0.12f, 0.1f)); // 공성전 준비 중 (R-113)
                     }
                 }
                 else if (Mode == 1)
@@ -598,8 +599,15 @@ namespace Game.Unity.Screens
                         string at = ok ? Last.Point.ToString() : null;
                         string why = !ok ? ctx.T("ui.territory.failed", Last?.Reason ?? "?")
                             : TerritoryFlags.CheckSiege(ctx.Territory, ctx.Defs, ctx.State, ctx.AccountId, Owners, key, at, ctx.Clock.UtcNow.ToUnixTimeSeconds());
-                        if (why == null) app.Show(new TerritorySortieScreen(key, at, def));
-                        else { Notice = why; if (root != null) app.ShowMain("territory"); }
+                        if (why != null) { Notice = why; if (root != null) app.ShowMain("territory"); return; }
+                        // 공성전 준비 (R-113): 서버에 준비 시작 → 준비 시간이 있으면 카운트다운 화면, 없으면 바로 출진
+                        ctx.StartSiege(new SiegeRequest { FlagKey = key, Location = at }, sr =>
+                        {
+                            if (sr == null) { Notice = ctx.T("ui.hire.failed"); if (root != null) app.ShowMain("territory"); return; }
+                            if (!sr.Ok) { Notice = sr.Reason == SiegeReasons.Busy ? ctx.T("ui.siege.busy") : sr.Message ?? ctx.T("ui.siege.cannot"); if (root != null) app.ShowMain("territory"); return; }
+                            if (sr.StartsAtUnixSeconds > ctx.Clock.UtcNow.ToUnixTimeSeconds()) app.Show(new SiegePrepScreen(key, at, def, sr.StartsAtUnixSeconds));
+                            else app.Show(new TerritorySortieScreen(key, at, def));
+                        });
                     });
                 }, 80, Palette.ButtonActive, 28);
             }
@@ -720,6 +728,62 @@ namespace Game.Unity.Screens
     /// <summary>
     /// 영토 출진 (R-46): 지역의 수비군을 보여주고 [직접 지휘] / [위임]. 스토리 출진과 같은 준비·확정·전투·결과 (결과는 서버가 재현해 맞으면 차지).
     /// </summary>
+    /// <summary>
+    /// 공성전 준비 카운트다운 (R-113, territory-v2.md 2.3): "전투 준비 중 — n초 뒤 시작", [공격 취소] (CancelSiege).
+    /// 0이 되면 출진 화면으로. 그동안 수비자에게는 공성전 알림 우편이 간다.
+    /// </summary>
+    public sealed class SiegePrepScreen : GameScreen
+    {
+        private readonly string _flagKey, _location;
+        private readonly TerritoryDefense _defense;
+        private readonly long _startsAt;
+        private Text _count;
+        private bool _done;
+
+        public SiegePrepScreen(string flagKey, string location, TerritoryDefense defense, long startsAtUnixSeconds)
+        {
+            _flagKey = flagKey; _location = location; _defense = defense; _startsAt = startsAtUnixSeconds;
+        }
+
+        public override void Build()
+        {
+            var (_, body, _, _) = Ui.TitledPage(Root, T("ui.siege.title"), null, infoGap: false);
+            Ui.Column(body, 24, 40);
+            Ui.Label(body, T("ui.siege.prep"), 34, TextAnchor.MiddleCenter);
+            _count = Ui.Label(body, "", 120, TextAnchor.MiddleCenter, Palette.Seal);
+            Ui.Size(_count, 200);
+            Ui.Label(body, T("ui.siege.prepNote"), 24, TextAnchor.MiddleCenter, Palette.TextDim);
+            Ui.Button(body, T("ui.siege.cancel"), Cancel, 96, fontSize: 30);
+            Tick(0f);
+        }
+
+        public override bool OnBack() { Cancel(); return true; }
+
+        private void Cancel()
+        {
+            if (_done) return;
+            _done = true;
+            Ctx.CancelSiege(_flagKey, _ =>
+            {
+                TerritoryTabView.Notice = T("ui.siege.cancelled");
+                App.ShowMain("territory");
+            });
+        }
+
+        public override void Tick(float deltaTime)
+        {
+            if (_done || _count == null) return;
+            long left = _startsAt - Ctx.Clock.UtcNow.ToUnixTimeSeconds();
+            if (left <= 0)
+            {
+                _done = true;
+                App.Show(new TerritorySortieScreen(_flagKey, _location, _defense));
+                return;
+            }
+            _count.text = left.ToString();
+        }
+    }
+
     public sealed class TerritorySortieScreen : GameScreen
     {
         private readonly string _regionId;

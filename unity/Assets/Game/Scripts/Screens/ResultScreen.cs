@@ -292,6 +292,8 @@ namespace Game.Unity.Screens
             foreach (var s in _report.UnlockedSkills) lines.Add(T("ui.result.skills") + ": " + (Ctx.Defs.Skills.TryGetValue(s, out var sd) ? T(sd.NameKey) : s));
             foreach (var id in _report.JoinedGenerals) lines.Add(T("ui.result.joined") + ": " + Ctx.GeneralName(id));
             foreach (var id in _report.JoinedAsShard) lines.Add(T("ui.result.shardLine", Ctx.GeneralName(id)));
+            foreach (var c in _report.Cosmetics) lines.Add(T("ui.result.cosmetic", T("cos." + c)));      // 치장 얻음 (R-111)
+            if (_report.CosmeticRefundGold > 0) lines.Add(T("ui.result.cosmeticRefund", _report.CosmeticRefundGold.ToString("N0")));
             bool secrets = _report.Secrets.Count > 0;
             var card = Fold(body, "gained", "得", T("ui.result.gainedSummary", lines.Count + _report.Secrets.Count), secrets);
             if (card == null) return;

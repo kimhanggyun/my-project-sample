@@ -125,6 +125,14 @@ namespace Game.Unity.Screens
                     Ui.SetEnabled(buy, price.HasValue && Ctx.Resource(ResourceIds.Gold) >= price.Value);
                     var learn = Ui.Button(row, T("ui.general.learn"), () => Learn(books, sid), 64, check == LearnCheck.Ok ? Palette.Seal : (Color?)null, 22);
                     Ui.SetEnabled(learn, check == LearnCheck.Ok);
+                    // 얻기 조건 미달이면 금괴로 해금 (R-112, 계정 전체 한 번)
+                    var unlock = check == LearnCheck.ConditionNotMet ? new DailyEconomy(Ctx.Defs).UnlockPrice(sid) : null;
+                    if (unlock != null)
+                    {
+                        long gem = unlock.Value;
+                        var ub = Ui.Button(row, T("ui.general.unlock", gem.ToString("N0")), () => Reopen(Ctx.Do(PlayerActionRunner.UnlockSkillLearn(sid)) ? T("ui.general.unlocked") : T("ui.cos.notEnough.gem")), 64, fontSize: 22);
+                        Ui.SetEnabled(ub, Ctx.Resource(ResourceIds.Gem) >= gem);
+                    }
                 }
             }
             else

@@ -28,6 +28,8 @@ namespace Game.Unity.Screens
             foreach (var s in ctx.Defs.Secrets) if (s.Id == f.SecretId) { def = s; break; }
             string reward = def != null ? Reward(ctx, def) : f.SecretId;
             if (f.StoredAsBook) reward = ctx.T("ui.result.secretStored", reward);
+            if (f.Cosmetic != null) reward += (reward.Length > 0 ? ", " : "") + ctx.T("ui.result.cosmetic", ctx.T("cos." + f.Cosmetic)); // 치장 (R-111)
+            if (f.CosmeticRefundGold > 0) reward += " " + ctx.T("ui.result.cosmeticRefund", f.CosmeticRefundGold.ToString("N0"));
             return ctx.T("ui.result.secretLine", Name(ctx, f.SecretId), ctx.GeneralName(f.GeneralId), reward);
         }
 
