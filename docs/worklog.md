@@ -104,3 +104,4 @@
 - 2026-11-16 [원격] claude/server-status — 버전 확인 · 점검 안내 R-118: GET /v1/status(인증 없음, 설정 Game:Status:* + 관리자 /v1/admin/notice), 기기 판정 AppStatus.Evaluate
 - 2026-11-16 [데스크탑] desktop/replay-codex-marks — 녹화: 다시 볼 수 없던 녹화 흐림 · ▶ 꺼짐 (ReplayRecord.Unplayable), 도감: 새로 찾은 숨은 보상 [NEW] · [도감] 탭 빨간 점
 - 2026-11-16 [데스크탑] desktop/merc-2 — 용병 고용: 정렬(승률 · 레벨 · 가격) · 병종 거르기 · 카드 이력 막대 · 카드 누르면 자세히 아래 판
+- 2026-11-16 [원격] claude/db-design — 서버 저장소 DB 설계 제안 docs/impl/db.md (Firestore 제안 · 자료 나누기 · 영토 깃발 단위 · 옮기기 · 비용), 결정 대기
