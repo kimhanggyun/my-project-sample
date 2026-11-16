@@ -134,7 +134,7 @@ namespace Game.Server
         public SignInResponse CreateGuest()
         {
             var r = new SignInResponse { AccountId = "acct-" + NewId(8), Token = NewId(24) };
-            lock (_lock)
+            lock (Fresh())
             {
                 Data.Tokens[r.Token] = r.AccountId;
                 Data.Memberships[r.AccountId] = new Dictionary<string, long>();
@@ -146,7 +146,7 @@ namespace Game.Server
         public SignInResponse SignInExternal(string provider, string subject, string email = null)
         {
             string key = provider + ":" + subject;
-            lock (_lock)
+            lock (Fresh())
             {
                 if (!Data.External.TryGetValue(key, out var accountId))
                 {
@@ -166,7 +166,7 @@ namespace Game.Server
         public string LinkExternal(string accountId, string provider, string subject, string email = null)
         {
             string key = provider + ":" + subject;
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.External.TryGetValue(key, out var owner)) return owner == accountId ? LinkReasons.Ok : LinkReasons.Taken;
                 foreach (var kv in Data.External)
@@ -181,7 +181,7 @@ namespace Game.Server
 
         public bool IsLinked(string accountId)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 foreach (var v in Data.External.Values) if (v == accountId) return true;
                 return false;
@@ -190,7 +190,7 @@ namespace Game.Server
 
         public long RequestDeletion(string accountId, long nowUnixSeconds)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Deletions == null) Data.Deletions = new Dictionary<string, long>();
                 if (!Data.Deletions.TryGetValue(accountId, out var at)) { Data.Deletions[accountId] = at = nowUnixSeconds; Persist(); }
@@ -200,7 +200,7 @@ namespace Game.Server
 
         public bool CancelDeletion(string accountId)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Deletions == null || accountId == null || !Data.Deletions.Remove(accountId)) return false;
                 Persist();
@@ -210,7 +210,7 @@ namespace Game.Server
 
         public int PurgeDeleted(long nowUnixSeconds)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Deletions == null || Data.Deletions.Count == 0) return 0;
                 var gone = new HashSet<string>();
@@ -245,12 +245,12 @@ namespace Game.Server
         public string AccountOf(string token)
         {
             if (token == null) return null;
-            lock (_lock) return Data.Tokens.TryGetValue(token, out var id) ? id : null;
+            lock (Fresh()) return Data.Tokens.TryGetValue(token, out var id) ? id : null;
         }
 
         public bool Join(string accountId, string gameCode, long nowUnixSeconds)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (!Data.Memberships.TryGetValue(accountId, out var games)) Data.Memberships[accountId] = games = new Dictionary<string, long>();
                 if (games.ContainsKey(gameCode)) return false;
@@ -262,7 +262,7 @@ namespace Game.Server
 
         public IReadOnlyList<string> GamesOf(string accountId)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var list = new List<string>();
                 if (Data.Memberships.TryGetValue(accountId, out var games)) list.AddRange(games.Keys);
@@ -275,7 +275,7 @@ namespace Game.Server
         {
             var n = NicknameRules.Normalize(nickname);
             if (n == null) return new NicknameResponse { Ok = false, Reason = NicknameRules.BadName };
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Nicknames == null) Data.Nicknames = new Dictionary<string, string>();
                 foreach (var kv in Data.Nicknames)
@@ -288,18 +288,18 @@ namespace Game.Server
 
         public string EmailOf(string accountId)
         {
-            lock (_lock) return Data.Emails != null && accountId != null && Data.Emails.TryGetValue(accountId, out var e) ? e : null;
+            lock (Fresh()) return Data.Emails != null && accountId != null && Data.Emails.TryGetValue(accountId, out var e) ? e : null;
         }
 
         public string NicknameOf(string accountId)
         {
-            lock (_lock) return Data.Nicknames != null && accountId != null && Data.Nicknames.TryGetValue(accountId, out var n) ? n : null;
+            lock (Fresh()) return Data.Nicknames != null && accountId != null && Data.Nicknames.TryGetValue(accountId, out var n) ? n : null;
         }
 
         public Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds)
         {
             var r = new Dictionary<string, string>();
-            lock (_lock)
+            lock (Fresh())
                 foreach (var id in accountIds)
                     if (id != null && Data.Nicknames != null && Data.Nicknames.TryGetValue(id, out var n)) r[id] = n;
             return r;
@@ -307,12 +307,12 @@ namespace Game.Server
 
         public CloudSave GetSave(string gameCode, string accountId)
         {
-            lock (_lock) return Data.Saves.TryGetValue(gameCode, out var g) && g.TryGetValue(accountId, out var s) ? Copy(s) : null;
+            lock (Fresh()) return Data.Saves.TryGetValue(gameCode, out var g) && g.TryGetValue(accountId, out var s) ? Copy(s) : null;
         }
 
         public (bool ok, CloudSave current) PutSave(string gameCode, string accountId, long baseRevision, string json, long nowUnixSeconds)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (!Data.Saves.TryGetValue(gameCode, out var g)) Data.Saves[gameCode] = g = new Dictionary<string, CloudSave>();
                 g.TryGetValue(accountId, out var cur);
@@ -342,7 +342,7 @@ namespace Game.Server
 
         public HireListing UpsertListing(string gameCode, HireListing listing)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var list = ListingsOf(gameCode);
                 var old = list.Find(l => l.OwnerAccountId == listing.OwnerAccountId && l.Kind == listing.Kind && l.SourceId == listing.SourceId);
@@ -356,17 +356,17 @@ namespace Game.Server
 
         public HireListing GetListing(string gameCode, string listingId)
         {
-            lock (_lock) { var l = ListingsOf(gameCode).Find(x => x.Id == listingId); return l == null ? null : Copy(l); }
+            lock (Fresh()) { var l = ListingsOf(gameCode).Find(x => x.Id == listingId); return l == null ? null : Copy(l); }
         }
 
         public List<HireListing> Listings(string gameCode, string kind)
         {
-            lock (_lock) return ListingsOf(gameCode).FindAll(l => kind == null || l.Kind == kind).ConvertAll(Copy);
+            lock (Fresh()) return ListingsOf(gameCode).FindAll(l => kind == null || l.Kind == kind).ConvertAll(Copy);
         }
 
         public bool RemoveListing(string gameCode, string ownerAccountId, string listingId)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 int n = ListingsOf(gameCode).RemoveAll(l => l.Id == listingId && l.OwnerAccountId == ownerAccountId);
                 if (n > 0) Persist();
@@ -376,7 +376,7 @@ namespace Game.Server
 
         public void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var l = ListingsOf(gameCode).Find(x => x.Id == listingId);
                 if (l == null) return; // 그사이 해제됨
@@ -395,7 +395,7 @@ namespace Game.Server
 
         public List<Game.Flow.HireLogEntry> HireLog(string gameCode, string accountId, long nowUnixSeconds)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var log = LogOf(gameCode, accountId);
                 log.RemoveAll(e => nowUnixSeconds - e.AtUnixSeconds >= Game.Flow.HireBook.DaySeconds);
@@ -405,7 +405,7 @@ namespace Game.Server
 
         public void AddHireLog(string gameCode, string accountId, IEnumerable<Game.Flow.HireLogEntry> entries)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 LogOf(gameCode, accountId).AddRange(entries);
                 Persist();
@@ -421,7 +421,7 @@ namespace Game.Server
 
         public T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Alliances == null) Data.Alliances = new Dictionary<string, Dictionary<string, Alliance>>();
                 if (!Data.Alliances.TryGetValue(gameCode, out var g)) Data.Alliances[gameCode] = g = new Dictionary<string, Alliance>();
@@ -435,7 +435,7 @@ namespace Game.Server
 
         public T WithAttendance<T>(string gameCode, string accountId, Func<Game.Flow.AttendanceRecord, T> use)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 if (Data.Attendance == null) Data.Attendance = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>(); // 예전 저장 파일
                 if (!Data.Attendance.TryGetValue(gameCode, out var g)) Data.Attendance[gameCode] = g = new Dictionary<string, Game.Flow.AttendanceRecord>();
@@ -448,7 +448,7 @@ namespace Game.Server
 
         public T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var r = use(OwnersOf(gameCode));
                 Persist();
@@ -472,7 +472,7 @@ namespace Game.Server
 
         public SharedReplaySummary AddSharedReplay(string gameCode, SharedReplaySummary summary, string json, int storeMax)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var list = Shared(gameCode);
                 var s = Copy(summary);
@@ -487,12 +487,12 @@ namespace Game.Server
 
         public List<SharedReplaySummary> SharedReplays(string gameCode)
         {
-            lock (_lock) return Shared(gameCode).ConvertAll(e => Copy(e.Summary));
+            lock (Fresh()) return Shared(gameCode).ConvertAll(e => Copy(e.Summary));
         }
 
         public (SharedReplaySummary summary, string json) GetSharedReplay(string gameCode, string id)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var e = Shared(gameCode).Find(x => x.Summary.Id == id);
                 return e == null ? (null, null) : (Copy(e.Summary), e.Json);
@@ -501,7 +501,7 @@ namespace Game.Server
 
         public void AddMail(string gameCode, string accountId, Mail mail)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var m = Copy(mail);
                 m.Id = "m-" + NewId(6);
@@ -513,7 +513,7 @@ namespace Game.Server
         /// <summary>관리자 페이지 (admin.md): 모든 계정 한 줄씩 (닉네임 · 확인된 이메일 · 구글 연동 · 가입한 게임 · 삭제 요청 시각).</summary>
         public List<AdminAccount> AdminAccounts()
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 var linked = new HashSet<string>(Data.External.Values, StringComparer.Ordinal);
                 var list = new List<AdminAccount>();
@@ -534,12 +534,12 @@ namespace Game.Server
 
         public List<Mail> MailOf(string gameCode, string accountId)
         {
-            lock (_lock) return Box(gameCode, accountId).ConvertAll(Copy);
+            lock (Fresh()) return Box(gameCode, accountId).ConvertAll(Copy);
         }
 
         public bool TakeMail(string gameCode, string accountId, string mailId)
         {
-            lock (_lock)
+            lock (Fresh())
             {
                 int n = Box(gameCode, accountId).RemoveAll(m => m.Id == mailId);
                 if (n > 0) Persist();
@@ -553,6 +553,18 @@ namespace Game.Server
         /// <summary>바뀐 뒤 (잠금 안에서) 부른다. 폴더 저장소가 디스크에 쓴다.</summary>
         protected virtual void Persist() { }
 
+        /// <summary>
+        /// 저장소를 쓰기 전에 (잠금 안에서) 부른다. 폴더 저장소는 다른 서버(배포가 바뀌는 동안의 옛 · 새 판)가 파일을 바꿨으면 다시 읽는다.
+        /// </summary>
+        protected virtual void Sync() { }
+
+        /// <summary>잠금 + 최신으로: <c>lock (Fresh())</c>.</summary>
+        private object Fresh()
+        {
+            lock (_lock) Sync();
+            return _lock;
+        }
+
         private static CloudSave Copy(CloudSave s) => new CloudSave { Revision = s.Revision, Json = s.Json, SavedAtUnixSeconds = s.SavedAtUnixSeconds };
 
         private static string NewId(int bytes)
@@ -563,16 +575,51 @@ namespace Game.Server
         }
     }
 
-    /// <summary>개발용 폴더 저장소: 바뀔 때마다 store.json으로 쓴다 (서버를 껐다 켜도 남는다).</summary>
+    /// <summary>
+    /// 개발용 폴더 저장소: 바뀔 때마다 store.json으로 쓴다 (서버를 껐다 켜도 남는다).
+    /// 배포가 바뀌는 동안 옛 · 새 서버가 같은 폴더(Cloud Storage 버킷)를 잠깐 함께 쓴다 (2026-11-16: 새 서버가 켜질 때 읽은 옛 내용으로 덮어써
+    /// 방금 받은 우편 · 세이브가 사라짐 → staleSave). 그래서 쓸 때마다 작은 판 표시 파일 store.gen에 새 값을 남기고,
+    /// 저장소를 쓰기 전에 store.gen이 내가 마지막에 본 값과 다르면 store.json을 다시 읽는다 (CheckEvery마다 한 번까지).
+    /// </summary>
     public sealed class FolderStore : InMemoryStore
     {
         private readonly string _file;
+        private readonly string _genFile;
+        private string _gen;
+        private DateTime _checkedAt = DateTime.MinValue;
+
+        /// <summary>판 표시를 다시 보는 간격 (기본 1초, 테스트는 0).</summary>
+        public TimeSpan CheckEvery { get; set; } = TimeSpan.FromSeconds(1);
 
         public FolderStore(string root)
         {
             Directory.CreateDirectory(root);
             _file = Path.Combine(root, "store.json");
+            _genFile = Path.Combine(root, "store.gen");
+            _gen = ReadGen();
+            Load();
+        }
+
+        private void Load()
+        {
             if (File.Exists(_file)) Data = JsonConvert.DeserializeObject<Snapshot>(File.ReadAllText(_file)) ?? new Snapshot();
+        }
+
+        private string ReadGen()
+        {
+            try { return File.Exists(_genFile) ? File.ReadAllText(_genFile).Trim() : null; }
+            catch (IOException) { return _gen; }
+        }
+
+        protected override void Sync()
+        {
+            var now = DateTime.UtcNow;
+            if (now - _checkedAt < CheckEvery) return;
+            _checkedAt = now;
+            string gen = ReadGen();
+            if (gen == null || gen == _gen) return;
+            _gen = gen; // 다른 서버가 썼다
+            Load();
         }
 
         protected override void Persist()
@@ -580,6 +627,8 @@ namespace Game.Server
             var tmp = _file + ".tmp";
             File.WriteAllText(tmp, JsonConvert.SerializeObject(Data, Formatting.Indented));
             File.Move(tmp, _file, true);
+            _gen = Guid.NewGuid().ToString("N");
+            File.WriteAllText(_genFile, _gen);
         }
     }
 }

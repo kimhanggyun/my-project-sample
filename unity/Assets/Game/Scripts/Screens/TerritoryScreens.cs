@@ -361,6 +361,24 @@ namespace Game.Unity.Screens
             });
         }
 
+        /// <summary>
+        /// 깃발을 꽂고 · 보내고 · 회수하고 · 수입을 받은 뒤: 장부를 다시 받아 놓고 그린다 (2026-11-16: 받은 뒤에도 옛 수입 표가 남던 것).
+        /// 화면은 이미 받아 둔 Owners로 먼저 그리고 새 목록은 처음에만 다시 그리므로, 바뀐 뒤에는 먼저 받아 와야 한다.
+        /// </summary>
+        private static void Reload(GameApp app, RectTransform root)
+        {
+            app.Context.LoadTerritory(res =>
+            {
+                if (res != null)
+                {
+                    var owners = new Dictionary<string, TerritoryOwner>();
+                    foreach (var o in res.Owners) owners[o.RegionId] = o;
+                    Owners = owners;
+                }
+                if (root != null) app.ShowMain("territory");
+            });
+        }
+
         /// <summary>깃발 수비 스냅샷의 병력 합.</summary>
         private static long Troops(TerritoryOwner o)
         {
@@ -470,7 +488,7 @@ namespace Game.Unity.Screens
                     if (r != null && r.Ok) _plantPick.Clear();
                     Notice = r == null ? ctx.T("ui.hire.failed") : reinforce && r.Ok ? ctx.T("ui.terr.reinforced") : ctx.T("ui.terr.plant." + r.Reason);
                     NamesFetched = false;
-                    if (root != null) app.ShowMain("territory");
+                    Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
                 });
             }, 84, Palette.ButtonActive, 28);
             Ui.SetEnabled(go, _plantPick.Count > 0);
@@ -500,7 +518,7 @@ namespace Game.Unity.Screens
                     if (r == null || !r.Ok)
                     {
                         Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.recall." + r.Reason);
-                        if (root != null) app.ShowMain("territory");
+                        Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
                         return;
                     }
                     // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
@@ -509,7 +527,7 @@ namespace Game.Unity.Screens
                     {
                         string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
                         Notice = r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
-                        if (root != null) app.ShowMain("territory");
+                        Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
                     });
                 });
             }
@@ -600,7 +618,7 @@ namespace Game.Unity.Screens
                 {
                     string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
                     Notice = sum == null ? ctx.T("ui.hire.failed") : got == null ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.got", got);
-                    if (root != null) app.ShowMain("territory");
+                    Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
                 });
             });
         }

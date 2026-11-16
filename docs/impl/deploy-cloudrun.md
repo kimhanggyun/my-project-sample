@@ -15,6 +15,7 @@
 
 - 결제 영수증: 배포 서버는 `Game__AllowFakeReceipts=false` (가짜 영수증 거절 = 검증기 `off`). 검증기는 `Game__ReceiptVerifier`로 고른다 (`fake` · `off` · `googlePlay`, R-114). 실제 Google Play 검증은 7장 (자리만 있음).
 - **main에 합치면 서버 자동 배포** (2026-11-15 사용자 결정): `main`에 push(= PR 합치기)되고 바뀐 파일이 `server/**` · `src/**` · `data/**` · `config/**` · `GameCore.sln` · 이 워크플로 파일 중 하나면 `deploy-cloudrun`이 돈다. 먼저 `test` job(core-tests와 같은 `dotnet test GameCore.sln`)을 돌리고, **실패하면 배포하지 않는다** (`deploy`가 `needs: test`). 배포는 한 번에 하나씩 (`concurrency`, 인스턴스 1대 · 버킷 저장소). 문서 · 테스트 · Unity 화면만 바꾼 PR은 배포하지 않는다. 손 실행(Run workflow)은 그대로 — 변수(`GAME_MASTERS` 등)만 바꿨을 때 쓴다.
+- **배포가 바뀌는 동안** (2026-11-16): 새 판이 켜져 트래픽을 넘겨받을 때까지 옛 판도 잠깐 요청을 받는다 → 두 서버가 같은 버킷 폴더를 쓴다. 새 판이 켜질 때 읽은 store.json으로 옛 판의 그 뒤 기록(우편 받기 · 세이브)을 덮어쓰면 기기에 staleSave가 났다. 그래서 폴더 저장소는 쓸 때마다 `store.gen`(판 표시)을 바꾸고, 저장소를 쓰기 전에(1초에 한 번까지) `store.gen`이 내 것과 다르면 store.json을 다시 읽는다 (`FolderStore.Sync`, 테스트 `FolderStoreTests`). 버킷 메타데이터 캐시 때문에 몇 초 늦게 보일 수는 있으니, 머지 직후 1~2분은 폰 시험을 피하는 것이 안전하다. 사용자가 늘면 DB(Firestore · Cloud SQL)로.
 - 마스터 계정 (R-86): 저장소 변수 `GAME_MASTERS`(계정 id 또는 구글 로그인 이메일 — 확인된 이메일, 대소문자 무시, 섞어 적어도 됨, 여럿이면 쉼표. 게스트는 이메일이 없어 계정 id로) → `Game__Masters`. 바꾼 뒤 배포를 다시 돌린다.
 
 ## 2. 사용자가 할 일 (한 번)
