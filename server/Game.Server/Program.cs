@@ -298,7 +298,7 @@ namespace Game.Server
             if (!any)
                 registry.Register(new StrategyGameModule(DefaultGame, new[] { "net.itgold.unitygame1" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
-            var receipts = ReceiptVerifiers.FromConfig(config);
+            var receipts = ReceiptVerifiers.FromConfig(config, time);
             foreach (var code in registry.Codes)
                 if (registry.Find(code) is StrategyGameModule m) { m.Receipts = receipts; if (masters != null) m.Masters = masters; }
             return registry;

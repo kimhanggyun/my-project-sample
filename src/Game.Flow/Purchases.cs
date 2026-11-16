@@ -73,6 +73,10 @@ namespace Game.Flow
         public const string NotConfigured = "notConfigured";
         /// <summary>이미 쓴 영수증.</summary>
         public const string Used = "used";
+        /// <summary>스토어에 닿지 않음 (네트워크 · 인증 · 스토어 오류). 다시 시도하면 될 수 있다.</summary>
+        public const string Unavailable = "unavailable";
+        /// <summary>결제 대기 중 (구글 purchaseState 2: 현금 결제 등).</summary>
+        public const string Pending = "pending";
     }
 
     /// <summary>
@@ -114,19 +118,35 @@ namespace Game.Flow
         public const string FakePrefix = "fake:";
         private readonly IReceiptVerifier _verifier;
         private readonly HashSet<string> _used;
+        private readonly System.Func<string, bool> _isUsed;
+        private readonly HashSet<string> _batch = new HashSet<string>(System.StringComparer.Ordinal);
 
         /// <summary>예전 설정 (AllowFakeReceipts): true = 가짜 검증기, false = 모두 거절.</summary>
         public ReceiptCheck(bool allowFake, HashSet<string> usedReceipts = null)
             : this(allowFake ? (IReceiptVerifier)new FakeReceiptVerifier() : new RejectAllReceiptVerifier(), usedReceipts) { }
 
+        /// <summary>쓴 영수증을 메모리 묶음에 바로 넣는다 (기기 안 가짜 서버 · 테스트).</summary>
         public ReceiptCheck(IReceiptVerifier verifier, HashSet<string> usedReceipts = null)
         {
             _verifier = verifier ?? new RejectAllReceiptVerifier();
             _used = usedReceipts ?? new HashSet<string>(System.StringComparer.Ordinal);
         }
 
+        /// <summary>
+        /// 서버 (R-116): 쓴 거래인지는 저장소에 묻고(isUsed), 이 묶음에서 통과한 것은 <see cref="Pending"/>에 모은다.
+        /// 서버는 세이브를 저장한 뒤에만 Pending을 저장소에 기록한다 (행동이 거절되면 영수증이 타지 않는다).
+        /// </summary>
+        public ReceiptCheck(IReceiptVerifier verifier, System.Func<string, bool> isUsed)
+        {
+            _verifier = verifier ?? new RejectAllReceiptVerifier();
+            _isUsed = isUsed ?? (_ => false);
+        }
+
         /// <summary>마지막 결제 검사의 결과 (서버 기록 · 문제 찾기용).</summary>
         public ReceiptVerdict Last { get; private set; }
+
+        /// <summary>이 묶음에서 통과한 결제 (거래 id · 상품 · 영수증).</summary>
+        public List<ReceiptRecord> Pending { get; } = new List<ReceiptRecord>();
 
         /// <summary>결제 행동이 아니면 true. 결제면 영수증이 받을 수 있는 것이고 처음 쓰는 것이어야 true.</summary>
         public bool Check(PlayerAction a)
@@ -136,9 +156,31 @@ namespace Game.Flow
             var v = _verifier.Verify(a.ProductId, a.Receipt) ?? ReceiptVerdict.No(ReceiptReasons.Rejected);
             Last = v;
             if (!v.Valid) return false;
-            if (_used.Add(v.TransactionId ?? a.Receipt)) return true;
-            Last = ReceiptVerdict.No(ReceiptReasons.Used);
-            return false;
+            string tx = v.TransactionId ?? a.Receipt;
+            bool fresh = _isUsed != null ? !_isUsed(tx) && _batch.Add(tx) : _used.Add(tx);
+            if (!fresh) { Last = ReceiptVerdict.No(ReceiptReasons.Used); return false; }
+            Pending.Add(new ReceiptRecord { TransactionId = tx, ProductId = a.ProductId, Receipt = a.Receipt });
+            return true;
         }
+    }
+
+    /// <summary>반영한 결제 하나 (서버 저장소, R-116). 같은 거래를 다시 쓰지 못하게 하고, 복원 때 "이미 반영"을 안다.</summary>
+    public sealed class ReceiptRecord
+    {
+        public string TransactionId { get; set; }
+        public string ProductId { get; set; }
+        public string AccountId { get; set; }
+        /// <summary>스토어에 다시 묻거나 확인 처리(acknowledge · consume)할 때 쓰는 원래 영수증.</summary>
+        public string Receipt { get; set; }
+        public long AtUnixSeconds { get; set; }
+    }
+
+    /// <summary>
+    /// 반영한 뒤 스토어에 알리기 (R-116): 구글은 3일 안에 확인(acknowledge)하지 않으면 환불한다. 소모성 상품은 consume해야 다시 살 수 있다.
+    /// 검증기가 이것도 구현하면 서버가 세이브 저장 뒤 부른다. 실패해도 지급은 그대로 (기록 · 다음 기회에 다시).
+    /// </summary>
+    public interface IReceiptSettler
+    {
+        bool Settle(string productId, string receipt, bool consumable);
     }
 }

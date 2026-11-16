@@ -168,6 +168,8 @@ namespace Game.Data.Defs
         public const string KindCosmetic = "cosmetic";
         /// <summary>플레이 경로 없이 팔 수 있다 (R-30): 편의 기능이거나 치장 (economy.md 0장, cosmetics.md 9장 1 — 치장은 결제 전용 허용).</summary>
         public bool PlayPathExempt => Convenience || Kind == KindCosmetic;
+        /// <summary>영구 상품 (R-116): 광고 영구 제거 · 결제 치장. 결제 복원 대상이고 스토어에서 소모하지 않는다. 나머지(꾸러미 · 기간제)는 소모성.</summary>
+        public bool Permanent => AdFreeDays == 0 || Kind == KindCosmetic;
     }
 
     public static class SlotIds

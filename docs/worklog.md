@@ -99,5 +99,6 @@
 - 2026-11-16 [데스크탑] desktop/settings-2 — 설정 위치 [기기 설정 ›] (안드로이드 앱 정보 · iOS 설정 앱), 삭제 취소 알림 창 (/me DeletionCancelled). 초상 바꾸기는 그림이 없어 보류
 - 2026-11-16 [데스크탑] desktop/shop-tabs — 상점 위 탭 [엽전구매] [금괴] [현금], 바꾸기 버튼 하나(열 묶음), 캡처 27b · 27c
 - 2026-11-16 [데스크탑] desktop/tabs-tidy — 아래 탭 정리: 도감 → 배포 줄, 상점 · 우편 · 설정은 row top (위 아이콘으로만), 줄에 없는 탭도 id로 열기
+- 2026-11-16 [원격] claude/play-receipts — Google Play 영수증 실제 검증 R-116: purchases.products.get(서비스 계정 JWT), 쓴 거래는 저장소에(재시작에도 used), 반영 뒤 acknowledge/consume, 배포 변수 RECEIPT_VERIFIER · GOOGLE_PLAY_PACKAGE · Secret Manager 키
 - 2026-11-16 [데스크탑] desktop/replay-codex-marks — 녹화: 다시 볼 수 없던 녹화 흐림 · ▶ 꺼짐 (ReplayRecord.Unplayable), 도감: 새로 찾은 숨은 보상 [NEW] · [도감] 탭 빨간 점
 - 2026-11-16 [데스크탑] desktop/merc-2 — 용병 고용: 정렬(승률 · 레벨 · 가격) · 병종 거르기 · 카드 이력 막대 · 카드 누르면 자세히 아래 판

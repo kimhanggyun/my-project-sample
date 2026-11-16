@@ -90,6 +90,14 @@ namespace Game.Server
         // ---- 출석 (게임별, R-112) ----
         /// <summary>계정의 출석 기록을 잠근 채 읽거나 고친다 (고친 뒤 저장, 없으면 새 기록). 우편을 보내도 된다.</summary>
         T WithAttendance<T>(string gameCode, string accountId, Func<Game.Flow.AttendanceRecord, T> use);
+
+        // ---- 결제 기록 (게임별, R-116) ----
+        /// <summary>반영한 거래 (없으면 null). 같은 거래를 다시 쓰지 못하게 · 복원 때 "이미 반영" 확인.</summary>
+        Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId);
+        /// <summary>반영한 결제를 남긴다 (세이브 저장 뒤). 계정을 지워도 남긴다 (같은 거래를 다른 계정에서 다시 못 쓰게).</summary>
+        void RecordReceipts(string gameCode, IEnumerable<Game.Flow.ReceiptRecord> records);
+        /// <summary>그 계정이 반영한 결제 (복원 · 관리용).</summary>
+        List<Game.Flow.ReceiptRecord> ReceiptsOf(string gameCode, string accountId);
     }
 
     /// <summary>개발용 메모리 저장소 (공통 + 게임별을 한 객체에). 테스트·로컬 실행용.</summary>
@@ -127,6 +135,8 @@ namespace Game.Server
             public Dictionary<string, List<SharedReplayEntry>> SharedReplays { get; set; } = new Dictionary<string, List<SharedReplayEntry>>();
             /// <summary>게임 코드 → (계정 → 출석 기록, R-112).</summary>
             public Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>> Attendance { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>();
+            /// <summary>게임 코드 → (거래 id → 반영한 결제, R-116).</summary>
+            public Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>> Receipts { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>>();
         }
 
         protected Snapshot Data = new Snapshot();
@@ -432,6 +442,41 @@ namespace Game.Server
         }
 
         public string NewKey(string prefix) => prefix + NewId(6);
+
+        private Dictionary<string, Game.Flow.ReceiptRecord> ReceiptBook(string gameCode)
+        {
+            if (Data.Receipts == null) Data.Receipts = new Dictionary<string, Dictionary<string, Game.Flow.ReceiptRecord>>(); // 예전 저장 파일
+            if (!Data.Receipts.TryGetValue(gameCode, out var g)) Data.Receipts[gameCode] = g = new Dictionary<string, Game.Flow.ReceiptRecord>();
+            return g;
+        }
+
+        public Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId)
+        {
+            if (transactionId == null) return null;
+            lock (Fresh()) return ReceiptBook(gameCode).TryGetValue(transactionId, out var r) ? r : null;
+        }
+
+        public void RecordReceipts(string gameCode, IEnumerable<Game.Flow.ReceiptRecord> records)
+        {
+            lock (Fresh())
+            {
+                var book = ReceiptBook(gameCode);
+                bool any = false;
+                foreach (var r in records) if (r?.TransactionId != null) { book[r.TransactionId] = r; any = true; }
+                if (any) Persist();
+            }
+        }
+
+        public List<Game.Flow.ReceiptRecord> ReceiptsOf(string gameCode, string accountId)
+        {
+            lock (Fresh())
+            {
+                var list = new List<Game.Flow.ReceiptRecord>();
+                foreach (var r in ReceiptBook(gameCode).Values) if (r.AccountId == accountId) list.Add(r);
+                list.Sort((x, y) => x.AtUnixSeconds.CompareTo(y.AtUnixSeconds));
+                return list;
+            }
+        }
 
         public T WithAttendance<T>(string gameCode, string accountId, Func<Game.Flow.AttendanceRecord, T> use)
         {
