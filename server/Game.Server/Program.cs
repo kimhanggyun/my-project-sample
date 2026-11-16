@@ -168,6 +168,9 @@ app.MapGet("/v1/games/{game}/replays/{replay}", (string game, string replay, Htt
     InGame(req, p, r, game, Now(), (id, g) => { var res = g.SharedReplay(replay); return res == null ? Results.NotFound() : Json(res); }));
 app.MapGet("/v1/games/{game}/mail", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.MailOf(id))));
+// 내 용병이 고용된 전투 녹화 (R-120)
+app.MapGet("/v1/games/{game}/hire/replays/{id}", (string game, string id, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+    InGame(req, p, r, game, Now(), (acct, g) => { var res = g.HireReplay(acct, id); return res == null ? Results.NotFound() : Json(res); }));
 // 푸시 알림 설정 · 기기 토큰 (R-119)
 app.MapGet("/v1/games/{game}/push/settings", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.PushSettingsOf(id))));

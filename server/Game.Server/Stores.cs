@@ -67,7 +67,11 @@ namespace Game.Server
         List<HireListing> Listings(string gameCode, string kind);
         bool RemoveListing(string gameCode, string ownerAccountId, string listingId);
         /// <summary>등록의 이력에 결과를 더한다 (판은 그대로, R-44).</summary>
-        void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax);
+        void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax, string replayId = null);
+        /// <summary>고용된 전투 녹화를 남긴다 (R-120): 볼 수 있는 계정(등록자들 · 고용한 사람). storeMax를 넘으면 오래된 것부터 지운다. id를 돌려준다.</summary>
+        string AddHireReplay(string gameCode, string json, IEnumerable<string> viewers, long atUnixSeconds, int storeMax);
+        /// <summary>녹화 JSON (없거나 볼 수 없는 계정이면 null).</summary>
+        string HireReplayFor(string gameCode, string id, string accountId);
         /// <summary>고용한 계정의 고용 기록 (24시간 지난 것은 지워도 된다).</summary>
         List<Game.Flow.HireLogEntry> HireLog(string gameCode, string accountId, long nowUnixSeconds);
         void AddHireLog(string gameCode, string accountId, IEnumerable<Game.Flow.HireLogEntry> entries);
@@ -145,6 +149,8 @@ namespace Game.Server
             public Dictionary<string, List<SharedReplayEntry>> SharedReplays { get; set; } = new Dictionary<string, List<SharedReplayEntry>>();
             /// <summary>게임 코드 → (계정 → 출석 기록, R-112).</summary>
             public Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>> Attendance { get; set; } = new Dictionary<string, Dictionary<string, Game.Flow.AttendanceRecord>>();
+            /// <summary>게임 코드 → 고용된 전투 녹화 (오래된 것 먼저, R-120).</summary>
+            public Dictionary<string, List<HireReplayEntry>> HireReplays { get; set; } = new Dictionary<string, List<HireReplayEntry>>();
             /// <summary>게임 코드 → (계정 → 푸시 설정 · 토큰, R-119).</summary>
             public Dictionary<string, Dictionary<string, PushProfile>> Push { get; set; } = new Dictionary<string, Dictionary<string, PushProfile>>();
             /// <summary>관리자 페이지가 정한 버전 · 점검 안내 (R-118, null = 서버 설정).</summary>
@@ -265,6 +271,7 @@ namespace Game.Server
                 foreach (var g in Data.HireLogs.Values) Drop(g, (k, v) => gone.Contains(k));
                 if (Data.Attendance != null) foreach (var g in Data.Attendance.Values) Drop(g, (k, v) => gone.Contains(k));
                 if (Data.Push != null) foreach (var g in Data.Push.Values) Drop(g, (k, v) => gone.Contains(k));
+                if (Data.HireReplays != null) foreach (var l in Data.HireReplays.Values) { foreach (var e in l) e.Viewers.RemoveAll(gone.Contains); l.RemoveAll(e => e.Viewers.Count == 0); }
                 foreach (var g in Data.Territory.Values) Drop(g, (k, v) => v != null && gone.Contains(v.OwnerAccountId));
                 foreach (var l in Data.Listings.Values) l.RemoveAll(x => gone.Contains(x.OwnerAccountId));
                 foreach (var l in Data.SharedReplays.Values) l.RemoveAll(x => x.Summary != null && gone.Contains(x.Summary.OwnerAccountId));
@@ -413,13 +420,37 @@ namespace Game.Server
             }
         }
 
-        public void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax)
+        public string AddHireReplay(string gameCode, string json, IEnumerable<string> viewers, long atUnixSeconds, int storeMax)
+        {
+            lock (Fresh())
+            {
+                if (Data.HireReplays == null) Data.HireReplays = new Dictionary<string, List<HireReplayEntry>>(); // 예전 저장 파일
+                if (!Data.HireReplays.TryGetValue(gameCode, out var list)) Data.HireReplays[gameCode] = list = new List<HireReplayEntry>();
+                var e = new HireReplayEntry { Id = "hr-" + NewId(8), Json = json, Viewers = new List<string>(viewers), AtUnixSeconds = atUnixSeconds };
+                list.Add(e);
+                if (storeMax > 0 && list.Count > storeMax) list.RemoveRange(0, list.Count - storeMax);
+                Persist();
+                return e.Id;
+            }
+        }
+
+        public string HireReplayFor(string gameCode, string id, string accountId)
+        {
+            lock (Fresh())
+            {
+                if (Data.HireReplays == null || !Data.HireReplays.TryGetValue(gameCode, out var list)) return null;
+                var e = list.Find(x => x.Id == id);
+                return e != null && e.Viewers.Contains(accountId) ? e.Json : null;
+            }
+        }
+
+        public void RecordHire(string gameCode, string listingId, Game.Flow.HireOutcome outcome, string stepId, long atUnixSeconds, int recentMax, string replayId = null)
         {
             lock (Fresh())
             {
                 var l = ListingsOf(gameCode).Find(x => x.Id == listingId);
                 if (l == null) return; // 그사이 해제됨
-                Game.Flow.HireBook.Record(l, outcome, stepId, atUnixSeconds, recentMax);
+                Game.Flow.HireBook.Record(l, outcome, stepId, atUnixSeconds, recentMax, replayId);
                 Persist();
             }
         }
@@ -543,6 +574,15 @@ namespace Game.Server
                 Persist();
                 return r;
             }
+        }
+
+        /// <summary>고용된 전투 녹화 하나 (R-120).</summary>
+        public sealed class HireReplayEntry
+        {
+            public string Id { get; set; }
+            public string Json { get; set; }
+            public List<string> Viewers { get; set; } = new List<string>();
+            public long AtUnixSeconds { get; set; }
         }
 
         protected sealed class SharedReplayEntry

@@ -49,6 +49,8 @@ namespace Game.Online
         public static string Actions(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/actions";
         /// <summary>고용 등록 목록 (GET ?kind=general|unit) / 등록 (POST).</summary>
         public static string HireListings(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/hire/listings";
+        /// <summary>내 용병이 고용된 전투의 녹화 하나 (GET, R-120): 그 전투의 등록자 · 고용한 사람만.</summary>
+        public static string HireReplay(string game, string id) => "/v1/games/" + Uri.EscapeDataString(game) + "/hire/replays/" + Uri.EscapeDataString(id);
         /// <summary>등록 하나 (DELETE = 해제).</summary>
         public static string HireListing(string game, string id) => HireListings(game) + "/" + Uri.EscapeDataString(id);
         /// <summary>받은 우편 (고용 보상 …). 받기는 행동 mail.claim.</summary>
@@ -623,6 +625,15 @@ namespace Game.Online
         public string Result { get; set; }
         public long TroopsStart { get; set; }
         public long TroopsLost { get; set; }
+        /// <summary>그 전투 녹화 (R-120, 서버가 검증할 때 떠 둔 것, 오래되면 지워져 없을 수 있다). <see cref="OnlineRoutes.HireReplay"/>로 받는다.</summary>
+        public string ReplayId { get; set; }
+    }
+
+    /// <summary>고용된 전투 녹화 (R-120): ReplayJson = 녹화(ReplayRecord) JSON, 기기 녹화 보기로 그대로 튼다.</summary>
+    public sealed class HireReplayResponse
+    {
+        public string Id { get; set; }
+        public string ReplayJson { get; set; }
     }
 
     /// <summary>등록 요청: 내 서버 세이브의 장수 또는 부대를 이 가격으로.</summary>
@@ -960,6 +971,8 @@ namespace Game.Online
         /// <summary>그 스텝의 공유 녹화 (이긴 것·손실 적은 것 먼저).</summary>
         void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done);
         void GetSharedReplay(string id, Action<SharedReplayResponse> done);
+        /// <summary>내 용병이 고용된 전투의 녹화 (R-120, 등록 Recent의 ReplayId). 없거나 볼 수 없으면 null.</summary>
+        void GetHireReplay(string id, Action<HireReplayResponse> done);
         string AccountId { get; }
         void SignIn(Action<bool> done);
         void GetTime(Action<ServerTimeResponse> done);
@@ -1061,6 +1074,7 @@ namespace Game.Online
         public void ShareReplay(ShareReplayRequest request, Action<ShareReplayResponse> done) => done?.Invoke(null);
         public void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done) => done?.Invoke(null);
         public void GetSharedReplay(string id, Action<SharedReplayResponse> done) => done?.Invoke(null);
+        public void GetHireReplay(string id, Action<HireReplayResponse> done) => done?.Invoke(null);
     }
 
     /// <summary>온라인 메시지 JSON 설정 (기기·서버 공통). Fix는 원본 정수로.</summary>

@@ -357,7 +357,9 @@ namespace Game.Flow
             if (v.Valid && hired != null)
             {
                 foreach (var u in hired.Uses) _hireLog.Add(new HireLogEntry { ListingId = u.ListingId, AtUnixSeconds = at });
-                foreach (var o in hired.Outcomes) { var l = FindListing(o.ListingId); if (l != null) HireBook.Record(l, o, hired.StepId, at, _defs.Balance.HireRecentMax); }
+                string replayId = null;
+                if (hired.Replay != null) { hired.Replay.SavedAtUnixSeconds = at; replayId = "hr-" + (_hireReplays.Count + 1); _hireReplays[replayId] = ReplayService.Write(hired.Replay); }
+                foreach (var o in hired.Outcomes) { var l = FindListing(o.ListingId); if (l != null) HireBook.Record(l, o, hired.StepId, at, _defs.Balance.HireRecentMax, replayId); }
             }
             v.Save = Copy(_save);
             done?.Invoke(v);
@@ -604,6 +606,11 @@ namespace Game.Flow
 
         public void GetSharedReplays(string stepId, Action<SharedReplayListResponse> done) =>
             done?.Invoke(new SharedReplayListResponse { Items = SharedReplays.Pick(_shared.ConvertAll(x => x.summary), stepId, ReplayRules.Load(_source).SharedListMax) });
+
+        /// <summary>고용된 전투 녹화 (가짜: 메모리, R-120).</summary>
+        private readonly Dictionary<string, string> _hireReplays = new Dictionary<string, string>();
+        public void GetHireReplay(string id, Action<HireReplayResponse> done) =>
+            done?.Invoke(id != null && _hireReplays.TryGetValue(id, out var json) ? new HireReplayResponse { Id = id, ReplayJson = json } : null);
 
         public void GetSharedReplay(string id, Action<SharedReplayResponse> done)
         {

@@ -156,6 +156,9 @@ namespace Game.Online
             _transport.Send("GET", OnlineRoutes.SharedReplays(_game) + "?step=" + Uri.EscapeDataString(stepId ?? ""), null, Token, (status, body) =>
                 done?.Invoke(status == 200 ? Parse<SharedReplayListResponse>(body) : null));
 
+        public void GetHireReplay(string id, Action<HireReplayResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.HireReplay(_game, id), null, Token, (status, body) => done?.Invoke(status == 200 ? Parse<HireReplayResponse>(body) : null));
+
         public void GetSharedReplay(string id, Action<SharedReplayResponse> done) =>
             _transport.Send("GET", OnlineRoutes.SharedReplay(_game, id), null, Token, (status, body) =>
                 done?.Invoke(status == 200 ? Parse<SharedReplayResponse>(body) : null));
