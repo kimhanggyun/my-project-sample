@@ -120,7 +120,7 @@ namespace Game.Unity.Screens
             var (_, body, footer, _) = Ui.TitledPage(Root, T("ui.contest." + _contestId) + " · " + Ctx.GeneralName(_generalId), () => App.ShowMain("practice"), 120, infoGap: false);
             var card = Ui.Card(body, "Result");
             Ui.Label(card, _outcome == null ? T("ui.practice.cannot") : !_saved ? Ui.Colored(T("ui.practice.notSaved"), Palette.Bad) : ResultText(), Ui.FontBody, TextAnchor.MiddleCenter);
-            Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("practice"), color: Palette.ButtonActive);
+            Ui.Button(footer, T("ui.common.back"), () => App.ShowMain("practice"), 92, Palette.ButtonActive);
         }
 
         public override bool OnBack() { App.ShowMain("practice"); return true; }

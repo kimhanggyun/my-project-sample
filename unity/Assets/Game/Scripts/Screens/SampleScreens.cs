@@ -170,13 +170,13 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Label(body, T("ui.result.time", _result.ElapsedSeconds.FloorToLong(), T("ui.result.endReason." + _result.EndReason)), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim), 56);
             Ui.Label(body, T("ui.sample.noReward"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             var error = Ui.Label(body, "", Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Bad);
-            Ui.Button(footer, T("ui.sample.backToList"), () => App.ShowMain("sampleBattle"));
+            Ui.Button(footer, T("ui.sample.backToList"), () => App.ShowMain("sampleBattle"), 92);
             Ui.Button(footer, T("ui.sample.again"), () =>
             {
                 var plan = SampleBattles.Prepare(Ctx.Defs, Ctx.Flow, Ctx.State, _stepId, Ctx.NewSeed());
                 if (plan.Ok) App.Show(BattleScreen.Sample(plan, _stepId));
                 else error.text = plan.Errors.Count > 0 ? plan.Errors[0] : "";
-            }, color: Palette.ButtonActive);
+            }, 92, Palette.ButtonActive);
         }
 
         public override bool OnBack() { App.ShowMain("sampleBattle"); return true; }

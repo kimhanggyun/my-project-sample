@@ -601,13 +601,15 @@ namespace Game.Unity.Screens
             // 공통 타이틀 (← 부대 해산) · 몸통 확인 문구 · 아래 [취소] [해산]
             var (_, body, footer, _) = Ui.TitledPage(Root, T("ui.formation.disbandTitle"), () => App.ShowMain("formation"), 120, infoGap: false);
             var card = Ui.Card(body, "Confirm");
-            Ui.Label(card, T("ui.formation.disbandConfirm", Ctx.UnitLabel(u.UnitId), FormationTabView.TroopName(Ctx, u.TroopType), (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
-            Ui.Button(footer, T("ui.common.cancel"), () => App.ShowMain("formation"));
+            // 병종 묶음은 이름 = 병종이라 한 번만 ("보병 보병 부대" 막기)
+            string label = Ctx.UnitLabel(u.UnitId), troop = FormationTabView.TroopName(Ctx, u.TroopType);
+            Ui.Label(card, T("ui.formation.disbandConfirm", label == troop ? label : label + " " + troop, (u.Troops + u.Wounded).ToString("N0")), Ui.FontBody, TextAnchor.MiddleCenter);
+            Ui.Button(footer, T("ui.common.cancel"), () => App.ShowMain("formation"), 92);
             Ui.Button(footer, T("ui.formation.disband"), () =>
             {
                 Ctx.Do(PlayerActionRunner.DisbandUnit(_unitId));
                 App.ShowMain("formation");
-            }, color: Palette.Danger);
+            }, 92, Palette.Danger);
         }
     }
 }
