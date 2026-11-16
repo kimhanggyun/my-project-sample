@@ -229,7 +229,11 @@ namespace Game.Server
             // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 하고, 한 묶음에서 두 번 받을 수 없다
             var box = _store.MailOf(Code, accountId);
             var claimed = new HashSet<string>(StringComparer.Ordinal);
-            var receipts = new ReceiptCheck(Receipts, tx => _store.ReceiptOf(Code, tx) != null); // 쓴 거래는 저장소에 (서버를 다시 띄워도 남음, R-116)
+            var receipts = new ReceiptCheck(Receipts, tx => _store.ReceiptOf(Code, tx) != null) // 쓴 거래는 저장소에 (서버를 다시 띄워도 남음, R-116)
+            {
+                OwnerOf = tx => _store.ReceiptOf(Code, tx)?.AccountId, // 복원: 이미 반영한 계정 (R-117)
+                AccountId = accountId,
+            };
             bool ServerCheck(PlayerAction a)
             {
                 if (!receipts.Check(a)) return false;

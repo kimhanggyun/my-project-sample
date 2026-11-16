@@ -74,6 +74,7 @@ namespace Game.Flow
             }));
             var shop = new PurchaseService(defs);
             Register(new Handler(ActionKinds.StorePurchase, (s, a) => shop.Apply(s, a)));
+            Register(new Handler(ActionKinds.StoreRestore, (s, a) => shop.Restore(s, a)));
             var cosmetics = new CosmeticService(defs);
             Register(new Handler(ActionKinds.CosmeticBuy, (s, a) => cosmetics.Buy(s, a.CosmeticId)));
             Register(new Handler(ActionKinds.CosmeticEquip, (s, a) => cosmetics.Equip(s, a.TroopType, a.Situation, a.CosmeticId)));
@@ -227,6 +228,7 @@ namespace Game.Flow
         public static PlayerAction ReleasePrisoner(string generalId) => new PlayerAction { Kind = ActionKinds.PrisonerRelease, GeneralId = generalId };
         public static PlayerAction SetDifficulty(string id) => new PlayerAction { Kind = ActionKinds.SetDifficulty, Situation = id };
         public static PlayerAction Purchase(string productId, string receipt) => new PlayerAction { Kind = ActionKinds.StorePurchase, ProductId = productId, Receipt = receipt };
+        public static PlayerAction RestorePurchase(string productId, string receipt) => new PlayerAction { Kind = ActionKinds.StoreRestore, ProductId = productId, Receipt = receipt };
         public static PlayerAction SeeGuide(string guideId) => new PlayerAction { Kind = ActionKinds.GuideSeen, GuideId = guideId };
         public static PlayerAction ResetGuides() => new PlayerAction { Kind = ActionKinds.GuideReset };
         public static PlayerAction BuyCosmetic(string id) => new PlayerAction { Kind = ActionKinds.CosmeticBuy, CosmeticId = id };
