@@ -118,8 +118,32 @@
 - 기기 안 가짜 서버(`LocalOnlineService`)는 장부가 메모리 사전 하나라 그대로.
 - 테스트: `TerritoryScopeTests`(범위 · 되쓰기), `ServerTests.PlantUsesNearScope`(남의 원 안 → 공성전, 멀면 꽂힘, 내 깃발 장수 generalBusy), 기존 영토 · 공성전 · 푸시 테스트 그대로 통과.
 
-## 8. 사용자가 할 일 (결정 뒤, 구현 PR에서 다시 자세히)
+### 7.2 2 · 3단계 결과 (2026-11-17 원격)
 
-1. Google Cloud 콘솔 → Firestore → 데이터베이스 만들기: **Native 모드**, 위치 `asia-northeast3` (서울), 이름 `(default)`.
-2. 서버 실행용 서비스 계정에 **Cloud Datastore User** 역할.
-3. (권장) Firestore 백업 일정 · 시점 복구(PITR) 켜기.
+- **2단계** `server/Game.Server/FirestoreStore.cs` (`IStore` = 공통 + 게임별 + 관리자 계정 목록, 메모리 · 폴더 저장소도 같은 인터페이스). 설정 `Game:Store` = `memory` · `folder` · `firestore`, `Game:Firestore:ProjectId` · `DatabaseId`.
+  - 문서마다 내용 = JSON 문자열 칸 `j` (store.json과 같은 모양) + 찾기용 칸 (`owner` · `kind` · `lat` · `coll` …). 모음: `tokens` · `logins` · `accounts` · `nicknames`(닉네임 중복 막기) · `config/status` · `games/{게임}/saves · players/{계정}(출석 · 푸시, mail · hireLog 하위) · listings · territory · alliances · sharedReplays · hireReplays · receipts`.
+  - 읽고 고치는 일은 트랜잭션 하나. 그 안에서 부른 우편 보내기 · 지우기 · 연합 읽기도 **같은 트랜잭션**으로 묶인다 (쓰기는 모았다가 끝에) → 트랜잭션이 다시 돌아도 수입 우편이 두 번 가지 않고, 깃발 기록과 우편이 함께 반영되거나 함께 안 된다.
+  - 시험: GitHub Actions `core-tests`의 `firestore-tests` job이 Firestore 에뮬레이터를 띄우고 **서버 테스트 전체**를 Firestore 저장소로 한 번 더 돌린다 + `FirestoreStoreTests`(계정 · 게임 자료 · 영토 트랜잭션 · 옮기기).
+- **3단계** 옮기기 도구 `dotnet Game.Server.dll migrate --from <store.json 폴더> --project <GCP 프로젝트> [--dry]` (`Migrate.cs`) + 워크플로 `firestore-migrate` (손 실행, 버킷의 store.json을 받아 옮김, `dry_run`이면 수만). 배포 워크플로는 저장소 변수 `GAME_STORE`(기본 `folder`) · `MAX_INSTANCES`(firestore일 때만, 기본 1) · `FIRESTORE_DATABASE`.
+
+## 8. 사용자가 할 일 (4단계: 실제로 옮기기, 30분 안팎)
+
+**미리 (한 번, 아무 때나 — 게임에 영향 없음)**
+
+1. Google Cloud 콘솔(서버 프로젝트 `GCP_PROJECT_ID`) → **Firestore** → 데이터베이스 만들기: **Native 모드**, 위치 **`asia-northeast3` (서울)**, 데이터베이스 ID `(default)`.
+2. IAM → 서버 실행용 서비스 계정(`GCP_RUNTIME_SA`)에 역할 **Cloud Datastore User**.
+3. IAM → 배포용 서비스 계정(`GCP_SERVICE_ACCOUNT`, GitHub Actions가 쓰는 것)에 역할 **Cloud Datastore User** + 버킷(`GCS_BUCKET`)의 **Storage Object Viewer** (옮기기 워크플로가 store.json을 읽고 Firestore에 쓴다).
+4. (권장) Firestore → 재해 복구: **시점 복구(PITR)** 켜기, 매일 백업 일정.
+5. GitHub → Actions → `firestore-migrate` → Run workflow, `dry_run` = **true** → 로그의 "원본" 수(계정 · 세이브 · 영토 …)가 맞는지 본다. (Firestore에 쓰지 않음)
+
+**옮기는 날 (사용자가 적은 때)**
+
+6. 관리자 페이지 → 버전 · 점검 → **점검 켜기** (끝 시각 30분 뒤). 폰에서 "점검 중"이 나오는지.
+7. Actions → `firestore-migrate` → Run workflow, `dry_run` = **false** → 로그의 "Firestore에 쓴 문서" 수가 5번의 원본 수와 맞는지.
+8. GitHub 저장소 → Settings → Variables: **`GAME_STORE` = `firestore`** → Actions → `deploy-cloudrun` → Run workflow.
+9. 폰으로 확인: 로그인 · 닉네임 · 세이브(진행) · 우편 · 영토 깃발 · 연합 · 용병 목록이 그대로인지. 관리자 페이지 서버 상태의 저장소가 `firestore`인지.
+10. 점검 끄기.
+11. (며칠 문제없으면) 변수 **`MAX_INSTANCES` = `3`** → 배포: 서버 여러 대.
+
+**되돌리기**: 변수 `GAME_STORE` = `folder` → 배포 (store.json은 지우지 않으므로 옮기기 직전 상태로 돌아간다 — 옮긴 뒤 Firestore에 생긴 진행은 빠진다).
+

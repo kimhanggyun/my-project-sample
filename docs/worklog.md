@@ -113,3 +113,4 @@
 - 2026-11-17 [데스크탑] collab.md 2.1.1: 모양 변화가 적은 화면 일은 원격도 (PR에 캡처할 화면, 데스크탑이 캡처 확인 뒤 머지), 원격 PR은 main 기준 (사용자)
 - 2026-11-17 [데스크탑] desktop/battle-2 — 전투: 바닥 링 게이지(병력 · 사기), 병력 칩, 이동 경로 파란 점선 (18·19 시안 2단계)
 - 2026-11-17 [원격] claude/store-split — Firestore 1단계: 영토 장부를 요청마다 필요한 깃발만 (TerritoryScope: 키 · 주인 · 주변 · 수입 기한 · 전부), 폴더 저장소도 같은 방식, 연합은 그대로 (db.md 7.1)
+- 2026-11-17 [원격] claude/firestore-store — Firestore 2 · 3단계: FirestoreStore(IStore, 트랜잭션 안 우편 묶음), Game:Store 고르기, CI 에뮬레이터로 서버 테스트 전체 한 번 더, 옮기기 도구 · firestore-migrate 워크플로, 배포 변수 GAME_STORE · MAX_INSTANCES, 사용자 할 일 db.md 8장
