@@ -643,9 +643,12 @@ namespace Game.Unity.Boot
         public GachaResult DrawGacha(string bannerId, int count)
         {
             ulong seed = NewSeed();
-            var preview = new GachaService(Defs).Draw(SaveJson.Read(SaveJson.Write(State)), bannerId, count, seed);
+            long now = Clock.UtcNow.ToUnixTimeSeconds();
+            var preview = new GachaService(Defs).Draw(SaveJson.Read(SaveJson.Write(State)), bannerId, count, seed, now);
             if (!preview.Ok) return preview;
-            Do(PlayerActionRunner.DrawGacha(bannerId, count, seed));
+            var draw = PlayerActionRunner.DrawGacha(bannerId, count, seed);
+            draw.DoneAtUnixSeconds = now; // 기간 배너(R-121)는 미리 본 시각과 같은 시각으로
+            Do(draw);
             _formation = null;
             return preview;
         }

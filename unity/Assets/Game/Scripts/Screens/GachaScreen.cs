@@ -31,12 +31,21 @@ namespace Game.Unity.Screens
             _notice = notice ?? (last != null && !last.Ok ? Reason(last.Reason) : null);
         }
 
-        private string Reason(string r) => r == GachaService.NoFree ? T("ui.gacha.noFree") : T("ui.gacha.notEnough");
+        private string Reason(string r) => r == GachaService.NoFree ? T("ui.gacha.noFree") : r == GachaService.Closed ? T("ui.gacha.closed") : T("ui.gacha.notEnough");
 
         public override void Build()
         {
             var g = Ctx.Defs.Gacha;
             if (!g.Banners.TryGetValue(_bannerId, out var b)) { App.ShowMain("general"); return; }
+            // 기간 배너가 끝났거나 아직이면 열린 첫 배너로 (R-121)
+            long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
+            if (!b.OpenAt(now))
+            {
+                var open = new GachaService(Ctx.Defs).OpenBanners(now);
+                if (open.Count == 0) { App.ShowMain("general"); return; }
+                App.Show(new GachaScreen(open[0].Id, null, false, null, T("ui.gacha.closed")));
+                return;
+            }
             var (header, body, footer) = Ui.PageLayout(Root, 170);
 
             // 공통 타이틀: 모집 본 화면은 [모집] 탭 안이라 타이틀 없음(틀만), 확률 판 · 결과는 [‹] 제목 (보석은 위 막대 · 결과 버튼에 있어 뺌)
@@ -61,8 +70,11 @@ namespace Game.Unity.Screens
         {
             var g = Ctx.Defs.Gacha;
             var tabs = new List<(string, string)>();
-            foreach (var kv in g.Banners) tabs.Add((kv.Key, T(kv.Value.NameKey)));
+            long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
+            foreach (var ob in new GachaService(Ctx.Defs).OpenBanners(now)) tabs.Add((ob.Id, T(ob.NameKey))); // 열린 배너만 (R-121)
             Ui.SegmentTabs(header, tabs, _bannerId, id => App.Show(new GachaScreen(id)), 60, 220);
+            int days = GachaService.DaysLeft(b, now);
+            if (days >= 0) Ui.Size(Ui.Tag(header, T("ui.gacha.daysLeft", days), Palette.Seal, 22, 44), width: 220); // 기간 배너 꼬리표
 
             // 배너 그림: 높은 등급 대표 장수 (가운데 가장 높은 등급, 양옆 다음)
             var pool = new List<string>(b.Pool);
@@ -121,7 +133,6 @@ namespace Game.Unity.Screens
             // 무료 1회
             if (b.FreeDaily > 0)
             {
-                long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
                 int left = GachaService.FreeLeft(Ctx.State, b, now);
                 var free = Ui.Card(body, "Free", 14, 4);
                 free.GetComponent<Image>().color = new Color(0.88f, 0.94f, 0.86f);
