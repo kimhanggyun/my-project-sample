@@ -98,7 +98,7 @@ namespace Game.Flow
         {
             switch (step)
             {
-                case StartupSteps.VersionCheck: return !hasServer; // 서버 전까지는 자리만 (startup.md 3장)
+                case StartupSteps.VersionCheck: return !hasServer; // 온라인을 끈 빌드는 건너뜀 (startup.md 3장)
                 case StartupSteps.SignIn: return r?.SignInMethod != null && SignInOptions.Exists(o => o.Id == r.SignInMethod && o.IsActive);
                 case StartupSteps.Terms: return r != null && r.TermsVersion >= TermsVersion;
                 default: return false;
