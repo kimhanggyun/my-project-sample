@@ -23,6 +23,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.UseSetting("Game:Push", "fake");
                 builder.ConfigureServices(s =>
                 {

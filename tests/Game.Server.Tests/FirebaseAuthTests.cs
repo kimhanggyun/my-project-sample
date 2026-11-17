@@ -65,6 +65,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.ConfigureServices(s =>
                 {
                     s.RemoveAll<ITimeProvider>();
@@ -200,7 +201,7 @@ namespace Game.Server.Tests
         [Fact]
         public async Task OffWithoutConfig()
         {
-            using var f = new WebApplicationFactory<Program>();
+            using var f = new WebApplicationFactory<Program>().WithWebHostBuilder(TestStore.Isolate);
             var r = await f.CreateClient().PostAsync(OnlineRoutes.FirebaseSignIn, Body(new ExternalSignInRequest { IdToken = Token() }));
             Assert.Equal(HttpStatusCode.NotFound, r.StatusCode);
         }

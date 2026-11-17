@@ -286,6 +286,16 @@ namespace Game.Server
             }
         }
 
+        // ---- 운영 켜고 끄기 (R-122): games/{게임}/config/content ----
+        public ContentToggles ContentOf(string gameCode) => FromJ<ContentToggles>(Read(G(gameCode, "config").Document("content"))) ?? new ContentToggles();
+
+        public void SetContent(string gameCode, ContentToggles content)
+        {
+            var r = G(gameCode, "config").Document("content");
+            if (content == null || content.Items == null || content.Items.Count == 0) Del(r);
+            else Put(r, new Dictionary<string, object> { ["j"] = J(content) });
+        }
+
         public ServerStatusResponse StatusOverride() => FromJ<ServerStatusResponse>(Read(StatusDoc));
 
         public void SetStatusOverride(ServerStatusResponse status)
@@ -595,6 +605,8 @@ namespace Game.Server
                 if (kv.Value.Nickname != null) W("nicknames", NickIndex(kv.Value.Nickname.ToLowerInvariant()), new Dictionary<string, object> { ["a"] = kv.Key });
             }
             if (s.StatusOverride != null) W("config", StatusDoc, new Dictionary<string, object> { ["j"] = J(s.StatusOverride) });
+            foreach (var kv in s.Content ?? new Dictionary<string, ContentToggles>())
+                if (kv.Value?.Items != null && kv.Value.Items.Count > 0) W("content", G(kv.Key, "config").Document("content"), new Dictionary<string, object> { ["j"] = J(kv.Value) });
 
             // 게임별
             foreach (var g in s.Saves ?? new Dictionary<string, Dictionary<string, CloudSave>>())

@@ -53,6 +53,8 @@ app.MapPost(OnlineRoutes.FirebaseSignIn, async (HttpRequest req, IPlatformStore 
     return who == null ? Results.Unauthorized() : Json(p.SignInExternal(who.Provider, who.Subject, who.Email));
 });
 app.MapGet(OnlineRoutes.Time, () => Json(new ServerTimeResponse { UnixSeconds = Now() }));
+// 운영 켜고 끄기 (R-122): 인증 없이, 기기가 시작 때 받는다
+app.MapGet("/v1/games/{game}/content", (string game, GameRegistry r) => r.Find(game) is IGameModule g ? Json(g.Content()) : Results.NotFound());
 // 버전 확인 · 점검 안내 (R-118): 인증 없이, 설정 + 관리자 값
 var statusFromConfig = ServerStatus.FromConfig(builder.Configuration);
 app.MapGet(OnlineRoutes.Status, (IPlatformStore p) => Json(ServerStatus.Current(statusFromConfig, p.StatusOverride(), Now())));

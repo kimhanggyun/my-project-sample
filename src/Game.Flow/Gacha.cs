@@ -5,6 +5,7 @@ using Game.Data.Defs;
 using Game.Economy;
 using Game.Foundation.Math;
 using Game.Foundation.Random;
+using Game.Online;
 
 namespace Game.Flow
 {
@@ -52,31 +53,59 @@ namespace Game.Flow
 
         public long Cost(GachaBannerDef b, int count) => count == 10 ? b.CostTen : count == 1 ? b.CostOne : -1;
 
-        /// <summary>지금 열린 배너 (상시 먼저 데이터 순서, 기간 배너는 끝나는 순).</summary>
+        /// <summary>운영 켜고 끄기 (R-122): 관리자가 끈 배너는 닫힘, 기간 덮어쓰기는 데이터 기간 대신. null이면 데이터 그대로.</summary>
+        public ContentToggles Toggles { get; set; }
+
+        /// <summary>실제로 쓰는 기간 (덮어쓰기가 있으면 그것).</summary>
+        public (long starts, long ends) PeriodOf(GachaBannerDef b)
+        {
+            var t = Toggles?.Find(ContentKinds.Banner, b.Id);
+            return (t?.StartsAtUnixSeconds ?? b.StartsAtUnixSeconds, t?.EndsAtUnixSeconds ?? b.EndsAtUnixSeconds);
+        }
+
+        /// <summary>기간 배너인가 (덮어쓴 기간 포함).</summary>
+        public bool IsLimited(GachaBannerDef b) { var (s, e) = PeriodOf(b); return s > 0 || e > 0; }
+
+        /// <summary>그 시각에 열려 있다: 관리자가 끄지 않았고 (시작 ≤ 지금 &lt; 끝).</summary>
+        public bool IsOpen(GachaBannerDef b, long nowUnixSeconds)
+        {
+            if (b == null || Toggles?.IsOff(ContentKinds.Banner, b.Id) == true) return false;
+            var (s, e) = PeriodOf(b);
+            return (s <= 0 || nowUnixSeconds >= s) && (e <= 0 || nowUnixSeconds < e);
+        }
+
+        /// <summary>지금 열린 배너 (상시 먼저 데이터 순서, 기간 배너는 끝나는 순). 관리자가 끈 배너는 빠진다 (R-122).</summary>
         public List<GachaBannerDef> OpenBanners(long nowUnixSeconds)
         {
             var list = new List<GachaBannerDef>();
-            foreach (var b in _defs.Gacha.Banners.Values) if (b.OpenAt(nowUnixSeconds)) list.Add(b);
+            foreach (var b in _defs.Gacha.Banners.Values) if (IsOpen(b, nowUnixSeconds)) list.Add(b);
             var order = new List<GachaBannerDef>(list);
             list.Sort((x, y) =>
             {
-                if (x.Limited != y.Limited) return x.Limited ? 1 : -1;
-                if (x.Limited) return x.EndsAtUnixSeconds.CompareTo(y.EndsAtUnixSeconds);
+                bool lx = IsLimited(x), ly = IsLimited(y);
+                if (lx != ly) return lx ? 1 : -1;
+                if (lx) return PeriodOf(x).ends.CompareTo(PeriodOf(y).ends);
                 return order.IndexOf(x).CompareTo(order.IndexOf(y));
             });
             return list;
         }
 
-        /// <summary>기간 배너가 끝날 때까지 남은 날 (올림, 하루 안이면 1). 끝이 없으면 -1.</summary>
-        public static int DaysLeft(GachaBannerDef b, long nowUnixSeconds)
+        /// <summary>기간 배너가 끝날 때까지 남은 날 (올림, 하루 안이면 1). 끝이 없으면 -1. 덮어쓴 기간 포함.</summary>
+        public int DaysLeftOf(GachaBannerDef b, long nowUnixSeconds)
         {
-            if (b == null || b.EndsAtUnixSeconds <= 0) return -1;
-            long left = System.Math.Max(0, b.EndsAtUnixSeconds - nowUnixSeconds);
+            if (b == null) return -1;
+            long end = PeriodOf(b).ends;
+            if (end <= 0) return -1;
+            long left = System.Math.Max(0, end - nowUnixSeconds);
             return (int)((left + 86399) / 86400);
         }
 
-        /// <summary>기간 배너는 행동 시각이 기간 안이어야 (시각 0이면 거절). 상시 배너는 시각을 보지 않는다.</summary>
-        private static bool Closes(GachaBannerDef b, long nowUnixSeconds) => b.Limited && (nowUnixSeconds <= 0 || !b.OpenAt(nowUnixSeconds));
+        /// <summary>기간 배너가 끝날 때까지 남은 날 (데이터 기간만). 끝이 없으면 -1.</summary>
+        public static int DaysLeft(GachaBannerDef b, long nowUnixSeconds) => new GachaService(null).DaysLeftOf(b, nowUnixSeconds);
+
+        /// <summary>닫힘: 관리자가 껐거나 (R-122), 기간 배너인데 행동 시각이 기간 밖이거나 시각이 없음 (R-121). 상시 배너는 시각을 보지 않는다.</summary>
+        private bool Closes(GachaBannerDef b, long nowUnixSeconds) =>
+            Toggles?.IsOff(ContentKinds.Banner, b.Id) == true || (IsLimited(b) && (nowUnixSeconds <= 0 || !IsOpen(b, nowUnixSeconds)));
 
         public GachaResult Draw(CampaignState state, string bannerId, int count, ulong seed, long nowUnixSeconds = 0)
         {

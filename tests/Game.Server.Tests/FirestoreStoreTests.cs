@@ -82,6 +82,12 @@ namespace Game.Server.Tests
             Assert.Equal(a, s.ReceiptOf(g, "tx1").AccountId);
             Assert.Single(s.ReceiptsOf(g, a));
 
+            Assert.Empty(s.ContentOf(g).Items);
+            s.SetContent(g, new ContentToggles { Items = { new ContentToggle { Kind = ContentKinds.Banner, Id = "standard", Off = true } } });
+            Assert.True(s.ContentOf(g).IsOff(ContentKinds.Banner, "standard"));
+            s.SetContent(g, new ContentToggles());
+            Assert.Empty(s.ContentOf(g).Items);
+
             s.WithAttendance(g, a, r => { r.LastDay = 7; return 0; });
             s.WithPush(g, a, p => { p.Settings.AllyHelp = false; return 0; });
             Assert.Equal(7, s.WithAttendance(g, a, r => r.LastDay)); // 출석 · 푸시가 같은 문서여도 서로 지우지 않음
