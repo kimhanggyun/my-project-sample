@@ -30,6 +30,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.ConfigureServices(s =>
                 {
                     s.RemoveAll<ITimeProvider>();
@@ -624,6 +625,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.UseSetting("Game:Games:0:Code", "ancientwar");
                 builder.UseSetting("Game:Games:0:Theme", "ancientwar");
                 builder.UseSetting("Game:Games:0:PackageIds:0", "net.itgold.unitygame1");

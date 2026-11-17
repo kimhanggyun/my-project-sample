@@ -25,6 +25,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.UseSetting("Game:AdminKey", Key);
                 builder.ConfigureServices(s =>
                 {
@@ -39,6 +40,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.UseSetting("Game:AdminKey", Key);
                 builder.UseSetting("Game:AdminGoogle", "off");
             }
