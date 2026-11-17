@@ -36,6 +36,7 @@ jobs:
           ls -l store
       - name: Migrate
         run: |
-          ARGS=(migrate --from store --project "${{ vars.GCP_PROJECT_ID }}" --database "${{ vars.FIRESTORE_DATABASE || '(default)' }}")
+          # dotnet run은 작업 폴더를 프로젝트 폴더로 바꾸므로 절대 경로로 넘긴다
+          ARGS=(migrate --from "$GITHUB_WORKSPACE/store" --project "${{ vars.GCP_PROJECT_ID }}" --database "${{ vars.FIRESTORE_DATABASE || '(default)' }}")
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry); fi
           dotnet run --project server/Game.Server -c Release -- "${ARGS[@]}"
