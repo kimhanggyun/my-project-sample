@@ -456,8 +456,12 @@ namespace Game.Unity.Screens
             var ctx = app.Context;
             var comps = ctx.State.CompositionsFor(null);
             var busyIds = new List<string>();
-            if (Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId) busyIds.AddRange(TerritoryFlags.GeneralsOf(o));
-            _plantPick.RemoveAll(id => busyIds.Contains(id) || !comps.Exists(c => c.GeneralId == id));
+            var hereIds = new List<string>(); // 추가 파견: 이 깃발에 이미 나간 장수 (체크된 채 꺼짐, 회수는 깃발 판에서 — H6)
+            if (Owners != null)
+                foreach (var kv in Owners)
+                    if (kv.Value.OwnerAccountId == ctx.AccountId)
+                        (reinforceKey != null && (kv.Key == reinforceKey || kv.Value.RegionId == reinforceKey) ? hereIds : busyIds).AddRange(TerritoryFlags.GeneralsOf(kv.Value));
+            _plantPick.RemoveAll(id => busyIds.Contains(id) || hereIds.Contains(id) || !comps.Exists(c => c.GeneralId == id));
             bool reinforce = reinforceKey != null;
             var (content, close) = Ui.BottomSheet(root, ctx.T(reinforce ? "ui.terr.reinforceTitle" : "ui.terr.plantHere"), 220 + 100 * Mathf.Max(1, comps.Count) + 120);
             Ui.Column(content, 6, 0);
@@ -466,11 +470,15 @@ namespace Game.Unity.Screens
             {
                 string gid = c.GeneralId;
                 var g = ctx.State.FindGeneral(gid);
-                bool busy = busyIds.Contains(gid) || g == null || !Game.Campaign.Roster.GeneralStatus.CanDeploy(g.Status);
+                bool here = hereIds.Contains(gid);
+                bool elsewhere = !here && busyIds.Contains(gid);
+                bool cant = !here && !elsewhere && (g == null || !Game.Campaign.Roster.GeneralStatus.CanDeploy(g.Status));
+                bool busy = here || elsewhere || cant;
                 long troops = 0;
                 foreach (var p in c.Picks) troops += p.Troops;
-                string label = ctx.GeneralName(gid) + "  " + Ui.Colored(busy ? ctx.T("ui.terr.onFlag") : ctx.T("ui.terr.troops", troops.ToString("N0")), Palette.TextDim);
-                var row = Ui.CheckRow(content, label, _plantPick.Contains(gid), busy ? (System.Action)null : () =>
+                string note = here ? ctx.T("ui.terr.onThisFlag") : elsewhere ? ctx.T(reinforce ? "ui.terr.onOtherFlag" : "ui.terr.onFlag") : cant ? ctx.T("ui.terr.cantDeploy") : ctx.T("ui.terr.troops", troops.ToString("N0"));
+                string label = ctx.GeneralName(gid) + "  " + Ui.Colored(note, Palette.TextDim);
+                var row = Ui.CheckRow(content, label, here || _plantPick.Contains(gid), busy ? (System.Action)null : () =>
                 {
                     if (_plantPick.Contains(gid)) _plantPick.Remove(gid); else _plantPick.Add(gid);
                     close();
