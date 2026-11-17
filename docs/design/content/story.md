@@ -37,6 +37,7 @@
 
 - 대사 파일은 스텝마다 하나 (`data/Dialogue/stepNN.json`의 `before`·`after`, 줄마다 `speaker` 장수 id + `key` 문자열 키) + 전투 중 이벤트 대사(스텝의 events). 파일이 없으면 예전 한 줄 대사 `dialogue.<스텝>.start`.
 - 지금은 **임시 대사**를 넣고, 나중에 파일만 바꿔 넣는다.
+- **영토 깃발 공성전** (2026-11-17, 17 시안 "공성전 짧은 대사"): 깃발마다 파일을 둘 수 없으므로 공통 파일 `data/Dialogue/siege.json` 하나. 말하는 장수 자리 `$attacker`(내 첫 군단 장수) · `$defender`(상대 첫 군단 장수 — 수비 스냅샷 장수 또는 AI 수비군 장수)를 출진할 때 그 전투 장수로 바꾼다 (`DialogueScript.Resolve`). 바꿀 장수가 없으면 해설로. 편은 데이터의 side (공격 ally · 수비 enemy).
 
 ```json
 [

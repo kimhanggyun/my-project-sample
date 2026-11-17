@@ -112,5 +112,11 @@
 - 2026-11-16 [데스크탑] desktop/remote-asks — 원격 요청: 녹화 [내 용병 고용됨] 탭 (R-120, HiredBattles · GetHireReplay → 확인 뒤 재생), 설정 알림 세 칸 서버 저장 · 시작 때 서버 값으로 (R-119)
 - 2026-11-17 [데스크탑] collab.md 2.1.1: 모양 변화가 적은 화면 일은 원격도 (PR에 캡처할 화면, 데스크탑이 캡처 확인 뒤 머지), 원격 PR은 main 기준 (사용자)
 - 2026-11-17 [데스크탑] desktop/battle-2 — 전투: 바닥 링 게이지(병력 · 사기), 병력 칩, 이동 경로 파란 점선 (18·19 시안 2단계)
+- 2026-11-17 [원격] claude/siege-dialogue — 17 공성전 짧은 대사: 깃발 공성전 공통 data/Dialogue/siege.json 3줄, $attacker · $defender를 그 전투 장수로 (DialogueScript.Resolve)
+- 2026-11-17 [원격] claude/gacha-period — 12 모집 기간 배너 R-121: startsAt · endsAt, 기간 밖 모집 거절(closed) · 목록에서 빠짐, 카드 n일 남음 꼬리표, 예시 배너 limited_winter(임시)
+- 2026-11-17 [원격] claude/sortie-info — 10 출진 준비 구역별 ⓘ: 전력 · 적 · 곡식 · 고용 · 수비 카드 오른쪽 위 InfoButton (스텝 · 공성전 출진 둘 다)
+- 2026-11-17 [원격] claude/general-swipe — 11 장수 카드: 초상 줄을 왼쪽으로 밀면 다음 · 오른쪽이면 이전 장수 (◀ ▶와 같은 순서, 탭 그대로, GestureArea)
+- 2026-11-17 [원격] claude/codex-replay-link — 13 도감 자세히: 숨은 보상을 찾은 전투 녹화(같은 스텝 · 10분 안)가 있으면 [그 전투 보기 ›] → 녹화 재생 (ReplayLibrary.FindNear)
+- 2026-11-17 [원격] claude/hire-limits-hint — 용병 등록 제한 안내 (R-110 화면): 부대는 닉네임 장수 군단 병종 칸 인원까지 안내 · 목록 거르기, 가격 화면에서 onFlag · notAvatarCorps 미리 알리고 [등록] 끔
 - 2026-11-17 [원격] claude/store-split — Firestore 1단계: 영토 장부를 요청마다 필요한 깃발만 (TerritoryScope: 키 · 주인 · 주변 · 수입 기한 · 전부), 폴더 저장소도 같은 방식, 연합은 그대로 (db.md 7.1)
 - 2026-11-17 [원격] claude/firestore-store — Firestore 2 · 3단계: FirestoreStore(IStore, 트랜잭션 안 우편 묶음), Game:Store 고르기, CI 에뮬레이터로 서버 테스트 전체 한 번 더, 옮기기 도구 · firestore-migrate 워크플로, 배포 변수 GAME_STORE · MAX_INSTANCES, 사용자 할 일 db.md 8장

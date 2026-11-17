@@ -28,6 +28,14 @@ namespace Game.Data.Defs
         public IReadOnlyList<string> Pool { get; internal set; }
         /// <summary>하루 무료 1회 모집 횟수 (R-100, 서버 시각 unix 일). 0 = 없음. 광고는 화면이 (꺼져 있으면 광고 없이).</summary>
         public int FreeDaily { get; internal set; }
+        /// <summary>기간 배너 (R-121): 시작 · 끝 시각 (unix 초, 0 = 없음). 끝이 있으면 기간 배너, 둘 다 없으면 상시.</summary>
+        public long StartsAtUnixSeconds { get; internal set; }
+        public long EndsAtUnixSeconds { get; internal set; }
+        public bool Limited => EndsAtUnixSeconds > 0 || StartsAtUnixSeconds > 0;
+
+        /// <summary>그 시각에 열려 있다 (시작 ≤ 지금 &lt; 끝). 상시 배너는 늘 true.</summary>
+        public bool OpenAt(long nowUnixSeconds) =>
+            (StartsAtUnixSeconds <= 0 || nowUnixSeconds >= StartsAtUnixSeconds) && (EndsAtUnixSeconds <= 0 || nowUnixSeconds < EndsAtUnixSeconds);
     }
 
     /// <summary>
@@ -85,7 +93,11 @@ namespace Game.Data.Defs
                     PityCount = pity?.Value<int?>("count") ?? 0,
                     Pool = JsonUtil.StringList(b, "pool"),
                     FreeDaily = b.Value<int?>("freeDaily") ?? 0,
+                    StartsAtUnixSeconds = b.Value<long?>("startsAt") ?? 0,
+                    EndsAtUnixSeconds = b.Value<long?>("endsAt") ?? 0,
                 };
+                if (def.StartsAtUnixSeconds < 0 || def.EndsAtUnixSeconds < 0 || (def.EndsAtUnixSeconds > 0 && def.EndsAtUnixSeconds <= def.StartsAtUnixSeconds))
+                    throw new DataException($"{c}: 기간이 잘못되었습니다 (startsAt < endsAt, unix 초, R-121).");
                 if (def.FreeDaily < 0) throw new DataException($"{c}: freeDaily는 0 이상.");
                 if (def.CostOne < 0 || def.CostTen < 0) throw new DataException($"{c}: 가격은 0 이상.");
                 if (def.TenGuarantee != null && r.Grade(def.TenGuarantee) == null) throw new DataException($"{c}: 없는 보장 등급 '{def.TenGuarantee}'.");

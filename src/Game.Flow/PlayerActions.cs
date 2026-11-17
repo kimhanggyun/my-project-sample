@@ -51,7 +51,7 @@ namespace Game.Flow
             Register(new Handler(ActionKinds.UnitTrain, (s, a) => growth.Train(s, a.UnitId)));
             Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType, a.Count)));
             var gacha = new GachaService(defs);
-            Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed).Ok));
+            Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed, a.DoneAtUnixSeconds).Ok));
             Register(new Handler(ActionKinds.GachaFree, (s, a) => gacha.DrawFree(s, a.BannerId, a.Seed, a.DoneAtUnixSeconds).Ok));
             var practice = new PracticeService(defs);
             Register(new Handler(ActionKinds.ContestPractice, (s, a) => practice.Apply(s, a) != null));

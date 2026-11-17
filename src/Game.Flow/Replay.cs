@@ -201,6 +201,23 @@ namespace Game.Flow
         /// <summary>저장 안 한 최근 전투 (새것이 앞, R-101). [저장]하면 Items로 옮긴다.</summary>
         public List<ReplayRecord> Recent { get; set; } = new List<ReplayRecord>();
 
+        /// <summary>
+        /// 그 스텝 · 그 시각의 전투 녹화 (13 도감 → 숨은 보상을 찾은 전투 보기): 저장한 것 · 최근 것 중 스텝이 같고 저장 시각이 at에서 window초 안인 것 가운데 가장 가까운 것. 없으면 null.
+        /// </summary>
+        public ReplayRecord FindNear(string stepId, long atUnixSeconds, long windowSeconds = 600)
+        {
+            ReplayRecord best = null;
+            long bestGap = long.MaxValue;
+            foreach (var list in new[] { Items, Recent })
+                foreach (var r in list)
+                {
+                    if (r == null || r.StepId != stepId || stepId == null || atUnixSeconds <= 0) continue;
+                    long gap = System.Math.Abs(r.SavedAtUnixSeconds - atUnixSeconds);
+                    if (gap <= windowSeconds && gap < bestGap) { best = r; bestGap = gap; }
+                }
+            return best;
+        }
+
         /// <summary>끝난 전투를 최근에 더한다 (id를 붙이고, keep개를 넘으면 가장 오래된 것을 밀어낸다, R-101).</summary>
         public void AddRecent(ReplayRecord r, int keep)
         {

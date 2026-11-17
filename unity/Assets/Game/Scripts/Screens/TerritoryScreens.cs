@@ -856,6 +856,7 @@ namespace Game.Unity.Screens
 
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(false));
             var defense = Ui.Card(body, "Defense");
+            SortiePrep.Info(Ctx, defense, "ui.sortie.info.defense");
             Ui.Label(defense, T(_defense != null ? "ui.territory.defenseOwnerTitle" : "ui.territory.defense"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
             if (plan.Setup != null) SortiePrep.Enemies(Ctx, defense, plan);
             // 수비 지원 (겹친 상대 깃발 = 전장 하루 뒤 · 연합원 = 늦게, territory-v2.md 2.5 — 지원 입장은 다음 단계)
@@ -872,6 +873,7 @@ namespace Game.Unity.Screens
             if (Ctx.HiringAvailable) Ui.Button(armyRow, T("ui.sortie.mercenary"), () => App.ShowMain("hiring"), 72, fontSize: 24);
 
             var sortie = Ui.Card(body, "Sortie");
+            SortiePrep.Info(Ctx, sortie, "ui.sortie.info.supply");
             if (_hired != null) Ui.Label(sortie, T("ui.merc.inSortie", _hired.Generals.Count + _hired.Units.Count), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             // 반간 (R-99, hiring-v2.md 4장): 내 닉네임 장수가 반간을 알면, 이 깃발 주인의 용병이 섞여 있을 때만 낌새를 알린다
             var me = Ctx.State.FindGeneral(AvatarGeneral.GeneralId);

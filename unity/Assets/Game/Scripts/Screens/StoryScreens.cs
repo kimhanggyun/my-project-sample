@@ -196,10 +196,23 @@ namespace Game.Unity.Screens
             return t;
         }
 
-        /// <summary>전력: 파랑 내 병력 ─ 막대 ─ 빨강 상대 병력, 판단 알약 (우세 · 비슷 · 위험).</summary>
+        /// <summary>구역 카드 오른쪽 위 ⓘ: 그 구역 설명 한두 줄 (10 시안 "글자는 줄이고 설명은 ⓘ").</summary>
+        public static void Info(GameContext ctx, RectTransform card, string key)
+        {
+            // 카드 안 ⓘ는 페이지 ⓘ(64)보다 작게 · 모서리에 붙여 (2026-11-17 캡처: 곡식 카드 [+]와 겹침)
+            var b = InfoButton.Add(card, ctx.T(key));
+            var rt = (RectTransform)b.transform;
+            rt.sizeDelta = new Vector2(40f, 40f);
+            rt.anchoredPosition = new Vector2(-6f, -6f);
+            var label = b.GetComponentInChildren<UnityEngine.UI.Text>();
+            if (label != null) label.fontSize = 26;
+        }
+
+        /// <summary>전력: 파랑 내 병력 ─ 막대 ─ 빨강 상대 병력, 판단 알약 (우세 · 비슷 · 위험). ⓘ = 전력 · 내 편성 설명.</summary>
         public static void Power(GameContext ctx, Transform parent, long mine, long enemy)
         {
             var card = Ui.Card(parent, "Power", 18, 6);
+            Info(ctx, card, "ui.sortie.info.power");
             string judge = SortieAdvice.Judge(mine, enemy);
             var color = judge == SortieAdvice.Favorable ? Palette.Good : judge == SortieAdvice.Even ? Palette.Text : Palette.Bad;
             Ui.Tag(card, ctx.T("ui.sortie.judge." + judge), color, 24, 44);
@@ -274,6 +287,7 @@ namespace Game.Unity.Screens
 
             // 적 (대략, 척후 파견이면 정확)
             var enemies = Ui.Card(body, "Enemies");
+            SortiePrep.Info(Ctx, enemies, "ui.sortie.info.enemies");
             int reserve = 0;
             foreach (var e in step.Enemy) if (e.Reserve) reserve++;
             Ui.Label(enemies, T("ui.step.enemies", step.Enemy.Count, reserve), 24, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -299,6 +313,7 @@ namespace Game.Unity.Screens
             if (Ctx.HiringAvailable && !Ctx.HiresFor(_stepId).IsEmpty) HireCard(body, step);
 
             var sortie = Ui.Card(body, "Sortie");
+            SortiePrep.Info(Ctx, sortie, "ui.sortie.info.supply");
             if (hireError != null) Ui.Label(sortie, Ui.Colored(hireError, Palette.Bad), Ui.FontSmall);
             if (plan.Hired != null)
                 foreach (var kv in plan.Hired.Costs) Ui.Label(sortie, T("ui.hire.cost", kv.Value.ToString("N0") + " " + T("resource." + kv.Key)), Ui.FontSmall);
@@ -351,6 +366,7 @@ namespace Game.Unity.Screens
         private void HireCard(RectTransform body, StepDef step)
         {
             var card = Ui.Card(body, "Hire");
+            SortiePrep.Info(Ctx, card, "ui.sortie.info.hire");
             Ui.Label(card, T("ui.hire.sortieTitle"));
             var draft = Ctx.HiresFor(_stepId);
             var comps = Ctx.State.CompositionsFor(step.BattleType);
@@ -409,6 +425,15 @@ namespace Game.Unity.Screens
         protected override List<DialogueLine> Lines()
         {
             var lines = new List<DialogueLine>(DialogueScript.Load(Ctx.Data, _plan.Step.Id).Before);
+            // 깃발 공성전 공통 대사 (Dialogue/siege.json): $attacker · $defender = 이 전투의 내 첫 군단 · 상대 첫 군단 장수
+            string mine = null, theirs = null;
+            foreach (var c in _plan.Setup.Corps)
+            {
+                if (c.General == null) continue;
+                if (c.Team == StoryFlow.PlayerTeam) { if (mine == null) mine = c.General.Id; }
+                else if (theirs == null) theirs = c.General.Id;
+            }
+            lines = DialogueScript.Resolve(lines, mine, theirs);
             if (lines.Count > 0) return lines;
             string speaker = _plan.Setup.Corps.Count > 0 && _plan.Setup.Corps[0].General != null ? _plan.Setup.Corps[0].General.Id : null;
             return new List<DialogueLine> { DialogueScript.Line(speaker, Ctx.Defs.Strings.ContainsKey(_lineKey ?? "") ? _lineKey : null) };

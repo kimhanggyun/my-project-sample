@@ -32,7 +32,25 @@ namespace Game.Tests.Campaign
             Assert.Empty(DialogueScript.Load(Kit.Source, "no_such_step").Before);
         }
 
-        private static void Check(string id, DialogueLine l)
+[Fact(DisplayName = "17 공성전 짧은 대사: 깃발 공성전은 공통 파일 siege.json, $attacker · $defender를 그 전투 장수로 (없으면 해설), 편은 데이터대로, 문구가 있다")]
+        public void SiegeDialogue()
+        {
+            Assert.Equal(DialogueScript.SiegeFile, DialogueScript.FileOf("territory.flag:37566000,126978000"));
+            Assert.Equal("Dialogue/step01.json", DialogueScript.FileOf("step01"));
+            var d = DialogueScript.Load(Kit.Source, "territory.flag:37566000,126978000");
+            Assert.InRange(d.Before.Count, 2, 3);
+            Assert.Contains(d.Before, l => l.Speaker == DialogueScript.AttackerToken);
+            Assert.Contains(d.Before, l => l.Speaker == DialogueScript.DefenderToken);
+            foreach (var l in d.Before) Assert.True(Kit.D.Strings.ContainsKey(l.Key), l.Key);
+            var lines = DialogueScript.Resolve(d.Before, "general_a", "enemy_general_01");
+            Assert.All(lines, l => Assert.True(l.Speaker == "general_a" || l.Speaker == "enemy_general_01"));
+            Assert.Equal(DialogueScript.Enemy, DialogueScript.SideOf(lines.First(l => l.Speaker == "enemy_general_01"), null));
+            Assert.Equal(DialogueScript.Ally, DialogueScript.SideOf(lines.First(l => l.Speaker == "general_a"), null));
+            var noDefender = DialogueScript.Resolve(d.Before, "general_a", null);
+            Assert.Contains(noDefender, l => l.Speaker == null && DialogueScript.SideOf(l, null) == DialogueScript.Narration);
+        }
+
+                private static void Check(string id, DialogueLine l)
         {
             Assert.True(l.Speaker == null || Kit.D.Generals.ContainsKey(l.Speaker), id + ": 말하는 장수 " + l.Speaker);
             Assert.True(Kit.D.Strings.ContainsKey(l.Key), id + ": 문구 " + l.Key);
