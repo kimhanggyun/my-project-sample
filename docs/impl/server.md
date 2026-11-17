@@ -24,7 +24,7 @@
 | `src/Game.Flow/HireBook.cs` | 고용 이력(전투 결과 → 고용마다 승·패·퇴각·포로·궤멸, 잃은 병력)·제한(하루 고용 수, 같은 등록 대기시간) 계산 (R-44) |
 | `src/Game.Flow/Hiring.cs` | 고용 규칙 `HireRules`: 등록 스냅샷·추천 가격, 고용 해석(`HiredForces`: 고용 장수·부대·비용·등록자별 비용), 등록자 보상 (R-43) |
 | `src/Game.Flow/BattleVerifier.cs` | 서버 세이브 + 제출(출진 요청·시드·대결 선택·명령 기록)로 출진 준비 → 전투 재현 → 지문·틱 비교 → 맞으면 출진 확정 + 결과 반영 |
-| `server/Game.Server` | **참고 서버** (ASP.NET Core, net8.0). 개발·테스트용. 공통 계정(`IPlatformStore`: 계정·토큰·게임 가입 기록) + 게임별 데이터(`IGameStore`: (게임 코드, 계정)별 세이브), 게임 등록표(`GameRegistry` + `IGameModule`). 저장소는 메모리 또는 폴더 |
+| `server/Game.Server` | **참고 서버** (ASP.NET Core, net8.0). 개발·테스트용. 공통 계정(`IPlatformStore`: 계정·토큰·게임 가입 기록) + 게임별 데이터(`IGameStore`: (게임 코드, 계정)별 세이브), 게임 등록표(`GameRegistry` + `IGameModule`). 저장소는 메모리 · 폴더 · Firestore (`IStore`, [db.md](db.md)) |
 | `tests/Game.Server.Tests` | 참고 서버 HTTP 테스트 (`dotnet test GameCore.sln`에 포함) |
 
 의존: `Game.Online` → Foundation·Data·Battle.Model (명령 기록), `Game.Flow` → … + Online (`ArchitectureTests`).
@@ -70,7 +70,7 @@
 | `POST /v1/games/{game}/battles` | 전투 제출 (고용이 있으면 `Hires` + 쓴 `Compositions`, 서버가 등록 목록의 같은 판으로 재현하고 등록자에게 우편 보상, 등록 이력에 결과를 쌓는다. 고용 제한을 넘으면 422 `hireLimit`). 옛 세이브 위면 409(`staleSave`), 기록 시각이 범위 밖이면 422(`badTime`, R-42), 출진 불가면 422(`badSortie`), 지문이 다르면 422(`mismatch`), 맞으면 반영한 새 세이브 | `BattleVerdict` |
 
 실행: `dotnet run --project server/Game.Server`. 설정:
-- `Game:StoreRoot` = 저장 폴더 (없으면 메모리).
+- `Game:Store` = `memory` · `folder` · `firestore` (없으면 `Game:StoreRoot`가 있으면 folder, 아니면 memory). `Game:StoreRoot` = 저장 폴더, `Game:Firestore:ProjectId` · `DatabaseId` = Firestore ([db.md](db.md)).
 - `Game:Games:0:Code` / `DataRoot` / `Theme` / `PackageIds:0` … = 등록할 게임들. 없으면 이 저장소의 게임 하나(`ancientwar`, data 폴더는 위로 찾음, 앱 id `net.itgold.unitygame1` (2026-11-11 결정)).
 
 ### 게임 추가하기

@@ -72,6 +72,11 @@ jobs:
           # 푸시 알림 (R-119, deploy-cloudrun.md 8장): 저장소 변수 PUSH (기본 off, fcm = 실제 보내기). fcm이면 키를 Secret Manager 비밀(PUSH_SA_SECRET)에서.
           PUSH: ${{ vars.PUSH || 'off' }}
           PUSH_SA_SECRET: ${{ vars.PUSH_SA_SECRET || 'fcm-service-account' }}
+          # 서버 저장소 (docs/impl/db.md): 저장소 변수 GAME_STORE (기본 folder = 버킷의 store.json, firestore = Firestore 서울).
+          # Firestore로 옮긴 뒤에는 MAX_INSTANCES로 서버를 여러 대 띄울 수 있다 (folder는 반드시 1).
+          GAME_STORE: ${{ vars.GAME_STORE || 'folder' }}
+          FIRESTORE_DATABASE: ${{ vars.FIRESTORE_DATABASE || '(default)' }}
+          MAX_INSTANCES: ${{ vars.MAX_INSTANCES || '1' }}
         # 테스트 단계: 인스턴스 1대(폴더 저장소를 Cloud Storage 버킷에 붙여 쓰므로 동시에 2대 이상 쓰면 안 된다), 요청 없으면 0대.
         # uid/gid 1654 = .NET 이미지의 app 사용자 (버킷 폴더에 쓸 수 있게).
         run: |
@@ -80,17 +85,18 @@ jobs:
           if [ "$RECEIPT_VERIFIER" = "googlePlay" ]; then SECRETS+=("Game__GooglePlay__ServiceAccountJson=${GOOGLE_PLAY_SA_SECRET}:latest"); fi
           if [ "$PUSH" = "fcm" ]; then SECRETS+=("Game__Push__ServiceAccountJson=${PUSH_SA_SECRET}:latest"); fi
           if [ ${#SECRETS[@]} -gt 0 ]; then EXTRA+=(--set-secrets "$(IFS=,; echo "${SECRETS[*]}")"); fi
+          if [ "$GAME_STORE" != "firestore" ]; then MAX_INSTANCES=1; fi # 폴더 저장소는 한 대만
           gcloud run deploy "$SERVICE" \
             --image "$IMAGE" \
             --region "$REGION" \
             --allow-unauthenticated \
             --service-account "${{ vars.GCP_RUNTIME_SA }}" \
             --min-instances 0 \
-            --max-instances 1 \
+            --max-instances "$MAX_INSTANCES" \
             --execution-environment gen2 \
             --add-volume "name=store,type=cloud-storage,bucket=${{ vars.GCS_BUCKET }},mount-options=uid=1654;gid=1654" \
             --add-volume-mount "volume=store,mount-path=/data/store" \
-            --set-env-vars "^|^Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }}|Game__AllowFakeReceipts=false|Game__Masters=${{ vars.GAME_MASTERS }}|Game__AdminKey=${{ secrets.GAME_ADMIN_KEY }}|Game__AdminGoogle=${{ vars.ADMIN_GOOGLE || 'off' }}|Game__ReceiptVerifier=${RECEIPT_VERIFIER}|Game__GooglePlay__PackageName=${GOOGLE_PLAY_PACKAGE}|Game__Push=${PUSH}" \
+            --set-env-vars "^|^Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }}|Game__AllowFakeReceipts=false|Game__Masters=${{ vars.GAME_MASTERS }}|Game__AdminKey=${{ secrets.GAME_ADMIN_KEY }}|Game__AdminGoogle=${{ vars.ADMIN_GOOGLE || 'off' }}|Game__ReceiptVerifier=${RECEIPT_VERIFIER}|Game__GooglePlay__PackageName=${GOOGLE_PLAY_PACKAGE}|Game__Push=${PUSH}|Game__Store=${GAME_STORE}|Game__Firestore__ProjectId=${{ vars.GCP_PROJECT_ID }}|Game__Firestore__DatabaseId=${FIRESTORE_DATABASE}" \
             "${EXTRA[@]}"
       - name: Smoke test
         run: |

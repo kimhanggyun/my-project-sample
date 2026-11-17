@@ -19,3 +19,36 @@ jobs:
         run: dotnet build GameCore.sln --no-restore -c Release
       - name: Test
         run: dotnet test GameCore.sln --no-build -c Release --logger "console;verbosity=normal"
+
+  # 서버 테스트 전체를 Firestore 저장소로 한 번 더 (docs/impl/db.md, 에뮬레이터 — 실제 GCP 안 씀)
+  firestore-tests:
+    runs-on: ubuntu-latest
+    env:
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8681
+      Game__Store: firestore
+      Game__Firestore__ProjectId: demo-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: cloud-firestore-emulator
+      - name: Start Firestore emulator
+        run: |
+          nohup gcloud emulators firestore start --host-port=127.0.0.1:8681 > emulator.log 2>&1 &
+          for i in $(seq 1 60); do curl -s http://127.0.0.1:8681 >/dev/null && break; sleep 2; done
+          curl -s http://127.0.0.1:8681 || (cat emulator.log; exit 1)
+      - name: Build
+        run: dotnet build tests/Game.Server.Tests -c Release
+      - name: Server tests on Firestore
+        run: dotnet test tests/Game.Server.Tests --no-build -c Release --logger "console;verbosity=normal"
+      - name: Emulator log (on failure)
+        if: failure()
+        run: tail -50 emulator.log
+

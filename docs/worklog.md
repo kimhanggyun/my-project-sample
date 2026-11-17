@@ -120,3 +120,4 @@
 - 2026-11-17 [원격] claude/hire-limits-hint — 용병 등록 제한 안내 (R-110 화면): 부대는 닉네임 장수 군단 병종 칸 인원까지 안내 · 목록 거르기, 가격 화면에서 onFlag · notAvatarCorps 미리 알리고 [등록] 끔
 - 2026-11-17 [원격] claude/store-split — Firestore 1단계: 영토 장부를 요청마다 필요한 깃발만 (TerritoryScope: 키 · 주인 · 주변 · 수입 기한 · 전부), 폴더 저장소도 같은 방식, 연합은 그대로 (db.md 7.1)
 - 2026-11-17 [원격] claude/content-toggles — 모집 배너 켜고 끄기 R-122: ContentToggles(저장소, 게임별), 관리자 [모집 배너] 탭 · /v1/admin/games/{game}/banners, 공개 /content, 끈 배너 서버 모집 거절, 기기는 시작 때 받아 목록에
+- 2026-11-17 [원격] claude/firestore-store — Firestore 2 · 3단계: FirestoreStore(IStore, 트랜잭션 안 우편 묶음), Game:Store 고르기, CI 에뮬레이터로 서버 테스트 전체 한 번 더, 옮기기 도구 · firestore-migrate 워크플로, 배포 변수 GAME_STORE · MAX_INSTANCES, 사용자 할 일 db.md 8장

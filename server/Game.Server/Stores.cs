@@ -120,12 +120,28 @@ namespace Game.Server
         List<Game.Flow.ReceiptRecord> ReceiptsOf(string gameCode, string accountId);
     }
 
+    /// <summary>
+    /// 서버 저장소 하나 (공통 + 게임별 + 관리자). 구현: 메모리 · 폴더(store.json) · Firestore (db.md, 설정 Game:Store).
+    /// </summary>
+    public interface IStore : IPlatformStore, IGameStore
+    {
+        /// <summary>folder · memory · firestore (관리자 서버 상태).</summary>
+        string Kind { get; }
+        /// <summary>관리자 페이지 (admin.md): 모든 계정 한 줄씩.</summary>
+        List<AdminAccount> AdminAccounts();
+    }
+
     /// <summary>개발용 메모리 저장소 (공통 + 게임별을 한 객체에). 테스트·로컬 실행용.</summary>
-    public class InMemoryStore : IPlatformStore, IGameStore
+    public class InMemoryStore : IStore
     {
         private readonly object _lock = new object();
 
-        protected sealed class Snapshot
+        public virtual string Kind => "memory";
+
+        /// <summary>옮기기 도구 (db.md 6장): 지금 내용 전체 (store.json과 같은 모양). 읽기만 할 것.</summary>
+        public Snapshot Export() { lock (Fresh()) return Data; }
+
+        public sealed class Snapshot
         {
             /// <summary>토큰 → 계정.</summary>
             public Dictionary<string, string> Tokens { get; set; } = new Dictionary<string, string>();
@@ -617,7 +633,7 @@ namespace Game.Server
             public long AtUnixSeconds { get; set; }
         }
 
-        protected sealed class SharedReplayEntry
+        public sealed class SharedReplayEntry
         {
             public SharedReplaySummary Summary { get; set; }
             public string Json { get; set; }
@@ -744,6 +760,7 @@ namespace Game.Server
     /// </summary>
     public sealed class FolderStore : InMemoryStore
     {
+        public override string Kind => "folder";
         private readonly string _file;
         private readonly string _genFile;
         private string _gen;
