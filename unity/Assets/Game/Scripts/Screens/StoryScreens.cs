@@ -425,6 +425,15 @@ namespace Game.Unity.Screens
         protected override List<DialogueLine> Lines()
         {
             var lines = new List<DialogueLine>(DialogueScript.Load(Ctx.Data, _plan.Step.Id).Before);
+            // 깃발 공성전 공통 대사 (Dialogue/siege.json): $attacker · $defender = 이 전투의 내 첫 군단 · 상대 첫 군단 장수
+            string mine = null, theirs = null;
+            foreach (var c in _plan.Setup.Corps)
+            {
+                if (c.General == null) continue;
+                if (c.Team == StoryFlow.PlayerTeam) { if (mine == null) mine = c.General.Id; }
+                else if (theirs == null) theirs = c.General.Id;
+            }
+            lines = DialogueScript.Resolve(lines, mine, theirs);
             if (lines.Count > 0) return lines;
             string speaker = _plan.Setup.Corps.Count > 0 && _plan.Setup.Corps[0].General != null ? _plan.Setup.Corps[0].General.Id : null;
             return new List<DialogueLine> { DialogueScript.Line(speaker, Ctx.Defs.Strings.ContainsKey(_lineKey ?? "") ? _lineKey : null) };
