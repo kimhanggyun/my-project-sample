@@ -22,6 +22,32 @@ namespace Game.Unity.Screens
 
         public GeneralScreen(string generalId) { _generalId = generalId; }
 
+        /// <summary>이만큼(화면 너비 비율) 옆으로 밀면 이전 · 다음 장수.</summary>
+        private const float SwipeWidthRatio = 0.12f;
+
+        /// <summary>
+        /// 장수 머리(초상 줄)를 왼쪽으로 밀면 다음 장수, 오른쪽으로 밀면 이전 장수 (◀ ▶와 같은 순서, 지금 탭 그대로).
+        /// 옆으로 민 거리가 위아래보다 1.5배 이상 클 때만 (세로 끌기와 헷갈리지 않게).
+        /// </summary>
+        private void AddSwipe(RectTransform area, List<GeneralState> gs, int at)
+        {
+            if (gs.Count < 2 || at < 0) return;
+            Ui.Background(area, new Color(0f, 0f, 0f, 0f)); // 빈 곳도 손가락을 받게 (보이지 않음)
+            var gesture = area.gameObject.AddComponent<GestureArea>();
+            float dx = 0f, dy = 0f;
+            gesture.Dragged += (from, to) => { dx += to.x - from.x; dy += to.y - from.y; };
+            gesture.DragEnded += () =>
+            {
+                float min = Screen.width * SwipeWidthRatio;
+                if (Mathf.Abs(dx) >= min && Mathf.Abs(dx) > Mathf.Abs(dy) * 1.5f)
+                {
+                    int step = dx < 0f ? 1 : -1;
+                    App.Show(new GeneralScreen(gs[(at + step + gs.Count) % gs.Count].GeneralId));
+                }
+                dx = dy = 0f;
+            };
+        }
+
         public override void Build()
         {
             var books = new SkillBookService(Ctx.Defs);
@@ -53,6 +79,7 @@ namespace Game.Unity.Screens
             Ui.SetGauge(exp, need <= 0 ? 1f : Mathf.Clamp01((float)g.Exp / need));
             Ui.Label(id, g.Exp.ToString("N0") + " / " + need.ToString("N0") + "   " + T("ui.generals." + g.Status), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Size(Ui.Button(who, "▶", () => App.Show(new GeneralScreen(gs[(at + 1) % gs.Count].GeneralId)), 200, fontSize: 30), 200, 64);
+            AddSwipe(who, gs, at);
 
             // 능력치 타일 (아이콘 + 큰 숫자 + 레벨마다 성장)
             var statRow = Ui.Row(header, "Stats", 100, 10);

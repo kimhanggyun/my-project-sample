@@ -152,5 +152,20 @@ namespace Game.Tests.Campaign
             Assert.Equal("territory", ReplayService.CategoryOf(new ReplayRecord { StepId = "territory.flag:1,2" }));
             Assert.Equal("merc", ReplayService.CategoryOf(new ReplayRecord { StepId = "step01", Hired = true }));
         }
+
+        [Fact(DisplayName = "13 도감 → 그 전투 녹화: 같은 스텝 · 시각 10분 안에서 가장 가까운 것 (저장한 것 · 최근 것), 없으면 null")]
+        public void FindNear()
+        {
+            var lib = new ReplayLibrary();
+            lib.Items.Add(new ReplayRecord { Id = "a", StepId = "step04", SavedAtUnixSeconds = 1000 });
+            lib.Recent.Add(new ReplayRecord { Id = "b", StepId = "step04", SavedAtUnixSeconds = 1300 });
+            lib.Recent.Add(new ReplayRecord { Id = "c", StepId = "step05", SavedAtUnixSeconds = 1250 });
+            Assert.Equal("b", lib.FindNear("step04", 1250).Id);
+            Assert.Equal("a", lib.FindNear("step04", 1050).Id);
+            Assert.Null(lib.FindNear("step04", 5000));
+            Assert.Null(lib.FindNear("step06", 1000));
+            Assert.Null(lib.FindNear(null, 1000));
+            Assert.Null(lib.FindNear("step04", 0));
+        }
     }
 }

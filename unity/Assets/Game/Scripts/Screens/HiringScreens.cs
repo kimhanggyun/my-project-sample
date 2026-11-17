@@ -207,6 +207,7 @@ namespace Game.Unity.Screens
             var myTypes = new List<string>();
             if (corps != null) foreach (var p in corps.Picks) { var u = ctx.State.FindUnit(p.UnitId); if (u != null && !myTypes.Contains(u.UnitId)) myTypes.Add(u.UnitId); }
             Ui.Label(card, corps == null ? ctx.T("ui.merc.noCorps") : ctx.T("ui.merc.myCorps", string.Join(" · ", myTypes.ConvertAll(id => FormationTabView.TroopName(ctx, ctx.State.FindUnit(id).TroopType)))), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Label(card, ctx.T("ui.merc.unitRule"), 20, TextAnchor.MiddleLeft, Palette.TextDim); // 서버 검사와 같은 규칙 (R-110)
             bool onFlag = false;
             if (TerritoryTabView.Owners != null) foreach (var o in TerritoryTabView.Owners.Values) if (o.OwnerAccountId == ctx.AccountId && TerritoryFlags.GeneralsOf(o).Contains(me.GeneralId)) onFlag = true;
             if (onFlag)
@@ -296,13 +297,16 @@ namespace Game.Unity.Screens
                     Ui.Button(list, T("ui.hire.generalLine", Ctx.GeneralName(id), g.Level), () => App.Show(new HirePriceScreen(_kind, id)), 100, Palette.Card, 30);
                 }
             else
+            {
+                Ui.Label(list, T("ui.merc.unitRule"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
                 foreach (var u in Ctx.State.Units)
                 {
-                    if (u.Troops <= 0) continue;
+                    if (u.Troops <= 0 || HireRules.AvatarLeads(Ctx.State, u.UnitId) <= 0) continue; // 닉네임 장수 군단의 병종 칸만 (R-110)
                     string id = u.UnitId;
                     Ui.Button(list, u.UnitId + "  " + T("ui.hire.unitLine", FormationTabView.TroopName(Ctx, u.TroopType), u.Troops.ToString("N0"), u.Training.ToDisplayDouble().ToString("0.##")),
                         () => App.Show(new HirePriceScreen(_kind, id)), 100, Palette.Card, 28);
                 }
+            }
         }
     }
 
@@ -337,6 +341,18 @@ namespace Game.Unity.Screens
             Ui.TitleBar(Root, T("ui.hire.priceTitle"), () => App.Show(new HireRegisterScreen(_kind)), infoGap: false);
             Ui.Label(Root, _kind == HireKinds.General ? Ctx.GeneralName(_id) : _id, Ui.FontBody);
             Ui.Label(Root, T("ui.hire.recommended", rec.ToString("N0"), max.ToString("N0")), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            // 서버가 거절할 등록은 미리 알린다 (R-110): 부대 = 닉네임 장수 군단의 그 병종 칸 인원까지, 장수 = 깃발에 나가 있으면 불가
+            string blocked = null;
+            if (_kind == HireKinds.Unit)
+            {
+                long leads = HireRules.AvatarLeads(Ctx.State, _id);
+                if (leads <= 0) blocked = T("ui.hire.result.notAvatarCorps");
+                else Ui.Label(Root, T("ui.hire.unitLimit", leads.ToString("N0")), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            }
+            else if (TerritoryTabView.Owners != null)
+                foreach (var o in TerritoryTabView.Owners.Values)
+                    if (o.OwnerAccountId == Ctx.AccountId && TerritoryFlags.GeneralsOf(o).Contains(_id)) blocked = T("ui.hire.result.onFlag");
+            if (blocked != null) Ui.Label(Root, Ui.Colored(blocked, Palette.Bad), Ui.FontSmall);
             Ui.Size(Ui.Label(Root, T(_kind == HireKinds.General ? "ui.hire.price" : "ui.hire.pricePerSoldier", price.ToString("N0"), T("resource." + _payWith)), Ui.FontTitle, TextAnchor.MiddleCenter), 120);
             var row = Ui.Row(Root, "Price", Ui.ButtonHeight);
             Ui.Button(row, "-" + step.ToString("N0"), () => { _price = System.Math.Max(0, price - step); Rebuild(); });
@@ -345,7 +361,7 @@ namespace Game.Unity.Screens
             if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Text);
             Ui.Size(Ui.Label(Root, "", Ui.FontSmall), flexibleHeight: 1);
             var buttons = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(buttons, T("ui.hire.submit"), () =>
+            var submit = Ui.Button(buttons, T("ui.hire.submit"), () =>
             {
                 var req = new HireListingRequest { Kind = _kind, Price = price, PayWith = _payWith };
                 if (_kind == HireKinds.General) req.GeneralId = _id; else req.UnitId = _id;
@@ -358,6 +374,7 @@ namespace Game.Unity.Screens
                     Rebuild();
                 });
             });
+            Ui.SetEnabled(submit, blocked == null);
         }
 
         private void Rebuild()
