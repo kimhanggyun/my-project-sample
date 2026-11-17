@@ -58,6 +58,7 @@ namespace Game.Unity.Boot
             shots.Add(("15_settings", () => new SettingsScreen(), 0f));
             // 캡처에 없던 화면 (2026-11-15 사용자 요청)
             shots.Add(("12b_gacha_rates", () => new GachaScreen("standard", null, true), 0f));
+            shots.Add(("12c_gacha_limited", () => new GachaScreen("limited_winter"), 0f)); // 기간 배너 꼬리표 (R-121, 예시 배너가 열려 있을 때)
             shots.Add(("13b_codex_generals", () => { CodexScreen.Tab = "generals"; return new CodexScreen(); }, 0f));
             shots.Add(("14b_replays_shared", () => { ReplayListScreen.Tab = "shared"; return new ReplayListScreen(); }, 1f));
             shots.Add(("15b_profile", () => new ProfileScreen(), 0.5f));

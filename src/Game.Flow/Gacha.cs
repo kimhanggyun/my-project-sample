@@ -41,6 +41,8 @@ namespace Game.Flow
     public sealed class GachaService
     {
         public const string NoBanner = "noBanner";
+        /// <summary>기간 배너가 아직 안 열렸거나 끝남 (R-121).</summary>
+        public const string Closed = "closed";
         public const string BadCount = "badCount";
         public const string NotEnough = "notEnough";
         public const string NoFree = "noFree";
@@ -50,10 +52,37 @@ namespace Game.Flow
 
         public long Cost(GachaBannerDef b, int count) => count == 10 ? b.CostTen : count == 1 ? b.CostOne : -1;
 
-        public GachaResult Draw(CampaignState state, string bannerId, int count, ulong seed)
+        /// <summary>지금 열린 배너 (상시 먼저 데이터 순서, 기간 배너는 끝나는 순).</summary>
+        public List<GachaBannerDef> OpenBanners(long nowUnixSeconds)
+        {
+            var list = new List<GachaBannerDef>();
+            foreach (var b in _defs.Gacha.Banners.Values) if (b.OpenAt(nowUnixSeconds)) list.Add(b);
+            var order = new List<GachaBannerDef>(list);
+            list.Sort((x, y) =>
+            {
+                if (x.Limited != y.Limited) return x.Limited ? 1 : -1;
+                if (x.Limited) return x.EndsAtUnixSeconds.CompareTo(y.EndsAtUnixSeconds);
+                return order.IndexOf(x).CompareTo(order.IndexOf(y));
+            });
+            return list;
+        }
+
+        /// <summary>기간 배너가 끝날 때까지 남은 날 (올림, 하루 안이면 1). 끝이 없으면 -1.</summary>
+        public static int DaysLeft(GachaBannerDef b, long nowUnixSeconds)
+        {
+            if (b == null || b.EndsAtUnixSeconds <= 0) return -1;
+            long left = System.Math.Max(0, b.EndsAtUnixSeconds - nowUnixSeconds);
+            return (int)((left + 86399) / 86400);
+        }
+
+        /// <summary>기간 배너는 행동 시각이 기간 안이어야 (시각 0이면 거절). 상시 배너는 시각을 보지 않는다.</summary>
+        private static bool Closes(GachaBannerDef b, long nowUnixSeconds) => b.Limited && (nowUnixSeconds <= 0 || !b.OpenAt(nowUnixSeconds));
+
+        public GachaResult Draw(CampaignState state, string bannerId, int count, ulong seed, long nowUnixSeconds = 0)
         {
             var r = new GachaResult();
             if (bannerId == null || !_defs.Gacha.Banners.TryGetValue(bannerId, out var b)) { r.Reason = NoBanner; return r; }
+            if (Closes(b, nowUnixSeconds)) { r.Reason = Closed; return r; }
             long cost = Cost(b, count);
             if (cost < 0) { r.Reason = BadCount; return r; }
             if (!new Wallet(state.Wallet).TrySpend(b.Currency, cost)) { r.Reason = NotEnough; return r; }
@@ -74,6 +103,7 @@ namespace Game.Flow
         {
             var r = new GachaResult();
             if (bannerId == null || !_defs.Gacha.Banners.TryGetValue(bannerId, out var b)) { r.Reason = NoBanner; return r; }
+            if (Closes(b, nowUnixSeconds)) { r.Reason = Closed; return r; }
             if (FreeLeft(state, b, nowUnixSeconds) <= 0) { r.Reason = NoFree; return r; }
             long day = PracticeService.DayOf(nowUnixSeconds);
             if (state.GachaFreeDay != day) { state.GachaFreeDay = day; state.GachaFreeUsed.Clear(); }
