@@ -103,10 +103,11 @@ namespace Game.Server.Tests
             int seen = s.WithTerritory(g, TerritoryScope.Owner("a"), o =>
             {
                 Assert.DoesNotContain("flag:37900000,126978000", o.Keys);
+                int loaded = o.Count; // a의 깃발 + 옛 지역 (고치기 전에 센다)
                 o.Remove("dev_zone_a1");
                 o["flag:37566000,126978000"].CollectedUnixSeconds = 99;
                 s.AddMail(g, "a", new Mail { Kind = MailKinds.TerritoryIncome, Resource = "supply", Amount = 10 }); // 같은 트랜잭션
-                return o.Count;
+                return loaded;
             });
             Assert.Equal(2, seen);
             var all = s.WithTerritory(g, TerritoryScope.All(), o => new Dictionary<string, TerritoryOwner>(o));
