@@ -24,6 +24,9 @@ namespace Game.Flow
         /// <summary>한 번에 받는 행동 수 상한 (서버 부하·악용 방지).</summary>
         public const int MaxPerSubmission = 200;
 
+        /// <summary>운영 켜고 끄기 (R-122): 서버는 저장소 값, 기기는 받아 둔 값. 없으면 데이터 그대로.</summary>
+        public Func<ContentToggles> Toggles { get; set; }
+
         private readonly Dictionary<string, IPlayerActionHandler> _handlers = new Dictionary<string, IPlayerActionHandler>(StringComparer.Ordinal);
 
         public PlayerActionRunner(DefinitionSet defs)
@@ -51,8 +54,8 @@ namespace Game.Flow
             Register(new Handler(ActionKinds.UnitTrain, (s, a) => growth.Train(s, a.UnitId)));
             Register(new Handler(ActionKinds.UnitPromote, (s, a) => growth.Promote(s, a.UnitId, a.TroopType, a.Count)));
             var gacha = new GachaService(defs);
-            Register(new Handler(ActionKinds.GachaDraw, (s, a) => gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed, a.DoneAtUnixSeconds).Ok));
-            Register(new Handler(ActionKinds.GachaFree, (s, a) => gacha.DrawFree(s, a.BannerId, a.Seed, a.DoneAtUnixSeconds).Ok));
+            Register(new Handler(ActionKinds.GachaDraw, (s, a) => { gacha.Toggles = Toggles?.Invoke(); return gacha.Draw(s, a.BannerId, (int)a.Count, a.Seed, a.DoneAtUnixSeconds).Ok; }));
+            Register(new Handler(ActionKinds.GachaFree, (s, a) => { gacha.Toggles = Toggles?.Invoke(); return gacha.DrawFree(s, a.BannerId, a.Seed, a.DoneAtUnixSeconds).Ok; }));
             var practice = new PracticeService(defs);
             Register(new Handler(ActionKinds.ContestPractice, (s, a) => practice.Apply(s, a) != null));
             // 포로 (R-66): 시각은 행동 시각(서버 시각 기준), 무작위는 행동의 시드 — 서버도 같은 결과

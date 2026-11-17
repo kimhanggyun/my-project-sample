@@ -67,6 +67,7 @@
       <button data-tab="mail">우편 보내기</button>
       <button data-tab="territory">영토 · 연합</button>
       <button data-tab="notice">버전 · 점검</button>
+      <button data-tab="banners">모집 배너</button>
     </nav>
     <div class="row"><span class="dim">게임</span><select id="game"></select><button class="sub" id="reload">새로고침</button></div>
 
@@ -107,6 +108,13 @@
       <div class="row"><button id="nSave">저장</button><button class="sub" id="nClear">지우기 (서버 설정으로)</button><span id="nMsg"></span></div>
       <h3>지금 적용 중</h3>
       <pre id="nCurrent"></pre>
+    </div>
+
+    <div id="tab-banners" class="card hidden">
+      <h2>모집 배너 (R-122)</h2>
+      <p class="dim">배포 없이 켜고 끕니다. 끄면 게임 모집 목록에서 빠지고 서버가 모집을 거절합니다. 기간을 비우면 데이터 기간 그대로입니다. 기기는 앱을 다시 켤 때 새 값을 받습니다.</p>
+      <div class="scroll"><table id="bannerTable"></table></div>
+      <div class="row"><button id="bSave">저장</button><span id="bMsg"></span></div>
     </div>
 
     <div id="tab-territory" class="hidden">
@@ -229,12 +237,13 @@
   async function tab(name, preloaded) {
     current = name;
     document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
-    for (const t of ["status", "accounts", "mail", "territory", "notice"]) $("tab-" + t).classList.toggle("hidden", t !== name);
+    for (const t of ["status", "accounts", "mail", "territory", "notice", "banners"]) $("tab-" + t).classList.toggle("hidden", t !== name);
     try {
       if (name === "status") drawStatus(preloaded || (await api("/v1/admin/status")).data);
       if (name === "accounts") { accounts = (await api("/v1/admin/accounts")).data.Accounts || []; drawAccounts(); }
       if (name === "territory") drawTerritory((await api("/v1/admin/games/" + $("game").value + "/territory")).data);
       if (name === "notice") drawNotice((await api("/v1/admin/notice")).data);
+      if (name === "banners") drawBanners((await api("/v1/admin/games/" + $("game").value + "/banners")).data);
     } catch (e) { /* api가 화면을 바꿈 */ }
   }
 
@@ -336,6 +345,38 @@
   }
   $("nSave").onclick = () => saveNotice(false);
   $("nClear").onclick = () => saveNotice(true);
+
+  // ---- 모집 배너 켜고 끄기 (R-122): GET/POST /v1/admin/games/{game}/banners ----
+  const fromLocalInput = v => v ? Math.floor(new Date(v).getTime() / 1000) : null;
+  const dateText = u => u ? new Date(u * 1000).toLocaleString("ko-KR") : "상시";
+  function drawBanners(d) {
+    const t = $("bannerTable"); t.innerHTML = "";
+    t.append(el("tr", null, ...["배너", "데이터 기간", "켬", "시작 (덮어쓰기)", "끝 (덮어쓰기)", "지금"].map(h => el("th", null, h))));
+    for (const b of (d && d.Banners) || []) {
+      const on = el("input", { type: "checkbox" }); on.checked = !b.Off; on.dataset.id = b.Id; on.className = "bOn";
+      const st = el("input", { type: "datetime-local" }); st.value = toLocalInput(b.StartsAtUnixSeconds); st.className = "bStart"; st.dataset.id = b.Id;
+      const en = el("input", { type: "datetime-local" }); en.value = toLocalInput(b.EndsAtUnixSeconds); en.className = "bEnd"; en.dataset.id = b.Id;
+      t.append(el("tr", null,
+        el("td", null, b.Name + " (" + b.Id + ")"),
+        el("td", null, (b.DataStartsAtUnixSeconds || b.DataEndsAtUnixSeconds) ? dateText(b.DataStartsAtUnixSeconds) + " ~ " + dateText(b.DataEndsAtUnixSeconds) : "상시"),
+        el("td", null, on), el("td", null, st), el("td", null, en),
+        el("td", { class: b.OpenNow ? "good" : "bad" }, b.OpenNow ? "열림" : "닫힘")));
+    }
+  }
+  $("bSave").onclick = async () => {
+    const items = [];
+    for (const on of document.querySelectorAll(".bOn")) {
+      const id = on.dataset.id;
+      const st = document.querySelector('.bStart[data-id="' + id + '"]').value, en = document.querySelector('.bEnd[data-id="' + id + '"]').value;
+      items.push({ Kind: "banner", Id: id, Off: !on.checked, StartsAtUnixSeconds: fromLocalInput(st), EndsAtUnixSeconds: fromLocalInput(en) });
+    }
+    try {
+      const r = await api("/v1/admin/games/" + $("game").value + "/banners", { method: "POST", body: { Items: items } });
+      $("bMsg").className = r.status === 200 ? "good" : "bad";
+      $("bMsg").textContent = r.status === 200 ? "저장했습니다." : "실패 (" + r.status + ")";
+      if (r.status === 200) drawBanners(r.data);
+    } catch (e) { }
+  };
 
   function drawTerritory(d) {
     const name = id => { const a = accounts.find(x => x.AccountId === id); return a && a.Nickname ? a.Nickname + " (" + id + ")" : id; };

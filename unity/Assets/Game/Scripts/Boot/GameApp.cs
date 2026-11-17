@@ -111,6 +111,7 @@ namespace Game.Unity.Boot
                 else NextStartup(step);
             }
             if (!ctx.OnlineEnabled) { Go(null); return; }
+            ctx.Online.GetContent(c => ctx.Content = c); // 운영 켜고 끄기 (R-122), 답이 없으면 데이터 그대로
             StartCoroutine(StatusTimeout(() => Go(null)));
             ctx.Online.GetStatus(Go);
         }

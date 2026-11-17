@@ -69,6 +69,20 @@ namespace Game.Server
                 });
             });
 
+            // 모집 배너 켜고 끄기 (R-122): 배포 없이. 꺼진 배너는 목록에서 빠지고 서버가 모집을 거절한다.
+            app.MapGet(Prefix + "/games/{game}/banners", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+                Guard(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(new AdminBannerList { Banners = g.AdminBanners() }) : Results.NotFound()));
+            app.MapPost(Prefix + "/games/{game}/banners", async (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminBannersRequest>(req);
+                return Guard(req, store, masters, _ =>
+                {
+                    if (!(r.Find(game) is IGameModule g)) return Results.NotFound();
+                    if (body == null) return Results.StatusCode(StatusCodes.Status422UnprocessableEntity);
+                    return Json(new AdminBannerList { Banners = g.SetBanners(body.Items) });
+                });
+            });
+
             app.MapGet(Prefix + "/accounts", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
                 Guard(req, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
 
@@ -226,6 +240,31 @@ namespace Game.Server
     }
 
     /// <summary>버전 · 점검 안내 (R-118): Override = 관리자 값 (버전 칸은 비우면 설정 값, Maintenance는 통째), Clear = 지우기. 응답의 Current = 지금 /v1/status.</summary>
+    /// <summary>관리자 모집 배너 한 줄 (R-122): 데이터 기간 · 관리자 덮어쓰기 · 지금 열림.</summary>
+    public sealed class AdminBanner
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public long DataStartsAtUnixSeconds { get; set; }
+        public long DataEndsAtUnixSeconds { get; set; }
+        public bool Off { get; set; }
+        /// <summary>덮어쓴 기간 (null = 데이터 그대로).</summary>
+        public long? StartsAtUnixSeconds { get; set; }
+        public long? EndsAtUnixSeconds { get; set; }
+        public bool OpenNow { get; set; }
+    }
+
+    /// <summary>배너 켜고 끄기 저장 (R-122): 몸 = 배너마다 Id · Off · 기간 덮어쓰기. 적지 않은 배너 = 데이터 그대로.</summary>
+    public sealed class AdminBannersRequest
+    {
+        public List<ContentToggle> Items { get; set; } = new List<ContentToggle>();
+    }
+
+    public sealed class AdminBannerList
+    {
+        public List<AdminBanner> Banners { get; set; } = new List<AdminBanner>();
+    }
+
     public sealed class AdminStatusNotice
     {
         public ServerStatusResponse Override { get; set; }

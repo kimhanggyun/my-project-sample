@@ -36,6 +36,14 @@ namespace Game.Server
         /// <summary>출석 (하루 한 번, 서버 시각, R-112): 받으면 보상 우편.</summary>
         AttendanceResponse CheckIn(string accountId);
 
+        // ---- 운영 켜고 끄기 (R-122) ----
+        /// <summary>지금 켜고 끄기 (공개, 기기가 시작 때 받는다).</summary>
+        ContentToggles Content();
+        /// <summary>관리자: 모집 배너마다 데이터 기간 · 덮어쓰기 · 지금 열림.</summary>
+        List<AdminBanner> AdminBanners();
+        /// <summary>관리자: 배너 켜고 끄기를 통째로 바꾼다 (다른 종류는 그대로). 모르는 배너 id는 무시.</summary>
+        List<AdminBanner> SetBanners(List<ContentToggle> banners);
+
         // ---- 푸시 (R-119) ----
         PushSettings PushSettingsOf(string accountId);
         PushSettings SetPushSettings(string accountId, PushSettings settings);
@@ -135,7 +143,7 @@ namespace Game.Server
             _defs = DefinitionSet.Load(source, theme);
             _time = time;
             _store = store;
-            _actions = new PlayerActionRunner(_defs);
+            _actions = new PlayerActionRunner(_defs) { Toggles = () => _store.ContentOf(Code) }; // 꺼진 배너 모집은 서버에서도 거절 (R-122)
             _hire = new HireRules(_defs);
             _territory = TerritoryBattles.TryLoad(source);
             _replays = new ReplayService(new StoryFlow(_defs, source, time));
@@ -375,6 +383,45 @@ namespace Game.Server
             _territory?.Flags == null ? TerritoryScope.Keys() : TerritoryScope.IncomeDue(Now - _territory.Flags.IncomeCapHours * 3600);
 
         public int SweepIncomeFull() => Push.Send(_store.WithTerritory(Code, IncomeDueScope(), owners => PushRules.IncomeFullDue(_territory, owners, Now)));
+
+        public ContentToggles Content() => _store.ContentOf(Code);
+
+        public List<AdminBanner> AdminBanners()
+        {
+            var svc = new GachaService(_defs) { Toggles = _store.ContentOf(Code) };
+            var list = new List<AdminBanner>();
+            if (_defs.Gacha?.Banners == null) return list;
+            foreach (var b in _defs.Gacha.Banners.Values)
+            {
+                var t = svc.Toggles.Find(ContentKinds.Banner, b.Id);
+                list.Add(new AdminBanner
+                {
+                    Id = b.Id,
+                    Name = _defs.Strings.TryGetValue(b.NameKey, out var n) ? n : b.NameKey,
+                    DataStartsAtUnixSeconds = b.StartsAtUnixSeconds,
+                    DataEndsAtUnixSeconds = b.EndsAtUnixSeconds,
+                    Off = t?.Off == true,
+                    StartsAtUnixSeconds = t?.StartsAtUnixSeconds,
+                    EndsAtUnixSeconds = t?.EndsAtUnixSeconds,
+                    OpenNow = svc.IsOpen(b, Now),
+                });
+            }
+            return list;
+        }
+
+        public List<AdminBanner> SetBanners(List<ContentToggle> banners)
+        {
+            var content = _store.ContentOf(Code);
+            content.Items.RemoveAll(x => x == null || x.Kind == ContentKinds.Banner);
+            foreach (var t in banners ?? new List<ContentToggle>())
+            {
+                if (t?.Id == null || _defs.Gacha?.Banners == null || !_defs.Gacha.Banners.ContainsKey(t.Id)) continue;
+                if (!t.Off && t.StartsAtUnixSeconds == null && t.EndsAtUnixSeconds == null) continue; // 데이터 그대로면 적지 않는다
+                content.Items.Add(new ContentToggle { Kind = ContentKinds.Banner, Id = t.Id, Off = t.Off, StartsAtUnixSeconds = t.StartsAtUnixSeconds, EndsAtUnixSeconds = t.EndsAtUnixSeconds });
+            }
+            _store.SetContent(Code, content);
+            return AdminBanners();
+        }
 
         public AttendanceResponse CheckIn(string accountId) =>
             _store.WithAttendance(Code, accountId, rec => new DailyEconomy(_defs).CheckIn(rec, Now, m => _store.AddMail(Code, accountId, m)));
