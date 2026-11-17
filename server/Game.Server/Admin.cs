@@ -132,7 +132,7 @@ namespace Game.Server
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     var res = new AdminTerritory();
-                    store.WithTerritory(game, owners => { foreach (var o in owners.Values) res.Owners.Add(OnlineJson.Read<TerritoryOwner>(OnlineJson.Write(o))); return 0; });
+                    store.WithTerritory(game, TerritoryScope.All(), owners => { foreach (var o in owners.Values) res.Owners.Add(OnlineJson.Read<TerritoryOwner>(OnlineJson.Write(o))); return 0; });
                     store.WithAlliances(game, all => { foreach (var a in all.Values) res.Alliances.Add(OnlineJson.Read<Alliance>(OnlineJson.Write(a))); return 0; });
                     res.Owners.Sort((a, b) => string.CompareOrdinal(a.RegionId, b.RegionId));
                     res.Alliances.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));

@@ -78,7 +78,8 @@ namespace Game.Server
 
         // ---- 영토 (게임별, R-46) ----
         /// <summary>영토 주인 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장). 우편을 보내도 된다.</summary>
-        T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use);
+        /// <param name="scope">이번에 필요한 깃발 · 지역 (db.md 4장). 규칙은 이 범위만 담긴 사전을 받는다 — 범위 밖은 보이지 않는다. 더하거나 바꾼 것은 쓰고, 범위에서 지운 것은 지운다.</param>
+        T WithTerritory<T>(string gameCode, TerritoryScope scope, Func<Dictionary<string, TerritoryOwner>, T> use);
         /// <summary>연합 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장, R-49).</summary>
         T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use);
         /// <summary>새 id (연합·우편 등).</summary>
@@ -566,11 +567,17 @@ namespace Game.Server
             }
         }
 
-        public T WithTerritory<T>(string gameCode, Func<Dictionary<string, TerritoryOwner>, T> use)
+        public T WithTerritory<T>(string gameCode, TerritoryScope scope, Func<Dictionary<string, TerritoryOwner>, T> use)
         {
             lock (Fresh())
             {
-                var r = use(OwnersOf(gameCode));
+                var full = OwnersOf(gameCode);
+                var part = new Dictionary<string, TerritoryOwner>();
+                foreach (var kv in full) if (scope.Matches(kv.Key, kv.Value)) part[kv.Key] = kv.Value;
+                var loaded = new List<string>(part.Keys);
+                var r = use(part);
+                foreach (var k in loaded) if (!part.ContainsKey(k)) full.Remove(k); // 범위 안에서 지운 것
+                foreach (var kv in part) full[kv.Key] = kv.Value;                   // 고치거나 새로 더한 것
                 Persist();
                 return r;
             }
