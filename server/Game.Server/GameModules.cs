@@ -197,21 +197,21 @@ namespace Game.Server
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = save };
             // 깃발 공성전 (R-97): 깃발 · 보호 · 범위 검사
             string flagKey = TerritoryBattles.IsTerritoryStep(s.StepId) && Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)) ? TerritoryBattles.RegionOf(s.StepId) : null;
-            if (flagKey != null && _store.WithTerritory(Code, owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)
+            if (flagKey != null && _store.WithTerritory(Code, TerritoryScope.Keys(flagKey), owners => TerritoryFlags.CheckSiege(_territory, _defs, FromJson(save.Json), accountId, owners, flagKey, s.Location, Now)
                     ?? TerritoryFlags.CheckSiegeReady(_territory, owners, flagKey, accountId, Now)) != null) // 준비 1분 (R-113)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = save };
             var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
-                _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, owners => TerritoryLedger.DefenseOf(owners, region)));
+                _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, TerritoryScope.Keys(region), owners => TerritoryLedger.DefenseOf(owners, region)));
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             if (flagKey != null)
             {
                 var after = FromJson(json);
-                _store.WithTerritory(Code, owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m), TakeAlert); return 0; });
+                _store.WithTerritory(Code, TerritoryScope.Keys(flagKey), owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m), TakeAlert); return 0; });
             }
             else if (TerritoryBattles.Captures(s, verdict))
-                _store.WithTerritory(Code, owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
+                _store.WithTerritory(Code, TerritoryScope.Keys(TerritoryBattles.RegionOf(s.StepId)), owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
             // 고용 보상: 등록자 우편으로 (등록자 세이브는 직접 고치지 않는다 — 받을 때 행동 mail.claim)
             if (hired != null)
             {
@@ -289,7 +289,7 @@ namespace Game.Server
             var state = FromJson(LoadOrCreate(accountId).Json);
             string source = req?.Kind == HireKinds.General ? req.GeneralId : req?.UnitId;
             int existing = _store.Listings(Code, req?.Kind).FindAll(l => l.OwnerAccountId == accountId && l.SourceId != source).Count;
-            var onFlags = _store.WithTerritory(Code, owners => TerritoryFlags.GeneralsOnFlags(owners, accountId)); // 깃발에 나간 닉네임 장수는 등록 불가 (R-110)
+            var onFlags = _store.WithTerritory(Code, TerritoryScope.Owner(accountId), owners => TerritoryFlags.GeneralsOnFlags(owners, accountId)); // 깃발에 나간 닉네임 장수는 등록 불가 (R-110)
             var r = _hire.Register(state, req, existing, onFlags);
             if (!r.Ok) return r;
             r.Listing.OwnerAccountId = accountId;
@@ -345,14 +345,43 @@ namespace Game.Server
             return json == null ? null : new HireReplayResponse { Id = id, ReplayJson = json };
         }
 
-        public int SweepIncomeFull() => Push.Send(_store.WithTerritory(Code, owners => PushRules.IncomeFullDue(_territory, owners, Now)));
+        // ---- 영토 장부 범위 (db.md 4장): 요청마다 필요한 깃발만 ----
+        /// <summary>가장 큰 깃발 반지름 (모든 계급 중) — 이 거리 안의 깃발만 꽂기 · 공성전 대상이 될 수 있다.</summary>
+        private long MaxFlagRadiusM
+        {
+            get
+            {
+                long max = 0;
+                foreach (var r in _defs.Campaign.Ranks) max = Math.Max(max, r.FlagRadiusM);
+                return max;
+            }
+        }
+
+        /// <summary>
+        /// 꽂기: 꽂을 칸에서 가장 큰 반지름 안의 깃발(같은 칸 · 남의 원 안 · 우리 연합) + 내 깃발(장수가 다른 깃발에 있는지).
+        /// 추가 파견(FlagKey)은 그 깃발 + 내 깃발.
+        /// </summary>
+        private TerritoryScope PlantScope(string accountId, PlantRequest req)
+        {
+            var mine = TerritoryScope.Owner(accountId);
+            if (!string.IsNullOrEmpty(req?.FlagKey)) return mine.Or(TerritoryScope.Keys(req.FlagKey));
+            string at = !string.IsNullOrEmpty(req?.Target) ? req.Target : req?.Location;
+            if (_territory?.Flags == null || !Game.Foundation.Geo.GeoPoint.TryParse(at, out var p)) return mine;
+            return mine.Or(TerritoryScope.Near(_territory.Flags, p, MaxFlagRadiusM));
+        }
+
+        /// <summary>수입 가득 훑기: 받은 지 쌓이는 최대 시간이 지난 깃발만.</summary>
+        private TerritoryScope IncomeDueScope() =>
+            _territory?.Flags == null ? TerritoryScope.Keys() : TerritoryScope.IncomeDue(Now - _territory.Flags.IncomeCapHours * 3600);
+
+        public int SweepIncomeFull() => Push.Send(_store.WithTerritory(Code, IncomeDueScope(), owners => PushRules.IncomeFullDue(_territory, owners, Now)));
 
         public AttendanceResponse CheckIn(string accountId) =>
             _store.WithAttendance(Code, accountId, rec => new DailyEconomy(_defs).CheckIn(rec, Now, m => _store.AddMail(Code, accountId, m)));
         public TerritoryResponse Territory(string accountId)
         {
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
-            return _store.WithTerritory(Code, owners => TerritoryLedger.View(_territory, owners, accountId, Now, who => AllianceBook.Of(alliances, who)));
+            return _store.WithTerritory(Code, TerritoryScope.All(), owners => TerritoryLedger.View(_territory, owners, accountId, Now, who => AllianceBook.Of(alliances, who)));
         }
 
         public AllianceListResponse Alliances(string accountId) => _territory == null ? new AllianceListResponse() : _store.WithAlliances(Code, a => AllianceBook.List(_territory, a, accountId));
@@ -375,7 +404,7 @@ namespace Game.Server
         {
             var d = TerritoryDefenses.Snapshot(_defs, FromJson(LoadOrCreate(accountId).Json), req?.Situation, out var error);
             if (d == null) return new DefenseResponse { Ok = false, Reason = error };
-            var r = _store.WithTerritory(Code, owners => TerritoryLedger.RegisterDefense(owners, req.RegionId, accountId, d, Now));
+            var r = _store.WithTerritory(Code, TerritoryScope.Keys(req.RegionId), owners => TerritoryLedger.RegisterDefense(owners, req.RegionId, accountId, d, Now));
             return r == null ? new DefenseResponse { Ok = false, Reason = TerritoryDefenses.NotOwner } : new DefenseResponse { Ok = true, Reason = "ok", Defense = r };
         }
 
@@ -383,14 +412,14 @@ namespace Game.Server
         {
             var state = FromJson(LoadOrCreate(accountId).Json);
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
-            return _store.WithTerritory(Code, owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
+            return _store.WithTerritory(Code, PlantScope(accountId, req), owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
         }
 
         public SiegeResponse StartSiege(string accountId, SiegeRequest req)
         {
             var state = FromJson(LoadOrCreate(accountId).Json);
             var pushes = new List<PushMessage>();
-            var res = _store.WithTerritory(Code, owners => TerritoryFlags.StartSiege(_territory, _defs, state, accountId, owners, req, Now, (who, m) =>
+            var res = _store.WithTerritory(Code, TerritoryScope.Keys(req?.FlagKey), owners => TerritoryFlags.StartSiege(_territory, _defs, state, accountId, owners, req, Now, (who, m) =>
             {
                 _store.AddMail(Code, who, m);
                 // 공성전 준비 시작 = 수비자 · 그 연합원에게 푸시 (R-119)
@@ -402,7 +431,7 @@ namespace Game.Server
         }
 
         public bool CancelSiege(string accountId, string flagKey) =>
-            _store.WithTerritory(Code, owners => TerritoryFlags.CancelSiege(_territory, owners, flagKey, accountId, Now, TakeAlert));
+            _store.WithTerritory(Code, TerritoryScope.Keys(flagKey), owners => TerritoryFlags.CancelSiege(_territory, owners, flagKey, accountId, Now, TakeAlert));
 
         /// <summary>수비자의 그 깃발 공성전 알림 우편을 지운다 (공성전이 끝나거나 취소, R-113).</summary>
         private void TakeAlert(string who, string flagKey)
@@ -414,11 +443,11 @@ namespace Game.Server
         public RecallResponse RecallFlag(string accountId, RecallRequest req)
         {
             var state = FromJson(LoadOrCreate(accountId).Json);
-            return _store.WithTerritory(Code, owners => TerritoryFlags.Recall(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
+            return _store.WithTerritory(Code, TerritoryScope.Keys(req?.FlagKey), owners => TerritoryFlags.Recall(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
         }
 
         public MailListResponse CollectTerritory(string accountId, string regionId = null) =>
-            new MailListResponse { Mail = _store.WithTerritory(Code, owners => TerritoryLedger.Collect(_territory, owners, accountId, Now, (who, m) => _store.AddMail(Code, who, m), regionId)) };
+            new MailListResponse { Mail = _store.WithTerritory(Code, TerritoryScope.Owner(accountId), owners => TerritoryLedger.Collect(_territory, owners, accountId, Now, (who, m) => _store.AddMail(Code, who, m), regionId)) };
 
         public static string ToJson(CampaignState state) => SaveJson.Write(state);
         public static CampaignState FromJson(string json) => SaveJson.Read(json);

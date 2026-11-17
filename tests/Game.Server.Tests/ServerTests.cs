@@ -280,6 +280,28 @@ namespace Game.Server.Tests
             Assert.Equal((HttpStatusCode)422, again.StatusCode);
         }
 
+[Fact(DisplayName = "영토 범위 (Firestore 1단계): 남의 원 안에 꽂으면 그 깃발과 공성전 (주변 범위로 찾음), 멀리면 꽂힘, 내 깃발에 나간 장수는 generalBusy")]
+        public async Task PlantUsesNearScope()
+        {
+            var owner = await SignedIn();
+            var other = await SignedIn();
+            const string here = "37.2012,127.2101";
+            var oSave = SaveJson.Read((await Read<CloudSave>(await owner.GetAsync(Save))).Json);
+            var plantUrl = OnlineRoutes.TerritoryPlant(ServerSetup.DefaultGame);
+            var first = await Read<PlantResponse>(await owner.PostAsync(plantUrl, Body(new PlantRequest { Location = here, GeneralId = oSave.CompositionsFor(null)[0].GeneralId })));
+            Assert.True(first.Ok, first.Reason);
+
+            var xSave = SaveJson.Read((await Read<CloudSave>(await other.GetAsync(Save))).Json);
+            string gid = xSave.CompositionsFor(null)[0].GeneralId;
+            var inside = await Read<PlantResponse>(await other.PostAsync(plantUrl, Body(new PlantRequest { Location = "37.2050,127.2101", GeneralId = gid }))); // 약 420m
+            Assert.Equal((PlantReasons.Siege, first.Flag.RegionId), (inside.Reason, inside.AttackKey));
+
+            var far = await Read<PlantResponse>(await other.PostAsync(plantUrl, Body(new PlantRequest { Location = "37.2200,127.2101", GeneralId = gid }))); // 약 2km
+            Assert.True(far.Ok, far.Reason);
+            var again = await Read<PlantResponse>(await other.PostAsync(plantUrl, Body(new PlantRequest { Location = "37.2400,127.2101", GeneralId = gid })));
+            Assert.Equal(PlantReasons.GeneralBusy, again.Reason); // 내 깃발 범위(주인)로 찾음
+        }
+
         [Fact(DisplayName = "R-112 출석: 서버 시각으로 하루 한 번, 보상은 우편 → mail.claim으로 받기, 같은 날 두 번은 already")]
         public async Task AttendanceFlow()
         {
