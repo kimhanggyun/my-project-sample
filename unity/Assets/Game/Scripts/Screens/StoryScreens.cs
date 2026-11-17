@@ -197,7 +197,16 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>구역 카드 오른쪽 위 ⓘ: 그 구역 설명 한두 줄 (10 시안 "글자는 줄이고 설명은 ⓘ").</summary>
-        public static void Info(GameContext ctx, RectTransform card, string key) => InfoButton.Add(card, ctx.T(key));
+        public static void Info(GameContext ctx, RectTransform card, string key)
+        {
+            // 카드 안 ⓘ는 페이지 ⓘ(64)보다 작게 · 모서리에 붙여 (2026-11-17 캡처: 곡식 카드 [+]와 겹침)
+            var b = InfoButton.Add(card, ctx.T(key));
+            var rt = (RectTransform)b.transform;
+            rt.sizeDelta = new Vector2(40f, 40f);
+            rt.anchoredPosition = new Vector2(-6f, -6f);
+            var label = b.GetComponentInChildren<UnityEngine.UI.Text>();
+            if (label != null) label.fontSize = 26;
+        }
 
         /// <summary>전력: 파랑 내 병력 ─ 막대 ─ 빨강 상대 병력, 판단 알약 (우세 · 비슷 · 위험). ⓘ = 전력 · 내 편성 설명.</summary>
         public static void Power(GameContext ctx, Transform parent, long mine, long enemy)
