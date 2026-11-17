@@ -112,5 +112,6 @@
 - 2026-11-16 [데스크탑] desktop/remote-asks — 원격 요청: 녹화 [내 용병 고용됨] 탭 (R-120, HiredBattles · GetHireReplay → 확인 뒤 재생), 설정 알림 세 칸 서버 저장 · 시작 때 서버 값으로 (R-119)
 - 2026-11-17 [데스크탑] collab.md 2.1.1: 모양 변화가 적은 화면 일은 원격도 (PR에 캡처할 화면, 데스크탑이 캡처 확인 뒤 머지), 원격 PR은 main 기준 (사용자)
 - 2026-11-17 [데스크탑] desktop/battle-2 — 전투: 바닥 링 게이지(병력 · 사기), 병력 칩, 이동 경로 파란 점선 (18·19 시안 2단계)
+- 2026-11-17 [원격] claude/codex-replay-link — 13 도감 자세히: 숨은 보상을 찾은 전투 녹화(같은 스텝 · 10분 안)가 있으면 [그 전투 보기 ›] → 녹화 재생 (ReplayLibrary.FindNear)
 - 2026-11-17 [원격] claude/hire-limits-hint — 용병 등록 제한 안내 (R-110 화면): 부대는 닉네임 장수 군단 병종 칸 인원까지 안내 · 목록 거르기, 가격 화면에서 onFlag · notAvatarCorps 미리 알리고 [등록] 끔
 - 2026-11-17 [원격] claude/store-split — Firestore 1단계: 영토 장부를 요청마다 필요한 깃발만 (TerritoryScope: 키 · 주인 · 주변 · 수입 기한 · 전부), 폴더 저장소도 같은 방식, 연합은 그대로 (db.md 7.1)
