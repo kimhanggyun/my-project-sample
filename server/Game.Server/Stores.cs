@@ -29,6 +29,8 @@ namespace Game.Server
 
         /// <summary>닉네임 (공통 계정). 정하기: 규칙에 맞고 다른 계정과 겹치지 않을 때 (대소문자 무시). 내 이름을 그대로 다시 정하는 건 된다.</summary>
         NicknameResponse SetNickname(string accountId, string nickname);
+        /// <summary>미리 확인 (H7): SetNickname과 같은 규칙 · 같은 겹침 검사, 저장은 하지 않는다. accountId(없어도 됨)의 지금 이름은 겹침으로 치지 않는다.</summary>
+        NicknameResponse CheckNickname(string accountId, string nickname);
         string NicknameOf(string accountId);
         Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds);
 
@@ -377,6 +379,17 @@ namespace Game.Server
         public string EmailOf(string accountId)
         {
             lock (Fresh()) return Data.Emails != null && accountId != null && Data.Emails.TryGetValue(accountId, out var e) ? e : null;
+        }
+
+        public NicknameResponse CheckNickname(string accountId, string nickname)
+        {
+            var n = NicknameRules.Normalize(nickname);
+            if (n == null) return new NicknameResponse { Ok = false, Reason = NicknameRules.BadName };
+            lock (Fresh())
+                if (Data.Nicknames != null)
+                    foreach (var kv in Data.Nicknames)
+                        if (kv.Key != accountId && string.Equals(kv.Value, n, StringComparison.OrdinalIgnoreCase)) return new NicknameResponse { Ok = false, Reason = NicknameRules.Taken, Nickname = n };
+            return new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n };
         }
 
         public string NicknameOf(string accountId)

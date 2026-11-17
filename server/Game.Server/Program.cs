@@ -97,6 +97,14 @@ app.MapPost(OnlineRoutes.MyNickname, async (HttpRequest req, IPlatformStore p) =
         return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
     });
 });
+// 닉네임 미리 확인 (H7): 인증 없이도 되고, 토큰이 맞으면 내 지금 이름은 사용 중으로 치지 않는다. 저장(POST /v1/me/nickname)도 그대로 다시 확인.
+app.MapGet(OnlineRoutes.NicknameCheck, (HttpRequest req, IPlatformStore p) =>
+{
+    string auth = req.Headers.Authorization.ToString();
+    string me = auth.StartsWith("Bearer ", StringComparison.Ordinal) ? p.AccountOf(auth.Substring(7)) : null;
+    string name = req.Query.TryGetValue("name", out var v) ? v.ToString() : "";
+    return Json(p.CheckNickname(me, name));
+});
 app.MapGet("/v1/accounts/names", (HttpRequest req, IPlatformStore p) =>
     Authed(req, p, id =>
     {

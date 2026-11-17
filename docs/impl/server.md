@@ -43,6 +43,7 @@
 | `GET /v1/games/resolve?app=…` | (공통) 앱 id(package명·번들 id) → 게임 코드. 없으면 404 | `ResolveAppResponse` |
 | `GET /v1/me/games` | (공통) 내가 가입한(들어온 적 있는) 게임 | `GameListResponse` |
 | `GET /v1/me` · `POST /v1/me/nickname` | (공통) 내 계정·닉네임, 닉네임 정하기 (2~10자·글자·숫자·밑줄, 다른 계정과 겹치면 422) | `ProfileResponse` · `NicknameResponse` |
+| `GET /v1/nicknames/check?name=` | (공통, 인증 없어도 됨) 닉네임 미리 확인 (H7): 규칙 · 사용 중(대소문자 무시). 토큰이 맞으면 내 지금 이름은 쓸 수 있음. 저장하지 않음 (저장 때 다시 확인) | `NicknameResponse` |
 | `GET /v1/accounts/names?ids=…` | (공통) 계정 id들 → 닉네임 (한 번에 200개까지) | `NamesResponse` |
 | `GET /v1/games/{game}/save` | 그 게임 세이브 받기. 처음이면 가입 기록 + 새 게임 (Revision 1). 없는 게임이면 404 | `CloudSave` |
 | `PUT /v1/games/{game}/save` | **처음 가져오기 전용**: 서버 세이브가 새 게임(Revision 1)이고 `BaseRevision` 위일 때만. 아니면(또는 읽을 수 없는 세이브) 409 + 서버 사본 | `SavePutResponse` |

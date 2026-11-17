@@ -123,3 +123,4 @@
 - 2026-11-17 [원격] claude/firestore-store — Firestore 2 · 3단계: FirestoreStore(IStore, 트랜잭션 안 우편 묶음), Game:Store 고르기, CI 에뮬레이터로 서버 테스트 전체 한 번 더, 옮기기 도구 · firestore-migrate 워크플로, 배포 변수 GAME_STORE · MAX_INSTANCES, 사용자 할 일 db.md 8장
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — firestore-migrate 워크플로 고침: store 폴더를 절대 경로로 (dotnet run이 작업 폴더를 바꿔 store.json을 못 찾던 것)
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — 시작 때 버전 · 점검 확인이 늘 건너뛰어지던 것 고침 (GameApp이 서버 없음으로 고정). 온라인이 켜져 있으면 /v1/status · /content를 받는다
+- 2026-11-17 [원격] claude/nickname-check — H7 닉네임 미리 확인: GET /v1/nicknames/check (폴더 · Firestore), 닉네임 화면에서 입력을 멈추면 "쓸 수 있음 / 이미 있음", 실제 데이터 중복 없음 (닉네임 1개)
