@@ -89,7 +89,7 @@ namespace Game.Server.Tests
             await defender.PostAsync(OnlineRoutes.PushSettings(Game), Body(new PushSettings { Attacked = false }));
             await attacker.PostAsync(OnlineRoutes.TerritorySiege(Game), Body(new SiegeRequest { FlagKey = plant.Flag.RegionId, Location = here }));
             Assert.Single(Sender.Sent, x => x.token == token);
-            var store = _f.Services.GetRequiredService<InMemoryStore>();
+            var store = _f.Services.GetRequiredService<IGameStore>();
             var me = (await Read<ProfileResponse>(await defender.GetAsync(OnlineRoutes.Me))).AccountId;
             Assert.Equal(new[] { token }, store.WithPush(Game, me, p => p.Tokens.Select(t => t.Token).ToArray()));
         }

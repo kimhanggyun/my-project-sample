@@ -4,6 +4,9 @@
     <RootNamespace>Game.Server</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Google.Cloud.Firestore" Version="4.6.0" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/Game.Foundation/Game.Foundation.csproj" />
     <ProjectReference Include="../../src/Game.Data/Game.Data.csproj" />
     <ProjectReference Include="../../src/Game.Campaign/Game.Campaign.csproj" />
