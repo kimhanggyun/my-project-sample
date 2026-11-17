@@ -50,7 +50,7 @@ namespace Game.Unity.Screens
         private static void CashSection(GameApp app, RectTransform list)
         {
             var ctx = app.Context;
-            foreach (var p in new PurchaseService(ctx.Defs).Listed())
+            foreach (var p in ctx.Shop.Listed())
             {
                 string id = p.Id;
                 var card = Ui.Card(list, id, 16, 6);
@@ -72,9 +72,9 @@ namespace Game.Unity.Screens
         private static void CosmeticSection(GameApp app, RectTransform list, string pay)
         {
             var ctx = app.Context;
-            var svc = new CosmeticService(ctx.Defs);
+            var svc = ctx.Cosmetics;
             var items = new List<CosmeticDef>();
-            foreach (var d in svc.Items) if (pay == ResourceIds.Gold ? d.PriceGold != null : d.PriceGold == null && d.PriceGem != null) items.Add(d);
+            foreach (var d in svc.Items) if (svc.OnSale(d) && (pay == ResourceIds.Gold ? d.PriceGold != null : d.PriceGold == null && d.PriceGem != null)) items.Add(d); // 표출을 끈 것은 빼고 (R-123)
             if (items.Count == 0) return;
             Ui.Label(list, ctx.T("ui.shop.cosmetics"), 28).fontStyle = FontStyle.Bold;
             foreach (var d in items)

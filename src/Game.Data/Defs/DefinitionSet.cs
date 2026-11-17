@@ -165,6 +165,7 @@ namespace Game.Data.Defs
                     PriceKrw = pr.Value<long?>("priceKRW"),
                     AdFreeDays = pr.Value<int?>("adFreeDays"),
                     CosmeticId = pr.Value<string>("cosmeticId"),
+                    DefaultOff = pr.Value<bool?>("defaultOff") ?? false,
                 };
                 if (def.Kind == ProductDef.KindCosmetic && string.IsNullOrEmpty(def.CosmeticId))
                     throw new DataException($"products.json '{def.Id}': 치장 상품(kind cosmetic)은 cosmeticId가 필요합니다.");

@@ -73,6 +73,9 @@ namespace Game.Unity.Boot
         public Game.Online.ContentToggles Content { get; set; }
         /// <summary>켜고 끄기를 반영한 모집 판정 (목록 · 기간 · 남은 날).</summary>
         public GachaService Gacha => new GachaService(Defs) { Toggles = Content };
+        /// <summary>결제 상품 · 치장 판매 (운영 표출 R-123을 적용한 것).</summary>
+        public PurchaseService Shop => new PurchaseService(Defs) { Toggles = Content };
+        public CosmeticService Cosmetics => new CosmeticService(Defs) { Toggles = Content };
         /// <summary>설정 이름: off / fake / http.</summary>
         public string OnlineMode { get; private set; } = OnlineConfig.Off;
         public OnlineLink Link { get; private set; } = new OnlineLink();

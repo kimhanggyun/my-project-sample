@@ -1550,6 +1550,9 @@
   "product.supply_pack_small": "곡식 꾸러미 (소)",
   "product.gold_pack_small": "엽전 꾸러미 (소)",
   "product.gem_pack_small": "금괴 꾸러미 (소)",
+  "product.supply_pack_medium": "곡식 꾸러미 (중)",
+  "product.gold_pack_medium": "엽전 꾸러미 (중)",
+  "product.gem_pack_medium": "금괴 꾸러미 (중)",
   "style.ink": "임시 스타일2(수묵)",
   "ui.contest.roundOf": "{0}라운드 / 최대 {1}",
   "ui.contest.pick": "다음 행동을 고르세요.",
@@ -1725,6 +1728,7 @@
   "ui.cos.price.gold": "엽전 {0}",
   "ui.cos.price.gem": "금괴 {0}",
   "ui.cos.price.shop": "상점에서",
+  "ui.cos.notForSale": "지금 팔지 않음",
   "ui.cos.buy": "사고 입기",
   "ui.cos.buyConfirm": "{0}로 사서 바로 입습니다. 이 갑옷을 입을 수 있는 다른 병종도 꾸미기에서 입힐 수 있습니다.",
   "ui.cos.boughtWore": "샀습니다 · 입었습니다.",
@@ -1739,5 +1743,9 @@
   "cos.armor_iron": "무쇠 갑옷",
   "cos.armor_crimson": "진홍 갑옷",
   "cos.armor_gold": "황금 갑옷",
+  "cos.armor_black": "검은 갑옷",
+  "cos.armor_white": "흰 갑옷",
+  "cos.horse_black": "검은 말",
+  "cos.horse_white": "흰 말",
   "product.cosmetic_armor_gold": "치장: 황금 갑옷"
 }

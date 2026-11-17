@@ -165,6 +165,8 @@ namespace Game.Data.Defs
         public int? AdFreeDays { get; internal set; }
         /// <summary>치장 상품 (kind cosmetic, R-111): 결제하면 이 치장을 얻는다. 이미 가졌으면 엽전 (cosmetics.json duplicateGold).</summary>
         public string CosmeticId { get; internal set; }
+        /// <summary>데이터 기본 끔 (R-123): 관리자 [상점 상품]에서 표출을 켜야 상점에 나온다. 새로 등록하는 상품은 기본 끔.</summary>
+        public bool DefaultOff { get; internal set; }
         public const string KindCosmetic = "cosmetic";
         /// <summary>플레이 경로 없이 팔 수 있다 (R-30): 편의 기능이거나 치장 (economy.md 0장, cosmetics.md 9장 1 — 치장은 결제 전용 허용).</summary>
         public bool PlayPathExempt => Convenience || Kind == KindCosmetic;

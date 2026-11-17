@@ -76,10 +76,10 @@ namespace Game.Flow
                 return true;
             }));
             var shop = new PurchaseService(defs);
-            Register(new Handler(ActionKinds.StorePurchase, (s, a) => shop.Apply(s, a)));
+            Register(new Handler(ActionKinds.StorePurchase, (s, a) => { shop.Toggles = Toggles?.Invoke(); return shop.Apply(s, a); }));
             Register(new Handler(ActionKinds.StoreRestore, (s, a) => shop.Restore(s, a)));
             var cosmetics = new CosmeticService(defs);
-            Register(new Handler(ActionKinds.CosmeticBuy, (s, a) => cosmetics.Buy(s, a.CosmeticId)));
+            Register(new Handler(ActionKinds.CosmeticBuy, (s, a) => { cosmetics.Toggles = Toggles?.Invoke(); return cosmetics.Buy(s, a.CosmeticId); }));
             Register(new Handler(ActionKinds.CosmeticEquip, (s, a) => cosmetics.Equip(s, a.TroopType, a.Situation, a.CosmeticId)));
             var guides = new GuideService(defs);
             Register(new Handler(ActionKinds.GuideSeen, (s, a) => guides.MarkSeen(s, a.GuideId)));
