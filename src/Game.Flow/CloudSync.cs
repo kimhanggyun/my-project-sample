@@ -318,6 +318,10 @@ namespace Game.Flow
 
         /// <summary>가짜 서버: 버전 검사 · 점검 없음 (시험용으로 바꿀 수 있다).</summary>
         public ServerStatusResponse Status { get; set; } = new ServerStatusResponse();
+        /// <summary>가짜 서버: 운영 켜고 끄기 없음 (시험용으로 바꿀 수 있다, R-122).</summary>
+        public ContentToggles Content { get; set; } = new ContentToggles();
+        public void GetContent(Action<ContentToggles> done) => done?.Invoke(Content);
+
         public void GetStatus(Action<ServerStatusResponse> done) { Status.NowUnixSeconds = _time.UtcNow.ToUnixTimeSeconds(); done?.Invoke(Status); }
 
         public void LoadSave(Action<CloudSave> done)

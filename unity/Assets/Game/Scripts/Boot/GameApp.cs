@@ -80,7 +80,7 @@ namespace Game.Unity.Boot
         public void NextStartup(string finished)
         {
             var ctx = Context;
-            string step = ctx.Startup.Next(finished, ctx.StartupRecord, false); // 버전 확인 서버는 아직 없다
+            string step = ctx.Startup.Next(finished, ctx.StartupRecord, ctx.OnlineEnabled); // 서버가 켜져 있으면 버전 · 점검 확인 (R-118)
             if (step != Game.Flow.StartupSteps.SignIn && ctx.StartupRecord.SignInMethod != null && !ctx.Auth.IsSignedIn)
                 ctx.AutoSignIn(ctx.StartupRecord.SignInMethod); // 타이틀의 서버 동기화는 이것이 끝난 뒤 (StartSync가 기다림)
             switch (step)
@@ -111,6 +111,7 @@ namespace Game.Unity.Boot
                 else NextStartup(step);
             }
             if (!ctx.OnlineEnabled) { Go(null); return; }
+            ctx.Online.GetContent(c => ctx.Content = c); // 운영 켜고 끄기 (R-122), 답이 없으면 데이터 그대로
             StartCoroutine(StatusTimeout(() => Go(null)));
             ctx.Online.GetStatus(Go);
         }

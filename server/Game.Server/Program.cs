@@ -13,16 +13,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 // 참고 서버 (docs/impl/server.md): 개발·테스트용. 공통 계정 + 게임별 데이터 (4.5).
 // 실행: dotnet run --project server/Game.Server
-// 설정: Game:StoreRoot (없으면 메모리), Game:Games:0:Code / DataRoot / Theme / PackageIds:0 … (없으면 ancientwar 하나)
+// 설정: Game:Store = memory · folder · firestore (없으면 Game:StoreRoot가 있으면 folder, 아니면 memory — docs/impl/db.md),
+//       Game:StoreRoot (folder), Game:Firestore:ProjectId · DatabaseId (firestore), Game:Games:0:Code / DataRoot / Theme / PackageIds:0 … (없으면 ancientwar 하나)
+// 옮기기 (db.md 6장): dotnet Game.Server.dll migrate --from <store.json이 있는 폴더> --project <GCP 프로젝트> [--database <id>]
+if (args.Length > 0 && args[0] == "migrate") return Migrate.Run(args);
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
-builder.Services.AddSingleton(sp =>
-{
-    var root = builder.Configuration["Game:StoreRoot"];
-    return string.IsNullOrEmpty(root) ? new InMemoryStore() : new FolderStore(root);
-});
-builder.Services.AddSingleton<IPlatformStore>(sp => sp.GetRequiredService<InMemoryStore>());
-builder.Services.AddSingleton<IGameStore>(sp => sp.GetRequiredService<InMemoryStore>());
+builder.Services.AddSingleton<IStore>(sp => ServerSetup.Store(builder.Configuration));
+builder.Services.AddSingleton<IPlatformStore>(sp => sp.GetRequiredService<IStore>());
+builder.Services.AddSingleton<IGameStore>(sp => sp.GetRequiredService<IStore>());
 // Firebase 로그인 (docs/impl/deploy-cloudrun.md): Game:Firebase:ProjectId가 있을 때만
 builder.Services.AddSingleton<IExternalTokenVerifier>(sp =>
 {
@@ -53,6 +53,8 @@ app.MapPost(OnlineRoutes.FirebaseSignIn, async (HttpRequest req, IPlatformStore 
     return who == null ? Results.Unauthorized() : Json(p.SignInExternal(who.Provider, who.Subject, who.Email));
 });
 app.MapGet(OnlineRoutes.Time, () => Json(new ServerTimeResponse { UnixSeconds = Now() }));
+// 운영 켜고 끄기 (R-122): 인증 없이, 기기가 시작 때 받는다
+app.MapGet("/v1/games/{game}/content", (string game, GameRegistry r) => r.Find(game) is IGameModule g ? Json(g.Content()) : Results.NotFound());
 // 버전 확인 · 점검 안내 (R-118): 인증 없이, 설정 + 관리자 값
 var statusFromConfig = ServerStatus.FromConfig(builder.Configuration);
 app.MapGet(OnlineRoutes.Status, (IPlatformStore p) => Json(ServerStatus.Current(statusFromConfig, p.StatusOverride(), Now())));
@@ -263,6 +265,7 @@ app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = c => c.Context.Re
 AdminRoutes.Map(app);
 
 app.Run();
+return 0;
 
 static IResult AllianceResult(AllianceResponse res) => res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
 
@@ -301,6 +304,27 @@ namespace Game.Server
         public const string DefaultGame = "ancientwar";
 
         /// <summary>설정의 게임 목록으로 등록표를 만든다. 비어 있으면 이 저장소의 게임 하나.</summary>
+        /// <summary>저장소 고르기 (db.md): Game:Store = memory · folder · firestore. 없으면 예전처럼 Game:StoreRoot가 있으면 folder, 아니면 memory.</summary>
+        public static IStore Store(IConfiguration config)
+        {
+            string root = config["Game:StoreRoot"];
+            string kind = config["Game:Store"];
+            if (string.IsNullOrWhiteSpace(kind)) kind = string.IsNullOrEmpty(root) ? "memory" : "folder";
+            switch (kind.Trim())
+            {
+                case "memory": return new InMemoryStore();
+                case "folder": return new FolderStore(string.IsNullOrEmpty(root) ? "store" : root);
+                case "firestore":
+                    {
+                        string project = config["Game:Firestore:ProjectId"];
+                        if (string.IsNullOrWhiteSpace(project)) project = Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT");
+                        if (string.IsNullOrWhiteSpace(project)) throw new InvalidOperationException("Game:Store=firestore에는 Game:Firestore:ProjectId가 필요합니다.");
+                        return FirestoreStore.Create(project, config["Game:Firestore:DatabaseId"]);
+                    }
+                default: throw new InvalidOperationException($"Game:Store '{kind}'를 모릅니다 (memory · folder · firestore).");
+            }
+        }
+
         public static GameRegistry Registry(IConfiguration config, ITimeProvider time, IGameStore store, MasterAccounts masters = null)
         {
             var registry = new GameRegistry();

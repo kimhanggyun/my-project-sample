@@ -236,5 +236,36 @@ namespace Game.Tests.Campaign
             Assert.Equal(-1, GachaService.DaysLeft(std, start));
             Assert.True(Kit.D.Strings.ContainsKey(lim.NameKey));
         }
+
+        [Fact(DisplayName = "R-122 운영 켜고 끄기: 끈 배너는 목록에서 빠지고 모집 closed (상시도), 기간 덮어쓰기는 데이터 기간 대신, 행동 처리기도 같은 값")]
+        public void Toggles()
+        {
+            var std = Kit.D.Gacha.Banners["standard"];
+            var lim = Kit.D.Gacha.Banners["limited_winter"];
+            long now = lim.StartsAtUnixSeconds + 10;
+            var s = Game.Campaign.StartingKitService.CreateNewGame(Kit.D);
+            s.Wallet["gem"] = 10_000;
+            var toggles = new Game.Online.ContentToggles();
+            var svc = new GachaService(Kit.D) { Toggles = toggles };
+            Assert.Equal(2, svc.OpenBanners(now).Count);
+
+            toggles.Items.Add(new Game.Online.ContentToggle { Kind = Game.Online.ContentKinds.Banner, Id = "standard", Off = true });
+            Assert.Equal(new[] { "limited_winter" }, svc.OpenBanners(now).ConvertAll(b => b.Id));
+            Assert.Equal(GachaService.Closed, svc.Draw(s, std.Id, 1, 1, now).Reason);
+            Assert.Equal(GachaService.Closed, svc.Draw(s, std.Id, 1, 1).Reason); // 시각 없어도 끈 것은 닫힘
+
+            // 기간 덮어쓰기: 예시 배너를 3일 뒤에 끝나게
+            toggles.Items.Add(new Game.Online.ContentToggle { Kind = Game.Online.ContentKinds.Banner, Id = lim.Id, EndsAtUnixSeconds = now + 3 * 86400 });
+            Assert.Equal(3, svc.DaysLeftOf(lim, now));
+            Assert.False(svc.IsOpen(lim, now + 3 * 86400));
+            Assert.True(svc.Draw(s, lim.Id, 1, 1, now).Ok);
+            Assert.Equal(GachaService.Closed, svc.Draw(s, lim.Id, 1, 1, now + 3 * 86400).Reason);
+            // 상시 배너에 기간을 주면 기간 배너가 된다
+            Assert.True(new GachaService(Kit.D) { Toggles = new Game.Online.ContentToggles { Items = { new Game.Online.ContentToggle { Kind = Game.Online.ContentKinds.Banner, Id = "standard", EndsAtUnixSeconds = now + 100 } } } }.IsLimited(std));
+
+            var runner = new PlayerActionRunner(Kit.D) { Toggles = () => toggles };
+            Assert.False(runner.Apply(s, new Game.Online.PlayerAction { Kind = Game.Online.ActionKinds.GachaDraw, BannerId = std.Id, Count = 1, Seed = 3, DoneAtUnixSeconds = now }));
+            Assert.True(new PlayerActionRunner(Kit.D).Apply(s, new Game.Online.PlayerAction { Kind = Game.Online.ActionKinds.GachaDraw, BannerId = std.Id, Count = 1, Seed = 3, DoneAtUnixSeconds = now })); // 켜고 끄기 없으면 데이터 그대로
+        }
     }
 }

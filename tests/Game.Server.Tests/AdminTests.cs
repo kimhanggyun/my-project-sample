@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -24,6 +25,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.UseSetting("Game:AdminKey", Key);
                 builder.ConfigureServices(s =>
                 {
@@ -38,6 +40,7 @@ namespace Game.Server.Tests
         {
             protected override void ConfigureWebHost(IWebHostBuilder builder)
             {
+                TestStore.Isolate(builder);
                 builder.UseSetting("Game:AdminKey", Key);
                 builder.UseSetting("Game:AdminGoogle", "off");
             }
@@ -90,6 +93,38 @@ namespace Game.Server.Tests
             var cleared = await Read<ServerStatusResponse>(await anyone.GetAsync(OnlineRoutes.Status));
             Assert.Null(cleared.MinVersion);
             Assert.False(cleared.Maintenance.On);
+        }
+
+        [Fact(DisplayName = "R-122 모집 배너 켜고 끄기: 관리자가 끄면 공개 /content에 실리고 서버가 그 배너 모집을 거절(422), 다시 켜면 됨, 키가 틀리면 404")]
+        public async Task BannerToggles()
+        {
+            var (player, them) = await Guest(_keyOnly);
+            var admin = _keyOnly.CreateClient();
+            admin.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            string url = AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/banners";
+            var list = await Read<AdminBannerList>(await admin.GetAsync(url));
+            Assert.Contains(list.Banners, b => b.Id == "standard" && !b.Off);
+
+            var off = await Read<AdminBannerList>(await admin.PostAsync(url, Body(new AdminBannersRequest { Items = { new ContentToggle { Id = "standard", Off = true }, new ContentToggle { Id = "noSuch", Off = true } } })));
+            Assert.True(off.Banners.Single(b => b.Id == "standard").Off);
+            var content = await Read<ContentToggles>(await _keyOnly.CreateClient().GetAsync(OnlineRoutes.Content(ServerSetup.DefaultGame)));
+            Assert.True(content.IsOff(ContentKinds.Banner, "standard"));
+            Assert.DoesNotContain(content.Items, x => x.Id == "noSuch"); // 모르는 배너는 무시
+
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            var save = await Read<CloudSave>(await player.GetAsync(OnlineRoutes.Save(ServerSetup.DefaultGame)));
+            var draw = Game.Flow.PlayerActionRunner.DrawGacha("standard", 1, 7);
+            var rejected = await player.PostAsync(actions, Body(new ActionSubmission { BaseRevision = save.Revision, Actions = { draw } }));
+            Assert.Equal((HttpStatusCode)422, rejected.StatusCode);
+
+            await admin.PostAsync(url, Body(new AdminBannersRequest()));
+            Assert.Empty((await Read<ContentToggles>(await _keyOnly.CreateClient().GetAsync(OnlineRoutes.Content(ServerSetup.DefaultGame)))).Items);
+            var ok = await player.PostAsync(actions, Body(new ActionSubmission { BaseRevision = save.Revision, Actions = { draw } }));
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+
+            var wrong = _keyOnly.CreateClient();
+            wrong.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, "wrong");
+            Assert.Equal(HttpStatusCode.NotFound, (await wrong.GetAsync(url)).StatusCode);
         }
 
                 private static StringContent Body(object o) => new StringContent(OnlineJson.Write(o), Encoding.UTF8, "application/json");

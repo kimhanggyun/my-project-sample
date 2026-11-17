@@ -106,6 +106,11 @@ namespace Game.Server
         /// <summary>계정의 푸시 설정 · 토큰을 잠근 채 읽거나 고친다 (고친 뒤 저장, 없으면 새 것 = 모두 켬 · 토큰 없음).</summary>
         T WithPush<T>(string gameCode, string accountId, Func<PushProfile, T> use);
 
+        // ---- 운영 켜고 끄기 (게임별, R-122) ----
+        /// <summary>관리자가 정한 켜고 끄기 (없으면 빈 것 = 데이터 그대로).</summary>
+        ContentToggles ContentOf(string gameCode);
+        void SetContent(string gameCode, ContentToggles content);
+
         // ---- 결제 기록 (게임별, R-116) ----
         /// <summary>반영한 거래 (없으면 null). 같은 거래를 다시 쓰지 못하게 · 복원 때 "이미 반영" 확인.</summary>
         Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId);
@@ -115,12 +120,28 @@ namespace Game.Server
         List<Game.Flow.ReceiptRecord> ReceiptsOf(string gameCode, string accountId);
     }
 
+    /// <summary>
+    /// 서버 저장소 하나 (공통 + 게임별 + 관리자). 구현: 메모리 · 폴더(store.json) · Firestore (db.md, 설정 Game:Store).
+    /// </summary>
+    public interface IStore : IPlatformStore, IGameStore
+    {
+        /// <summary>folder · memory · firestore (관리자 서버 상태).</summary>
+        string Kind { get; }
+        /// <summary>관리자 페이지 (admin.md): 모든 계정 한 줄씩.</summary>
+        List<AdminAccount> AdminAccounts();
+    }
+
     /// <summary>개발용 메모리 저장소 (공통 + 게임별을 한 객체에). 테스트·로컬 실행용.</summary>
-    public class InMemoryStore : IPlatformStore, IGameStore
+    public class InMemoryStore : IStore
     {
         private readonly object _lock = new object();
 
-        protected sealed class Snapshot
+        public virtual string Kind => "memory";
+
+        /// <summary>옮기기 도구 (db.md 6장): 지금 내용 전체 (store.json과 같은 모양). 읽기만 할 것.</summary>
+        public Snapshot Export() { lock (Fresh()) return Data; }
+
+        public sealed class Snapshot
         {
             /// <summary>토큰 → 계정.</summary>
             public Dictionary<string, string> Tokens { get; set; } = new Dictionary<string, string>();
@@ -154,6 +175,8 @@ namespace Game.Server
             public Dictionary<string, List<HireReplayEntry>> HireReplays { get; set; } = new Dictionary<string, List<HireReplayEntry>>();
             /// <summary>게임 코드 → (계정 → 푸시 설정 · 토큰, R-119).</summary>
             public Dictionary<string, Dictionary<string, PushProfile>> Push { get; set; } = new Dictionary<string, Dictionary<string, PushProfile>>();
+            /// <summary>게임 코드 → 운영 켜고 끄기 (R-122).</summary>
+            public Dictionary<string, ContentToggles> Content { get; set; } = new Dictionary<string, ContentToggles>();
             /// <summary>관리자 페이지가 정한 버전 · 점검 안내 (R-118, null = 서버 설정).</summary>
             public ServerStatusResponse StatusOverride { get; set; }
             /// <summary>게임 코드 → (거래 id → 반영한 결제, R-116).</summary>
@@ -226,6 +249,24 @@ namespace Game.Server
                 if (Data.Deletions == null) Data.Deletions = new Dictionary<string, long>();
                 if (!Data.Deletions.TryGetValue(accountId, out var at)) { Data.Deletions[accountId] = at = nowUnixSeconds; Persist(); }
                 return at + AccountDeletion.GraceSeconds;
+            }
+        }
+
+        public ContentToggles ContentOf(string gameCode)
+        {
+            lock (Fresh())
+                return Data.Content != null && Data.Content.TryGetValue(gameCode ?? "", out var c) && c != null
+                    ? OnlineJson.Read<ContentToggles>(OnlineJson.Write(c)) : new ContentToggles();
+        }
+
+        public void SetContent(string gameCode, ContentToggles content)
+        {
+            lock (Fresh())
+            {
+                if (Data.Content == null) Data.Content = new Dictionary<string, ContentToggles>(); // 예전 저장 파일
+                if (content == null || content.Items == null || content.Items.Count == 0) Data.Content.Remove(gameCode);
+                else Data.Content[gameCode] = OnlineJson.Read<ContentToggles>(OnlineJson.Write(content));
+                Persist();
             }
         }
 
@@ -592,7 +633,7 @@ namespace Game.Server
             public long AtUnixSeconds { get; set; }
         }
 
-        protected sealed class SharedReplayEntry
+        public sealed class SharedReplayEntry
         {
             public SharedReplaySummary Summary { get; set; }
             public string Json { get; set; }
@@ -719,6 +760,7 @@ namespace Game.Server
     /// </summary>
     public sealed class FolderStore : InMemoryStore
     {
+        public override string Kind => "folder";
         private readonly string _file;
         private readonly string _genFile;
         private string _gen;

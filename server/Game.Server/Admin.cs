@@ -38,16 +38,16 @@ namespace Game.Server
 
             // 키 확인만 (페이지 첫 칸): 맞으면 200 + 구글 로그인이 필요한지, 아니면 404
             app.MapPost(Prefix + "/key", (HttpRequest req) => KeyOk(req, key) ? Json(new AdminKeyResponse { Google = google }) : Results.NotFound());
-            IResult Guard(HttpRequest req, InMemoryStore store, MasterAccounts masters, Func<string, IResult> handle) => GuardWith(req, key, google, store, masters, handle);
+            IResult Guard(HttpRequest req, IStore store, MasterAccounts masters, Func<string, IResult> handle) => GuardWith(req, key, google, store, masters, handle);
 
-            app.MapGet(Prefix + "/status", (HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters, IServiceProvider sp) =>
+            app.MapGet(Prefix + "/status", (HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters, IServiceProvider sp) =>
                 Guard(req, store, masters, id => Json(new AdminStatus
                 {
                     NowUnixSeconds = Now(),
                     Revision = Environment.GetEnvironmentVariable("K_REVISION"),
                     Games = new List<string>(r.Codes),
                     Accounts = store.AdminAccounts().Count,
-                    Store = store is FolderStore ? "folder" : "memory",
+                    Store = store.Kind,
                     Masters = app.Configuration["Game:Masters"],
                     ReceiptVerifier = app.Configuration["Game:ReceiptVerifier"] ?? (string.Equals(app.Configuration["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase) ? "off" : "fake"),
                     FirebaseProjectId = app.Configuration["Game:Firebase:ProjectId"],
@@ -56,9 +56,9 @@ namespace Game.Server
 
             // 버전 · 점검 안내 바꾸기 (R-118): 몸 = AdminStatusNotice. Clear면 지우고 서버 설정으로. 바꾼 뒤 지금 /v1/status 값을 돌려준다.
             var statusFromConfig = ServerStatus.FromConfig(app.Configuration);
-            app.MapGet(Prefix + "/notice", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
+            app.MapGet(Prefix + "/notice", (HttpRequest req, IStore store, MasterAccounts masters) =>
                 Guard(req, store, masters, _ => Json(new AdminStatusNotice { Current = ServerStatus.Current(statusFromConfig, store.StatusOverride(), Now()), Override = store.StatusOverride() })));
-            app.MapPost(Prefix + "/notice", async (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
+            app.MapPost(Prefix + "/notice", async (HttpRequest req, IStore store, MasterAccounts masters) =>
             {
                 var body = await Body<AdminStatusNotice>(req);
                 return Guard(req, store, masters, _ =>
@@ -69,10 +69,24 @@ namespace Game.Server
                 });
             });
 
-            app.MapGet(Prefix + "/accounts", (HttpRequest req, InMemoryStore store, MasterAccounts masters) =>
+            // 모집 배너 켜고 끄기 (R-122): 배포 없이. 꺼진 배너는 목록에서 빠지고 서버가 모집을 거절한다.
+            app.MapGet(Prefix + "/games/{game}/banners", (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
+                Guard(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(new AdminBannerList { Banners = g.AdminBanners() }) : Results.NotFound()));
+            app.MapPost(Prefix + "/games/{game}/banners", async (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminBannersRequest>(req);
+                return Guard(req, store, masters, _ =>
+                {
+                    if (!(r.Find(game) is IGameModule g)) return Results.NotFound();
+                    if (body == null) return Results.StatusCode(StatusCodes.Status422UnprocessableEntity);
+                    return Json(new AdminBannerList { Banners = g.SetBanners(body.Items) });
+                });
+            });
+
+            app.MapGet(Prefix + "/accounts", (HttpRequest req, IStore store, MasterAccounts masters) =>
                 Guard(req, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
 
-            app.MapGet(Prefix + "/games/{game}/accounts/{account}", (string game, string account, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+            app.MapGet(Prefix + "/games/{game}/accounts/{account}", (string game, string account, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
                 Guard(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
@@ -98,7 +112,7 @@ namespace Game.Server
                 }));
 
             // 우편 보내기: 계정 목록 (비면 그 게임의 모든 계정)에 자원 우편. 받는 사람이 [받기]로 지갑에 (mail.claim, R-41)
-            app.MapPost(Prefix + "/games/{game}/mail", async (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+            app.MapPost(Prefix + "/games/{game}/mail", async (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
             {
                 var body = await Body<AdminMailRequest>(req);
                 return Guard(req, store, masters, _ =>
@@ -124,10 +138,10 @@ namespace Game.Server
             });
 
             // 수입 가득 알림 보내기 (R-119): 관리자 페이지 또는 예약(Cloud Scheduler, 한 시간마다)이 부른다. 보낸 기기 수.
-            app.MapPost(Prefix + "/games/{game}/push/sweep", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+            app.MapPost(Prefix + "/games/{game}/push/sweep", (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
                 Guard(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(new AdminPushSweep { Sent = g.SweepIncomeFull() }) : Results.NotFound()));
 
-            app.MapGet(Prefix + "/games/{game}/territory", (string game, HttpRequest req, InMemoryStore store, GameRegistry r, MasterAccounts masters) =>
+            app.MapGet(Prefix + "/games/{game}/territory", (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
                 Guard(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
@@ -151,7 +165,7 @@ namespace Game.Server
         }
 
         /// <summary>키 → 404, (구글 확인이 켜져 있으면) 토큰 없음 → 401, 마스터 아님 → 403, 통과면 처리. 구글 확인이 꺼져 있으면 처리 계정 = "admin-key".</summary>
-        private static IResult GuardWith(HttpRequest req, string key, bool google, InMemoryStore store, MasterAccounts masters, Func<string, IResult> handle)
+        private static IResult GuardWith(HttpRequest req, string key, bool google, IStore store, MasterAccounts masters, Func<string, IResult> handle)
         {
             if (!KeyOk(req, key)) return Results.NotFound();
             if (!google) return handle(KeyOnlyAdmin);
@@ -226,6 +240,31 @@ namespace Game.Server
     }
 
     /// <summary>버전 · 점검 안내 (R-118): Override = 관리자 값 (버전 칸은 비우면 설정 값, Maintenance는 통째), Clear = 지우기. 응답의 Current = 지금 /v1/status.</summary>
+    /// <summary>관리자 모집 배너 한 줄 (R-122): 데이터 기간 · 관리자 덮어쓰기 · 지금 열림.</summary>
+    public sealed class AdminBanner
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public long DataStartsAtUnixSeconds { get; set; }
+        public long DataEndsAtUnixSeconds { get; set; }
+        public bool Off { get; set; }
+        /// <summary>덮어쓴 기간 (null = 데이터 그대로).</summary>
+        public long? StartsAtUnixSeconds { get; set; }
+        public long? EndsAtUnixSeconds { get; set; }
+        public bool OpenNow { get; set; }
+    }
+
+    /// <summary>배너 켜고 끄기 저장 (R-122): 몸 = 배너마다 Id · Off · 기간 덮어쓰기. 적지 않은 배너 = 데이터 그대로.</summary>
+    public sealed class AdminBannersRequest
+    {
+        public List<ContentToggle> Items { get; set; } = new List<ContentToggle>();
+    }
+
+    public sealed class AdminBannerList
+    {
+        public List<AdminBanner> Banners { get; set; } = new List<AdminBanner>();
+    }
+
     public sealed class AdminStatusNotice
     {
         public ServerStatusResponse Override { get; set; }

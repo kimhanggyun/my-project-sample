@@ -32,6 +32,8 @@ namespace Game.Online
         /// <summary>지금 계정(게스트)에 구글(Firebase) 로그인을 붙인다 (R-105): 계정 번호 · 진행 그대로.</summary>
         public const string LinkFirebase = "/v1/me/link/firebase";
         public const string Time = "/v1/time";
+        /// <summary>운영 켜고 끄기 (GET, 인증 없음, R-122).</summary>
+        public static string Content(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/content";
         /// <summary>버전 확인 · 점검 안내 (GET, 인증 없음, R-118).</summary>
         public const string Status = "/v1/status";
         public const string Games = "/v1/games";
@@ -198,6 +200,41 @@ namespace Game.Online
         /// <summary>최신 앱 버전 (낮으면 "업데이트가 있습니다" 안내만).</summary>
         public string LatestVersion { get; set; }
         public MaintenanceInfo Maintenance { get; set; } = new MaintenanceInfo();
+    }
+
+    /// <summary>운영 켜고 끄기의 대상 종류 (R-122). 지금은 모집 배너, 나중에 상점 상품도 같은 틀로.</summary>
+    public static class ContentKinds
+    {
+        public const string Banner = "banner";
+        public const string Product = "product";
+    }
+
+    /// <summary>운영 켜고 끄기 하나 (R-122): 데이터의 그 항목을 끄거나, 기간을 덮어쓴다 (null = 데이터 값 그대로).</summary>
+    public sealed class ContentToggle
+    {
+        public string Kind { get; set; }
+        public string Id { get; set; }
+        public bool Off { get; set; }
+        public long? StartsAtUnixSeconds { get; set; }
+        public long? EndsAtUnixSeconds { get; set; }
+    }
+
+    /// <summary>
+    /// 운영 켜고 끄기 (R-122, GET /v1/games/{game}/content, 인증 없음): 관리자 페이지가 배포 없이 바꾼다. 없으면 데이터 그대로.
+    /// 기기는 시작 때 받아 목록 · 판정에 쓰고, 닿지 않으면 데이터 그대로 (꺼도 게임이 돈다). 서버는 행동 검사에 쓴다.
+    /// </summary>
+    public sealed class ContentToggles
+    {
+        public List<ContentToggle> Items { get; set; } = new List<ContentToggle>();
+
+        public ContentToggle Find(string kind, string id)
+        {
+            if (Items == null) return null;
+            foreach (var t in Items) if (t != null && t.Kind == kind && t.Id == id) return t;
+            return null;
+        }
+
+        public bool IsOff(string kind, string id) => Find(kind, id)?.Off == true;
     }
 
     public sealed class MaintenanceInfo
@@ -978,6 +1015,8 @@ namespace Game.Online
         void GetTime(Action<ServerTimeResponse> done);
         /// <summary>버전 확인 · 점검 안내 (R-118, 인증 없음). 닿지 않으면 null (그대로 시작).</summary>
         void GetStatus(Action<ServerStatusResponse> done);
+        /// <summary>운영 켜고 끄기 (R-122, 인증 없음). 닿지 않으면 null (데이터 그대로).</summary>
+        void GetContent(Action<ContentToggles> done);
         void LoadSave(Action<CloudSave> done);
         void PutSave(SavePutRequest request, Action<SavePutResponse> done);
         void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done);
@@ -1041,6 +1080,7 @@ namespace Game.Online
         public void SignIn(Action<bool> done) => done?.Invoke(false);
         public void GetTime(Action<ServerTimeResponse> done) => done?.Invoke(null);
         public void GetStatus(Action<ServerStatusResponse> done) => done?.Invoke(null);
+        public void GetContent(Action<ContentToggles> done) => done?.Invoke(null);
         public void LoadSave(Action<CloudSave> done) => done?.Invoke(null);
         public void PutSave(SavePutRequest request, Action<SavePutResponse> done) => done?.Invoke(null);
         public void SubmitBattle(BattleSubmission submission, Action<BattleVerdict> done) => done?.Invoke(null);

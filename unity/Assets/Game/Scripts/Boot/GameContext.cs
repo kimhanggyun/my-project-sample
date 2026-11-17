@@ -69,6 +69,10 @@ namespace Game.Unity.Boot
         public CloudSync Sync { get; private set; }
         /// <summary>전투 밖 행동(편성·구매·창설 …)의 규칙. 기기와 서버가 같은 것을 쓴다 (R-41).</summary>
         public PlayerActionRunner Actions { get; private set; }
+        /// <summary>운영 켜고 끄기 (R-122): 시작 때 서버에서 받는다. 없으면 데이터 그대로 (오프라인 · 서버 꺼짐).</summary>
+        public Game.Online.ContentToggles Content { get; set; }
+        /// <summary>켜고 끄기를 반영한 모집 판정 (목록 · 기간 · 남은 날).</summary>
+        public GachaService Gacha => new GachaService(Defs) { Toggles = Content };
         /// <summary>설정 이름: off / fake / http.</summary>
         public string OnlineMode { get; private set; } = OnlineConfig.Off;
         public OnlineLink Link { get; private set; } = new OnlineLink();
@@ -91,6 +95,7 @@ namespace Game.Unity.Boot
             c.Startup = StartupFlow.Load(data);
             c.StartupRecord = StartupFlow.ReadRecord(saveStore);
             c.Actions = new PlayerActionRunner(c.Defs);
+            c.Actions.Toggles = () => c.Content;
             c.ReplayRules = ReplayRules.Load(data);
             c.ReplayService = new ReplayService(c.Flow);
             c.Replays = ReplayLibrary.Read(saveStore);
@@ -644,7 +649,7 @@ namespace Game.Unity.Boot
         {
             ulong seed = NewSeed();
             long now = Clock.UtcNow.ToUnixTimeSeconds();
-            var preview = new GachaService(Defs).Draw(SaveJson.Read(SaveJson.Write(State)), bannerId, count, seed, now);
+            var preview = Gacha.Draw(SaveJson.Read(SaveJson.Write(State)), bannerId, count, seed, now);
             if (!preview.Ok) return preview;
             var draw = PlayerActionRunner.DrawGacha(bannerId, count, seed);
             draw.DoneAtUnixSeconds = now; // 기간 배너(R-121)는 미리 본 시각과 같은 시각으로
@@ -658,7 +663,7 @@ namespace Game.Unity.Boot
         {
             ulong seed = NewSeed();
             long now = Clock.UtcNow.ToUnixTimeSeconds();
-            var preview = new GachaService(Defs).DrawFree(SaveJson.Read(SaveJson.Write(State)), bannerId, seed, now);
+            var preview = Gacha.DrawFree(SaveJson.Read(SaveJson.Write(State)), bannerId, seed, now);
             if (!preview.Ok) return preview;
             Do(PlayerActionRunner.DrawGachaFree(bannerId, seed, now));
             _formation = null;

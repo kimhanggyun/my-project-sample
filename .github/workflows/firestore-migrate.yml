@@ -1,0 +1,42 @@
+name: firestore-migrate
+
+# 서버 저장소 store.json(Cloud Storage 버킷) → Firestore 한 번 옮기기 (docs/impl/db.md 6장 · 8장). 손으로만 실행.
+# 순서: 관리자 페이지에서 점검 켜기 → 이 워크플로 (dry_run=true로 수 먼저 보기 → false로 옮기기) → 저장소 변수 GAME_STORE=firestore → deploy-cloudrun 실행 → 확인 → 점검 끄기.
+# 같은 내용을 두 번 옮겨도 같은 결과 (문서를 덮어씀). store.json은 그대로 남는다 (되돌리기: GAME_STORE=folder로 다시 배포).
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "true = 수만 세고 쓰지 않음"
+        required: true
+        default: "true"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    if: ${{ vars.GCP_PROJECT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Download store.json
+        run: |
+          mkdir -p store
+          gcloud storage cp "gs://${{ vars.GCS_BUCKET }}/store.json" store/store.json
+          ls -l store
+      - name: Migrate
+        run: |
+          # dotnet run은 작업 폴더를 프로젝트 폴더로 바꾸므로 절대 경로로 넘긴다
+          ARGS=(migrate --from "$GITHUB_WORKSPACE/store" --project "${{ vars.GCP_PROJECT_ID }}" --database "${{ vars.FIRESTORE_DATABASE || '(default)' }}")
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry); fi
+          dotnet run --project server/Game.Server -c Release -- "${ARGS[@]}"
