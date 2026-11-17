@@ -123,3 +123,4 @@
 - 2026-11-17 [원격] claude/firestore-store — Firestore 2 · 3단계: FirestoreStore(IStore, 트랜잭션 안 우편 묶음), Game:Store 고르기, CI 에뮬레이터로 서버 테스트 전체 한 번 더, 옮기기 도구 · firestore-migrate 워크플로, 배포 변수 GAME_STORE · MAX_INSTANCES, 사용자 할 일 db.md 8장
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — firestore-migrate 워크플로 고침: store 폴더를 절대 경로로 (dotnet run이 작업 폴더를 바꿔 store.json을 못 찾던 것)
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — 시작 때 버전 · 점검 확인이 늘 건너뛰어지던 것 고침 (GameApp이 서버 없음으로 고정). 온라인이 켜져 있으면 /v1/status · /content를 받는다
+- 2026-11-17 [원격] claude/account-roles — H8 계정 등급: admin · subAdmin · 일반 (저장소 폴더 · Firestore), 설정 마스터 = 처음 관리자 고정, 서브 관리자 = 보기 · 우편 · 공지만, 관리자 [계정 · 세이브] 등급 칸, /v1/me Role, 권한 표 admin.md 5장 (사용자 확인)

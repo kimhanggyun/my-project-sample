@@ -181,6 +181,46 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync(AdminRoutes.Prefix + "/games/nope/territory")).StatusCode);
         }
 
+        [Fact(DisplayName = "H8 계정 등급: 관리자가 정함, 서브 관리자 = 보기 · 우편 · 공지만 (운영 켜고 끄기 · 등급 지정 403, 개발 행동 없음), 저장소 관리자 = 마스터와 같음, 처음 관리자는 바꿀 수 없음")]
+        public async Task AccountRoles()
+        {
+            var (boss, me) = await Guest(_factory);
+            _factory.Services.GetRequiredService<MasterAccounts>().Add(me.AccountId);
+            boss.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            var (sub, them) = await Guest(_factory);
+            sub.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            string Role(string id) => AdminRoutes.Prefix + "/accounts/" + id + "/role";
+            string banners = AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/banners";
+
+            Assert.Equal(HttpStatusCode.Forbidden, (await sub.GetAsync(AdminRoutes.Prefix + "/status")).StatusCode); // 일반
+            Assert.Equal(HttpStatusCode.OK, (await boss.PostAsync(Role(them.AccountId), Body(new AdminRoleRequest { Role = Game.Online.AccountRoles.SubAdmin }))).StatusCode);
+            var st = await Read<AdminStatus>(await sub.GetAsync(AdminRoutes.Prefix + "/status"));
+            Assert.Equal(Game.Online.AccountRoles.SubAdmin, st.YourRole);
+            Assert.Equal(HttpStatusCode.OK, (await sub.GetAsync(AdminRoutes.Prefix + "/accounts")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await sub.GetAsync(AdminRoutes.Prefix + "/notice")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await sub.PostAsync(AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/mail", Body(new AdminMailRequest { AccountIds = new List<string> { me.AccountId }, Resource = "gold", Amount = 1 }))).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await sub.GetAsync(banners)).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await sub.PostAsync(Role(them.AccountId), Body(new AdminRoleRequest { Role = Game.Online.AccountRoles.Admin }))).StatusCode);
+            var subMe = await Read<ProfileResponse>(await sub.GetAsync(OnlineRoutes.Me));
+            Assert.Equal((Game.Online.AccountRoles.SubAdmin, false), (subMe.Role, subMe.IsMaster)); // 개발 행동 없음
+
+            Assert.Equal(HttpStatusCode.OK, (await boss.PostAsync(Role(them.AccountId), Body(new AdminRoleRequest { Role = Game.Online.AccountRoles.Admin }))).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await sub.GetAsync(banners)).StatusCode);
+            Assert.True((await Read<ProfileResponse>(await sub.GetAsync(OnlineRoutes.Me))).IsMaster);
+            var list = await Read<AdminAccountList>(await boss.GetAsync(AdminRoutes.Prefix + "/accounts"));
+            Assert.Contains(list.Accounts, a => a.AccountId == me.AccountId && a.Fixed && a.Role == Game.Online.AccountRoles.Admin);
+            Assert.Contains(list.Accounts, a => a.AccountId == them.AccountId && !a.Fixed && a.Role == Game.Online.AccountRoles.Admin);
+
+            var fixedRes = await sub.PostAsync(Role(me.AccountId), Body(new AdminRoleRequest { Role = null }));
+            Assert.Equal((HttpStatusCode)422, fixedRes.StatusCode);
+            Assert.Equal("fixed", (await Read<AdminRoleResponse>(fixedRes)).Reason);
+            Assert.Equal((HttpStatusCode)422, (await boss.PostAsync(Role(them.AccountId), Body(new AdminRoleRequest { Role = "king" }))).StatusCode);
+            Assert.Equal((HttpStatusCode)422, (await boss.PostAsync(Role("acct-nobody"), Body(new AdminRoleRequest { Role = Game.Online.AccountRoles.SubAdmin }))).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await boss.PostAsync(Role(them.AccountId), Body(new AdminRoleRequest { Role = null }))).StatusCode); // 일반으로
+            Assert.Equal(HttpStatusCode.Forbidden, (await sub.GetAsync(AdminRoutes.Prefix + "/status")).StatusCode);
+            Assert.Null((await Read<ProfileResponse>(await sub.GetAsync(OnlineRoutes.Me))).Role);
+        }
+
         [Fact(DisplayName = "관리자 우편: 지정 계정에 운영 선물 → 받는 사람이 mail.claim으로 지갑에, 틀린 자원 · 양은 422, 없는 계정만이면 noTarget")]
         public async Task GiftMail()
         {
