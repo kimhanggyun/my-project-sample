@@ -316,7 +316,7 @@ namespace Game.Unity.Screens
             else
             {
                 // 연합이 없으면 연합 체크 대신 [연합 가입] (연합 화면)
-                var join = Ui.Button(filters, ctx.T("ui.terr.joinAlliance"), () => { AllianceChecked = false; app.Show(new AllianceScreen()); }, 50, new Color(0.24f, 0.48f, 0.25f), 20);
+                var join = Ui.Button(filters, ctx.T("ui.terr.joinAlliance"), () => { AllianceChecked = false; app.ShowMain("alliance"); }, 50, new Color(0.24f, 0.48f, 0.25f), 20);
                 join.GetComponentInChildren<Text>().color = Color.white;
             }
             if (ctx.Online is LocalOnlineService fakeSeed && Last != null && Last.Ok)
@@ -736,7 +736,7 @@ namespace Game.Unity.Screens
                     // 연합원·신청자 닉네임을 받은 뒤 다시 그린다
                     var ids = new List<string>(mine.Members);
                     ids.AddRange(mine.Requests);
-                    Ctx.LoadNames(ids, () => { if (Root != null) App.Show(new AllianceScreen(_notice) { _namesLoaded = true }); });
+                    Ctx.LoadNames(ids, () => { if (Root != null) Replace(new AllianceScreen(_notice) { _namesLoaded = true }); });
                 }
                 if (mine != null)
                 {
@@ -795,7 +795,7 @@ namespace Game.Unity.Screens
         private void Reopen(AllianceResponse r)
         {
             if (Root == null) return;
-            App.Show(new AllianceScreen(r == null ? T("ui.hire.failed") : T("ui.alliance.result." + r.Reason)));
+            Replace(new AllianceScreen(r == null ? T("ui.hire.failed") : T("ui.alliance.result." + r.Reason)));
         }
     }
 

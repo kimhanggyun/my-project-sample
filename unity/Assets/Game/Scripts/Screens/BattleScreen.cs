@@ -1234,6 +1234,15 @@ namespace Game.Unity.Screens
             return Ui.Colored(GeneralOf(c), c.Team == StoryFlow.PlayerTeam ? Palette.Ally : Palette.Enemy);
         }
 
+        /// <summary>위 막대 전투명: 출진이면 그 스텝, 녹화면 녹화의 스텝 (녹화엔 출진 정보가 없어 빈 값 오류가 나던 것, 2026-11-20).</summary>
+        private string BattleTitle()
+        {
+            if (_plan?.Step != null) return T(_plan.Step.NameKey);
+            string step = _playback?.StepId;
+            if (step != null) { try { return T(Ctx.Flow.LoadStep(step).NameKey); } catch (System.Exception) { } }
+            return T("ui.replay.title");
+        }
+
         private void Refresh()
         {
             _dirty = false;
@@ -1241,7 +1250,7 @@ namespace Game.Unity.Screens
             long elapsed = (ctx.Combat.TickSeconds * ctx.Tick).FloorToLong();
             long max = (Setup.MaxMinutes * 60).FloorToLong();
             // 전투명 + 주차 (1분 = 1주, battle.md 4장 ①)
-            _clock.text = T("ui.battle.top", T(_plan.Step.NameKey), elapsed / 60 + 1, System.Math.Max(1, max / 60));
+            _clock.text = T("ui.battle.top", BattleTitle(), elapsed / 60 + 1, System.Math.Max(1, max / 60));
             RefreshStatus();
             SetLabel(_pauseButton, _paused ? T("ui.battle.resume") : T("ui.battle.pause"));
             SetLabel(_speedButton, T("ui.battle.speed", Speeds[_speedIndex]));

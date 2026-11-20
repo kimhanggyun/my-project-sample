@@ -40,7 +40,7 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             Ui.Column(Root, 16, 32);
-            Ui.TitleBar(Root, T("ui.nickname.title"), () => App.Show(new SettingsScreen()), infoGap: false);
+            Ui.TitleBar(Root, T("ui.nickname.title"), () => Replace(new SettingsScreen()), infoGap: false);
             Ui.Label(Root, T("ui.nickname.note"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
             var input = Ui.TextInput(Root, Ctx.Nickname ?? T("ui.nickname.placeholder"), Game.Online.NicknameRules.Max, 110, 34);
@@ -51,7 +51,7 @@ namespace Game.Unity.Screens
             Ui.Button(row, T("ui.nickname.save"), () => Ctx.SetNickname(input.text, Loading.Wrap<Game.Online.NicknameResponse>(r =>
             {
                 if (Root == null) return;
-                if (r != null && r.Ok) App.Show(new SettingsScreen());
+                if (r != null && r.Ok) Replace(new SettingsScreen());
                 else App.Show(new NicknameScreen(r == null ? T("ui.hire.failed") : T("ui.nickname." + r.Reason)));
             })));
         }
@@ -165,7 +165,7 @@ namespace Game.Unity.Screens
             if (Ctx.OnlineEnabled && Ctx.AccountId != null)
             {
                 var id = Line(card, "番", T("ui.settings.accountId"), Ctx.AccountId);
-                Arrow(id, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Ctx.AccountId; App.Show(new SettingsScreen(T("ui.settings.copied"))); });
+                Arrow(id, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Ctx.AccountId; Replace(new SettingsScreen(T("ui.settings.copied"))); });
             }
             var logout = Line(card, "出", T("ui.settings.logout"));
             Arrow(logout, "›", ConfirmLogout);
@@ -226,7 +226,7 @@ namespace Game.Unity.Screens
                 var end = Loading.Begin(); // 삭제 요청 → 로그아웃까지 한 번에 (H5)
                 Ctx.RequestAccountDeletion(r =>
                 {
-                    if (r == null || !r.Ok) { end(); App.Show(new SettingsScreen(T("ui.hire.failed"))); return; }
+                    if (r == null || !r.Ok) { end(); Replace(new SettingsScreen(T("ui.hire.failed"))); return; }
                     Ctx.LogOut(true, _ => { end(); App.Reboot(); }); // 토큰까지 지워야 다시 시작할 때 /me가 삭제를 취소하지 않는다 (7일 안에 직접 로그인해야 취소)
                 });
             }, 96, Palette.Danger, 28);
@@ -242,10 +242,10 @@ namespace Game.Unity.Screens
             string current = Ctx.State.Difficulty ?? "normal";
             var levels = new List<(string, string)>();
             foreach (var id in Ctx.Defs.Ai.SettingShift.Keys) levels.Add((id, T("ui.difficulty." + id)));
-            Ui.Size(Ui.SegmentTabs(diff, levels, current, id => { Ctx.Do(Game.Flow.PlayerActionRunner.SetDifficulty(id)); App.Show(new SettingsScreen()); }, 56, 120), width: 420);
+            Ui.Size(Ui.SegmentTabs(diff, levels, current, id => { Ctx.Do(Game.Flow.PlayerActionRunner.SetDifficulty(id)); Replace(new SettingsScreen()); }, 56, 120), width: 420);
             Ui.Label(card, T("ui.settings.difficultyNote." + current), 20, TextAnchor.MiddleLeft, Palette.TextDim);
             var speed = Line(card, "速", T("ui.settings.battleSpeed"));
-            Ui.Size(Ui.SegmentTabs(speed, new[] { ("1", "×1"), ("2", "×2"), ("4", "×4") }, Ctx.DefaultBattleSpeed.ToString(), id => { Ctx.SetDefaultBattleSpeed(int.Parse(id)); App.Show(new SettingsScreen()); }, 56, 110), width: 380);
+            Ui.Size(Ui.SegmentTabs(speed, new[] { ("1", "×1"), ("2", "×2"), ("4", "×4") }, Ctx.DefaultBattleSpeed.ToString(), id => { Ctx.SetDefaultBattleSpeed(int.Parse(id)); Replace(new SettingsScreen()); }, 56, 110), width: 380);
         }
 
         // ---- 소리 ----
@@ -260,16 +260,16 @@ namespace Game.Unity.Screens
         private void Volume(RectTransform card, string icon, string name, int value, System.Action<int> set)
         {
             var row = Ui.Row(card, name, 80, 10);
-            var mute = Ui.Button(row, icon, () => { set(value == 0 ? 100 : 0); App.Show(new SettingsScreen()); }, 64, value == 0 ? Palette.Card : (Color?)null, 28);
+            var mute = Ui.Button(row, icon, () => { set(value == 0 ? 100 : 0); Replace(new SettingsScreen()); }, 64, value == 0 ? Palette.Card : (Color?)null, 28);
             Ui.Size(mute, width: 70);
             var muteText = mute.GetComponentInChildren<Text>();
             if (muteText != null) { muteText.font = Ui.TitleFont; if (value == 0) muteText.color = Palette.TextDim; }
             Ui.Size(Ui.Label(row, name, 26), width: 140);
-            Ui.Size(Ui.Button(row, "−", () => { set(value - 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
+            Ui.Size(Ui.Button(row, "−", () => { set(value - 10); Replace(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             var g = Ui.Gauge(row, Palette.Ally, 22);
             Ui.Size(g.parent, flexibleWidth: 1);
             Ui.SetGauge(g, value / 100f);
-            Ui.Size(Ui.Button(row, "+", () => { set(value + 10); App.Show(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
+            Ui.Size(Ui.Button(row, "+", () => { set(value + 10); Replace(new SettingsScreen()); }, 60, fontSize: 30), width: 70);
             Ui.Size(Ui.Label(row, value.ToString(), 24, TextAnchor.MiddleRight), width: 60);
         }
 
@@ -282,7 +282,7 @@ namespace Game.Unity.Screens
                 string kind = k;
                 bool on = Ctx.NotifyOn(kind);
                 var row = Line(card, "鈴", T("ui.settings.notify." + kind), T("ui.settings.notifySub." + kind));
-                Toggle(row, on, () => { var end = Loading.Begin(); Ctx.SetNotify(kind, !on, () => { end(); App.Show(new SettingsScreen()); }); }); // 서버 저장을 기다림 (H5)
+                Toggle(row, on, () => { var end = Loading.Begin(); Ctx.SetNotify(kind, !on, () => { end(); Replace(new SettingsScreen()); }); }); // 서버 저장을 기다림 (H5)
             }
             Ui.Label(card, T("ui.settings.notifyNote"), 20, TextAnchor.MiddleLeft, Palette.TextDim);
         }
@@ -335,7 +335,7 @@ namespace Game.Unity.Screens
             Arrow(restore, "›", () =>
             {
                 if (Ctx.Store == null) return;
-                Ctx.Store.RestorePurchases(list => App.Show(new SettingsScreen(T("ui.settings.restored", list?.Count ?? 0))));
+                Ctx.Store.RestorePurchases(list => Replace(new SettingsScreen(T("ui.settings.restored", list?.Count ?? 0))));
             }, Ctx.Store != null && Ctx.Store.IsAvailable);
         }
 
@@ -347,7 +347,7 @@ namespace Game.Unity.Screens
             Arrow(guides, "›", () =>
             {
                 bool ok = Ctx.Do(Game.Flow.PlayerActionRunner.ResetGuides());
-                App.Show(new SettingsScreen(T(ok ? "ui.settings.guidesReset" : "ui.settings.guidesNone")));
+                Replace(new SettingsScreen(T(ok ? "ui.settings.guidesReset" : "ui.settings.guidesNone")));
             });
             foreach (var k in new[] { "contact", "terms", "privacy", "locationTerms" })
             {
@@ -392,7 +392,7 @@ namespace Game.Unity.Screens
             }
 
             var save = Line(card, "存", T("ui.settings.savePath"), Application.persistentDataPath);
-            Arrow(save, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Application.persistentDataPath; App.Show(new SettingsScreen(T("ui.settings.copied"))); });
+            Arrow(save, T("ui.settings.copy"), () => { GUIUtility.systemCopyBuffer = Application.persistentDataPath; Replace(new SettingsScreen(T("ui.settings.copied"))); });
             foreach (var kv in Ctx.ServiceChoices) Ui.Label(card, kv.Key + ": " + kv.Value, 20, TextAnchor.MiddleLeft, Palette.TextDim);
             Ui.Button(card, T("ui.settings.reset"), OnReset, 80, Palette.Danger, 26);
             _resetNote = Ui.Label(card, "", 22, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -488,7 +488,7 @@ namespace Game.Unity.Screens
             long since = Ctx.StartupRecord?.TermsAcceptedAtUnixSeconds ?? 0;
             if (since > 0) Line("ui.profile.since", System.DateTimeOffset.FromUnixTimeSeconds(since).ToLocalTime().ToString("yyyy.MM.dd"));
 
-            Ui.Button(body, T("ui.profile.toSettings"), () => App.Show(new SettingsScreen()), 76, fontSize: 26);
+            Ui.Button(body, T("ui.profile.toSettings"), () => Replace(new SettingsScreen()), 76, fontSize: 26);
         }
     }
 
