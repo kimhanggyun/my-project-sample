@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Game.Data.Defs;
 using Game.Economy;
@@ -28,6 +29,9 @@ namespace Game.Unity.Screens
         internal static int Zoom = 1;
         /// <summary>지도를 끌어 옮긴 양 (미터, 동 · 북). 0이면 내 위치가 가운데. [내 위치]로 되돌린다.</summary>
         internal static Vector2 PanM;
+        /// <summary>마지막으로 받은 지도 범위 (가운데 "위도,경도" · 반경 m). 꽂기 · 회수 뒤 다시 받을 때 같은 범위로.</summary>
+        private static string _viewAt;
+        private static long _viewRadiusM;
         private static float _pinch = 1f;
         /// <summary>지도 표시 (좌상단 체크, 2026-11-15 사용자: 아래 주변 부대 · 내 깃발 · 연합 칸 대신): 다른 유저 · 내 깃발 · 연합 깃발.</summary>
         internal static bool ShowOthers = true, ShowMine = true, ShowAlly = true;
@@ -341,14 +345,21 @@ namespace Game.Unity.Screens
 
             // 지도가 전부 (2026-11-15 사용자): 파란 원 안 = 깃발 꽂기, 내 깃발 · 그 땅 = 장수 회수 · 수입 · 더 꽂기, 남의 깃발 = 정보 · 공격. 아래 칸 없음 (알림은 토스트)
             if (Owners == null) Toast(map, ctx.T(loc != null ? "ui.terr.tapHint" : "ui.terr.tapHintNoLoc"));
-            ctx.LoadTerritory(res =>
+            // 보는 곳 주변만 받는다 (db.md 8.1): 화면 대각선 반 × 1.2. 옮기거나 확대하면 화면을 다시 그리며 새 범위로 받는다
+            float halfW = ViewMeters[Zoom] / 2f, halfH = halfW * MapHeight / widthPx;
+            _viewAt = center.ToString();
+            _viewRadiusM = (long)(Mathf.Sqrt(halfW * halfW + halfH * halfH) * 1.2f);
+            ctx.LoadTerritoryAround(_viewAt, _viewRadiusM, res =>
             {
                 if (map == null) return;
                 if (res == null) { Toast(map, ctx.T("ui.hire.failed")); return; }
                 bool first = Owners == null;
                 var owners = new Dictionary<string, TerritoryOwner>();
                 foreach (var o in res.Owners) owners[o.RegionId] = o;
+                // 주변만 받으므로 옮긴 곳의 깃발이 새로 올 수 있다: 보이는 깃발 목록이 바뀌었으면 다시 그린다 (같으면 그대로 — 끝없이 다시 그리지 않게)
+                bool changed = !first && (owners.Count != Owners.Count || !owners.Keys.All(Owners.ContainsKey));
                 Owners = owners;
+                if (changed) NamesFetched = false; // 새로 보인 깃발 주인 이름도 받고 (아래에서) 다시 그린다
                 if (!NamesFetched)
                 {
                     var ids = new List<string>();
@@ -357,7 +368,7 @@ namespace Game.Unity.Screens
                     ctx.LoadNames(ids, () => { if (root != null) app.ShowMain("territory"); });
                     return;
                 }
-                if (first) { app.ShowMain("territory"); return; }
+                if (first || changed) { app.ShowMain("territory"); return; }
             });
         }
 
@@ -368,7 +379,7 @@ namespace Game.Unity.Screens
         /// <param name="done">다시 받은 뒤 (그리기 전) — 로딩 끝내기 (H5).</param>
         private static void Reload(GameApp app, RectTransform root, System.Action done = null)
         {
-            app.Context.LoadTerritory(res =>
+            System.Action<TerritoryResponse> onLoaded = res =>
             {
                 done?.Invoke();
                 if (res != null)
@@ -378,7 +389,8 @@ namespace Game.Unity.Screens
                     Owners = owners;
                 }
                 if (root != null) app.ShowMain("territory");
-            });
+            };
+            if (_viewAt != null) app.Context.LoadTerritoryAround(_viewAt, _viewRadiusM, onLoaded); else app.Context.LoadTerritory(onLoaded);
         }
 
         /// <summary>깃발 수비 스냅샷의 병력 합.</summary>

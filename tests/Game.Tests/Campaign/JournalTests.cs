@@ -40,6 +40,7 @@ namespace Game.Tests.Campaign
             public void GetSharedReplay(string id, Action<SharedReplayResponse> done) { if (Down) done(null); else _inner.GetSharedReplay(id, done); }
             public void GetHireReplay(string id, Action<HireReplayResponse> done) { if (Down) done(null); else _inner.GetHireReplay(id, done); }
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
+            public void GetTerritoryAround(string at, long r, Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritoryAround(at, r, done); }
             public void GetProfile(Action<ProfileResponse> done) { if (Down) done(null); else _inner.GetProfile(done); }
             public void SetNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.SetNickname(n, done); }
             public void CheckNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.CheckNickname(n, done); }

@@ -695,6 +695,8 @@ namespace Game.Unity.Boot
 
         /// <summary>영토 주인 목록 (닿지 않으면 null, R-46).</summary>
         public void LoadTerritory(Action<TerritoryResponse> done) => Online.GetTerritory(done);
+        /// <summary>지도 보기: 보는 가운데("위도,경도") · 반경(m) 주변 + 내 깃발 + 연합원 깃발만 (db.md 8.1, 읽기 줄이기).</summary>
+        public void LoadTerritoryAround(string at, long radiusM, Action<TerritoryResponse> done) => Online.GetTerritoryAround(at, radiusM, done);
 
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47). 받기는 우편함에서.</summary>
         public void CollectTerritory(Action<MailListResponse> done) => Online.CollectTerritory(done);

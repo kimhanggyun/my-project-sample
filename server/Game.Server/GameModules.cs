@@ -60,6 +60,8 @@ namespace Game.Server
 
         /// <summary>영토 주인 목록 (R-46), 내 지역은 쌓인 수입까지 (R-47).</summary>
         TerritoryResponse Territory(string accountId);
+        /// <summary>지도 보기: at("위도,경도") · 반경 안 + 내 깃발 + 연합원 깃발. at이 없거나 반경이 <see cref="StrategyGameModule.MapNearMaxM"/>보다 크면 전체.</summary>
+        TerritoryResponse TerritoryAround(string accountId, string at, long radiusM);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47).</summary>
         /// <param name="regionId">이 지역 · 깃발만 (null = 모두).</param>
         MailListResponse CollectTerritory(string accountId, string regionId = null);
@@ -462,10 +464,25 @@ namespace Game.Server
 
         public AttendanceResponse CheckIn(string accountId) =>
             _store.WithAttendance(Code, accountId, rec => new DailyEconomy(_defs).CheckIn(rec, Now, m => _store.AddMail(Code, accountId, m)));
-        public TerritoryResponse Territory(string accountId)
+        public TerritoryResponse Territory(string accountId) => TerritoryAround(accountId, null, 0);
+
+        /// <summary>지도 주변 읽기 반경의 상한 (m). 이보다 넓게 보면(많이 축소) 전체를 읽는다 — 드문 경우.</summary>
+        public const long MapNearMaxM = 150_000;
+
+        public TerritoryResponse TerritoryAround(string accountId, string at, long radiusM)
         {
             var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
-            return _store.WithTerritory(Code, TerritoryScope.All(), owners => TerritoryLedger.View(_territory, owners, accountId, Now, who => AllianceBook.Of(alliances, who)));
+            return _store.WithTerritory(Code, MapScope(accountId, at, radiusM, alliances), owners => TerritoryLedger.View(_territory, owners, accountId, Now, who => AllianceBook.Of(alliances, who)));
+        }
+
+        /// <summary>지도 범위 (db.md 8.1 약한 곳 2): 보는 곳 주변 + 내 깃발 + 연합원 깃발 (멀리 있어도 연합 보기에 나오게).</summary>
+        internal TerritoryScope MapScope(string accountId, string at, long radiusM, Dictionary<string, Alliance> alliances)
+        {
+            if (_territory?.Flags == null || at == null || radiusM <= 0 || radiusM > MapNearMaxM || !Game.Foundation.Geo.GeoPoint.TryParse(at, out var p)) return TerritoryScope.All();
+            var scope = TerritoryScope.Owner(accountId).Or(TerritoryScope.Near(_territory.Flags, p, radiusM));
+            var mine = AllianceBook.Of(alliances, accountId);
+            if (mine?.Members != null) foreach (var m in mine.Members) if (m != accountId) scope = scope.Or(TerritoryScope.Owner(m));
+            return scope;
         }
 
         public AllianceListResponse Alliances(string accountId) => _territory == null ? new AllianceListResponse() : _store.WithAlliances(Code, a => AllianceBook.List(_territory, a, accountId));
