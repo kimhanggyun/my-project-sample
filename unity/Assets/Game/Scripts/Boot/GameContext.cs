@@ -535,6 +535,9 @@ namespace Game.Unity.Boot
         /// <summary>계정 삭제 요청이 있었는데 다시 들어와 취소됐다 (R-102, 서버가 /me에서 한 번 알려 줌).</summary>
         public event Action DeletionCancelled;
 
+        /// <summary>닉네임 미리 확인 (H7): 쓸 수 있는지만 묻고 저장하지 않는다. 서버가 없으면 null.</summary>
+        public void CheckNickname(string nickname, Action<NicknameResponse> done) => Online.CheckNickname(nickname, done);
+
         public void SetNickname(string nickname, Action<NicknameResponse> done) => Online.SetNickname(nickname, r =>
         {
             if (r != null && r.Ok) { Nickname = r.Nickname; if (AccountId != null) _names[AccountId] = r.Nickname; }

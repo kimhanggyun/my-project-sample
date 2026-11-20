@@ -513,6 +513,24 @@ namespace Game.Server.Tests
             Assert.False(names.Names.ContainsKey(bMe.AccountId)); // b는 아직 없음
         }
 
+        [Fact(DisplayName = "H7 닉네임 미리 확인: 인증 없이 규칙 · 사용 중(대소문자 무시)을 알려 주고, 토큰이 있으면 내 이름은 쓸 수 있음. 저장하지 않는다")]
+        public async Task NicknameCheck()
+        {
+            var a = await SignedIn();
+            var anon = _factory.CreateClient();
+            string name = "C" + System.Guid.NewGuid().ToString("N").Substring(0, 6);
+            string Q(string n) => OnlineRoutes.NicknameCheck + "?name=" + System.Uri.EscapeDataString(n);
+            var free = await Read<NicknameResponse>(await anon.GetAsync(Q(name)));
+            Assert.True(free.Ok);
+            Assert.Null((await Read<ProfileResponse>(await a.GetAsync(OnlineRoutes.Me))).Nickname); // 확인은 저장하지 않음
+            Assert.Equal(NicknameRules.BadName, (await Read<NicknameResponse>(await anon.GetAsync(Q("!")))).Reason);
+            Assert.Equal(HttpStatusCode.OK, (await a.PostAsync(OnlineRoutes.MyNickname, Body(new NicknameRequest { Nickname = name }))).StatusCode);
+            var taken = await Read<NicknameResponse>(await anon.GetAsync(Q(name.ToLowerInvariant())));
+            Assert.False(taken.Ok);
+            Assert.Equal(NicknameRules.Taken, taken.Reason);
+            Assert.True((await Read<NicknameResponse>(await a.GetAsync(Q(name.ToLowerInvariant())))).Ok); // 내 이름
+        }
+
         [Fact(DisplayName = "R-102 계정 삭제: 요청하면 7일 뒤 삭제 시각, 그 안에 다시 들어오면(/me) 취소")]
         public async Task DeleteAccountCancel()
         {
