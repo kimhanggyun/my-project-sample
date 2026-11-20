@@ -39,6 +39,7 @@
 | [startup.md](design/content/startup.md) | 스플래시·로그인·약관 | 확정 |
 | [main-screen.md](design/content/main-screen.md) | 메인 화면: 상단 바, 띠 배너, 하단 탭 | 확정 |
 | [story.md](design/content/story.md) | 스토리 탭, 스텝, 대사, 출진 준비 | 확정 |
+| [tutorial.md](design/content/tutorial.md) | 튜토리얼 (스텝 3개로 해 보는 안내, H11) | 제안 |
 | [formation.md](design/content/formation.md) | 부대 편성, 초기 지급, 병력 관리 | 확정 |
 | [battle.md](design/content/battle.md) | 전투 (실시간 군단 지휘) | 확정 (수치 미결) |
 | [maps.md](design/content/maps.md) | 맵과 지형: 부품 목록, 높이, 맵 데이터, 유형 템플릿, 지형 변화, 제작 방식 | 뼈대 확정 (수치 미정) |
