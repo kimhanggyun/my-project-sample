@@ -102,7 +102,8 @@ namespace Game.Unity.Screens
             meCol.childAlignment = TextAnchor.UpperCenter;
             meCol.childForceExpandWidth = false;
             ProfilePhoto.Make(Ctx, me, 60);
-            var nick = Ui.Label(me, Ctx.Nickname ?? Ctx.GeneralName(Game.Flow.AvatarGeneral.GeneralId), 18, TextAnchor.MiddleCenter);
+            // 닉네임이 없으면 장수 이름("나") 대신 "닉네임 정하기" (계정마다 같은 "나"로 보여 중복처럼 보이던 것, 2026-11-17)
+            var nick = Ui.Label(me, Ctx.Nickname ?? T("ui.top.setNickname"), 18, TextAnchor.MiddleCenter, Ctx.Nickname == null ? Palette.Seal : Palette.Text);
             nick.horizontalOverflow = HorizontalWrapMode.Overflow;
             Ui.Size(nick, 22, 92);
             Ui.Background(me, new Color(0, 0, 0, 0));
