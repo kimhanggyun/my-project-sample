@@ -74,7 +74,10 @@ namespace Game.Unity.Boot
             shots.Add(("27c_shop_cash", () => { ShopTabView.Tab = ShopTabView.Cash; return new MainScreen("shop"); }, 0f));
             shots.Add(("28_main_pvp", () => new MainScreen("pvp"), 0f));
 
+            System.Action endLoading = null;
+            shots.Add(("29_loading", () => { endLoading = Game.Unity.UI.Loading.Begin(); return new MainScreen("territory"); }, 0.6f)); // 공통 로딩 표시 (H5): 0.25초 뒤 보임
             foreach (var s in shots) yield return Shot(s.name, s.make, s.wait);
+            endLoading?.Invoke();
             CodexScreen.Tab = "secrets";
             ReplayListScreen.Tab = "mine";
 
