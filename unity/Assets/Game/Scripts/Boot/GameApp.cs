@@ -286,6 +286,7 @@ namespace Game.Unity.Boot
             var safe = Ui.Panel(canvasGo.transform, "SafeArea");
             safe.gameObject.AddComponent<SafeAreaFitter>();
             _screenRoot = safe;
+            Loading.Attach(canvasGo.transform); // 공통 로딩 표시 (H5): 화면 위, 화면이 바뀌어도 남음
 
             if (FindAnyObjectByType<EventSystem>() == null)
             {
