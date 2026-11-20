@@ -86,6 +86,53 @@ namespace Game.Unity.Battle3D
         private readonly Dictionary<SubUnitState, (Vector3 prev, Vector3 cur)> _unitPos = new Dictionary<SubUnitState, (Vector3, Vector3)>();
         private readonly Dictionary<Color, Material> _lineMats = new Dictionary<Color, Material>();
         private int _flashFrame;
+        /// <summary>
+        /// 소부대 바닥 테두리 (H1, 2026-11-20 사용자 "아군 · 적 구분"): 병사 덩어리를 감싸는 편 색 사각형.
+        /// 서로 맞붙어 섞여도 어느 덩어리가 어느 편인지 바닥 선으로 갈린다. 빛 영향 없는 재질 (밤에도 선명).
+        /// </summary>
+        private readonly Dictionary<SubUnitState, (LineRenderer line, int frame)> _unitOutlines = new Dictionary<SubUnitState, (LineRenderer, int)>();
+        private int _outlineFrame;
+        private const float OutlineMargin = 0.2f;
+        private readonly Vector2[] _outlineCorners = new Vector2[4];
+        private const int OutlinePerSide = 4; // 한 변을 4토막 → 언덕에서도 땅을 따라감
+
+        private void DrawUnitOutline(SubUnitState u, int tone, Vector3 center, Quaternion rot, float halfW, float front, float back)
+        {
+            if (!_unitOutlines.TryGetValue(u, out var o) || o.line == null)
+                o.line = Line("UnitOutline", AllyColor, 0.06f, true, true);
+            var mat = UnlitMaterial(tone == Selected ? SelectedColor : tone == Ally ? AllyColor : EnemyColor);
+            if (o.line.sharedMaterial != mat) o.line.sharedMaterial = mat;
+            o.line.widthMultiplier = tone == Selected ? 0.09f : 0.06f;
+            o.frame = _outlineFrame;
+            _unitOutlines[u] = o;
+            var line = o.line;
+            if (!line.gameObject.activeSelf) line.gameObject.SetActive(true);
+            float x0 = -halfW - OutlineMargin, x1 = halfW + OutlineMargin, z0 = back - OutlineMargin, z1 = front + OutlineMargin;
+            var corners = _outlineCorners;
+            corners[0] = new Vector2(x0, z1); corners[1] = new Vector2(x1, z1); corners[2] = new Vector2(x1, z0); corners[3] = new Vector2(x0, z0);
+            line.positionCount = 4 * OutlinePerSide;
+            int k = 0;
+            for (int s = 0; s < 4; s++)
+            {
+                var a = corners[s];
+                var b = corners[(s + 1) % 4];
+                for (int t = 0; t < OutlinePerSide; t++)
+                {
+                    var q = Vector2.Lerp(a, b, t / (float)OutlinePerSide);
+                    var p = center + rot * new Vector3(q.x, 0f, q.y);
+                    p.y = GroundHeight(p.x, p.z) + 0.04f;
+                    line.SetPosition(k++, p);
+                }
+            }
+        }
+
+        /// <summary>이번 화면에서 그리지 않은 소부대(전멸 · 안 보임)의 테두리는 숨긴다.</summary>
+        private void HideStaleOutlines()
+        {
+            foreach (var kv in _unitOutlines)
+                if (kv.Value.frame != _outlineFrame && kv.Value.line != null && kv.Value.line.gameObject.activeSelf)
+                    kv.Value.line.gameObject.SetActive(false);
+        }
         private readonly Transform _ring;
         /// <summary>선택 표시: 꽉 찬 원판 대신 테두리만 (병사가 가려지지 않게).</summary>
         private readonly LineRenderer _ringLine;
@@ -853,10 +900,13 @@ namespace Game.Unity.Battle3D
             float clock = Effects.Clock;
             if (fxDelta > 0f) _flashFrame++;
             foreach (var b in _allSoldierBatches) b.Matrices.Clear();
+            _outlineFrame++;
             foreach (var c in ctx.Corps)
             {
                 if (!c.InBattle || !_ctl.Sees(c)) continue;
-                int teamColor = c == _ctl.Selected ? Selected : c.Team == _ctl.Team ? Ally : Enemy;
+                // 고른 군단도 병사는 편 색 그대로 (투구 색으로 편 구분), 고름 표시는 노란 바닥 테두리 · 링 (H1 2026-11-20)
+                int teamColor = c.Team == _ctl.Team ? Ally : Enemy;
+                int outlineColor = c == _ctl.Selected ? Selected : teamColor;
                 // 몸 상태 (D18): 사기가 퇴각 기준 + 15 밑이면 바랜 색·떨림, 숨은 아군은 어둡고 성기게
                 bool shaken = c.Temperament != null && c.Morale <= c.Temperament.RetreatMorale + Fix.FromInt(15);
                 bool hidden = c.Team == _ctl.Team && (c.Hidden || c.HasStatus(StatusIds.AmbushSetup));
@@ -911,6 +961,8 @@ namespace Game.Unity.Battle3D
                     }
                     _shownSoldiers[u] = n;
                     int rowsNow = (int)((n + side - 1) / side);
+                    if (!hidden && n > 0)
+                        DrawUnitOutline(u, outlineColor, center, rot, rowsNow > 1 ? halfW : (n - 1) * SoldierSpacing / 2f, frontZ, frontZ - (rowsNow - 1) * SoldierSpacing);
                     for (int i = 0; i < n; i++)
                     {
                         int row = i / side, col = i % side;
@@ -945,6 +997,7 @@ namespace Game.Unity.Battle3D
                     foreach (var gb in GeneralBatches(c.Setup.Role == Game.Battle.Model.Simulation.CorpsRoles.Commander, teamColor, mount)) gb.Add(gp, rot);
                 }
             }
+            HideStaleOutlines();
             DrawDying(clock);
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
             _fallen?.Draw(Rig.Camera);
