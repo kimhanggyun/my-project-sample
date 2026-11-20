@@ -31,6 +31,8 @@ namespace Game.Server
         NicknameResponse SetNickname(string accountId, string nickname);
         /// <summary>계정 등급 (H8, <see cref="AccountRoles"/>, 일반 = null). 설정 마스터는 여기 없고 MasterAccounts가 따로 본다.</summary>
         string RoleOf(string accountId);
+        /// <summary>마지막 접속 시각 남기기 (관리자 페이지 표시용, /v1/me 때). 지난 기록이 <see cref="AccountActivity.TouchEverySeconds"/> 안이면 쓰지 않는다 (쓰기 줄이기).</summary>
+        void Touch(string accountId, long nowUnixSeconds);
         /// <summary>등급 정하기 (null = 일반). 없는 계정이면 false.</summary>
         bool SetRole(string accountId, string role);
         /// <summary>미리 확인 (H7): SetNickname과 같은 규칙 · 같은 겹침 검사, 저장은 하지 않는다. accountId(없어도 됨)의 지금 이름은 겹침으로 치지 않는다.</summary>
@@ -137,6 +139,13 @@ namespace Game.Server
         List<AdminAccount> AdminAccounts();
     }
 
+    /// <summary>계정 활동 기록 (관리자 표시용).</summary>
+    public static class AccountActivity
+    {
+        /// <summary>마지막 접속 시각은 이만큼 지나야 다시 쓴다 (10분).</summary>
+        public const long TouchEverySeconds = 600;
+    }
+
     /// <summary>개발용 메모리 저장소 (공통 + 게임별을 한 객체에). 테스트·로컬 실행용.</summary>
     public class InMemoryStore : IStore
     {
@@ -163,6 +172,8 @@ namespace Game.Server
             public Dictionary<string, long> Deletions { get; set; } = new Dictionary<string, long>();
             /// <summary>계정 → 등급 (H8, 일반은 적지 않음).</summary>
             public Dictionary<string, string> Roles { get; set; } = new Dictionary<string, string>();
+            /// <summary>계정 → 마지막 접속 시각 (/v1/me, 관리자 표시용).</summary>
+            public Dictionary<string, long> LastSeen { get; set; } = new Dictionary<string, long>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
             public Dictionary<string, Dictionary<string, CloudSave>> Saves { get; set; } = new Dictionary<string, Dictionary<string, CloudSave>>();
             /// <summary>게임 코드 → 고용 등록 목록.</summary>
@@ -317,6 +328,7 @@ namespace Game.Server
                 Drop(Data.Memberships, (k, v) => gone.Contains(k));
                 Drop(Data.Deletions, (k, v) => gone.Contains(k));
                 if (Data.Roles != null) Drop(Data.Roles, (k, v) => gone.Contains(k));
+                if (Data.LastSeen != null) Drop(Data.LastSeen, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Saves.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Mail.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.HireLogs.Values) Drop(g, (k, v) => gone.Contains(k));
@@ -386,6 +398,19 @@ namespace Game.Server
         public string EmailOf(string accountId)
         {
             lock (Fresh()) return Data.Emails != null && accountId != null && Data.Emails.TryGetValue(accountId, out var e) ? e : null;
+        }
+
+        public void Touch(string accountId, long nowUnixSeconds)
+        {
+            if (accountId == null) return;
+            lock (Fresh())
+            {
+                if (!Data.Memberships.ContainsKey(accountId)) return;
+                if (Data.LastSeen == null) Data.LastSeen = new Dictionary<string, long>();
+                if (Data.LastSeen.TryGetValue(accountId, out var last) && nowUnixSeconds - last < AccountActivity.TouchEverySeconds) return;
+                Data.LastSeen[accountId] = nowUnixSeconds;
+                Persist();
+            }
         }
 
         public string RoleOf(string accountId)
@@ -742,6 +767,7 @@ namespace Game.Server
                         Games = new Dictionary<string, long>(kv.Value),
                         DeletionRequestedAtUnixSeconds = Data.Deletions != null && Data.Deletions.TryGetValue(kv.Key, out var d) ? d : 0,
                         Role = Data.Roles != null && Data.Roles.TryGetValue(kv.Key, out var role) ? role : null,
+                        LastSeenAtUnixSeconds = Data.LastSeen != null && Data.LastSeen.TryGetValue(kv.Key, out var seen) ? seen : 0,
                     });
                 list.Sort((a, b) => string.CompareOrdinal(a.AccountId, b.AccountId));
                 return list;

@@ -76,7 +76,7 @@
 
     <div id="tab-accounts" class="hidden">
       <div class="card">
-        <div class="row"><input id="accFilter" placeholder="계정 id · 닉네임 · 이메일 찾기" style="flex:1;min-width:200px"><span id="accCount" class="dim"></span></div>
+        <div class="row"><input id="accFilter" placeholder="계정 id · 닉네임 · 이메일 찾기" style="flex:1;min-width:200px"><select id="accRole"><option value="">등급 전부</option><option value="admin">관리자</option><option value="subAdmin">서브 관리자</option><option value="none">일반</option></select><select id="accSort"><option value="id">계정 id 순</option><option value="seen">최근 접속 순</option></select><span id="accCount" class="dim"></span></div>
         <div class="scroll"><table id="accTable"></table></div>
       </div>
       <div id="accDetail" class="card hidden"></div>
@@ -275,15 +275,19 @@
 
   function drawAccounts() {
     const q = $("accFilter").value.trim().toLowerCase();
-    const list = accounts.filter(a => !q || [a.AccountId, a.Nickname, a.Email].some(x => x && x.toLowerCase().includes(q)));
+    const role = $("accRole").value;
+    const list = accounts.filter(a => (!q || [a.AccountId, a.Nickname, a.Email].some(x => x && x.toLowerCase().includes(q)))
+      && (!role || (role === "none" ? !a.Role : a.Role === role)));
+    if ($("accSort").value === "seen") list.sort((x, y) => (y.LastSeenAtUnixSeconds || 0) - (x.LastSeenAtUnixSeconds || 0));
     $("accCount").textContent = list.length + " / " + accounts.length + "명";
     const t = $("accTable"); t.innerHTML = "";
-    t.append(el("tr", null, ...["계정 id", "닉네임", "이메일", "구글", "가입한 게임", "삭제 요청", "등급"].map(h => el("th", null, h))));
+    t.append(el("tr", null, ...["계정 id", "닉네임", "이메일", "구글", "가입한 게임", "마지막 접속", "삭제 요청", "등급"].map(h => el("th", null, h))));
     for (const a of list) {
       const games = Object.entries(a.Games || {}).map(([g, at]) => g + " (" + time(at) + ")").join(", ");
       t.append(el("tr", { class: "click", onclick: () => detail(a.AccountId) },
         el("td", null, a.AccountId), el("td", null, a.Nickname || "-"), el("td", null, a.Email || "-"),
         el("td", { class: a.Linked ? "good" : "dim" }, a.Linked ? "연동" : "게스트"), el("td", null, games || "-"),
+        el("td", { class: a.LastSeenAtUnixSeconds ? "" : "dim" }, a.LastSeenAtUnixSeconds ? time(a.LastSeenAtUnixSeconds) : "-"),
         el("td", { class: a.DeletionRequestedAtUnixSeconds ? "bad" : "dim" }, a.DeletionRequestedAtUnixSeconds ? time(a.DeletionRequestedAtUnixSeconds) : "-"),
         el("td", { onclick: e => e.stopPropagation() }, roleCell(a))));
     }
@@ -303,13 +307,19 @@
     return el("span", null, sel, save, msg);
   }
   $("accFilter").addEventListener("input", drawAccounts);
+  $("accRole").addEventListener("change", drawAccounts);
+  $("accSort").addEventListener("change", drawAccounts);
 
   async function detail(id) {
     const d = (await api("/v1/admin/games/" + $("game").value + "/accounts/" + encodeURIComponent(id))).data;
     const box = $("accDetail"); box.innerHTML = ""; box.classList.remove("hidden");
     const mail = (d.Mail || []).map(m => el("li", null, (m.Kind || "") + " · " + (RES[m.Resource] || m.Resource || "") + " " + num(m.Amount) + (m.RegionId ? " · " + m.RegionId : "") + (m.Note ? " · " + m.Note : "") + " · " + time(m.CreatedAtUnixSeconds)));
+    const who = accounts.find(x => x.AccountId === id) || {};
     box.append(el("h2", null, id),
       el("dl", null,
+        el("dt", null, "닉네임"), el("dd", null, who.Nickname || "-"),
+        el("dt", null, "등급"), el("dd", null, roleName(who.Role) + (who.Fixed ? " (처음 · 고정)" : "")),
+        el("dt", null, "마지막 접속"), el("dd", null, who.LastSeenAtUnixSeconds ? time(who.LastSeenAtUnixSeconds) : "-"),
         el("dt", null, "세이브 판"), el("dd", null, d.Revision || "(없음)"),
         el("dt", null, "저장 시각"), el("dd", null, time(d.SavedAtUnixSeconds)),
         el("dt", null, "지갑"), el("dd", null, wallet(d.Wallet)),
