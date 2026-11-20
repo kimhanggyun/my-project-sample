@@ -254,6 +254,8 @@ namespace Game.Server
         public string Role { get; set; }
         /// <summary>설정 Game:Masters의 처음 관리자 (등급을 바꿀 수 없음).</summary>
         public bool Fixed { get; set; }
+        /// <summary>마지막 접속 시각 (앱이 /v1/me를 부른 때, 10분 단위, 0 = 기록 없음).</summary>
+        public long LastSeenAtUnixSeconds { get; set; }
     }
 
     /// <summary>계정 등급 정하기 (H8). Role = admin · subAdmin · null/빈 글(일반).</summary>

@@ -39,6 +39,11 @@ namespace Game.Server.Tests
             string nick = "n" + Guid.NewGuid().ToString("N").Substring(0, 6);
             Assert.True(s.SetNickname(guest.AccountId, nick).Ok);
             Assert.Equal(NicknameRules.Taken, s.SetNickname(first.AccountId, nick.ToUpperInvariant()).Reason);
+            s.Touch(guest.AccountId, 1000); // 마지막 접속: 10분 안의 다시 부름은 쓰지 않음
+            s.Touch(guest.AccountId, 1000 + AccountActivity.TouchEverySeconds - 1);
+            Assert.Equal(1000, s.AdminAccounts().Single(a => a.AccountId == guest.AccountId).LastSeenAtUnixSeconds);
+            s.Touch(guest.AccountId, 1000 + AccountActivity.TouchEverySeconds);
+            Assert.Equal(1000 + AccountActivity.TouchEverySeconds, s.AdminAccounts().Single(a => a.AccountId == guest.AccountId).LastSeenAtUnixSeconds);
             Assert.Null(s.RoleOf(guest.AccountId)); // H8 등급
             Assert.True(s.SetRole(guest.AccountId, AccountRoles.SubAdmin));
             Assert.Equal(AccountRoles.SubAdmin, s.RoleOf(guest.AccountId));

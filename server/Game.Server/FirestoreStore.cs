@@ -120,6 +120,8 @@ namespace Game.Server
             public List<string> Providers { get; set; } = new List<string>();
             /// <summary>등급 (H8, 일반 = null).</summary>
             public string Role { get; set; }
+            /// <summary>마지막 접속 시각 (/v1/me, 관리자 표시용).</summary>
+            public long LastSeenAt { get; set; }
         }
 
         private AccountDoc ReadAccount(string a) => a == null ? null : FromJ<AccountDoc>(Read(Account(a)));
@@ -235,6 +237,21 @@ namespace Game.Server
 
         public string RoleOf(string accountId) => ReadAccount(accountId)?.Role;
 
+        public void Touch(string accountId, long nowUnixSeconds)
+        {
+            if (accountId == null) return;
+            var seen = ReadAccount(accountId); // 트랜잭션 밖에서 먼저 보고, 쓸 때만 트랜잭션 (대부분은 읽기 한 번으로 끝)
+            if (seen == null || nowUnixSeconds - seen.LastSeenAt < AccountActivity.TouchEverySeconds) return;
+            Atomic(() =>
+            {
+                var acct = ReadAccount(accountId);
+                if (acct == null || nowUnixSeconds - acct.LastSeenAt < AccountActivity.TouchEverySeconds) return 0;
+                acct.LastSeenAt = nowUnixSeconds;
+                PutAccount(accountId, acct);
+                return 0;
+            });
+        }
+
         public bool SetRole(string accountId, string role)
         {
             if (accountId == null || !AccountRoles.IsValid(role)) return false;
@@ -346,6 +363,7 @@ namespace Game.Server
                     Games = new Dictionary<string, long>(acct.Games),
                     DeletionRequestedAtUnixSeconds = acct.DeletionAt,
                     Role = acct.Role,
+                    LastSeenAtUnixSeconds = acct.LastSeenAt,
                 });
             }
             list.Sort((x, y) => string.CompareOrdinal(x.AccountId, y.AccountId));
@@ -621,6 +639,7 @@ namespace Game.Server
             foreach (var kv in s.Nicknames ?? new Dictionary<string, string>()) Acct(kv.Key).Nickname = kv.Value;
             foreach (var kv in s.Deletions ?? new Dictionary<string, long>()) Acct(kv.Key).DeletionAt = kv.Value;
             foreach (var kv in s.Roles ?? new Dictionary<string, string>()) Acct(kv.Key).Role = kv.Value;
+            foreach (var kv in s.LastSeen ?? new Dictionary<string, long>()) Acct(kv.Key).LastSeenAt = kv.Value;
             foreach (var kv in s.External ?? new Dictionary<string, string>())
             {
                 string provider = kv.Key.Contains(':') ? kv.Key.Substring(0, kv.Key.IndexOf(':')) : kv.Key;
