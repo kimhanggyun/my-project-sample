@@ -124,3 +124,4 @@
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — firestore-migrate 워크플로 고침: store 폴더를 절대 경로로 (dotnet run이 작업 폴더를 바꿔 store.json을 못 찾던 것)
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — 시작 때 버전 · 점검 확인이 늘 건너뛰어지던 것 고침 (GameApp이 서버 없음으로 고정). 온라인이 켜져 있으면 /v1/status · /content를 받는다
 - 2026-11-17 [원격] claude/account-roles — H8 계정 등급: admin · subAdmin · 일반 (저장소 폴더 · Firestore), 설정 마스터 = 처음 관리자 고정, 서브 관리자 = 보기 · 우편 · 공지만, 관리자 [계정 · 세이브] 등급 칸, /v1/me Role, 권한 표 admin.md 5장 (사용자 확인)
+- 2026-11-17 [데스크탑] backlog H: 사용자 요구 정리 (전투씬 세부 · 로딩 표시 · 추가 파견 체크 · 닉네임 · 관리자 등급 · 상품 표출 · 스토리 숨김 · 튜토리얼)
