@@ -92,10 +92,16 @@ namespace Game.Unity.Battle3D
         private const int RingSegments = 40;
         private const float RingRadius = 1.8f;
         // 바닥 링 게이지 (18·19 시안): 고른 군단 = 바깥 병력(초록 남음 · 붉은 잃음) + 안 사기(주황), 다른 우리 군단 = 가는 병력 고리
-        private static readonly Color GaugeTroops = new Color(0.25f, 0.68f, 0.3f);
-        private static readonly Color GaugeLost = new Color(0.62f, 0.2f, 0.16f);
-        private static readonly Color GaugeMorale = new Color(0.93f, 0.62f, 0.18f);
-        private static readonly Color GaugeBack = new Color(0.18f, 0.2f, 0.16f);
+        private static readonly Color GaugeTroops = new Color(0.3f, 0.78f, 0.36f);
+        private static readonly Color GaugeLost = new Color(0.78f, 0.27f, 0.2f);
+        private static readonly Color GaugeMorale = new Color(0.97f, 0.66f, 0.2f);
+        private static readonly Color GaugeBack = new Color(0.16f, 0.17f, 0.15f);
+        /// <summary>이만큼 멀리 축소하면 링 대신 깃발 옆 작은 병력 막대 (18·19 시안 "많이 축소했을 때").</summary>
+        public const float FarDistance = 42f;
+        /// <summary>많이 축소한 상태 (화면이 깃발 막대를 그린다).</summary>
+        public bool Far => Rig != null && Rig.Distance >= FarDistance;
+        /// <summary>고른 군단의 남은 길 끝 (월드, 없으면 null) — 화면이 경로 끝 꼬리표를 단다.</summary>
+        public Vector3? PathEnd { get; private set; }
         private LineRenderer _gaugeLost, _gaugeTroops, _gaugeMoraleBack, _gaugeMorale;
         private readonly Dictionary<CorpsState, (LineRenderer lost, LineRenderer troops)> _allyGauges = new Dictionary<CorpsState, (LineRenderer, LineRenderer)>();
         // 남은 이동 경로 = 파란 점선 (18·19 시안 mock_path)
@@ -185,10 +191,10 @@ namespace Game.Unity.Battle3D
             _ringLine = Line("SelectRing", SelectedColor, 0.12f, true);
             _ringLine.positionCount = RingSegments;
             _ringLine.gameObject.SetActive(false); // 바닥 링 게이지로 바꿈
-            _gaugeLost = Line("GaugeLost", GaugeLost, 0.2f, false);
-            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.2f, false);
-            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.14f, false);
-            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.14f, false);
+            _gaugeLost = Line("GaugeLost", GaugeLost, 0.2f, false, true);
+            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.2f, false, true);
+            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.14f, false, true);
+            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.14f, false, true);
             _cylinder = cylinder;
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _objAlly = Own(NewMaterial(AllyColor));
@@ -581,8 +587,9 @@ namespace Game.Unity.Battle3D
             var sel = _ctl.Selected;
             bool ring = sel != null && sel.InBattle;
             // 바닥 링 게이지: 고른 군단 (바깥 병력 · 안 사기)
-            foreach (var l in new[] { _gaugeLost, _gaugeTroops, _gaugeMoraleBack, _gaugeMorale }) l.gameObject.SetActive(ring);
-            if (ring)
+            bool gauge = ring && !Far; // 많이 축소하면 링 대신 깃발 막대 (화면)
+            foreach (var l in new[] { _gaugeLost, _gaugeTroops, _gaugeMoraleBack, _gaugeMorale }) l.gameObject.SetActive(gauge);
+            if (gauge)
             {
                 var center = ToWorld(sel.Anchor) + new Vector3(0f, 0.08f, 0f);
                 float troops = sel.StartTroops > 0 ? Mathf.Clamp01((float)sel.Troops / sel.StartTroops) : 0f;
@@ -595,11 +602,11 @@ namespace Game.Unity.Battle3D
             // 다른 우리 군단: 가는 병력 고리 (남음 초록 · 잃음 붉은)
             foreach (var c in ctx.Corps)
             {
-                bool show = c.InBattle && c.Team == _ctl.Team && c != sel;
+                bool show = c.InBattle && c.Team == _ctl.Team && c != sel && !Far;
                 if (!_allyGauges.TryGetValue(c, out var g))
                 {
                     if (!show) continue;
-                    g = _allyGauges[c] = (Line("AllyLost " + c.Id, GaugeLost, 0.1f, false), Line("AllyTroops " + c.Id, GaugeTroops, 0.1f, false));
+                    g = _allyGauges[c] = (Line("AllyLost " + c.Id, GaugeLost, 0.1f, false, true), Line("AllyTroops " + c.Id, GaugeTroops, 0.1f, false, true));
                 }
                 g.lost.gameObject.SetActive(show);
                 g.troops.gameObject.SetActive(show);
@@ -636,6 +643,7 @@ namespace Game.Unity.Battle3D
             for (; wi < _waypoints.Count; wi++) _waypoints[wi].gameObject.SetActive(false);
             _path.positionCount = 0; // 실선 대신 점선 조각들
             Dashes(_pathPoints);
+            PathEnd = _pathPoints.Count >= 2 ? _pathPoints[_pathPoints.Count - 1] : (Vector3?)null;
 
             // 지정 중인 스킬의 사거리
             Fix? range = ring && _ctl.TargetingSkill != null && ctx.Defs.Skills.TryGetValue(_ctl.TargetingSkill, out var skill) ? skill.Range : null;
@@ -974,6 +982,22 @@ namespace Game.Unity.Battle3D
         /// 기본 재질(Resources/Materials/GameLit, URP Lit)을 복사해 색만 바꾼다. 재질 에셋을 Resources에 두어 빌드에 셰이더(인스턴싱 변형 포함)가 들어간다.
         /// 없으면 렌더 파이프라인 기본 재질 → 셰이더 이름 순으로 찾는다.
         /// </summary>
+        private static Material _unlitTemplate;
+        private readonly Dictionary<Color, Material> _unlitMats = new Dictionary<Color, Material>();
+
+        /// <summary>빛을 받지 않는 재질 (Resources/Materials/GameUnlit = URP Unlit). 없으면 보통 재질.</summary>
+        private Material UnlitMaterial(Color color)
+        {
+            if (_unlitMats.TryGetValue(color, out var m)) return m;
+            if (_unlitTemplate == null) _unlitTemplate = Resources.Load<Material>("Materials/GameUnlit");
+            if (_unlitTemplate == null) return LineMaterial(color);
+            m = Own(new Material(_unlitTemplate));
+            m.color = color;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
+            _unlitMats[color] = m;
+            return m;
+        }
+
         private static Material NewMaterial(Color color)
         {
             if (_template == null) _template = Resources.Load<Material>("Materials/GameLit");
@@ -1024,7 +1048,7 @@ namespace Game.Unity.Battle3D
                     if (phase < DashLen)
                     {
                         float d = Mathf.Min(DashLen - phase, len - s);
-                        if (used >= _dashes.Count) _dashes.Add(Line("Dash", DashColor, 0.16f, false));
+                        if (used >= _dashes.Count) _dashes.Add(Line("Dash", DashColor, 0.16f, false, true));
                         var line = _dashes[used++];
                         line.gameObject.SetActive(true);
                         line.positionCount = 2;
@@ -1049,12 +1073,15 @@ namespace Game.Unity.Battle3D
             return mat;
         }
 
-        private LineRenderer Line(string name, Color color, float width, bool loop)
+        /// <param name="unlit">빛 영향 없이 늘 같은 밝기 (표시용 게이지 · 경로, 저녁 · 밤에도 선명하게).</param>
+        private LineRenderer Line(string name, Color color, float width, bool loop, bool unlit = false)
         {
             var go = new GameObject(name);
             go.transform.SetParent(_root.transform, false);
             var line = go.AddComponent<LineRenderer>();
-            if (!_lineMats.TryGetValue(color, out var mat)) _lineMats[color] = mat = Own(NewMaterial(color));
+            Material mat;
+            if (unlit) mat = UnlitMaterial(color);
+            else if (!_lineMats.TryGetValue(color, out mat)) _lineMats[color] = mat = Own(NewMaterial(color));
             line.sharedMaterial = mat;
             line.widthMultiplier = width;
             line.loop = loop;

@@ -42,6 +42,8 @@ namespace Game.Unity.Screens
         private readonly Dictionary<CorpsState, Text> _flagLabels = new Dictionary<CorpsState, Text>();
         /// <summary>깃발 아래 사기 막대 (R-93 보이기): 채움, 채움 그림, 퇴각 기준 눈금.</summary>
         private readonly Dictionary<CorpsState, (RectTransform fill, Image img, RectTransform mark)> _moraleBars = new Dictionary<CorpsState, (RectTransform, Image, RectTransform)>();
+        /// <summary>많이 축소했을 때 깃발 아래 병력 막대 (우리 군단, 링 대신 — 18·19 시안).</summary>
+        private readonly Dictionary<CorpsState, (RectTransform bar, RectTransform fill)> _troopBars = new Dictionary<CorpsState, (RectTransform, RectTransform)>();
         private readonly Vector3[] _corners = new Vector3[4];
         private RadialMenu _radial;
         // 경유 표식 (4.3.5, R-70): 번호, 누르면 그 예약 취소, 끌면 옮김
@@ -266,6 +268,7 @@ namespace Game.Unity.Screens
                 label.horizontalOverflow = HorizontalWrapMode.Overflow;
                 _flagLabels[c] = label;
                 _moraleBars[c] = MoraleBar(label.rectTransform);
+                if (c.Team == _ctl.Team) _troopBars[c] = TroopBar(label.rectTransform);
             }
             _miniMap = new MiniMapView(_fieldArea, _ctl, _field, 220f);
             _radial = new RadialMenu(_fieldArea); // 군단 원형 메뉴 (battle.md 4.3.3)
@@ -1176,6 +1179,26 @@ namespace Game.Unity.Screens
             return (fill, img, mark);
         }
 
+        /// <summary>사기 막대 아래 병력 막대 (초록 남음 · 붉은 잃음), 많이 축소했을 때만 보임.</summary>
+        private static (RectTransform bar, RectTransform fill) TroopBar(RectTransform label)
+        {
+            var bar = Ui.Rect(label, "Troops");
+            bar.anchorMin = bar.anchorMax = new Vector2(0.5f, 0f);
+            bar.pivot = new Vector2(0.5f, 1f);
+            bar.sizeDelta = new Vector2(84f, 9f);
+            bar.anchoredPosition = new Vector2(0f, -13f);
+            var bg = Ui.Background(bar, new Color(0.78f, 0.27f, 0.2f, 0.9f));
+            bg.raycastTarget = false;
+            var fill = Ui.Rect(bar, "Fill");
+            fill.anchorMin = Vector2.zero;
+            fill.anchorMax = new Vector2(1f, 1f);
+            fill.offsetMin = fill.offsetMax = Vector2.zero;
+            var img = Ui.Background(fill, new Color(0.3f, 0.78f, 0.36f));
+            img.raycastTarget = false;
+            bar.gameObject.SetActive(false);
+            return (bar, fill);
+        }
+
         private static void UpdateMoraleBar(CorpsState c, (RectTransform fill, Image img, RectTransform mark) mb)
         {
             float m = Mathf.Clamp01((float)c.Morale.ToDisplayDouble() / 100f);
@@ -1278,6 +1301,7 @@ namespace Game.Unity.Screens
             var ctx = _sim.Context;
             var cam = _field.Rig.Camera;
             UpdateTroopChip(cam);
+            UpdatePathTag(cam);
             foreach (var kv in _flagLabels)
             {
                 var c = kv.Key;
@@ -1298,6 +1322,12 @@ namespace Game.Unity.Screens
                 kv.Value.text = name;
                 kv.Value.fontStyle = c == _ctl.Selected ? FontStyle.Bold : FontStyle.Normal;
                 if (_moraleBars.TryGetValue(c, out var mb)) UpdateMoraleBar(c, mb);
+                if (_troopBars.TryGetValue(c, out var tb))
+                {
+                    bool far = _field.Far;
+                    tb.bar.gameObject.SetActive(far);
+                    if (far) tb.fill.anchorMax = new Vector2(c.StartTroops > 0 ? Mathf.Clamp01((float)c.Troops / c.StartTroops) : 0f, 1f);
+                }
             }
         }
 
@@ -1650,6 +1680,51 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>그리는 중인 길 (자취 · 고른 점)을 전장 위 점으로.</summary>
+        private RectTransform _pathTag;
+        private Text _pathTagText;
+
+        /// <summary>
+        /// 경로 끝 꼬리표 (18·19 시안 mock_path): 고른 우리 군단의 남은 길 끝에 "명령 · 도착 약 m:ss".
+        /// 도착 시간은 기본 이동 속도(가장 느린 병종, 지형 · 날씨 · 진형 보정 빼고)로 어림 — 표시만, 규칙 계산 아님.
+        /// </summary>
+        private void UpdatePathTag(Camera cam)
+        {
+            var sel = _ctl.Selected;
+            var end = _field.PathEnd;
+            bool show = sel != null && sel.InBattle && sel.Team == _ctl.Team && end.HasValue && sel.Path != null && sel.PathIndex < sel.Path.Count;
+            Vector3 sp = show ? cam.WorldToScreenPoint(end.Value) : Vector3.zero;
+            show = show && sp.z > 0 && cam.pixelRect.Contains(sp);
+            if (_pathTag == null)
+            {
+                if (!show) return;
+                _pathTag = Ui.Rect(_fieldArea, "PathTag");
+                _pathTag.anchorMin = _pathTag.anchorMax = new Vector2(0.5f, 0.5f);
+                _pathTag.pivot = new Vector2(0.5f, 0f);
+                _pathTag.sizeDelta = new Vector2(320, 52);
+                var bg = Ui.Background(_pathTag, new Color(0.22f, 0.36f, 0.66f, 0.92f));
+                bg.sprite = UiShapes.Rounded(26);
+                bg.type = Image.Type.Sliced;
+                bg.raycastTarget = false;
+                _pathTagText = Ui.Label(_pathTag, "", 22, TextAnchor.MiddleCenter, Color.white);
+                _pathTagText.raycastTarget = false;
+                Ui.Fill(_pathTagText.rectTransform);
+            }
+            _pathTag.gameObject.SetActive(show);
+            if (!show) return;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local))
+                _pathTag.anchoredPosition = local + new Vector2(0, 24);
+            // 남은 길이 (칸) ÷ 기본 속도 (칸/초)
+            double cells = 0;
+            var at = sel.Anchor;
+            for (int i = sel.PathIndex; i < sel.Path.Count; i++) { var c = sel.Path[i].Center; cells += (c - at).Length.ToDisplayDouble(); at = c; }
+            double slowest = double.MaxValue;
+            foreach (var u in sel.Units) if (u.Alive) slowest = System.Math.Min(slowest, u.Troop.Stats.Get(Game.Battle.Model.Combat.StatIds.Speed).ToDisplayDouble());
+            double perSec = slowest == double.MaxValue ? 0 : _sim.Context.Combat.MoveCellsPerSecondAtSpeed50.ToDisplayDouble() * slowest / 50.0;
+            string eta = perSec > 0 ? T("ui.battle.eta", (int)(cells / perSec) / 60, ((int)(cells / perSec) % 60).ToString("00")) : "";
+            _pathTagText.text = OrderName(sel) + (eta.Length > 0 ? " · " + eta : "");
+            _pathTag.sizeDelta = new Vector2(Mathf.Max(200, _pathTagText.preferredWidth + 40), 52);
+        }
+
         private RectTransform _troopChip;
         private Text _troopChipText;
         private RectTransform _troopChipFill;
