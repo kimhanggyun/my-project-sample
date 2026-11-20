@@ -470,15 +470,15 @@ namespace Game.Unity.Screens
             {
                 string gid = c.GeneralId;
                 var g = ctx.State.FindGeneral(gid);
-                bool here = hereIds.Contains(gid);
-                bool elsewhere = !here && busyIds.Contains(gid);
-                bool cant = !here && !elsewhere && (g == null || !Game.Campaign.Roster.GeneralStatus.CanDeploy(g.Status));
-                bool busy = here || elsewhere || cant;
+                bool onThis = hereIds.Contains(gid);
+                bool elsewhere = !onThis && busyIds.Contains(gid);
+                bool cant = !onThis && !elsewhere && (g == null || !Game.Campaign.Roster.GeneralStatus.CanDeploy(g.Status));
+                bool busy = onThis || elsewhere || cant;
                 long troops = 0;
                 foreach (var p in c.Picks) troops += p.Troops;
-                string note = here ? ctx.T("ui.terr.onThisFlag") : elsewhere ? ctx.T(reinforce ? "ui.terr.onOtherFlag" : "ui.terr.onFlag") : cant ? ctx.T("ui.terr.cantDeploy") : ctx.T("ui.terr.troops", troops.ToString("N0"));
+                string note = onThis ? ctx.T("ui.terr.onThisFlag") : elsewhere ? ctx.T(reinforce ? "ui.terr.onOtherFlag" : "ui.terr.onFlag") : cant ? ctx.T("ui.terr.cantDeploy") : ctx.T("ui.terr.troops", troops.ToString("N0"));
                 string label = ctx.GeneralName(gid) + "  " + Ui.Colored(note, Palette.TextDim);
-                var row = Ui.CheckRow(content, label, here || _plantPick.Contains(gid), busy ? (System.Action)null : () =>
+                var row = Ui.CheckRow(content, label, onThis || _plantPick.Contains(gid), busy ? (System.Action)null : () =>
                 {
                     if (_plantPick.Contains(gid)) _plantPick.Remove(gid); else _plantPick.Add(gid);
                     close();
