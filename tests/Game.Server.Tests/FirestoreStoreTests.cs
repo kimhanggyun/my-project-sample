@@ -110,6 +110,49 @@ namespace Game.Server.Tests
             Assert.False(s.WithPush(g, a, p => p.Settings.AllyHelp));
         }
 
+        /// <summary>같은 영수증을 두 계정이 동시에: 하나만 저장 · 기록, 다른 하나는 receiptTaken (세이브도 그대로).</summary>
+        internal static void SameReceiptRace(IStore s, string g)
+        {
+            string tx = "tx-" + Guid.NewGuid().ToString("N");
+            var a = s.CreateGuest().AccountId;
+            var b = s.CreateGuest().AccountId;
+            Game.Flow.ReceiptRecord Rec(string who) => new Game.Flow.ReceiptRecord { TransactionId = tx, ProductId = "gem_pack_small", AccountId = who, Receipt = "fake:" + tx, AtUnixSeconds = 100 };
+            var gate = new System.Threading.ManualResetEventSlim(false);
+            var ta = System.Threading.Tasks.Task.Run(() => { gate.Wait(); return s.PutSaveWithReceipts(g, a, 0, "{\"a\":1}", 100, new[] { Rec(a) }); });
+            var tb = System.Threading.Tasks.Task.Run(() => { gate.Wait(); return s.PutSaveWithReceipts(g, b, 0, "{\"b\":1}", 100, new[] { Rec(b) }); });
+            gate.Set();
+            var ra = ta.GetAwaiter().GetResult();
+            var rb = tb.GetAwaiter().GetResult();
+            Assert.True(ra.ok ^ rb.ok, $"하나만 통과해야 함: a={ra.ok} b={rb.ok}");
+            var (winner, loser, lost) = ra.ok ? (a, b, rb) : (b, a, ra);
+            Assert.True(lost.receiptTaken);
+            Assert.Null(s.GetSave(g, loser)); // 진 쪽은 세이브도 쓰지 않음
+            Assert.NotNull(s.GetSave(g, winner));
+            Assert.Equal(winner, s.ReceiptOf(g, tx).AccountId);
+            // 같은 계정이 다시 내도 이미 쓴 거래
+            var again = s.PutSaveWithReceipts(g, winner, 1, "{}", 200, new[] { Rec(winner) });
+            Assert.True(again.receiptTaken);
+            Assert.Equal(1, s.GetSave(g, winner).Revision);
+            // 판 번호가 다르면 stale (영수증은 기록하지 않음)
+            string tx2 = tx + "b";
+            var stale = s.PutSaveWithReceipts(g, winner, 0, "{}", 200, new[] { new Game.Flow.ReceiptRecord { TransactionId = tx2, AccountId = winner } });
+            Assert.False(stale.ok);
+            Assert.False(stale.receiptTaken);
+            Assert.Null(s.ReceiptOf(g, tx2));
+        }
+
+        [FirestoreFact(DisplayName = "결제 한 트랜잭션 (backlog F): 같은 영수증을 두 계정이 동시에 내면 하나만 저장 · 기록, 판 번호가 다르면 기록 안 함 — Firestore")]
+        public void SameReceiptRaceFirestore() => SameReceiptRace(New(), G());
+
+        [Fact(DisplayName = "결제 한 트랜잭션 (backlog F): 같은 영수증을 두 계정이 동시에 내면 하나만 저장 · 기록, 판 번호가 다르면 기록 안 함 — 메모리 · 폴더 저장소")]
+        public void SameReceiptRaceMemory()
+        {
+            SameReceiptRace(new InMemoryStore(), G());
+            var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "store-" + Guid.NewGuid().ToString("N"));
+            try { SameReceiptRace(new FolderStore(dir), G()); }
+            finally { try { System.IO.Directory.Delete(dir, true); } catch (Exception) { } }
+        }
+
         [FirestoreFact(DisplayName = "Firestore 영토: 범위만 읽고 되쓰기, 트랜잭션 안에서 보낸 우편은 같이 반영, 연합 통째")]
         public void TerritoryAndAlliances()
         {

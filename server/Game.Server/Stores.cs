@@ -128,6 +128,12 @@ namespace Game.Server
         Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId);
         /// <summary>반영한 결제를 남긴다 (세이브 저장 뒤). 계정을 지워도 남긴다 (같은 거래를 다른 계정에서 다시 못 쓰게).</summary>
         void RecordReceipts(string gameCode, IEnumerable<Game.Flow.ReceiptRecord> records);
+        /// <summary>
+        /// 결제가 든 행동 묶음 저장 (backlog F, db.md 8.1 약한 곳 3): "아직 안 쓴 거래인지" 확인 · 세이브 저장 · 거래 기록을 **한 번에** (Firestore 트랜잭션 하나, 폴더는 잠금 하나).
+        /// 거래 중 하나라도 이미 기록돼 있으면 아무것도 쓰지 않고 receiptTaken = true (서로 다른 계정이 같은 영수증을 같은 순간에 내도 하나만 통과).
+        /// 판 번호가 다르면 PutSave와 같이 (false, 지금 세이브, false).
+        /// </summary>
+        (bool ok, CloudSave current, bool receiptTaken) PutSaveWithReceipts(string gameCode, string accountId, long baseRevision, string json, long nowUnixSeconds, IReadOnlyList<Game.Flow.ReceiptRecord> receipts);
         /// <summary>그 계정이 반영한 결제 (복원 · 관리용).</summary>
         List<Game.Flow.ReceiptRecord> ReceiptsOf(string gameCode, string accountId);
     }
@@ -652,6 +658,21 @@ namespace Game.Server
                 var r = use(p);
                 Persist();
                 return r;
+            }
+        }
+
+        public (bool ok, CloudSave current, bool receiptTaken) PutSaveWithReceipts(string gameCode, string accountId, long baseRevision, string json, long nowUnixSeconds, IReadOnlyList<Game.Flow.ReceiptRecord> receipts)
+        {
+            lock (Fresh())
+            {
+                var book = ReceiptBook(gameCode);
+                foreach (var r in receipts)
+                    if (r?.TransactionId != null && book.ContainsKey(r.TransactionId))
+                        return (false, GetSave(gameCode, accountId), true);
+                var (ok, current) = PutSave(gameCode, accountId, baseRevision, json, nowUnixSeconds);
+                if (!ok) return (false, current, false);
+                RecordReceipts(gameCode, receipts);
+                return (true, current, false);
             }
         }
 

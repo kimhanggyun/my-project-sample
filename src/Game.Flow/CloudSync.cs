@@ -463,6 +463,7 @@ namespace Game.Flow
         private Game.Territory.TerritoryDefs TerritoryData => _territory ?? (_territory = TerritoryBattles.TryLoad(_source));
 
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(TerritoryLedger.View(TerritoryData, _owners, AccountId, Now, a => AllianceBook.Of(_alliances, a)));
+        public void GetTerritoryAround(string at, long radiusM, Action<TerritoryResponse> done) => GetTerritory(done); // 가짜 서버는 깃발이 적어 전체
 
         /// <summary>닉네임 (가짜: 나 하나, 시장의 npc는 "상인").</summary>
         private string _nickname;

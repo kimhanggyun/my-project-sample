@@ -48,12 +48,12 @@ namespace Game.Unity.Screens
             input.onValueChanged.AddListener(text => { _pending = text; _wait = CheckDelay; });
             Ui.Size(Ui.Label(Root, "", Ui.FontSmall), flexibleHeight: 1);
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
-            Ui.Button(row, T("ui.nickname.save"), () => Ctx.SetNickname(input.text, r =>
+            Ui.Button(row, T("ui.nickname.save"), () => Ctx.SetNickname(input.text, Loading.Wrap<Game.Online.NicknameResponse>(r =>
             {
                 if (Root == null) return;
                 if (r != null && r.Ok) App.Show(new SettingsScreen());
                 else App.Show(new NicknameScreen(r == null ? T("ui.hire.failed") : T("ui.nickname." + r.Reason)));
-            }));
+            })));
         }
     }
 
@@ -188,12 +188,12 @@ namespace Game.Unity.Screens
 
         private void DoLogout(bool force)
         {
-            Ctx.LogOut(force, ok =>
+            Ctx.LogOut(force, Loading.Wrap<bool>(ok =>
             {
                 if (ok) { App.Reboot(); return; }
                 // 올리지 못한 기록이 있다: 그래도 지울지 묻는다
                 Ui.Confirm(Root, T("ui.settings.logout"), T("ui.settings.logoutPending"), T("ui.settings.logoutAnyway"), () => DoLogout(true), (T("ui.common.cancel"), () => { }));
-            });
+            }));
         }
 
         private void LinkGoogle() => LinkFlow.Run(App, Ctx, () => Root, reason => new SettingsScreen(T("ui.settings.link." + reason)));
@@ -223,10 +223,11 @@ namespace Game.Unity.Screens
             Ui.Button(row, T("ui.common.cancel"), () => Object.Destroy(dim.gameObject), 96, fontSize: 28);
             var go = Ui.Button(row, T("ui.settings.delete.button"), () =>
             {
+                var end = Loading.Begin(); // 삭제 요청 → 로그아웃까지 한 번에 (H5)
                 Ctx.RequestAccountDeletion(r =>
                 {
-                    if (r == null || !r.Ok) { App.Show(new SettingsScreen(T("ui.hire.failed"))); return; }
-                    Ctx.LogOut(true, _ => App.Reboot()); // 토큰까지 지워야 다시 시작할 때 /me가 삭제를 취소하지 않는다 (7일 안에 직접 로그인해야 취소)
+                    if (r == null || !r.Ok) { end(); App.Show(new SettingsScreen(T("ui.hire.failed"))); return; }
+                    Ctx.LogOut(true, _ => { end(); App.Reboot(); }); // 토큰까지 지워야 다시 시작할 때 /me가 삭제를 취소하지 않는다 (7일 안에 직접 로그인해야 취소)
                 });
             }, 96, Palette.Danger, 28);
             Ui.SetEnabled(go, false);
@@ -281,7 +282,7 @@ namespace Game.Unity.Screens
                 string kind = k;
                 bool on = Ctx.NotifyOn(kind);
                 var row = Line(card, "鈴", T("ui.settings.notify." + kind), T("ui.settings.notifySub." + kind));
-                Toggle(row, on, () => { Ctx.SetNotify(kind, !on); App.Show(new SettingsScreen()); });
+                Toggle(row, on, () => { var end = Loading.Begin(); Ctx.SetNotify(kind, !on, () => { end(); App.Show(new SettingsScreen()); }); }); // 서버 저장을 기다림 (H5)
             }
             Ui.Label(card, T("ui.settings.notifyNote"), 20, TextAnchor.MiddleLeft, Palette.TextDim);
         }
@@ -499,12 +500,12 @@ namespace Game.Unity.Screens
     {
         public static void Run(Game.Unity.Boot.GameApp app, Game.Unity.Boot.GameContext ctx, System.Func<RectTransform> root, System.Func<string, GameScreen> result)
         {
-            ctx.LinkGoogle(reason =>
+            ctx.LinkGoogle(Loading.Wrap<string>(reason =>
             {
                 if (reason != Game.Online.LinkReasons.Taken) { app.Show(result(reason)); return; }
                 Ui.Confirm(root(), ctx.T("ui.settings.switch.title"), ctx.T("ui.settings.switch.body"), ctx.T("ui.settings.switch.yes"),
-                    () => ctx.SwitchToGoogle(() => app.Reboot()), (ctx.T("ui.common.cancel"), () => { }));
-            });
+                    () => ctx.SwitchToGoogle(Loading.Wrap(() => app.Reboot())), (ctx.T("ui.common.cancel"), () => { }));
+            }));
         }
     }
 }

@@ -640,6 +640,18 @@ namespace Game.Server
             return result;
         });
 
+        public (bool ok, CloudSave current, bool receiptTaken) PutSaveWithReceipts(string gameCode, string accountId, long baseRevision, string json, long nowUnixSeconds, IReadOnlyList<Game.Flow.ReceiptRecord> receipts) => Atomic(() =>
+        {
+            // 읽기를 모두 먼저 (Firestore 트랜잭션: 쓰기 전에 읽기), 쓰기는 끝에 한 번에 — 같은 거래를 동시에 쓰려는 다른 트랜잭션이 있으면 Firestore가 한쪽을 다시 돌린다
+            foreach (var r in receipts)
+                if (r?.TransactionId != null && ReceiptOf(gameCode, r.TransactionId) != null)
+                    return (false, GetSave(gameCode, accountId), true);
+            var (ok, current) = PutSave(gameCode, accountId, baseRevision, json, nowUnixSeconds);
+            if (!ok) return (false, current, false);
+            RecordReceipts(gameCode, receipts);
+            return (true, current, false);
+        });
+
         public Game.Flow.ReceiptRecord ReceiptOf(string gameCode, string transactionId) =>
             transactionId == null ? null : FromJ<Game.Flow.ReceiptRecord>(Read(G(gameCode, "receipts").Document(Id(transactionId))));
 

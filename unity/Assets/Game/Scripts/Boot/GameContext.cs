@@ -212,10 +212,12 @@ namespace Game.Unity.Boot
         /// 시작 때 <see cref="SyncPushSettings"/>로 서버 값을 기기에 맞춘다 (다른 기기에서 바꾼 것).
         /// </summary>
         public bool NotifyOn(string kind) => !_saveStore.Exists(NotifyPrefix + kind) || _saveStore.Read(NotifyPrefix + kind) != "off";
-        public void SetNotify(string kind, bool on)
+        /// <param name="done">서버 저장이 끝나면 (오프라인이면 바로). 기기 값은 먼저 바뀐다.</param>
+        public void SetNotify(string kind, bool on, Action done = null)
         {
             _saveStore.Write(NotifyPrefix + kind, on ? "on" : "off");
-            if (OnlineEnabled) Online.SetPushSettings(LocalPushSettings(), _ => { });
+            if (OnlineEnabled) Online.SetPushSettings(LocalPushSettings(), _ => done?.Invoke());
+            else done?.Invoke();
         }
 
         private PushSettings LocalPushSettings() => new PushSettings
@@ -695,6 +697,8 @@ namespace Game.Unity.Boot
 
         /// <summary>영토 주인 목록 (닿지 않으면 null, R-46).</summary>
         public void LoadTerritory(Action<TerritoryResponse> done) => Online.GetTerritory(done);
+        /// <summary>지도 보기: 보는 가운데("위도,경도") · 반경(m) 주변 + 내 깃발 + 연합원 깃발만 (db.md 8.1, 읽기 줄이기).</summary>
+        public void LoadTerritoryAround(string at, long radiusM, Action<TerritoryResponse> done) => Online.GetTerritoryAround(at, radiusM, done);
 
         /// <summary>내 지역의 쌓인 수입을 우편으로 (R-47). 받기는 우편함에서.</summary>
         public void CollectTerritory(Action<MailListResponse> done) => Online.CollectTerritory(done);
