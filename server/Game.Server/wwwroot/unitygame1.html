@@ -142,7 +142,7 @@
     get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
     set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} },
   };
-  let adminKey = ss.get("adminKey"), token = ss.get("adminToken"), accounts = [];
+  let adminKey = ss.get("adminKey"), token = ss.get("adminToken"), accounts = [], myRole = null;
 
   function el(tag, attrs, ...kids) {
     const e = document.createElement(tag);
@@ -267,22 +267,40 @@
       el("dt", null, "마스터"), el("dd", null, st.Masters || "-"),
       el("dt", null, "결제 검증"), el("dd", null, st.ReceiptVerifier),
       el("dt", null, "Firebase 프로젝트"), el("dd", null, st.FirebaseProjectId || "-"),
-      el("dt", null, "나"), el("dd", null, st.You)));
+      el("dt", null, "나"), el("dd", null, st.You + " · " + roleName(st.YourRole))));
+    myRole = st.YourRole;
   }
+  // 계정 등급 (H8): 관리자 = 전부 · 등급 지정, 서브 관리자 = 보기 · 우편 · 공지만
+  const roleName = r => r === "admin" ? "관리자" : r === "subAdmin" ? "서브 관리자" : "일반";
 
   function drawAccounts() {
     const q = $("accFilter").value.trim().toLowerCase();
     const list = accounts.filter(a => !q || [a.AccountId, a.Nickname, a.Email].some(x => x && x.toLowerCase().includes(q)));
     $("accCount").textContent = list.length + " / " + accounts.length + "명";
     const t = $("accTable"); t.innerHTML = "";
-    t.append(el("tr", null, ...["계정 id", "닉네임", "이메일", "구글", "가입한 게임", "삭제 요청"].map(h => el("th", null, h))));
+    t.append(el("tr", null, ...["계정 id", "닉네임", "이메일", "구글", "가입한 게임", "삭제 요청", "등급"].map(h => el("th", null, h))));
     for (const a of list) {
       const games = Object.entries(a.Games || {}).map(([g, at]) => g + " (" + time(at) + ")").join(", ");
       t.append(el("tr", { class: "click", onclick: () => detail(a.AccountId) },
         el("td", null, a.AccountId), el("td", null, a.Nickname || "-"), el("td", null, a.Email || "-"),
         el("td", { class: a.Linked ? "good" : "dim" }, a.Linked ? "연동" : "게스트"), el("td", null, games || "-"),
-        el("td", { class: a.DeletionRequestedAtUnixSeconds ? "bad" : "dim" }, a.DeletionRequestedAtUnixSeconds ? time(a.DeletionRequestedAtUnixSeconds) : "-")));
+        el("td", { class: a.DeletionRequestedAtUnixSeconds ? "bad" : "dim" }, a.DeletionRequestedAtUnixSeconds ? time(a.DeletionRequestedAtUnixSeconds) : "-"),
+        el("td", { onclick: e => e.stopPropagation() }, roleCell(a))));
     }
+  }
+  // 등급 칸: 처음 관리자(서버 설정 마스터)는 고정, 관리자만 바꿀 수 있다 (서버도 확인)
+  function roleCell(a) {
+    if (a.Fixed) return el("span", { class: "good" }, "관리자 (처음 · 고정)");
+    if (myRole !== "admin") return el("span", null, roleName(a.Role));
+    const sel = el("select", null, ...[["", "일반"], ["subAdmin", "서브 관리자"], ["admin", "관리자"]].map(([v, n]) => { const o = el("option", { value: v }, n); if ((a.Role || "") === v) o.selected = true; return o; }));
+    const msg = el("span", null);
+    const save = el("button", { class: "sub", onclick: async () => {
+      const r = await api("/v1/admin/accounts/" + encodeURIComponent(a.AccountId) + "/role", { method: "POST", body: { Role: sel.value || null } });
+      msg.className = r.status === 200 ? "good" : "bad";
+      msg.textContent = r.status === 200 ? " 저장" : " 실패 (" + ((r.data && r.data.Reason) || r.status) + ")";
+      if (r.status === 200) a.Role = sel.value || null;
+    } }, "저장");
+    return el("span", null, sel, save, msg);
   }
   $("accFilter").addEventListener("input", drawAccounts);
 

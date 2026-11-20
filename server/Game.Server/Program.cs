@@ -34,6 +34,7 @@ builder.Services.AddSingleton(sp =>
 {
     var masters = MasterAccounts.Parse(builder.Configuration["Game:Masters"]);
     masters.EmailOf = id => sp.GetRequiredService<IPlatformStore>().EmailOf(id);
+    masters.StoredRole = id => sp.GetRequiredService<IPlatformStore>().RoleOf(id); // 관리자 페이지에서 정한 등급 (H8)
     return masters;
 });
 builder.Services.AddSingleton(sp => ServerSetup.Registry(builder.Configuration, sp.GetRequiredService<ITimeProvider>(), sp.GetRequiredService<IGameStore>(), sp.GetRequiredService<MasterAccounts>()));
@@ -69,7 +70,7 @@ app.MapGet("/v1/games/resolve", (string app, GameRegistry r) =>
 app.MapGet(OnlineRoutes.Me, (HttpRequest req, IPlatformStore p, MasterAccounts masters) =>
 {
     p.PurgeDeleted(Now());
-    return Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id), DeletionCancelled = p.CancelDeletion(id), Linked = p.IsLinked(id) }));
+    return Authed(req, p, id => Json(new ProfileResponse { AccountId = id, Nickname = p.NicknameOf(id), IsMaster = masters.Contains(id), Role = masters.RoleOf(id), DeletionCancelled = p.CancelDeletion(id), Linked = p.IsLinked(id) }));
 });
 // 구글 연동 (R-105): 게스트 계정에 구글을 붙인다. 그 구글이 이미 다른 계정 것이면 409 taken (진행을 섞지 않는다)
 app.MapPost(OnlineRoutes.LinkFirebase, async (HttpRequest req, IPlatformStore p, IServiceProvider sp) =>
@@ -370,6 +371,21 @@ namespace Game.Server
 
         /// <summary>계정 id → 확인된 이메일 (없으면 null). 정하지 않으면 이메일 항목은 맞지 않는다.</summary>
         public Func<string, string> EmailOf { get; set; }
+        /// <summary>계정 id → 저장소에 정한 등급 (H8, 없으면 null). 정하지 않으면 설정 마스터만.</summary>
+        public Func<string, string> StoredRole { get; set; }
+
+        /// <summary>
+        /// 관리자인가 (H8): 설정 마스터(처음 관리자) 또는 저장소 등급 admin. 개발 행동(R-86) · /me IsMaster · 관리자 페이지 전부.
+        /// </summary>
+        public bool Contains(string accountId) => IsFixed(accountId) || (accountId != null && StoredRole?.Invoke(accountId) == AccountRoles.Admin);
+
+        /// <summary>계정의 등급: 설정 마스터면 admin, 아니면 저장소 값 (일반 = null).</summary>
+        public string RoleOf(string accountId)
+        {
+            if (accountId == null) return null;
+            if (IsFixed(accountId)) return AccountRoles.Admin;
+            return StoredRole?.Invoke(accountId);
+        }
 
         public static MasterAccounts Parse(string csv)
         {
@@ -390,7 +406,8 @@ namespace Game.Server
             }
         }
 
-        public bool Contains(string accountId)
+        /// <summary>설정 Game:Masters에 있는 처음 관리자 (등급을 바꿀 수 없음).</summary>
+        public bool IsFixed(string accountId)
         {
             if (accountId == null) return false;
             lock (_lock)

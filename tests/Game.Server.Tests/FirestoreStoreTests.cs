@@ -39,6 +39,13 @@ namespace Game.Server.Tests
             string nick = "n" + Guid.NewGuid().ToString("N").Substring(0, 6);
             Assert.True(s.SetNickname(guest.AccountId, nick).Ok);
             Assert.Equal(NicknameRules.Taken, s.SetNickname(first.AccountId, nick.ToUpperInvariant()).Reason);
+            Assert.Null(s.RoleOf(guest.AccountId)); // H8 등급
+            Assert.True(s.SetRole(guest.AccountId, AccountRoles.SubAdmin));
+            Assert.Equal(AccountRoles.SubAdmin, s.RoleOf(guest.AccountId));
+            Assert.Contains(s.AdminAccounts(), a => a.AccountId == guest.AccountId && a.Role == AccountRoles.SubAdmin);
+            Assert.False(s.SetRole(guest.AccountId, "king"));
+            Assert.True(s.SetRole(guest.AccountId, null));
+            Assert.Null(s.RoleOf(guest.AccountId));
             Assert.Equal(NicknameRules.Taken, s.CheckNickname(first.AccountId, nick.ToUpperInvariant()).Reason); // H7 미리 확인 = 저장 때와 같은 검사
             Assert.True(s.CheckNickname(guest.AccountId, nick).Ok); // 내 이름
             Assert.True(s.CheckNickname(null, nick + "z").Ok);

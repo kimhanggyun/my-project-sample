@@ -29,6 +29,10 @@ namespace Game.Server
 
         /// <summary>닉네임 (공통 계정). 정하기: 규칙에 맞고 다른 계정과 겹치지 않을 때 (대소문자 무시). 내 이름을 그대로 다시 정하는 건 된다.</summary>
         NicknameResponse SetNickname(string accountId, string nickname);
+        /// <summary>계정 등급 (H8, <see cref="AccountRoles"/>, 일반 = null). 설정 마스터는 여기 없고 MasterAccounts가 따로 본다.</summary>
+        string RoleOf(string accountId);
+        /// <summary>등급 정하기 (null = 일반). 없는 계정이면 false.</summary>
+        bool SetRole(string accountId, string role);
         /// <summary>미리 확인 (H7): SetNickname과 같은 규칙 · 같은 겹침 검사, 저장은 하지 않는다. accountId(없어도 됨)의 지금 이름은 겹침으로 치지 않는다.</summary>
         NicknameResponse CheckNickname(string accountId, string nickname);
         string NicknameOf(string accountId);
@@ -157,6 +161,8 @@ namespace Game.Server
             public Dictionary<string, string> Nicknames { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → 삭제 요청 시각 (R-102).</summary>
             public Dictionary<string, long> Deletions { get; set; } = new Dictionary<string, long>();
+            /// <summary>계정 → 등급 (H8, 일반은 적지 않음).</summary>
+            public Dictionary<string, string> Roles { get; set; } = new Dictionary<string, string>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
             public Dictionary<string, Dictionary<string, CloudSave>> Saves { get; set; } = new Dictionary<string, Dictionary<string, CloudSave>>();
             /// <summary>게임 코드 → 고용 등록 목록.</summary>
@@ -310,6 +316,7 @@ namespace Game.Server
                 Drop(Data.Nicknames, (k, v) => gone.Contains(k));
                 Drop(Data.Memberships, (k, v) => gone.Contains(k));
                 Drop(Data.Deletions, (k, v) => gone.Contains(k));
+                if (Data.Roles != null) Drop(Data.Roles, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Saves.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.Mail.Values) Drop(g, (k, v) => gone.Contains(k));
                 foreach (var g in Data.HireLogs.Values) Drop(g, (k, v) => gone.Contains(k));
@@ -379,6 +386,24 @@ namespace Game.Server
         public string EmailOf(string accountId)
         {
             lock (Fresh()) return Data.Emails != null && accountId != null && Data.Emails.TryGetValue(accountId, out var e) ? e : null;
+        }
+
+        public string RoleOf(string accountId)
+        {
+            lock (Fresh()) return Data.Roles != null && accountId != null && Data.Roles.TryGetValue(accountId, out var r) ? r : null;
+        }
+
+        public bool SetRole(string accountId, string role)
+        {
+            if (accountId == null || !AccountRoles.IsValid(role)) return false;
+            lock (Fresh())
+            {
+                if (!Data.Memberships.ContainsKey(accountId)) return false;
+                if (Data.Roles == null) Data.Roles = new Dictionary<string, string>();
+                if (role == null) Data.Roles.Remove(accountId); else Data.Roles[accountId] = role;
+                Persist();
+                return true;
+            }
         }
 
         public NicknameResponse CheckNickname(string accountId, string nickname)
@@ -716,6 +741,7 @@ namespace Game.Server
                         Linked = linked.Contains(kv.Key),
                         Games = new Dictionary<string, long>(kv.Value),
                         DeletionRequestedAtUnixSeconds = Data.Deletions != null && Data.Deletions.TryGetValue(kv.Key, out var d) ? d : 0,
+                        Role = Data.Roles != null && Data.Roles.TryGetValue(kv.Key, out var role) ? role : null,
                     });
                 list.Sort((a, b) => string.CompareOrdinal(a.AccountId, b.AccountId));
                 return list;

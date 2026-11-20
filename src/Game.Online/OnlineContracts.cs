@@ -121,6 +121,22 @@ namespace Game.Online
         public bool DeletionCancelled { get; set; }
         /// <summary>외부 로그인(구글 등)이 붙어 있다 (R-105). false = 게스트 (이 기기에만 묶임).</summary>
         public bool Linked { get; set; }
+        /// <summary>계정 등급 (H8, <see cref="AccountRoles"/>): admin · subAdmin, 일반이면 null.</summary>
+        public string Role { get; set; }
+    }
+
+    /// <summary>
+    /// 계정 등급 (H8, admin.md 5장). 관리자(admin) = 관리자 페이지 전부 · 등급 지정 · 개발 행동(마스터, R-86).
+    /// 서브 관리자(subAdmin) = 관리자 페이지 보기 · 우편 · 공지(버전 · 점검)만, 개발 행동 없음. 일반 = null.
+    /// 서버 설정 Game:Masters의 계정은 처음 관리자로 언제나 admin (바꿀 수 없음).
+    /// </summary>
+    public static class AccountRoles
+    {
+        public const string Admin = "admin";
+        public const string SubAdmin = "subAdmin";
+
+        /// <summary>저장할 수 있는 값 (null = 일반).</summary>
+        public static bool IsValid(string role) => role == null || role == Admin || role == SubAdmin;
     }
 
     /// <summary>구글 연동 결과 (R-105).</summary>

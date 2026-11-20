@@ -38,10 +38,13 @@ namespace Game.Server
 
             // 키 확인만 (페이지 첫 칸): 맞으면 200 + 구글 로그인이 필요한지, 아니면 404
             app.MapPost(Prefix + "/key", (HttpRequest req) => KeyOk(req, key) ? Json(new AdminKeyResponse { Google = google }) : Results.NotFound());
-            IResult Guard(HttpRequest req, IStore store, MasterAccounts masters, Func<string, IResult> handle) => GuardWith(req, key, google, store, masters, handle);
+            // 관리자만 (H8): 설정 · 운영 켜고 끄기 · 등급 지정 · 푸시 등
+            IResult Guard(HttpRequest req, IStore store, MasterAccounts masters, Func<string, IResult> handle) => GuardWith(req, key, google, store, masters, handle, false);
+            // 서브 관리자도 (H8): 보기 · 우편 · 공지(버전 · 점검)
+            IResult GuardSub(HttpRequest req, IStore store, MasterAccounts masters, Func<string, IResult> handle) => GuardWith(req, key, google, store, masters, handle, true);
 
             app.MapGet(Prefix + "/status", (HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters, IServiceProvider sp) =>
-                Guard(req, store, masters, id => Json(new AdminStatus
+                GuardSub(req, store, masters, id => Json(new AdminStatus
                 {
                     NowUnixSeconds = Now(),
                     Revision = Environment.GetEnvironmentVariable("K_REVISION"),
@@ -52,16 +55,17 @@ namespace Game.Server
                     ReceiptVerifier = app.Configuration["Game:ReceiptVerifier"] ?? (string.Equals(app.Configuration["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase) ? "off" : "fake"),
                     FirebaseProjectId = app.Configuration["Game:Firebase:ProjectId"],
                     You = id,
+                    YourRole = id == KeyOnlyAdmin ? AccountRoles.Admin : masters.RoleOf(id),
                 })));
 
             // 버전 · 점검 안내 바꾸기 (R-118): 몸 = AdminStatusNotice. Clear면 지우고 서버 설정으로. 바꾼 뒤 지금 /v1/status 값을 돌려준다.
             var statusFromConfig = ServerStatus.FromConfig(app.Configuration);
             app.MapGet(Prefix + "/notice", (HttpRequest req, IStore store, MasterAccounts masters) =>
-                Guard(req, store, masters, _ => Json(new AdminStatusNotice { Current = ServerStatus.Current(statusFromConfig, store.StatusOverride(), Now()), Override = store.StatusOverride() })));
+                GuardSub(req, store, masters, _ => Json(new AdminStatusNotice { Current = ServerStatus.Current(statusFromConfig, store.StatusOverride(), Now()), Override = store.StatusOverride() })));
             app.MapPost(Prefix + "/notice", async (HttpRequest req, IStore store, MasterAccounts masters) =>
             {
                 var body = await Body<AdminStatusNotice>(req);
-                return Guard(req, store, masters, _ =>
+                return GuardSub(req, store, masters, _ =>
                 {
                     if (body == null) return Results.StatusCode(StatusCodes.Status422UnprocessableEntity);
                     store.SetStatusOverride(body.Clear ? null : body.Override);
@@ -98,10 +102,29 @@ namespace Game.Server
             });
 
             app.MapGet(Prefix + "/accounts", (HttpRequest req, IStore store, MasterAccounts masters) =>
-                Guard(req, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
+                GuardSub(req, store, masters, _ =>
+                {
+                    var list = store.AdminAccounts();
+                    foreach (var a in list) if (masters.IsFixed(a.AccountId)) { a.Fixed = true; a.Role = AccountRoles.Admin; }
+                    return Json(new AdminAccountList { Accounts = list });
+                }));
+
+            // 계정 등급 정하기 (H8): 관리자만. 몸 = { Role: "admin" | "subAdmin" | null(일반) }. 설정 마스터(처음 관리자)는 바꿀 수 없다 (422 fixed).
+            app.MapPost(Prefix + "/accounts/{account}/role", async (string account, HttpRequest req, IStore store, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminRoleRequest>(req);
+                return Guard(req, store, masters, _ =>
+                {
+                    string role = string.IsNullOrEmpty(body?.Role) ? null : body.Role;
+                    if (body == null || !AccountRoles.IsValid(role)) return Json(new AdminRoleResponse { Reason = "badRole" }, StatusCodes.Status422UnprocessableEntity);
+                    if (masters.IsFixed(account)) return Json(new AdminRoleResponse { Reason = "fixed", Role = AccountRoles.Admin }, StatusCodes.Status422UnprocessableEntity);
+                    if (!store.SetRole(account, role)) return Json(new AdminRoleResponse { Reason = "noAccount" }, StatusCodes.Status422UnprocessableEntity);
+                    return Json(new AdminRoleResponse { Ok = true, Reason = "ok", Role = role });
+                });
+            });
 
             app.MapGet(Prefix + "/games/{game}/accounts/{account}", (string game, string account, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
-                Guard(req, store, masters, _ =>
+                GuardSub(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     var save = store.GetSave(game, account);
@@ -129,7 +152,7 @@ namespace Game.Server
             app.MapPost(Prefix + "/games/{game}/mail", async (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
             {
                 var body = await Body<AdminMailRequest>(req);
-                return Guard(req, store, masters, _ =>
+                return GuardSub(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     if (body == null || !IsResource(body.Resource) || body.Amount <= 0 || body.Amount > MaxAmount)
@@ -156,7 +179,7 @@ namespace Game.Server
                 Guard(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(new AdminPushSweep { Sent = g.SweepIncomeFull() }) : Results.NotFound()));
 
             app.MapGet(Prefix + "/games/{game}/territory", (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
-                Guard(req, store, masters, _ =>
+                GuardSub(req, store, masters, _ =>
                 {
                     if (r.Find(game) == null) return Results.NotFound();
                     var res = new AdminTerritory();
@@ -179,7 +202,7 @@ namespace Game.Server
         }
 
         /// <summary>키 → 404, (구글 확인이 켜져 있으면) 토큰 없음 → 401, 마스터 아님 → 403, 통과면 처리. 구글 확인이 꺼져 있으면 처리 계정 = "admin-key".</summary>
-        private static IResult GuardWith(HttpRequest req, string key, bool google, IStore store, MasterAccounts masters, Func<string, IResult> handle)
+        private static IResult GuardWith(HttpRequest req, string key, bool google, IStore store, MasterAccounts masters, Func<string, IResult> handle, bool subOk)
         {
             if (!KeyOk(req, key)) return Results.NotFound();
             if (!google) return handle(KeyOnlyAdmin);
@@ -187,8 +210,8 @@ namespace Game.Server
             string token = auth.StartsWith("Bearer ", StringComparison.Ordinal) ? auth.Substring(7) : null;
             var id = store.AccountOf(token);
             if (id == null) return Results.Unauthorized();
-            if (!masters.Contains(id)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-            return handle(id);
+            if (masters.Contains(id) || (subOk && masters.RoleOf(id) == AccountRoles.SubAdmin)) return handle(id);
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         private static bool IsResource(string r) => r == ResourceIds.Supply || r == ResourceIds.Gold || r == ResourceIds.Gem;
@@ -227,6 +250,24 @@ namespace Game.Server
         public Dictionary<string, long> Games { get; set; } = new Dictionary<string, long>();
         /// <summary>삭제 요청 시각 (R-102, 0 = 없음).</summary>
         public long DeletionRequestedAtUnixSeconds { get; set; }
+        /// <summary>저장소에 정한 등급 (H8, 일반 = null). 설정 마스터면 관리자 페이지가 Fixed로 따로 받는다.</summary>
+        public string Role { get; set; }
+        /// <summary>설정 Game:Masters의 처음 관리자 (등급을 바꿀 수 없음).</summary>
+        public bool Fixed { get; set; }
+    }
+
+    /// <summary>계정 등급 정하기 (H8). Role = admin · subAdmin · null/빈 글(일반).</summary>
+    public sealed class AdminRoleRequest
+    {
+        public string Role { get; set; }
+    }
+
+    public sealed class AdminRoleResponse
+    {
+        public bool Ok { get; set; }
+        /// <summary>ok · badRole · fixed(설정 마스터) · noAccount.</summary>
+        public string Reason { get; set; }
+        public string Role { get; set; }
     }
 
     public sealed class AdminAccountList
@@ -340,5 +381,7 @@ namespace Game.Server
         public string ReceiptVerifier { get; set; }
         public string FirebaseProjectId { get; set; }
         public string You { get; set; }
+        /// <summary>들어온 사람의 등급 (H8): admin · subAdmin. 키만으로 들어오면(구글 확인 꺼짐) admin.</summary>
+        public string YourRole { get; set; }
     }
 }
