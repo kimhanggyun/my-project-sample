@@ -78,6 +78,8 @@ namespace Game.Flow
     public sealed class ReplayPlayback
     {
         public string Status { get; internal set; }
+        /// <summary>녹화의 스텝 (전투 화면 위 막대의 전투명, 2026-11-20 녹화 재생 오류).</summary>
+        public string StepId { get; internal set; }
         public BattleSetup Setup { get; internal set; }
         public List<BattleCommand> Commands { get; internal set; } = new List<BattleCommand>();
         public bool Ok => Status == ReplayStatus.Ok;
@@ -162,6 +164,7 @@ namespace Game.Flow
                 var copy = Copy(r);
                 _flow.ApplyStepRules(copy.Setup, _flow.LoadStep(r.StepId));
                 p.Setup = copy.Setup;
+                p.StepId = r.StepId;
                 p.Commands = StableByTick(copy.Commands);
                 p.Status = ReplayStatus.Ok;
             }

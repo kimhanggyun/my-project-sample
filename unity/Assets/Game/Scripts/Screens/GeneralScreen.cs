@@ -56,7 +56,8 @@ namespace Game.Unity.Screens
             var (header, body, _) = Ui.PageLayout(Root, 0);
 
             // ---- 머리: 공통 타이틀 "장수 카드" (오른쪽에 쪽 번호), 장수 영역 좌우에 ◀ ▶ ----
-            var gs = Ctx.State.Generals;
+            // 목록에서 고른 정렬 순서 그대로 (2026-11-20 사용자: 좌우로 갈 때 정렬이 안 맞던 것)
+            var gs = Game.Flow.GeneralRoster.Sorted(Ctx.Defs, Ctx.State.Generals, GeneralsTabView.Sort);
             int at = gs.FindIndex(x => x.GeneralId == _generalId);
             var right = Ui.TitleBar(header, T("ui.general.cardTitle"), () => App.ShowMain("general"));
             Ui.Label(right, (at + 1) + " / " + gs.Count, 24, TextAnchor.MiddleRight, Palette.TextDim);

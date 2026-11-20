@@ -86,11 +86,11 @@ namespace Game.Unity.Screens
             foreach (var e in codex) if (e.Found) found++;
             foreach (var g in gens) if (g.Owned) owned++;
 
-            var top = Ui.TitleBar(header, T("ui.codex.head"), () => { if (_detail != null) App.Show(new CodexScreen()); else App.ShowMain("general"); });
+            var top = Ui.TitleBar(header, T("ui.codex.head"), () => { if (_detail != null) Replace(new CodexScreen()); else App.ShowMain("general"); });
             bool sec = _tab == "secrets";
             Ring(top, sec ? found : owned, sec ? codex.Count : gens.Count);
             InfoButton.Add(Root, T(sec ? "ui.codex.note" : "ui.codex.noteGenerals"));
-            Ui.SegmentTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets")), ("generals", T("ui.codex.tab.generals")) }, _tab, id => { _tab = id; App.Show(new CodexScreen()); }, 70, 500);
+            Ui.SegmentTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets")), ("generals", T("ui.codex.tab.generals")) }, _tab, id => { _tab = id; Replace(new CodexScreen()); }, 70, 500);
 
             if (!sec) BuildGenerals(header, body, gens);
             else if (_detail != null) BuildDetail(body, codex);
@@ -143,7 +143,7 @@ namespace Game.Unity.Screens
                 foreach (var e in codex) if (e.Category == c) { n++; if (e.Found) f++; }
                 chips.Add((c, T("ui.codex.cat." + c) + " " + f + "/" + n));
             }
-            Ui.SegmentTabs(header, chips, _cat, id => { _cat = id; App.Show(new CodexScreen()); }, 62, 150);
+            Ui.SegmentTabs(header, chips, _cat, id => { _cat = id; Replace(new CodexScreen()); }, 62, 150);
 
             var defs = Ctx.Defs.Secrets;
             RectTransform row = null;
@@ -171,7 +171,7 @@ namespace Game.Unity.Screens
                     Ui.Label(tile, SecretText.Name(Ctx, id), 24, TextAnchor.MiddleCenter);
                     Ui.Tag(tile, T(def.RewardSkill != null ? "ui.codex.skill" : "ui.codex.trait"), Palette.Ally, 18, 34);
                     if (Ctx.CodexIsNew(id)) NewMark(tile); // 새로 찾은 것 (13 시안 3): 눌러 볼 때까지
-                    tile.gameObject.AddComponent<Button>().onClick.AddListener(() => { Ctx.SeeCodex(id); App.Show(new CodexScreen(null, id)); });
+                    tile.gameObject.AddComponent<Button>().onClick.AddListener(() => { Ctx.SeeCodex(id); Replace(new CodexScreen(null, id)); });
                 }
                 else
                 {
@@ -181,7 +181,7 @@ namespace Game.Unity.Screens
                     Ui.Fill(Ui.Label(stamp, "?", 64, TextAnchor.MiddleCenter, new Color(0.85f, 0.82f, 0.78f)).rectTransform);
                     bool open = _hint == id;
                     Ui.Label(tile, open && e.HintKey != null ? T(e.HintKey) : T("ui.codex.tapHint"), 20, TextAnchor.MiddleCenter, open ? new Color(0.95f, 0.9f, 0.7f) : new Color(0.7f, 0.67f, 0.63f));
-                    tile.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new CodexScreen(open ? null : id)));
+                    tile.gameObject.AddComponent<Button>().onClick.AddListener(() => Replace(new CodexScreen(open ? null : id)));
                 }
             }
             if (row != null) for (; col % 3 != 0; col++) Ui.Size(Ui.Rect(row, "Pad"), 340, 300, -1, 1);
@@ -226,7 +226,7 @@ namespace Game.Unity.Screens
             // 그 전투 녹화가 남아 있으면 바로 보기 (녹화 목록의 재생과 같은 확인 경로)
             var battle = find == null ? null : Ctx.Replays.FindNear(find.StepId, find.AtUnixSeconds);
             if (battle != null) Ui.Button(body, T("ui.codex.watchBattle"), () => PlayBattle(battle), 88, fontSize: 26);
-            Ui.Button(body, T("ui.common.close"), () => App.Show(new CodexScreen()), 96, fontSize: 28);
+            Ui.Button(body, T("ui.common.close"), () => Replace(new CodexScreen()), 96, fontSize: 28);
         }
 
         private void PlayBattle(Game.Flow.ReplayRecord rec)
@@ -242,7 +242,7 @@ namespace Game.Unity.Screens
         {
             var chips = new List<(string, string)> { ("all", T("ui.codex.cat.all")) };
             foreach (var gr in Ctx.Defs.Gacha.Grades) chips.Add((gr.Id, T("grade." + gr.Id)));
-            Ui.SegmentTabs(header, chips, _grade, id => { _grade = id; App.Show(new CodexScreen()); }, 58, 150);
+            Ui.SegmentTabs(header, chips, _grade, id => { _grade = id; Replace(new CodexScreen()); }, 58, 150);
             gens.Sort((a, b) =>
             {
                 int ra = Ctx.Defs.Gacha.Grade(a.Grade)?.Rank ?? -1, rb = Ctx.Defs.Gacha.Grade(b.Grade)?.Rank ?? -1;

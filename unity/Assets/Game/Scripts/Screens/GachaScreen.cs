@@ -43,7 +43,7 @@ namespace Game.Unity.Screens
             {
                 var open = Ctx.Gacha.OpenBanners(now);
                 if (open.Count == 0) { App.ShowMain("general"); return; }
-                App.Show(new GachaScreen(open[0].Id, null, false, null, T("ui.gacha.closed")));
+                Replace(new GachaScreen(open[0].Id, null, false, null, T("ui.gacha.closed")));
                 return;
             }
             var (header, body, footer) = Ui.PageLayout(Root, 170);
@@ -72,7 +72,7 @@ namespace Game.Unity.Screens
             var tabs = new List<(string, string)>();
             long now = Ctx.Clock.UtcNow.ToUnixTimeSeconds();
             foreach (var ob in Ctx.Gacha.OpenBanners(now)) tabs.Add((ob.Id, T(ob.NameKey))); // 열린 배너만 (R-121)
-            Ui.SegmentTabs(header, tabs, _bannerId, id => App.Show(new GachaScreen(id)), 60, 220);
+            Ui.SegmentTabs(header, tabs, _bannerId, id => Replace(new GachaScreen(id)), 60, 220);
             int days = Ctx.Gacha.DaysLeftOf(b, now);
             if (days >= 0) Ui.Size(Ui.Tag(header, T("ui.gacha.daysLeft", days), Palette.Seal, 22, 44), width: 220); // 기간 배너 꼬리표
 
@@ -99,7 +99,7 @@ namespace Game.Unity.Screens
                 Ui.Tag(col, T("grade." + grade), GradeLabel.ColorOf(grade), 20, 36);
             }
             Ui.Spacer(faces, 0, 1);
-            Ui.Button(art, T("ui.gacha.poolCount", b.Pool.Count), () => App.Show(new GachaScreen(_bannerId, null, true)), 60, new Color(0.22f, 0.21f, 0.2f), 24);
+            Ui.Button(art, T("ui.gacha.poolCount", b.Pool.Count), () => Replace(new GachaScreen(_bannerId, null, true)), 60, new Color(0.22f, 0.21f, 0.2f), 24);
 
             // 보장 · 천장
             var pity = Ui.Row(body, "Pity", 70, 10);
@@ -128,7 +128,7 @@ namespace Game.Unity.Screens
             var parts = new List<string>();
             foreach (var gr in Ctx.Defs.Gacha.Grades) parts.Add(Ui.Colored("■", GradeLabel.ColorOf(gr.Id)) + T("grade." + gr.Id) + " " + Percent(gr.Rate.Raw) + "%");
             Ui.Size(Ui.Label(legend, string.Join("  ", parts), 20), flexibleWidth: 1);
-            Ui.Size(Ui.Button(legend, T("ui.gacha.ratesMore"), () => App.Show(new GachaScreen(_bannerId, null, true)), 50, fontSize: 22), width: 160);
+            Ui.Size(Ui.Button(legend, T("ui.gacha.ratesMore"), () => Replace(new GachaScreen(_bannerId, null, true)), 50, fontSize: 22), width: 160);
 
             // 무료 1회
             if (b.FreeDaily > 0)
@@ -163,20 +163,20 @@ namespace Game.Unity.Screens
             Ui.SetEnabled(ten, have >= b.CostTen);
         }
 
-        private void Draw(int count) => App.Show(new GachaScreen(_bannerId, Ctx.DrawGacha(_bannerId, count)));
+        private void Draw(int count) => Replace(new GachaScreen(_bannerId, Ctx.DrawGacha(_bannerId, count)));
 
         private bool AdFree(long now) => Ctx.RewardedAd is OffRewardedAdService || Ctx.State.AdFreeForever || Ctx.State.AdFreeUntilUnixSeconds > now;
 
         /// <summary>무료 1회: 광고를 끝까지 보면 (광고가 꺼져 있거나 광고 제거면 바로) 모집 (R-100).</summary>
         private void Free(string bannerId, long now)
         {
-            void Go() => App.Show(new GachaScreen(bannerId, Ctx.DrawGachaFree(bannerId)));
+            void Go() => Replace(new GachaScreen(bannerId, Ctx.DrawGachaFree(bannerId)));
             if (AdFree(now)) { Go(); return; }
-            if (!Ctx.RewardedAd.IsReady) { App.Show(new GachaScreen(bannerId, notice: T("ui.gacha.adNotReady"))); return; }
+            if (!Ctx.RewardedAd.IsReady) { Replace(new GachaScreen(bannerId, notice: T("ui.gacha.adNotReady"))); return; }
             Ctx.RewardedAd.Show("gacha.free", o =>
             {
                 if (o == AdOutcome.Completed) Go();
-                else App.Show(new GachaScreen(bannerId, notice: T("ui.gacha.adSkipped")));
+                else Replace(new GachaScreen(bannerId, notice: T("ui.gacha.adSkipped")));
             });
         }
 
@@ -232,7 +232,7 @@ namespace Game.Unity.Screens
                 {
                     var open = new bool[_open.Length];
                     for (int i = 0; i < open.Length; i++) open[i] = true;
-                    App.Show(new GachaScreen(_bannerId, _last, false, open));
+                    Replace(new GachaScreen(_bannerId, _last, false, open));
                 }, 76, fontSize: 26);
             }
             else
@@ -260,7 +260,7 @@ namespace Game.Unity.Screens
         {
             var open = (bool[])_open.Clone();
             open[at] = true;
-            App.Show(new GachaScreen(_bannerId, _last, false, open));
+            Replace(new GachaScreen(_bannerId, _last, false, open));
         }
 
         // ---- 확률 판 (데이터 그대로) ----

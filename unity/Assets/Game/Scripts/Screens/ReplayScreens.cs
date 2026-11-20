@@ -36,7 +36,7 @@ namespace Game.Unity.Screens
             InfoButton.Add(Root, T("ui.replay.note"));
             if (!Ctx.OnlineEnabled) _tab = "mine";
             if (Ctx.OnlineEnabled)
-                Ui.SegmentTabs(header, new[] { ("mine", T("ui.replay.tab.mine")), ("shared", T("ui.replay.tab.shared")) }, _tab, id => { _tab = id; App.Show(new ReplayListScreen()); }, 70, 500);
+                Ui.SegmentTabs(header, new[] { ("mine", T("ui.replay.tab.mine")), ("shared", T("ui.replay.tab.shared")) }, _tab, id => { _tab = id; Replace(new ReplayListScreen()); }, 70, 500);
             if (_message != null) Ui.Label(header, _message, 24, TextAnchor.MiddleLeft, Palette.Good);
 
             if (_tab == "shared") BuildShared(header, body);
@@ -49,7 +49,7 @@ namespace Game.Unity.Screens
             var cats = new List<(string, string)> { ("all", T("ui.codex.cat.all")), ("story", T("ui.replay.cat.story")), ("territory", T("ui.replay.cat.territory")), ("merc", T("ui.replay.cat.merc")) };
             if (Ctx.OnlineEnabled) cats.Add(("hired", T("ui.replay.cat.hired"))); // 내 용병이 고용된 전투 (R-120, 서버에 있는 녹화)
             else if (_cat == "hired") _cat = "all";
-            Ui.SegmentTabs(header, cats, _cat, id => { _cat = id; App.Show(new ReplayListScreen()); }, 60, 170);
+            Ui.SegmentTabs(header, cats, _cat, id => { _cat = id; Replace(new ReplayListScreen()); }, 60, 170);
             if (_cat == "hired") { BuildHired(body); return; }
             bool Match(ReplayRecord r) => _cat == "all" || ReplayService.CategoryOf(r) == _cat;
             var recent = Ctx.Replays.Recent.FindAll(Match);
@@ -77,7 +77,7 @@ namespace Game.Unity.Screens
                     Ui.Label(card, StepName(rec.StepId), 22);
                     var line = Ui.Row(card, "Line", 60, 8);
                     WinTag(line, rec);
-                    Ui.Button(line, T("ui.replay.keep"), () => { Ctx.KeepReplay(rec.Id); App.Show(new ReplayListScreen(T("ui.replay.saved", Ctx.Replays.Items.Count, Ctx.ReplayRules.MaxSaved))); }, 56, fontSize: 22);
+                    Ui.Button(line, T("ui.replay.keep"), () => { Ctx.KeepReplay(rec.Id); Replace(new ReplayListScreen(T("ui.replay.saved", Ctx.Replays.Items.Count, Ctx.ReplayRules.MaxSaved))); }, 56, fontSize: 22);
                     var play = Ui.Button(line, "▶", () => Play(rec), 56, Palette.ButtonActive, 26);
                     Ui.Size(play, width: 70);
                     Ui.SetEnabled(play, !rec.Unplayable);
@@ -167,13 +167,13 @@ namespace Game.Unity.Screens
             Ctx.LoadHireReplay(replayId, Loading.Wrap<Game.Online.HireReplayResponse>(res =>
             {
                 if (Root == null) return;
-                if (res?.ReplayJson == null) { App.Show(new ReplayListScreen(T("ui.replay.hiredGone"))); return; }
+                if (res?.ReplayJson == null) { Replace(new ReplayListScreen(T("ui.replay.hiredGone"))); return; }
                 ReplayRecord rec;
                 try { rec = ReplayService.Read(res.ReplayJson); }
-                catch (Exception) { App.Show(new ReplayListScreen(T("ui.replay.broken"))); return; }
+                catch (Exception) { Replace(new ReplayListScreen(T("ui.replay.broken"))); return; }
                 var playback = Ctx.ReplayService.Check(rec);
                 if (playback.Ok) { App.Show(new BattleScreen(playback)); return; }
-                App.Show(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
+                Replace(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
             }));
         }
 
@@ -205,7 +205,7 @@ namespace Game.Unity.Screens
                 (T("ui.replay.video"), T("ui.replay.later"), false, () => { }),
                 (Ui.Colored(T("ui.replay.delete"), Palette.Bad), "", true, () =>
                     Ui.Confirm(Root, T("ui.replay.deleteTitle"), T("ui.replay.deleteBody", StepName(rec.StepId)), T("ui.replay.delete"),
-                        () => { Ctx.DeleteReplay(rec.Id); App.Show(new ReplayListScreen()); }, (T("ui.common.cancel"), () => { }))));
+                        () => { Ctx.DeleteReplay(rec.Id); Replace(new ReplayListScreen()); }, (T("ui.common.cancel"), () => { }))));
         }
 
         // ---- 공략 ----
@@ -218,10 +218,10 @@ namespace Game.Unity.Screens
             stepBtn = Ui.Button(pick, (_sharedStep == null ? T("ui.replay.pickStep") : StepName(_sharedStep)) + " ▾", () =>
             {
                 var items = new List<(string, string, bool, Action)>();
-                foreach (var s in steps) { string id = s; items.Add((StepName(id), "", true, () => { _sharedStep = id; App.Show(new ReplayListScreen()); })); }
+                foreach (var s in steps) { string id = s; items.Add((StepName(id), "", true, () => { _sharedStep = id; Replace(new ReplayListScreen()); })); }
                 if (items.Count > 0) Ui.PickMenu(Root, (RectTransform)stepBtn.transform, 520, items.ToArray());
             }, 64, fontSize: 24);
-            Ui.SegmentTabs(header, new[] { ("won", T("ui.replay.sort.won")), ("losses", T("ui.replay.sort.losses")), ("fast", T("ui.replay.sort.fast")), ("new", T("ui.replay.sort.new")) }, _sort, id => { _sort = id; App.Show(new ReplayListScreen()); }, 56, 200);
+            Ui.SegmentTabs(header, new[] { ("won", T("ui.replay.sort.won")), ("losses", T("ui.replay.sort.losses")), ("fast", T("ui.replay.sort.fast")), ("new", T("ui.replay.sort.new")) }, _sort, id => { _sort = id; Replace(new ReplayListScreen()); }, 56, 200);
             if (_sharedStep == null) { Ui.Label(body, T("ui.replay.noCleared"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim); return; }
             var loading = Ui.Label(body, T("ui.shared.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             string step = _sharedStep;
@@ -264,19 +264,19 @@ namespace Game.Unity.Screens
         {
             Ctx.Online.GetSharedReplay(id, Loading.Wrap<Game.Online.SharedReplayResponse>(res =>
             {
-                if (res == null) { App.Show(new ReplayListScreen(T("ui.shared.failed"))); return; }
+                if (res == null) { Replace(new ReplayListScreen(T("ui.shared.failed"))); return; }
                 ReplayRecord rec;
                 try { rec = ReplayService.Read(res.ReplayJson); } catch (Exception) { rec = null; }
                 var playback = rec == null ? null : Ctx.ReplayService.Check(rec);
                 if (playback != null && playback.Ok) { App.Show(new BattleScreen(playback)); return; }
-                App.Show(new ReplayListScreen(T(playback?.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
+                Replace(new ReplayListScreen(T(playback?.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
             }));
         }
 
         private void Share(ReplayRecord rec)
         {
             Ctx.Online.ShareReplay(new Game.Online.ShareReplayRequest { ReplayJson = ReplayService.Write(rec) }, Loading.Wrap<Game.Online.ShareReplayResponse>(res =>
-                App.Show(new ReplayListScreen(res == null ? T("ui.shared.failed")
+                Replace(new ReplayListScreen(res == null ? T("ui.shared.failed")
                     : res.Ok ? T("ui.replay.shared")
                     : T(res.Reason == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")))));
         }
@@ -286,7 +286,7 @@ namespace Game.Unity.Screens
             var playback = Ctx.ReplayService.Check(rec);
             if (playback.Ok) { App.Show(new BattleScreen(playback)); return; }
             Ctx.MarkReplayUnplayable(rec.Id); // 다음부터 목록에서 흐리게 (미리 확인은 다시 돌려야 해 무거워, 한 번 눌러 본 것만)
-            App.Show(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
+            Replace(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
         }
 
         private string StepName(string stepId)

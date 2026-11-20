@@ -430,12 +430,12 @@ namespace Game.Unity.Screens
             Ctx.CheckIn(r =>
             {
                 _lastAttendance = r;
-                if (r == null) { end(); App.Show(new MailScreen(T("ui.hire.failed"), _backTab)); return; }
+                if (r == null) { end(); Replace(new MailScreen(T("ui.hire.failed"), _backTab)); return; }
                 Ctx.ClaimMailWhere(m => m.Kind == MailKinds.Attendance, sum =>
                 {
                     end();
                     string got = sum == null ? null : Amounts(Ctx, sum);
-                    App.Show(new MailScreen(got != null ? T("ui.attend.claimed", got) : null, _backTab));
+                    Replace(new MailScreen(got != null ? T("ui.attend.claimed", got) : null, _backTab));
                 });
             });
             }, 72, Palette.ButtonActive, 26);
@@ -490,7 +490,7 @@ namespace Game.Unity.Screens
                 // [모두 받기]: 받을 것이 있는 우편 전부
                 var claimable = mail.FindAll(m => m.Kind != MailKinds.SiegeAlert && m.Amount > 0);
                 if (claimable.Count > 1)
-                    Ui.Button(list, T("ui.mail.claimAll", claimable.Count), () => App.Show(new MailScreen(ClaimSome(claimable), _backTab)), 80, Palette.ButtonActive, 28);
+                    Ui.Button(list, T("ui.mail.claimAll", claimable.Count), () => Replace(new MailScreen(ClaimSome(claimable), _backTab)), 80, Palette.ButtonActive, 28);
                 // 영토 수입은 거점(깃발 · 지역)마다 한 통으로 묶어 보인다 (2026-11-16 사용자)
                 var incomeCards = new Dictionary<string, List<Mail>>();
                 foreach (var m in mail)
@@ -509,7 +509,7 @@ namespace Game.Unity.Screens
                         foreach (var x in group) if (x.Resource != null) sum[x.Resource] = (sum.TryGetValue(x.Resource, out var v) ? v : 0) + x.Amount;
                         var gcard = Ui.Card(list, "Income " + m.RegionId, 20, 6);
                         Ui.Label(gcard, T("ui.mail.territoryIncomeAt", PlaceName(m.RegionId), Amounts(Ctx, sum) ?? "0"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Text);
-                        Ui.Button(gcard, T("ui.hire.claim"), () => App.Show(new MailScreen(ClaimSome(group), _backTab)), 72, fontSize: 26);
+                        Ui.Button(gcard, T("ui.hire.claim"), () => Replace(new MailScreen(ClaimSome(group), _backTab)), 72, fontSize: 26);
                         continue;
                     }
                     var item = m;
@@ -522,7 +522,7 @@ namespace Game.Unity.Screens
                     Ui.Label(card, line, Ui.FontSmall, TextAnchor.MiddleLeft, m.Kind == MailKinds.SiegeAlert ? Palette.Bad : Palette.Text);
                     // 받을 것이 있는 우편만 [받기] (공성전 알림은 알림뿐)
                     if (m.Kind != MailKinds.SiegeAlert && m.Amount > 0)
-                        Ui.Button(card, T("ui.hire.claim"), () => App.Show(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
+                        Ui.Button(card, T("ui.hire.claim"), () => Replace(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
                 }
             });
         }

@@ -41,6 +41,21 @@ namespace Game.Unity.Screens
         /// <summary>화면이 닫힐 때.</summary>
         public virtual void Close() { }
 
+        /// <summary>메인 탭 안에 끼워진 화면이면 그 탭 id (<see cref="ScreenTabView"/>가 정함), 따로 연 화면이면 null.</summary>
+        public string HostTab { get; internal set; }
+
+        /// <summary>
+        /// 같은 자리에서 다시 그리기 (2026-11-20 사용자: 모집 배너 · 연합 만들기 등이 새 페이지로 넘어가 아래 탭 · 위 막대가 사라지던 것).
+        /// 탭 안 화면이면 메인 화면 틀(위 막대 · 아래 탭)을 그대로 두고 그 탭 내용만 next로, 따로 연 화면이면 화면 전환.
+        /// 다른 화면으로 가는 것(전투 · 결과 등)은 지금처럼 App.Show.
+        /// </summary>
+        protected void Replace(GameScreen next)
+        {
+            if (HostTab == null) { App.Show(next); return; }
+            ScreenTabView.Hand(HostTab, next);
+            App.ShowMain(HostTab);
+        }
+
         protected string T(string key) => Ctx.T(key);
         protected string T(string key, params object[] args) => Ctx.T(key, args);
     }

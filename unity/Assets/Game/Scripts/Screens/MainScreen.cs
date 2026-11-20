@@ -41,12 +41,12 @@ namespace Game.Unity.Screens
             { "care", () => new TroopCareTabView() },
             { "formationDrag", () => new FormationDragTabView() },
             { "shop", () => new ShopTabView() },
-            { "gacha", () => new ScreenTabView(() => new GachaScreen()) },
-            { "codex", () => new ScreenTabView(() => new CodexScreen()) },
-            { "replay", () => new ScreenTabView(() => new ReplayListScreen()) },
-            { "mail", () => new ScreenTabView(() => new MailScreen()) },
-            { "alliance", () => new ScreenTabView(() => new AllianceScreen()) },
-            { "settings", () => new ScreenTabView(() => new SettingsScreen()) },
+            { "gacha", () => new ScreenTabView("gacha", () => new GachaScreen()) },
+            { "codex", () => new ScreenTabView("codex", () => new CodexScreen()) },
+            { "replay", () => new ScreenTabView("replay", () => new ReplayListScreen()) },
+            { "mail", () => new ScreenTabView("mail", () => new MailScreen()) },
+            { "alliance", () => new ScreenTabView("alliance", () => new AllianceScreen()) },
+            { "settings", () => new ScreenTabView("settings", () => new SettingsScreen()) },
             { "master", () => new MasterTabView() },
             { "parts", () => new PartsTabView() }, // 부품 미리보기 (공통부품.md 0장)
             { "sampleBattle", () => new SampleBattleTabView() },
@@ -291,12 +291,23 @@ namespace Game.Unity.Screens
     /// <summary>원래 한 화면이던 것(모집·도감·녹화·우편·연합·설정)을 탭 안에 그린다. 화면의 버튼으로 다른 화면을 열면 그 화면으로 넘어간다.</summary>
     public sealed class ScreenTabView : ITabView
     {
+        private readonly string _id;
         private readonly System.Func<GameScreen> _make;
-        public ScreenTabView(System.Func<GameScreen> make) { _make = make; }
+        public ScreenTabView(string id, System.Func<GameScreen> make) { _id = id; _make = make; }
+
+        /// <summary>GameScreen.Replace가 넘긴 다음 내용 (같은 프레임 안에서 그 탭이 다시 그려질 때 한 번 씀).</summary>
+        private static string _handTab;
+        private static GameScreen _handNext;
+        private static int _handFrame = -1;
+        internal static void Hand(string tab, GameScreen next) { _handTab = tab; _handNext = next; _handFrame = Time.frameCount; }
 
         public void Build(GameApp app, RectTransform root)
         {
-            var screen = _make();
+            GameScreen screen;
+            if (_handNext != null && _handTab == _id && _handFrame == Time.frameCount) { screen = _handNext; }
+            else screen = _make();
+            _handNext = null; _handTab = null;
+            screen.HostTab = _id;
             screen.Attach(app, root);
             screen.Build();
         }
@@ -323,6 +334,8 @@ namespace Game.Unity.Screens
     {
         /// <summary>고른 정렬 (앱을 켜 둔 동안 기억).</summary>
         private static string _sort = Game.Flow.GeneralSorts.Grade;
+        /// <summary>장수 목록에서 고른 정렬 (장수 화면 좌우 넘기기도 같은 순서, 2026-11-20).</summary>
+        internal static string Sort => _sort;
 
         private static long Stat(GameContext ctx, GeneralState g, string id) => CorpsValidator.EffectiveStat(ctx.Defs, g, id).FloorToLong();
 
