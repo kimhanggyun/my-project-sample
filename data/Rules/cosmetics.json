@@ -1,5 +1,5 @@
 {
-  "_comment": "치장 (cosmetics.md, verification R-108). 겉모습만 — 전투 계산에 들어가지 않는다. kind = armor(갑옷 한 벌: 사람 계열) · horse(말 색: 말 탄 계열). lines = 입을 수 있는 계열 (없으면 그 종류의 모든 계열). look = 그림 값 (요소 → 색 이름, 그림 쪽이 테마 색으로). obtain.shop = 가격 하나 (gold 엽전 · gem 금괴 · priceKRW 결제), playPaths = 플레이로 얻는 길. 가격은 임시값 (open-values.md). duplicateGold = 보상으로 이미 가진 치장이 또 나오면 대신 주는 엽전 (임시값, R-111). 결제 치장(priceKRW)은 products.json에 kind cosmetic 상품이 있어야 한다",
+  "_comment": "치장 (cosmetics.md, verification R-108). 겉모습만 — 전투 계산에 들어가지 않는다. kind = armor(갑옷 한 벌: 사람 계열) · horse(말 색: 말 탄 계열). lines = 입을 수 있는 계열 (없으면 그 종류의 모든 계열). look = 그림 값 (요소 → 색 이름, 그림 쪽이 테마 색으로). obtain.shop = 가격 하나 (gold 엽전 · gem 금괴 · priceKRW 결제) + defaultOff(데이터 기본 끔: 관리자 [상점 상품]에서 켜야 판다, R-123), playPaths = 플레이로 얻는 길. 가격은 임시값 (open-values.md). duplicateGold = 보상으로 이미 가진 치장이 또 나오면 대신 주는 엽전 (임시값, R-111). 결제 치장(priceKRW)은 products.json에 kind cosmetic 상품이 있어야 한다",
   "duplicateGold": 200,
   "items": [
     {
@@ -74,6 +74,34 @@
           "priceKRW": 3300
         }
       }
+    },
+    {
+      "id": "armor_black",
+      "kind": "armor",
+      "nameKey": "cos.armor_black",
+      "look": { "helmet": "black", "trim": "black", "shield": "black" },
+      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+    },
+    {
+      "id": "armor_white",
+      "kind": "armor",
+      "nameKey": "cos.armor_white",
+      "look": { "helmet": "white", "trim": "white", "shield": "white" },
+      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+    },
+    {
+      "id": "horse_black",
+      "kind": "horse",
+      "nameKey": "cos.horse_black",
+      "look": { "horse": "black" },
+      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+    },
+    {
+      "id": "horse_white",
+      "kind": "horse",
+      "nameKey": "cos.horse_white",
+      "look": { "horse": "white" },
+      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
     }
   ]
 }

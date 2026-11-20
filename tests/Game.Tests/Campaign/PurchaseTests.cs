@@ -139,5 +139,51 @@ namespace Game.Tests.Campaign
             Assert.False(ok);
             Assert.Equal(ServiceIds.Auth, ServiceIds.AuthFor("guest"));
         }
-    }
+    
+        [Fact(DisplayName = "R-123 상점 상품 표출: 기본 끔 상품은 켜야 목록 · 구매, 끈 상품은 목록에서 빠지고 구매 거절 (행동 처리기도), 영구 상품 복원은 그대로, 엽전 · 금괴 치장도 같은 규칙")]
+        public void ShopToggles()
+        {
+            var toggles = new ContentToggles();
+            var shop = new PurchaseService(Kit.D) { Toggles = toggles };
+            Assert.Contains(shop.Listed(), p => p.Id == "supply_pack_small");
+            Assert.DoesNotContain(shop.Listed(), p => p.Id == "gem_pack_medium"); // 새로 넣은 상품 = 기본 끔
+            Assert.Contains(new PurchaseService(Kit.D).Listed(), p => p.Id == "supply_pack_small"); // 서버에 닿지 않아도 데이터 기본값
+
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            long gem = s.Wallet.TryGetValue("gem", out var g0) ? g0 : 0;
+            Assert.False(shop.Apply(s, Buy("gem_pack_medium")));
+            toggles.Items.Add(new ContentToggle { Kind = ContentKinds.Product, Id = "gem_pack_medium", Off = false });
+            Assert.Contains(shop.Listed(), p => p.Id == "gem_pack_medium");
+            Assert.True(shop.Apply(s, Buy("gem_pack_medium")));
+            Assert.Equal(gem + 550, s.Wallet["gem"]);
+
+            toggles.Items.Add(new ContentToggle { Kind = ContentKinds.Product, Id = "supply_pack_small", Off = true });
+            toggles.Items.Add(new ContentToggle { Kind = ContentKinds.Product, Id = "remove_banner_permanent", Off = true });
+            Assert.DoesNotContain(shop.Listed(), p => p.Id == "supply_pack_small");
+            var runner = new PlayerActionRunner(Kit.D) { Toggles = () => toggles };
+            Assert.False(runner.Apply(s, Buy("supply_pack_small")));
+            Assert.True(new PlayerActionRunner(Kit.D).Apply(s, Buy("supply_pack_small"))); // 켜고 끄기 없으면 데이터 그대로
+            Assert.False(runner.Apply(s, Buy("remove_banner_permanent")));
+            var restore = PlayerActionRunner.Purchase("remove_banner_permanent", "fake:r");
+            restore.Kind = ActionKinds.StoreRestore;
+            Assert.True(runner.Apply(s, restore)); // 이미 산 영구 상품은 꺼도 복원
+            Assert.Contains(shop.Restorable(), p => p.Id == "remove_banner_permanent");
+
+            // 엽전 · 금괴 치장
+            var cos = new CosmeticService(Kit.D) { Toggles = toggles };
+            s.Wallet["gem"] = 10_000;
+            s.Wallet["gold"] = 10_000;
+            var black = cos.Find("armor_black");
+            Assert.False(cos.OnSale(black));
+            Assert.False(cos.Visible(s, black)); // 안 가진 판매 전용 치장은 숨김
+            Assert.False(cos.Buy(s, "armor_black"));
+            Assert.True(cos.Visible(s, cos.Find("armor_iron"))); // 플레이로 얻는 것은 보임
+            toggles.Items.Add(new ContentToggle { Kind = ContentKinds.Product, Id = "armor_black", Off = false });
+            Assert.True(cos.Buy(s, "armor_black"));
+            toggles.Items.Add(new ContentToggle { Kind = ContentKinds.Product, Id = "armor_brown", Off = true });
+            Assert.False(runner.Apply(s, PlayerActionRunner.BuyCosmetic("armor_brown")));
+            toggles.Items.RemoveAll(t => t.Id == "armor_black");
+            Assert.True(cos.Visible(s, black)); // 가진 것은 꺼도 보임
+        }
+}
 }

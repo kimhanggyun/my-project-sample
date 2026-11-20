@@ -124,6 +124,7 @@
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — firestore-migrate 워크플로 고침: store 폴더를 절대 경로로 (dotnet run이 작업 폴더를 바꿔 store.json을 못 찾던 것)
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — 시작 때 버전 · 점검 확인이 늘 건너뛰어지던 것 고침 (GameApp이 서버 없음으로 고정). 온라인이 켜져 있으면 /v1/status · /content를 받는다
 - 2026-11-17 [원격] claude/account-roles — H8 계정 등급: admin · subAdmin · 일반 (저장소 폴더 · Firestore), 설정 마스터 = 처음 관리자 고정, 서브 관리자 = 보기 · 우편 · 공지만, 관리자 [계정 · 세이브] 등급 칸, /v1/me Role, 권한 표 admin.md 5장 (사용자 확인)
+- 2026-11-17 [원격] claude/shop-toggles — H9 상점 상품 표출 R-123: 관리자 [상점 상품] 탭 · /v1/admin/games/{game}/products, 데이터 기본 끔(defaultOff), 꺼진 상품 목록 빠짐 · 구매 거절(결제 · 엽전 · 금괴 치장), 미리 등록: (중) 꾸러미 3종 · 검은/흰 갑옷 · 말 (모두 기본 끔)
 - 2026-11-17 [원격] claude/nickname-check — H7 닉네임 미리 확인: GET /v1/nicknames/check (폴더 · Firestore), 닉네임 화면에서 입력을 멈추면 "쓸 수 있음 / 이미 있음", 실제 데이터 중복 없음 (닉네임 1개)
 - 2026-11-17 [원격] claude/plant-sheet-checks — H6 추가 파견 판: 이 깃발 장수는 체크된 채 꺼짐("이 깃발에 나가 있음"), 다른 깃발 장수는 "다른 깃발에 나가 있음", 출전 못 하는 장수는 "지금 출전 못 함"
 - 2026-11-17 [원격] claude/story-hide — H10 스토리 탭 숨김 (mainTabs.json 한 줄로 켜고 끄기), 처음 열리는 배포 줄 탭 검사

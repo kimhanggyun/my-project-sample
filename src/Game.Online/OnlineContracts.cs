@@ -253,6 +253,16 @@ namespace Game.Online
         }
 
         public bool IsOff(string kind, string id) => Find(kind, id)?.Off == true;
+
+        /// <summary>
+        /// 보이나 (R-123 상점 상품): 관리자가 정한 값이 있으면 그것 (Off가 아니면 보임), 없으면 데이터 기본값 (defaultOff면 숨김).
+        /// toggles가 없으면(서버에 닿지 않음) 데이터 기본값.
+        /// </summary>
+        public static bool IsShown(ContentToggles toggles, string kind, string id, bool defaultOff)
+        {
+            var t = toggles?.Find(kind, id);
+            return t != null ? !t.Off : !defaultOff;
+        }
     }
 
     public sealed class MaintenanceInfo

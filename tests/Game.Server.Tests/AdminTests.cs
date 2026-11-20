@@ -127,6 +127,38 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await wrong.GetAsync(url)).StatusCode);
         }
 
+        [Fact(DisplayName = "R-123 상점 상품 (관리자): 목록에 결제 상품 · 엽전 · 금괴 치장, 끄면 공개 content에 실리고 서버가 구매 거절, 기본 끔 상품은 켜야 구매")]
+        public async Task ProductToggles()
+        {
+            var (player, them) = await Guest(_keyOnly);
+            var admin = _keyOnly.CreateClient();
+            admin.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            string url = AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/products";
+            var list = await Read<AdminProductList>(await admin.GetAsync(url));
+            Assert.Contains(list.Products, p => p.Id == "supply_pack_small" && p.Shown && !p.DefaultOff);
+            Assert.Contains(list.Products, p => p.Id == "gem_pack_medium" && !p.Shown && p.DefaultOff);
+            Assert.Contains(list.Products, p => p.Id == "armor_brown" && p.Kind == "cosmetic:armor");
+
+            var set = await Read<AdminProductList>(await admin.PostAsync(url, Body(new AdminBannersRequest { Items = {
+                new ContentToggle { Id = "supply_pack_small", Off = true }, new ContentToggle { Id = "gem_pack_medium", Off = false },
+                new ContentToggle { Id = "gold_pack_small", Off = false }, new ContentToggle { Id = "noSuch", Off = true } } })));
+            Assert.False(set.Products.Single(p => p.Id == "supply_pack_small").Shown);
+            Assert.True(set.Products.Single(p => p.Id == "gem_pack_medium").Shown);
+            var content = await Read<ContentToggles>(await _keyOnly.CreateClient().GetAsync(OnlineRoutes.Content(ServerSetup.DefaultGame)));
+            Assert.True(content.IsOff(ContentKinds.Product, "supply_pack_small"));
+            Assert.DoesNotContain(content.Items, x => x.Id == "gold_pack_small" || x.Id == "noSuch"); // 기본값 그대로 · 모르는 id는 적지 않음
+
+            var actions = OnlineRoutes.Actions(ServerSetup.DefaultGame);
+            var save = await Read<CloudSave>(await player.GetAsync(OnlineRoutes.Save(ServerSetup.DefaultGame)));
+            var off = Game.Flow.PlayerActionRunner.Purchase("supply_pack_small", "fake:" + System.Guid.NewGuid().ToString("N"));
+            Assert.Equal((HttpStatusCode)422, (await player.PostAsync(actions, Body(new ActionSubmission { BaseRevision = save.Revision, Actions = { off } }))).StatusCode);
+            var on = Game.Flow.PlayerActionRunner.Purchase("gem_pack_medium", "fake:" + System.Guid.NewGuid().ToString("N"));
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsync(actions, Body(new ActionSubmission { BaseRevision = save.Revision, Actions = { on } }))).StatusCode);
+
+            await admin.PostAsync(url, Body(new AdminBannersRequest()));
+            Assert.Empty((await Read<ContentToggles>(await _keyOnly.CreateClient().GetAsync(OnlineRoutes.Content(ServerSetup.DefaultGame)))).Items);
+        }
+
                 private static StringContent Body(object o) => new StringContent(OnlineJson.Write(o), Encoding.UTF8, "application/json");
         private static async Task<T> Read<T>(HttpResponseMessage r) => OnlineJson.Read<T>(await r.Content.ReadAsStringAsync());
 

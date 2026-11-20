@@ -26,7 +26,7 @@ namespace Game.Unity.Screens
 
         public override void Build()
         {
-            var svc = new CosmeticService(Ctx.Defs);
+            var svc = Ctx.Cosmetics;
             string wornArmor = CosmeticService.Worn(Ctx.State, _line, CosmeticKinds.Armor);
             string wornHorse = CosmeticService.Worn(Ctx.State, _line, CosmeticKinds.Horse);
             string showArmor = _hasPreview ? _previewArmor : wornArmor, showHorse = _hasPreview ? _previewHorse : wornHorse;
@@ -87,7 +87,7 @@ namespace Game.Unity.Screens
             var row = Ui.HScrollRow(card, "Cells", 330, 12, 4);
             Cell(row, svc, kind, null, worn, showArmor, showHorse);
             foreach (var d in svc.Items)
-                if (d.Kind == kind && CosmeticService.CanWear(d, _line)) Cell(row, svc, kind, d, worn, showArmor, showHorse);
+                if (d.Kind == kind && CosmeticService.CanWear(d, _line) && svc.Visible(Ctx.State, d)) Cell(row, svc, kind, d, worn, showArmor, showHorse);
         }
 
         private void Cell(RectTransform row, CosmeticService svc, string kind, CosmeticDef d, string worn, string showArmor, string showHorse)
@@ -114,6 +114,7 @@ namespace Game.Unity.Screens
             Button btn;
             if (isWorn) { btn = Ui.SecondaryButton(cell, T("ui.cos.worn"), () => { }, 56, 22); Ui.SetEnabled(btn, false); }
             else if (owned) btn = Ui.Button(cell, T("ui.cos.wear"), () => Wear(kind, id), 56, Palette.ButtonActive, 22);
+            else if ((d.PriceGold != null || d.PriceGem != null) && !svc.OnSale(d)) { btn = Ui.SecondaryButton(cell, T("ui.cos.notForSale"), () => { }, 56, 22); Ui.SetEnabled(btn, false); } // 표출을 끈 판매 치장 (R-123)
             else if (d.PriceGold != null) btn = Ui.Button(cell, T("ui.cos.price.gold", d.PriceGold.Value.ToString("N0")), () => BuyAndWear(svc, kind, d), 56, Palette.ButtonActive, 22);
             else if (d.PriceGem != null) btn = Ui.Button(cell, T("ui.cos.price.gem", d.PriceGem.Value.ToString("N0")), () => BuyAndWear(svc, kind, d), 56, Palette.ButtonActive, 22);
             else { btn = Ui.SecondaryButton(cell, T("ui.cos.price.shop"), () => { }, 56, 22); Ui.SetEnabled(btn, false); }

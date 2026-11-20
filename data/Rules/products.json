@@ -1,5 +1,5 @@
 {
-  "_comment": "상점 상품. 편의 기능이 아니면 playPaths(플레이로 얻는 경로)가 있어야 한다 (verification R-30). priceKRW가 있는 것만 상점에 나온다. priceKRW·grants는 **임시 테스트 값** (2026-11-10 사용자 결정: 테스트 먼저, 가격은 나중에, open-values.md). grants = 받는 자원, adFreeDays = 배너 광고 제거 기간 (0 = 영구). 결제 영수증은 서버가 검증한다 (R-64). kind cosmetic = 치장 상품 (cosmeticId, 결제 전용 허용 — R-30 예외, R-111)",
+  "_comment": "상점 상품. 편의 기능이 아니면 playPaths(플레이로 얻는 경로)가 있어야 한다 (verification R-30). priceKRW가 있는 것만 상점에 나온다. priceKRW·grants는 **임시 테스트 값** (2026-11-10 사용자 결정: 테스트 먼저, 가격은 나중에, open-values.md). grants = 받는 자원, adFreeDays = 배너 광고 제거 기간 (0 = 영구). 결제 영수증은 서버가 검증한다 (R-64). kind cosmetic = 치장 상품 (cosmeticId, 결제 전용 허용 — R-30 예외, R-111). defaultOff = 데이터 기본 끔 — 관리자 [상점 상품]에서 표출을 켜야 상점에 나오고 구매가 된다 (R-123, 새로 넣는 상품은 기본 끔)",
   "products": [
     {
       "id": "remove_banner_permanent",
@@ -77,6 +77,30 @@
       "kind": "cosmetic",
       "cosmeticId": "armor_gold",
       "priceKRW": 3300
+    },
+    {
+      "id": "supply_pack_medium",
+      "kind": "supply",
+      "playPaths": ["battleCapture", "depot", "adReward"],
+      "priceKRW": 5500,
+      "grants": { "supply": 1500000 },
+      "defaultOff": true
+    },
+    {
+      "id": "gold_pack_medium",
+      "kind": "gold",
+      "playPaths": ["reward", "releaseReward", "hireIncome"],
+      "priceKRW": 5500,
+      "grants": { "gold": 5000 },
+      "defaultOff": true
+    },
+    {
+      "id": "gem_pack_medium",
+      "kind": "gem",
+      "playPaths": ["reward", "secretReward", "event"],
+      "priceKRW": 5500,
+      "grants": { "gem": 550 },
+      "defaultOff": true
     }
   ]
 }
