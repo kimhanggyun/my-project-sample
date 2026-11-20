@@ -59,7 +59,7 @@
 | `POST /v1/games/{game}/attendance` | 출석 (하루 한 번, 서버 시각, R-112). 받으면 보상 우편(`attendance`). 기록은 저장소 `WithAttendance` (세이브 밖) | `AttendanceResponse` (`ok` / `already` / `off`) |
 | `GET` · `POST /v1/games/{game}/push/settings` | 푸시 알림 설정 (R-119): attacked · allyHelp · incomeFull 켬 · 끔 (처음 모두 켬) | `PushSettings` |
 | `POST /v1/games/{game}/push/token` | 기기 푸시 토큰(FCM) 등록 · 지우기 (`PushTokenRequest`: Token · Platform · Remove). 계정당 5개, 무효 토큰은 보낼 때 지움. 빈 토큰은 422 | 200 / 422 |
-| `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) | `TerritoryResponse` |
+| `GET /v1/games/{game}/territory` | 영토 주인 목록 (지역 → 계정·차지 시각), 내 지역은 쌓인 수입(R-47)까지. 차지는 영토 전투 제출이 맞고 이기면 (R-46) · **`?at=위도,경도&r=반경(m)`이면 그 반경 안 + 내 깃발 + 연합원 깃발만** (지도 보기, 상한 150km — 넘거나 at이 없으면 전체, db.md 8.1) | `TerritoryResponse` |
 | `POST /v1/games/{game}/territory/collect` | 내 지역의 쌓인 수입을 우편으로 (받은 시각 = 지금, R-47) | `MailListResponse` (보낸 우편) |
 | `POST /v1/games/{game}/territory/defense` | 내 지역에 수비 편성 등록 (서버 세이브의 기본 편성 스냅샷, 판 +1, R-48). 내 지역이 아니거나 편성에 문제가 있으면 422 | `DefenseResponse` |
 | `POST /v1/games/{game}/territory/siege` | 공성전 준비 시작 (R-113): 서버가 시각 기록, 수비자에게 우편 `siegeAlert`. 준비 1분 전 공성전 제출은 거절 | `SiegeResponse` (200 / 422 `badTarget` · `busy`) |

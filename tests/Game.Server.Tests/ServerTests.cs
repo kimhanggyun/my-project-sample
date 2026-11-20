@@ -303,6 +303,47 @@ namespace Game.Server.Tests
             Assert.Equal(PlantReasons.GeneralBusy, again.Reason); // 내 깃발 범위(주인)로 찾음
         }
 
+        [Fact(DisplayName = "영토 지도 주변만 (db.md 8.1): ?at · r이면 반경 안 + 내 깃발 + 연합원 깃발만, 없거나 반경이 상한보다 크면 전체 (예전 앱)")]
+        public async Task TerritoryMapAround()
+        {
+            var a = await SignedIn();
+            var b = await SignedIn();
+            var c = await SignedIn();
+            var d = await SignedIn();
+            var plantUrl = OnlineRoutes.TerritoryPlant(ServerSetup.DefaultGame);
+            async Task<string> Plant(HttpClient who, string at)
+            {
+                var save = SaveJson.Read((await Read<CloudSave>(await who.GetAsync(Save))).Json);
+                var r = await Read<PlantResponse>(await who.PostAsync(plantUrl, Body(new PlantRequest { Location = at, GeneralId = save.CompositionsFor(null)[0].GeneralId })));
+                Assert.True(r.Ok, r.Reason);
+                return r.Flag.RegionId;
+            }
+            string fa = await Plant(a, "35.1000,129.0000");
+            string fb = await Plant(b, "35.1300,129.0000"); // 약 3km
+            string fc = await Plant(c, "35.6000,129.0000"); // 약 55km
+            string fd = await Plant(d, "35.9000,129.0000"); // 약 90km
+            var route = OnlineRoutes.Alliances(ServerSetup.DefaultGame);
+            var made = await Read<AllianceResponse>(await a.PostAsync(route, Body(new AllianceRequest { Name = "지도" + System.Guid.NewGuid().ToString("N").Substring(0, 4) })));
+            Assert.True(made.Ok);
+            Assert.True((await Read<AllianceResponse>(await d.PostAsync(OnlineRoutes.AllianceJoin(ServerSetup.DefaultGame, made.Alliance.Id), null))).Ok);
+
+            async Task<System.Collections.Generic.HashSet<string>> View(HttpClient who, string url) =>
+                new System.Collections.Generic.HashSet<string>((await Read<TerritoryResponse>(await who.GetAsync(url))).Owners.ConvertAll(o => o.RegionId));
+            var near = await View(a, OnlineRoutes.TerritoryAround(ServerSetup.DefaultGame, "35.1000,129.0000", 10_000));
+            Assert.Contains(fa, near);
+            Assert.Contains(fb, near);
+            Assert.DoesNotContain(fc, near); // 멀고 남의 깃발
+            Assert.Contains(fd, near); // 멀어도 연합원 깃발
+            var fromB = await View(b, OnlineRoutes.TerritoryAround(ServerSetup.DefaultGame, "35.6000,129.0000", 10_000)); // 다른 곳을 보면: 그곳 + 내 깃발
+            Assert.Contains(fc, fromB);
+            Assert.Contains(fb, fromB);
+            Assert.DoesNotContain(fa, fromB);
+            var all = await View(a, OnlineRoutes.Territory(ServerSetup.DefaultGame)); // 예전 앱: 전체
+            Assert.True(new[] { fa, fb, fc, fd }.All(all.Contains));
+            var wide = await View(a, OnlineRoutes.TerritoryAround(ServerSetup.DefaultGame, "35.1000,129.0000", StrategyGameModule.MapNearMaxM + 1));
+            Assert.Contains(fc, wide); // 상한보다 넓게 보면 전체
+        }
+
         [Fact(DisplayName = "R-112 출석: 서버 시각으로 하루 한 번, 보상은 우편 → mail.claim으로 받기, 같은 날 두 번은 already")]
         public async Task AttendanceFlow()
         {

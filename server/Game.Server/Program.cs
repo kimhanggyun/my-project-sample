@@ -201,7 +201,13 @@ app.MapPost("/v1/games/{game}/attendance", (string game, HttpRequest req, IPlatf
 
 // 영토 (R-46)
 app.MapGet("/v1/games/{game}/territory", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
-    InGame(req, p, r, game, Now(), (id, g) => Json(g.Territory(id))));
+    InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        // 지도 보기: ?at=위도,경도&r=반경(m)이면 주변만 (db.md 8.1), 없으면 전체 (예전 앱)
+        string at = req.Query.TryGetValue("at", out var a) ? a.ToString() : null;
+        long.TryParse(req.Query.TryGetValue("r", out var rv) ? rv.ToString() : null, out long radius);
+        return Json(g.TerritoryAround(id, string.IsNullOrEmpty(at) ? null : at, radius));
+    }));
 app.MapPost("/v1/games/{game}/territory/defense", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
 {
     var body = await Body<DefenseRequest>(req);

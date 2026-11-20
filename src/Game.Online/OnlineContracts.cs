@@ -70,6 +70,8 @@ namespace Game.Online
         public static string Attendance(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/attendance";
         /// <summary>영토 주인 목록 (차지는 영토 전투 제출로, R-46).</summary>
         public static string Territory(string game) => "/v1/games/" + Uri.EscapeDataString(game) + "/territory";
+        /// <summary>지도 보기: 가운데 · 반경 주변만 (없으면 전체).</summary>
+        public static string TerritoryAround(string game, string at, long radiusM) => Territory(game) + "?at=" + Uri.EscapeDataString(at ?? "") + "&r=" + radiusM;
         /// <summary>내 지역의 쌓인 수입을 우편으로 받기 (POST).</summary>
         public static string TerritoryCollect(string game) => Territory(game) + "/collect";
         /// <summary>내 지역에 수비 편성 등록 (POST, R-48).</summary>
@@ -1079,6 +1081,11 @@ namespace Game.Online
 
         /// <summary>영토 주인 목록 (닿지 않으면 null).</summary>
         void GetTerritory(Action<TerritoryResponse> done);
+        /// <summary>
+        /// 지도 보기 (db.md 8.1 약한 곳 2): 보는 가운데("위도,경도") · 반경(m) 안 깃발 + 내 깃발 + 연합원 깃발만. 서버가 반경이 너무 크면 전체.
+        /// 가짜 · 오프라인은 <see cref="GetTerritory"/>와 같다.
+        /// </summary>
+        void GetTerritoryAround(string at, long radiusM, Action<TerritoryResponse> done);
         /// <summary>내 지역의 쌓인 수입을 우편으로 (보낸 우편, 닿지 않으면 null).</summary>
         void CollectTerritory(Action<MailListResponse> done);
         /// <summary>깃발 · 지역 하나만 수입 받기 (지도에서 깃발마다). 서버에 닿지 않으면 null.</summary>
@@ -1124,6 +1131,7 @@ namespace Game.Online
         public void SetPushSettings(PushSettings settings, Action<PushSettings> done) => done?.Invoke(null);
         public void RegisterPushToken(PushTokenRequest request, Action<bool?> done) => done?.Invoke(null);
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
+        public void GetTerritoryAround(string at, long radiusM, Action<TerritoryResponse> done) => done?.Invoke(null);
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
         public void CheckNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
