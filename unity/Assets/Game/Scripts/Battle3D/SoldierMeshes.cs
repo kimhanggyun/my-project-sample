@@ -143,12 +143,14 @@ namespace Game.Unity.Battle3D
             Add(cylinder, new Vector3(0f, lift + 0.293f, 0f), new Vector3(0.018f, 0.012f, 0.018f));                   // 목
             Add(sphere, new Vector3(0f, lift + 0.33f, 0f), new Vector3(0.062f, 0.064f, 0.062f));                      // 얼굴
             // 뾰족 투구 (그림의 삿갓 모양): 넓은 챙 + 위로 좁아지는 둥근 판들. 정찰병은 투구 대신 팀 색 머리띠
-            part = armored ? Armor : Dark;
+            // H1 (2026-11-20 사용자 "아군 · 적 구분"): 위에서 내려다보면 투구가 가장 잘 보이므로 챙 · 판은 편 색, 꼭지만 갑옷 · 어두운 색
             if (!light)
             {
+                part = Team;
                 Add(cylinder, new Vector3(0f, lift + 0.357f, 0f), new Vector3(0.088f, 0.005f, 0.088f));
                 Add(cylinder, new Vector3(0f, lift + 0.369f, 0f), new Vector3(0.05f, 0.008f, 0.05f));
                 Add(cylinder, new Vector3(0f, lift + 0.383f, 0f), new Vector3(0.034f, 0.008f, 0.034f));
+                part = armored ? Armor : Dark;
                 Add(cylinder, new Vector3(0f, lift + 0.396f, 0f), new Vector3(0.018f, 0.008f, 0.018f));
             }
             else
