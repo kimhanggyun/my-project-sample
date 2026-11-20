@@ -68,6 +68,8 @@ namespace Game.Unity.UI
         private RectTransform _ring;
         private Image _dim;
         public bool Shown { get; private set; }
+        /// <summary>카드 색 = 밝은 한지 (2026-11-20 캡처: Palette.Card는 어두워 다른 화면과 안 맞음).</summary>
+        private static readonly Color Paper = new Color(0.96f, 0.93f, 0.86f);
 
         public void Build()
         {
@@ -76,7 +78,7 @@ namespace Game.Unity.UI
             var card = Ui.Rect(transform, "Card");
             card.anchorMin = card.anchorMax = card.pivot = new Vector2(0.5f, 0.5f);
             card.sizeDelta = new Vector2(180f, 180f);
-            var bg = Ui.Background(card, Palette.Card);
+            var bg = Ui.Background(card, Paper);
             bg.sprite = UiShapes.Rounded(24);
             bg.type = Image.Type.Sliced;
             bg.raycastTarget = false;
@@ -93,7 +95,7 @@ namespace Game.Unity.UI
             var hole = Ui.Rect(_ring, "Hole");
             hole.anchorMin = hole.anchorMax = hole.pivot = new Vector2(0.5f, 0.5f);
             hole.sizeDelta = new Vector2(70f, 70f);
-            var hb = Ui.Background(hole, Palette.Card);
+            var hb = Ui.Background(hole, Paper);
             hb.sprite = UiShapes.Circle;
             hb.raycastTarget = false;
             Show(false);
