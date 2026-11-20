@@ -243,7 +243,7 @@ namespace Game.Unity.Screens
                     Ui.Label(c, HireText.Line(ctx, l), Ui.FontSmall);
                     Ui.Label(c, HireText.Price(ctx, l) + "  ·  " + HireText.Stats(ctx, l), 22, TextAnchor.MiddleLeft, Palette.TextDim);
                     string id = l.Id;
-                    Ui.Button(c, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, _ => app.ShowMain("hiring")), 64, Palette.Danger, 24);
+                    Ui.Button(c, ctx.T("ui.hire.unregister"), () => ctx.Unregister(id, Loading.Wrap<bool?>(_ => app.ShowMain("hiring"))), 64, Palette.Danger, 24);
                 }
                 if (n == 0) Ui.Label(body, ctx.T("ui.merc.noListings"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             }));
@@ -369,12 +369,12 @@ namespace Game.Unity.Screens
                 if (_kind == HireKinds.General) req.GeneralId = _id; else req.UnitId = _id;
                 _notice = T("ui.hire.loading");
                 Rebuild();
-                Ctx.RegisterHire(req, r =>
+                Ctx.RegisterHire(req, Loading.Wrap<HireListingResponse>(r =>
                 {
                     if (r != null && r.Ok) { App.ShowMain("hiring"); return; }
                     _notice = r == null ? T("ui.hire.failed") : T("ui.hire.result." + r.Reason);
                     Rebuild();
-                });
+                }));
             });
             Ui.SetEnabled(submit, blocked == null);
         }
