@@ -746,14 +746,14 @@ namespace Game.Unity.Screens
                     Ui.Label(card, T(mine.Open ? "ui.alliance.openOn" : "ui.alliance.openOff"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
                     if (leader)
                     {
-                        Ui.Button(card, T(mine.Open ? "ui.alliance.close" : "ui.alliance.open"), () => Ctx.ManageAlliance(mine.Open ? AllianceActions.Close : AllianceActions.Open, null, r => Reopen(r)), 72, fontSize: 26);
+                        Ui.Button(card, T(mine.Open ? "ui.alliance.close" : "ui.alliance.open"), () => Ctx.ManageAlliance(mine.Open ? AllianceActions.Close : AllianceActions.Open, null, Loading.Wrap<AllianceResponse>(r => Reopen(r))), 72, fontSize: 26);
                         foreach (var who in mine.Requests)
                         {
                             string id = who;
                             var row = Ui.Row(card, "Req" + id, 72, 8);
                             Ui.Size(Ui.Label(row, T("ui.alliance.request", Short(id)), 24), flexibleWidth: 2);
-                            Ui.Button(row, T("ui.alliance.accept"), () => Ctx.ManageAlliance(AllianceActions.Accept, id, r => Reopen(r)), 72, fontSize: 24);
-                            Ui.Button(row, T("ui.alliance.reject"), () => Ctx.ManageAlliance(AllianceActions.Reject, id, r => Reopen(r)), 72, fontSize: 24);
+                            Ui.Button(row, T("ui.alliance.accept"), () => Ctx.ManageAlliance(AllianceActions.Accept, id, Loading.Wrap<AllianceResponse>(r => Reopen(r))), 72, fontSize: 24);
+                            Ui.Button(row, T("ui.alliance.reject"), () => Ctx.ManageAlliance(AllianceActions.Reject, id, Loading.Wrap<AllianceResponse>(r => Reopen(r))), 72, fontSize: 24);
                         }
                     }
                     foreach (var who in mine.Members)
@@ -762,16 +762,16 @@ namespace Game.Unity.Screens
                         var row = Ui.Row(card, "Mem" + id, 64, 8);
                         Ui.Size(Ui.Label(row, Short(id) + (id == mine.LeaderAccountId ? "  " + T("ui.alliance.leader") : "") + (id == Ctx.AccountId ? "  " + T("ui.alliance.me") : ""), 24, TextAnchor.MiddleLeft, Palette.TextDim), flexibleWidth: 3);
                         if (leader && id != Ctx.AccountId)
-                            Ui.Size(Ui.Button(row, T("ui.alliance.kick"), () => Ctx.ManageAlliance(AllianceActions.Kick, id, r => Reopen(r)), 64, Palette.Danger, 22), width: 200);
+                            Ui.Size(Ui.Button(row, T("ui.alliance.kick"), () => Ctx.ManageAlliance(AllianceActions.Kick, id, Loading.Wrap<AllianceResponse>(r => Reopen(r))), 64, Palette.Danger, 22), width: 200);
                     }
-                    Ui.Button(card, T("ui.alliance.leave"), () => Ctx.LeaveAlliance(r => Reopen(r)), 72, Palette.Danger, 26);
+                    Ui.Button(card, T("ui.alliance.leave"), () => Ctx.LeaveAlliance(Loading.Wrap<AllianceResponse>(r => Reopen(r))), 72, Palette.Danger, 26);
                 }
                 else
                 {
                     var card = Ui.Card(list, "Create", 20, 6);
                     Ui.Label(card, T("ui.alliance.createTitle"), Ui.FontSmall);
                     var name = Ui.TextInput(card, T("ui.alliance.namePlaceholder"), 12, 88, 30);
-                    Ui.Button(card, T("ui.alliance.create"), () => Ctx.CreateAlliance(name.text, r => Reopen(r)), 72, fontSize: 26);
+                    Ui.Button(card, T("ui.alliance.create"), () => Ctx.CreateAlliance(name.text, Loading.Wrap<AllianceResponse>(r => Reopen(r))), 72, fontSize: 26);
                 }
                 Ui.Label(list, T("ui.alliance.others"), Ui.FontBody);
                 int shown = 0;
@@ -783,7 +783,7 @@ namespace Game.Unity.Screens
                     Ui.Label(card, T("ui.alliance.line", a.Name, a.Members.Count, res.MemberMax) + "  " + T(a.Open ? "ui.alliance.openOn" : "ui.alliance.openOff"), Ui.FontSmall);
                     string id = a.Id;
                     bool requested = a.Requests != null && a.Requests.Contains(Ctx.AccountId);
-                    var join = Ui.Button(card, T(requested ? "ui.alliance.requested" : a.Open ? "ui.alliance.join" : "ui.alliance.apply"), () => Ctx.JoinAlliance(id, r => Reopen(r)), 72, fontSize: 26);
+                    var join = Ui.Button(card, T(requested ? "ui.alliance.requested" : a.Open ? "ui.alliance.join" : "ui.alliance.apply"), () => Ctx.JoinAlliance(id, Loading.Wrap<AllianceResponse>(r => Reopen(r))), 72, fontSize: 26);
                     Ui.SetEnabled(join, mine == null && !requested && a.Members.Count < res.MemberMax);
                 }
                 if (shown == 0) Ui.Label(list, T("ui.alliance.none"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);

@@ -277,18 +277,26 @@ namespace Game.Server
             }
             var v = ActionVerifier.Apply(_actions, save, s, Now, out var json, out var at, ServerCheck);
             if (!v.Valid) { v.Save = save; return v; }
-            var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
+            bool ok;
+            CloudSave current;
+            if (receipts.Pending.Count == 0) (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
+            else
+            {
+                // 결제: 쓴 거래 확인 · 세이브 · 거래 기록을 한 번에 (같은 영수증이 동시에 와도 하나만, backlog F)
+                foreach (var r in receipts.Pending) { r.AccountId = accountId; r.AtUnixSeconds = at; }
+                var put = _store.PutSaveWithReceipts(Code, accountId, save.Revision, json, at, receipts.Pending);
+                if (put.receiptTaken) return new ActionVerdict { Valid = false, Reason = VerdictReasons.BadAction, Save = put.current ?? save };
+                (ok, current) = (put.ok, put.current);
+            }
             if (!ok) return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             foreach (var id in claimed) _store.TakeMail(Code, accountId, id);
-            if (receipts.Pending.Count > 0) SettleReceipts(accountId, receipts.Pending, at);
+            if (receipts.Pending.Count > 0) SettleReceipts(receipts.Pending);
             return new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current };
         }
 
-        /// <summary>반영한 결제를 저장소에 남기고 스토어에 알린다 (영구 = acknowledge, 소모성 = consume, R-116). 알리기 실패는 지급에 영향 없음.</summary>
-        private void SettleReceipts(string accountId, List<ReceiptRecord> pending, long at)
+        /// <summary>반영한 결제를 스토어에 알린다 (영구 = acknowledge, 소모성 = consume, R-116). 기록은 세이브와 함께 이미 저장소에. 알리기 실패는 지급에 영향 없음.</summary>
+        private void SettleReceipts(List<ReceiptRecord> pending)
         {
-            foreach (var r in pending) { r.AccountId = accountId; r.AtUnixSeconds = at; }
-            _store.RecordReceipts(Code, pending);
             if (!(Receipts is IReceiptSettler settler)) return;
             foreach (var r in pending)
             {
