@@ -14,6 +14,13 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class ResultScreen : GameScreen
     {
+        /// <summary>스토리 탭이 보이나 (mainTabs.json story가 숨김이 아니면).</summary>
+        private bool StoryTabShown()
+        {
+            foreach (var t in Ctx.MainTabs) if (t.Id == "story") return t.Status != Game.Unity.Boot.MainTabEntry.Hidden;
+            return false;
+        }
+
         private readonly SortiePlan _plan;
         private readonly BattleResult _result;
         private readonly BattleReport _report;
@@ -125,7 +132,9 @@ namespace Game.Unity.Screens
             }
             else
             {
-                Ui.Size(Ui.Button(footer, T(territory ? "ui.result.toTerritory" : "ui.result.toStory"), () => App.ShowMain(territory ? "territory" : "story"), 150, fontSize: 26), width: 260);
+                // 스토리 탭이 숨겨져 있으면(H10, 2026-11-17) 영토로 — 문구도 같이
+                bool toTerritory = territory || !StoryTabShown();
+                Ui.Size(Ui.Button(footer, T(toTerritory ? "ui.result.toTerritory" : "ui.result.toStory"), () => App.ShowMain(toTerritory ? "territory" : "story"), 150, fontSize: 26), width: 260);
                 var retry = Ui.Styled(Ui.PrimaryButton(footer, T("ui.result.retry"), () =>
                 {
                     if (territory) App.ShowMain("territory");
