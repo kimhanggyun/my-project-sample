@@ -96,11 +96,13 @@ namespace Game.Unity.Battle3D
         private readonly Vector2[] _outlineCorners = new Vector2[4];
         private const int OutlinePerSide = 4; // 한 변을 4토막 → 언덕에서도 땅을 따라감
 
-        private void DrawUnitOutline(SubUnitState u, bool ally, Vector3 center, Quaternion rot, float halfW, float front, float back)
+        private void DrawUnitOutline(SubUnitState u, int tone, Vector3 center, Quaternion rot, float halfW, float front, float back)
         {
-            var color = ally ? AllyColor : EnemyColor;
             if (!_unitOutlines.TryGetValue(u, out var o) || o.line == null)
-                o.line = Line("UnitOutline", color, 0.06f, true, true);
+                o.line = Line("UnitOutline", AllyColor, 0.06f, true, true);
+            var mat = UnlitMaterial(tone == Selected ? SelectedColor : tone == Ally ? AllyColor : EnemyColor);
+            if (o.line.sharedMaterial != mat) o.line.sharedMaterial = mat;
+            o.line.widthMultiplier = tone == Selected ? 0.09f : 0.06f;
             o.frame = _outlineFrame;
             _unitOutlines[u] = o;
             var line = o.line;
@@ -902,7 +904,9 @@ namespace Game.Unity.Battle3D
             foreach (var c in ctx.Corps)
             {
                 if (!c.InBattle || !_ctl.Sees(c)) continue;
-                int teamColor = c == _ctl.Selected ? Selected : c.Team == _ctl.Team ? Ally : Enemy;
+                // 고른 군단도 병사는 편 색 그대로 (투구 색으로 편 구분), 고름 표시는 노란 바닥 테두리 · 링 (H1 2026-11-20)
+                int teamColor = c.Team == _ctl.Team ? Ally : Enemy;
+                int outlineColor = c == _ctl.Selected ? Selected : teamColor;
                 // 몸 상태 (D18): 사기가 퇴각 기준 + 15 밑이면 바랜 색·떨림, 숨은 아군은 어둡고 성기게
                 bool shaken = c.Temperament != null && c.Morale <= c.Temperament.RetreatMorale + Fix.FromInt(15);
                 bool hidden = c.Team == _ctl.Team && (c.Hidden || c.HasStatus(StatusIds.AmbushSetup));
@@ -958,7 +962,7 @@ namespace Game.Unity.Battle3D
                     _shownSoldiers[u] = n;
                     int rowsNow = (int)((n + side - 1) / side);
                     if (!hidden && n > 0)
-                        DrawUnitOutline(u, c.Team == _ctl.Team, center, rot, rowsNow > 1 ? halfW : (n - 1) * SoldierSpacing / 2f, frontZ, frontZ - (rowsNow - 1) * SoldierSpacing);
+                        DrawUnitOutline(u, outlineColor, center, rot, rowsNow > 1 ? halfW : (n - 1) * SoldierSpacing / 2f, frontZ, frontZ - (rowsNow - 1) * SoldierSpacing);
                     for (int i = 0; i < n; i++)
                     {
                         int row = i / side, col = i % side;
