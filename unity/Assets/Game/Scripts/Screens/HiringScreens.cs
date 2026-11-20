@@ -424,16 +424,21 @@ namespace Game.Unity.Screens
             // 오늘 이미 받았으면 [출석 받기]를 끈다. 받으면 보상 우편을 곧바로 받는다 (2026-11-16 사용자: 우편함에 따로 남지 않게)
             bool doneToday = _lastAttendance != null && (_lastAttendance.Result == AttendanceResults.Already || _lastAttendance.Result == AttendanceResults.Ok)
                 && Ctx.Clock.UtcNow.ToUnixTimeSeconds() < _lastAttendance.NextDayAtUnixSeconds;
-            var check = Ui.Button(card, doneToday ? T("ui.attend.done") : T("ui.attend.check"), () => Ctx.CheckIn(r =>
+            var check = Ui.Button(card, doneToday ? T("ui.attend.done") : T("ui.attend.check"), () =>
+            {
+            var end = Loading.Begin(); // 공통 로딩 (H5): 출석 → 보상 받기까지
+            Ctx.CheckIn(r =>
             {
                 _lastAttendance = r;
-                if (r == null) { App.Show(new MailScreen(T("ui.hire.failed"), _backTab)); return; }
+                if (r == null) { end(); App.Show(new MailScreen(T("ui.hire.failed"), _backTab)); return; }
                 Ctx.ClaimMailWhere(m => m.Kind == MailKinds.Attendance, sum =>
                 {
+                    end();
                     string got = sum == null ? null : Amounts(Ctx, sum);
                     App.Show(new MailScreen(got != null ? T("ui.attend.claimed", got) : null, _backTab));
                 });
-            }), 72, Palette.ButtonActive, 26);
+            });
+            }, 72, Palette.ButtonActive, 26);
             Ui.SetEnabled(check, !doneToday);
         }
 
