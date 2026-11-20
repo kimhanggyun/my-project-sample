@@ -365,10 +365,12 @@ namespace Game.Unity.Screens
         /// 깃발을 꽂고 · 보내고 · 회수하고 · 수입을 받은 뒤: 장부를 다시 받아 놓고 그린다 (2026-11-16: 받은 뒤에도 옛 수입 표가 남던 것).
         /// 화면은 이미 받아 둔 Owners로 먼저 그리고 새 목록은 처음에만 다시 그리므로, 바뀐 뒤에는 먼저 받아 와야 한다.
         /// </summary>
-        private static void Reload(GameApp app, RectTransform root)
+        /// <param name="done">다시 받은 뒤 (그리기 전) — 로딩 끝내기 (H5).</param>
+        private static void Reload(GameApp app, RectTransform root, System.Action done = null)
         {
             app.Context.LoadTerritory(res =>
             {
+                done?.Invoke();
                 if (res != null)
                 {
                     var owners = new Dictionary<string, TerritoryOwner>();
@@ -491,12 +493,13 @@ namespace Game.Unity.Screens
                 var req = reinforce ? new PlantRequest { FlagKey = reinforceKey, GeneralIds = new List<string>(_plantPick) }
                     : new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick) };
                 close();
+                var end = Loading.Begin(); // 공통 로딩 (H5): 꽂기 → 장부 다시 받기까지
                 ctx.PlantFlag(req, r =>
                 {
                     if (r != null && r.Ok) _plantPick.Clear();
                     Notice = r == null ? ctx.T("ui.hire.failed") : reinforce && r.Ok ? ctx.T("ui.terr.reinforced") : ctx.T("ui.terr.plant." + r.Reason);
                     NamesFetched = false;
-                    Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
+                    Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
                 });
             }, 84, Palette.ButtonActive, 28);
             Ui.SetEnabled(go, _plantPick.Count > 0);
@@ -520,13 +523,14 @@ namespace Game.Unity.Screens
             void Recall(List<string> which)
             {
                 close();
+                var end = Loading.Begin(); // 공통 로딩 (H5): 회수 → 수입 받기 → 장부 다시 받기까지
                 ctx.RecallFlag(new RecallRequest { FlagKey = flag.RegionId, GeneralIds = which }, r =>
                 {
                     NamesFetched = false;
                     if (r == null || !r.Ok)
                     {
                         Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.recall." + r.Reason);
-                        Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
+                        Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
                         return;
                     }
                     // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
@@ -535,7 +539,7 @@ namespace Game.Unity.Screens
                     {
                         string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
                         Notice = r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
-                        Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
+                        Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
                     });
                 });
             }
@@ -618,15 +622,16 @@ namespace Game.Unity.Screens
         private static void CollectOne(GameApp app, RectTransform root, string regionId)
         {
             var ctx = app.Context;
+            var end = Loading.Begin(); // 공통 로딩 (H5, 사용자 예: 깃발 수입 → 토스트까지): 걷기 → 받기 → 장부 다시 받기까지
             ctx.CollectFlag(regionId, r =>
             {
-                if (r == null) { Notice = ctx.T("ui.hire.failed"); if (root != null) app.ShowMain("territory"); return; }
+                if (r == null) { end(); Notice = ctx.T("ui.hire.failed"); if (root != null) app.ShowMain("territory"); return; }
                 // 이 깃발의 수입 우편 (방금 것 + 전에 남은 것)을 우편함에서 찾아 바로 받는다
                 ctx.ClaimMailWhere(m => m.Kind == MailKinds.TerritoryIncome && m.RegionId == regionId, sum =>
                 {
                     string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
                     Notice = sum == null ? ctx.T("ui.hire.failed") : got == null ? ctx.T("ui.territory.nothing") : ctx.T("ui.territory.got", got);
-                    Reload(app, root); // 바뀐 깃발 · 수입을 다시 받아 그린다
+                    Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
                 });
             });
         }
@@ -658,13 +663,13 @@ namespace Game.Unity.Screens
                             : TerritoryFlags.CheckSiege(ctx.Territory, ctx.Defs, ctx.State, ctx.AccountId, Owners, key, at, ctx.Clock.UtcNow.ToUnixTimeSeconds());
                         if (why != null) { Notice = why; if (root != null) app.ShowMain("territory"); return; }
                         // 공성전 준비 (R-113): 서버에 준비 시작 → 준비 시간이 있으면 카운트다운 화면, 없으면 바로 출진
-                        ctx.StartSiege(new SiegeRequest { FlagKey = key, Location = at }, sr =>
+                        ctx.StartSiege(new SiegeRequest { FlagKey = key, Location = at }, Loading.Wrap<SiegeResponse>(sr =>
                         {
                             if (sr == null) { Notice = ctx.T("ui.hire.failed"); if (root != null) app.ShowMain("territory"); return; }
                             if (!sr.Ok) { Notice = sr.Reason == SiegeReasons.Busy ? ctx.T("ui.siege.busy") : sr.Message ?? ctx.T("ui.siege.cannot"); if (root != null) app.ShowMain("territory"); return; }
                             if (sr.StartsAtUnixSeconds > ctx.Clock.UtcNow.ToUnixTimeSeconds()) app.Show(new SiegePrepScreen(key, at, def, sr.StartsAtUnixSeconds));
                             else app.Show(new TerritorySortieScreen(key, at, def));
-                        });
+                        }));
                     });
                 }, 80, Palette.ButtonActive, 28);
             }
