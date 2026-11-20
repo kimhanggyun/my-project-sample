@@ -212,10 +212,12 @@ namespace Game.Unity.Boot
         /// 시작 때 <see cref="SyncPushSettings"/>로 서버 값을 기기에 맞춘다 (다른 기기에서 바꾼 것).
         /// </summary>
         public bool NotifyOn(string kind) => !_saveStore.Exists(NotifyPrefix + kind) || _saveStore.Read(NotifyPrefix + kind) != "off";
-        public void SetNotify(string kind, bool on)
+        /// <param name="done">서버 저장이 끝나면 (오프라인이면 바로). 기기 값은 먼저 바뀐다.</param>
+        public void SetNotify(string kind, bool on, Action done = null)
         {
             _saveStore.Write(NotifyPrefix + kind, on ? "on" : "off");
-            if (OnlineEnabled) Online.SetPushSettings(LocalPushSettings(), _ => { });
+            if (OnlineEnabled) Online.SetPushSettings(LocalPushSettings(), _ => done?.Invoke());
+            else done?.Invoke();
         }
 
         private PushSettings LocalPushSettings() => new PushSettings

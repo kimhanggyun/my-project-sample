@@ -164,7 +164,7 @@ namespace Game.Unity.Screens
 
         private void PlayHired(string replayId)
         {
-            Ctx.LoadHireReplay(replayId, res =>
+            Ctx.LoadHireReplay(replayId, Loading.Wrap<Game.Online.HireReplayResponse>(res =>
             {
                 if (Root == null) return;
                 if (res?.ReplayJson == null) { App.Show(new ReplayListScreen(T("ui.replay.hiredGone"))); return; }
@@ -174,7 +174,7 @@ namespace Game.Unity.Screens
                 var playback = Ctx.ReplayService.Check(rec);
                 if (playback.Ok) { App.Show(new BattleScreen(playback)); return; }
                 App.Show(new ReplayListScreen(T(playback.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
-            });
+            }));
         }
 
         private void WinTag(Transform parent, ReplayRecord rec) =>
@@ -262,7 +262,7 @@ namespace Game.Unity.Screens
 
         private void Watch(string id)
         {
-            Ctx.Online.GetSharedReplay(id, res =>
+            Ctx.Online.GetSharedReplay(id, Loading.Wrap<Game.Online.SharedReplayResponse>(res =>
             {
                 if (res == null) { App.Show(new ReplayListScreen(T("ui.shared.failed"))); return; }
                 ReplayRecord rec;
@@ -270,15 +270,15 @@ namespace Game.Unity.Screens
                 var playback = rec == null ? null : Ctx.ReplayService.Check(rec);
                 if (playback != null && playback.Ok) { App.Show(new BattleScreen(playback)); return; }
                 App.Show(new ReplayListScreen(T(playback?.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
-            });
+            }));
         }
 
         private void Share(ReplayRecord rec)
         {
-            Ctx.Online.ShareReplay(new Game.Online.ShareReplayRequest { ReplayJson = ReplayService.Write(rec) }, res =>
+            Ctx.Online.ShareReplay(new Game.Online.ShareReplayRequest { ReplayJson = ReplayService.Write(rec) }, Loading.Wrap<Game.Online.ShareReplayResponse>(res =>
                 App.Show(new ReplayListScreen(res == null ? T("ui.shared.failed")
                     : res.Ok ? T("ui.replay.shared")
-                    : T(res.Reason == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken"))));
+                    : T(res.Reason == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")))));
         }
 
         private void Play(ReplayRecord rec)
@@ -335,7 +335,7 @@ namespace Game.Unity.Screens
 
         private void Watch(string id)
         {
-            Ctx.Online.GetSharedReplay(id, res =>
+            Ctx.Online.GetSharedReplay(id, Loading.Wrap<Game.Online.SharedReplayResponse>(res =>
             {
                 if (res == null) { App.Show(new SharedReplayScreen(_stepId, T("ui.shared.failed"))); return; }
                 ReplayRecord rec;
@@ -343,7 +343,7 @@ namespace Game.Unity.Screens
                 var playback = rec == null ? null : Ctx.ReplayService.Check(rec);
                 if (playback != null && playback.Ok) { App.Show(new BattleScreen(playback)); return; }
                 App.Show(new SharedReplayScreen(_stepId, T(playback?.Status == ReplayStatus.VersionChanged ? "ui.replay.versionChanged" : "ui.replay.broken")));
-            });
+            }));
         }
     }
 }
