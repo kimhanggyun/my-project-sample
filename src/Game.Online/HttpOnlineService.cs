@@ -240,6 +240,11 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.MyNickname, OnlineJson.Write(new NicknameRequest { Nickname = nickname }), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<NicknameResponse>(body) : null));
 
+        /// <summary>200 = 결과 (Ok · Reason). 그 밖은 null.</summary>
+        public void CheckNickname(string nickname, Action<NicknameResponse> done) =>
+            _transport.Send("GET", OnlineRoutes.NicknameCheck + "?name=" + Uri.EscapeDataString(nickname ?? ""), null, Token, (status, body) =>
+                done?.Invoke(status == 200 ? Parse<NicknameResponse>(body) : null));
+
         public void LinkFirebase(string idToken, Action<LinkResponse> done) =>
             _transport.Send("POST", OnlineRoutes.LinkFirebase, OnlineJson.Write(new ExternalSignInRequest { IdToken = idToken }), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 409 ? Parse<LinkResponse>(body) : null));

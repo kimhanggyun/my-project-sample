@@ -33,6 +33,8 @@ namespace Game.Server
         string RoleOf(string accountId);
         /// <summary>등급 정하기 (null = 일반). 없는 계정이면 false.</summary>
         bool SetRole(string accountId, string role);
+        /// <summary>미리 확인 (H7): SetNickname과 같은 규칙 · 같은 겹침 검사, 저장은 하지 않는다. accountId(없어도 됨)의 지금 이름은 겹침으로 치지 않는다.</summary>
+        NicknameResponse CheckNickname(string accountId, string nickname);
         string NicknameOf(string accountId);
         Dictionary<string, string> NicknamesOf(IEnumerable<string> accountIds);
 
@@ -402,6 +404,17 @@ namespace Game.Server
                 Persist();
                 return true;
             }
+        }
+
+        public NicknameResponse CheckNickname(string accountId, string nickname)
+        {
+            var n = NicknameRules.Normalize(nickname);
+            if (n == null) return new NicknameResponse { Ok = false, Reason = NicknameRules.BadName };
+            lock (Fresh())
+                if (Data.Nicknames != null)
+                    foreach (var kv in Data.Nicknames)
+                        if (kv.Key != accountId && string.Equals(kv.Value, n, StringComparison.OrdinalIgnoreCase)) return new NicknameResponse { Ok = false, Reason = NicknameRules.Taken, Nickname = n };
+            return new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n };
         }
 
         public string NicknameOf(string accountId)

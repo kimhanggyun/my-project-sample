@@ -46,6 +46,10 @@ namespace Game.Server.Tests
             Assert.False(s.SetRole(guest.AccountId, "king"));
             Assert.True(s.SetRole(guest.AccountId, null));
             Assert.Null(s.RoleOf(guest.AccountId));
+            Assert.Equal(NicknameRules.Taken, s.CheckNickname(first.AccountId, nick.ToUpperInvariant()).Reason); // H7 미리 확인 = 저장 때와 같은 검사
+            Assert.True(s.CheckNickname(guest.AccountId, nick).Ok); // 내 이름
+            Assert.True(s.CheckNickname(null, nick + "z").Ok);
+            Assert.Equal(NicknameRules.BadName, s.CheckNickname(null, "!").Reason);
             Assert.Equal(nick, s.NicknamesOf(new[] { guest.AccountId, first.AccountId })[guest.AccountId]);
             string g = G();
             Assert.True(s.Join(guest.AccountId, g, 100));
