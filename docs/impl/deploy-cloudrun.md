@@ -144,6 +144,13 @@ echo "FIREBASE_PROJECT_ID=$PROJECT"
 7. Actions → `deploy-cloudrun` → Run workflow (변수만 바꾼 것이라 손으로 한 번). 끝.
 - 되돌리기: `RECEIPT_VERIFIER`를 `off`로 바꾸고 다시 배포.
 
+### 7.1 관리자 페이지에서 켜고 끄기 (개발 중, R-124)
+
+- 관리자 페이지 **[상점 상품] → 결제 검증**: [서버 설정 그대로] · [끔] · [가짜 허용] + 저장. [가짜 허용]이면 앱의 가짜 결제("fake:" 영수증)가 통과해 **돈 없이 상품이 들어간다** (시험용). 켜져 있는 동안 페이지 맨 위에 빨간 띠.
+- 배포 없이 바로 적용 (게임별, 저장소에 저장). 바꾸기는 관리자(admin) 등급만, 서브 관리자는 보기만.
+- 안전장치: 서버 설정 `Game:AllowAdminReceiptOverride` (저장소 변수 **`ALLOW_ADMIN_RECEIPT`**, 워크플로 기본 `true` = 지금 개발 서버). **출시 전에 `ALLOW_ADMIN_RECEIPT` = `false`** 로 배포하면 관리자 칸이 듣지 않고(422), 저장소에 남은 덮어쓰기도 무시한다 → 서버 설정(`RECEIPT_VERIFIER`)만 쓴다.
+- `googlePlay`(실제 검증)는 덮어쓰기로 고르지 않는다 — 위 `RECEIPT_VERIFIER`로만.
+
 **기기 쪽 (데스크탑)**: Unity IAP 구매 성공 → `ProcessPurchase`에서 `Pending`을 돌려주고, 영수증(`product.receipt`)을 `store.purchase` 행동으로 서버에 보낸다 → 서버가 받아들이면 `ConfirmPendingPurchase`. 서버가 `unavailable`이면 나중에 다시 보낸다 (구매는 남아 있음).
 
 ## 8. 푸시 알림 (FCM — R-119)

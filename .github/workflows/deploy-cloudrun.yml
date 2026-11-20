@@ -77,6 +77,8 @@ jobs:
           GAME_STORE: ${{ vars.GAME_STORE || 'folder' }}
           FIRESTORE_DATABASE: ${{ vars.FIRESTORE_DATABASE || '(default)' }}
           MAX_INSTANCES: ${{ vars.MAX_INSTANCES || '1' }}
+          # 관리자 페이지 결제 검증 덮어쓰기 (R-124): 저장소 변수 ALLOW_ADMIN_RECEIPT (기본 true = 개발 중, 출시 전 false — backlog F).
+          ALLOW_ADMIN_RECEIPT: ${{ vars.ALLOW_ADMIN_RECEIPT || 'true' }}
         # 테스트 단계: 인스턴스 1대(폴더 저장소를 Cloud Storage 버킷에 붙여 쓰므로 동시에 2대 이상 쓰면 안 된다), 요청 없으면 0대.
         # uid/gid 1654 = .NET 이미지의 app 사용자 (버킷 폴더에 쓸 수 있게).
         run: |
@@ -96,7 +98,7 @@ jobs:
             --execution-environment gen2 \
             --add-volume "name=store,type=cloud-storage,bucket=${{ vars.GCS_BUCKET }},mount-options=uid=1654;gid=1654" \
             --add-volume-mount "volume=store,mount-path=/data/store" \
-            --set-env-vars "^|^Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }}|Game__AllowFakeReceipts=false|Game__Masters=${{ vars.GAME_MASTERS }}|Game__AdminKey=${{ secrets.GAME_ADMIN_KEY }}|Game__AdminGoogle=${{ vars.ADMIN_GOOGLE || 'off' }}|Game__ReceiptVerifier=${RECEIPT_VERIFIER}|Game__GooglePlay__PackageName=${GOOGLE_PLAY_PACKAGE}|Game__Push=${PUSH}|Game__Store=${GAME_STORE}|Game__Firestore__ProjectId=${{ vars.GCP_PROJECT_ID }}|Game__Firestore__DatabaseId=${FIRESTORE_DATABASE}" \
+            --set-env-vars "^|^Game__Firebase__ProjectId=${{ vars.FIREBASE_PROJECT_ID }}|Game__AllowFakeReceipts=false|Game__Masters=${{ vars.GAME_MASTERS }}|Game__AdminKey=${{ secrets.GAME_ADMIN_KEY }}|Game__AdminGoogle=${{ vars.ADMIN_GOOGLE || 'off' }}|Game__ReceiptVerifier=${RECEIPT_VERIFIER}|Game__GooglePlay__PackageName=${GOOGLE_PLAY_PACKAGE}|Game__Push=${PUSH}|Game__Store=${GAME_STORE}|Game__Firestore__ProjectId=${{ vars.GCP_PROJECT_ID }}|Game__Firestore__DatabaseId=${FIRESTORE_DATABASE}|Game__AllowAdminReceiptOverride=${ALLOW_ADMIN_RECEIPT}" \
             "${EXTRA[@]}"
       - name: Smoke test
         run: |

@@ -340,6 +340,15 @@ namespace Game.Server
             else Put(r, new Dictionary<string, object> { ["j"] = J(content) });
         }
 
+        // ---- 결제 검증 덮어쓰기 (R-124): games/{게임}/config/receipts ----
+        public string ReceiptOverrideOf(string gameCode) => Str(Read(G(gameCode, "config").Document("receipts")), "v");
+
+        public void SetReceiptOverride(string gameCode, string value)
+        {
+            var r = G(gameCode, "config").Document("receipts");
+            if (value == null) Del(r); else Put(r, new Dictionary<string, object> { ["v"] = value });
+        }
+
         public ServerStatusResponse StatusOverride() => FromJ<ServerStatusResponse>(Read(StatusDoc));
 
         public void SetStatusOverride(ServerStatusResponse status)
@@ -702,6 +711,8 @@ namespace Game.Server
             if (s.StatusOverride != null) W("config", StatusDoc, new Dictionary<string, object> { ["j"] = J(s.StatusOverride) });
             foreach (var kv in s.Content ?? new Dictionary<string, ContentToggles>())
                 if (kv.Value?.Items != null && kv.Value.Items.Count > 0) W("content", G(kv.Key, "config").Document("content"), new Dictionary<string, object> { ["j"] = J(kv.Value) });
+            foreach (var kv in s.ReceiptOverride ?? new Dictionary<string, string>())
+                if (kv.Value != null) W("config", G(kv.Key, "config").Document("receipts"), new Dictionary<string, object> { ["v"] = kv.Value });
 
             // 게임별
             foreach (var g in s.Saves ?? new Dictionary<string, Dictionary<string, CloudSave>>())

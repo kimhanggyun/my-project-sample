@@ -122,6 +122,9 @@ namespace Game.Server
         /// <summary>관리자가 정한 켜고 끄기 (없으면 빈 것 = 데이터 그대로).</summary>
         ContentToggles ContentOf(string gameCode);
         void SetContent(string gameCode, ContentToggles content);
+        /// <summary>결제 검증 덮어쓰기 (R-124): null = 서버 설정 그대로, "off" · "fake". 서버 설정 Game:AllowAdminReceiptOverride가 false면 쓰이지 않는다.</summary>
+        string ReceiptOverrideOf(string gameCode);
+        void SetReceiptOverride(string gameCode, string value);
 
         // ---- 결제 기록 (게임별, R-116) ----
         /// <summary>반영한 거래 (없으면 null). 같은 거래를 다시 쓰지 못하게 · 복원 때 "이미 반영" 확인.</summary>
@@ -182,6 +185,8 @@ namespace Game.Server
             public Dictionary<string, long> Deletions { get; set; } = new Dictionary<string, long>();
             /// <summary>계정 → 등급 (H8, 일반은 적지 않음).</summary>
             public Dictionary<string, string> Roles { get; set; } = new Dictionary<string, string>();
+            /// <summary>게임 코드 → 결제 검증 덮어쓰기 (R-124, off · fake).</summary>
+            public Dictionary<string, string> ReceiptOverride { get; set; } = new Dictionary<string, string>();
             /// <summary>계정 → 마지막 접속 시각 (/v1/me, 관리자 표시용).</summary>
             public Dictionary<string, long> LastSeen { get; set; } = new Dictionary<string, long>();
             /// <summary>게임 코드 → (계정 → 세이브).</summary>
@@ -286,6 +291,21 @@ namespace Game.Server
             lock (Fresh())
                 return Data.Content != null && Data.Content.TryGetValue(gameCode ?? "", out var c) && c != null
                     ? OnlineJson.Read<ContentToggles>(OnlineJson.Write(c)) : new ContentToggles();
+        }
+
+        public string ReceiptOverrideOf(string gameCode)
+        {
+            lock (Fresh()) return Data.ReceiptOverride != null && Data.ReceiptOverride.TryGetValue(gameCode ?? "", out var v) ? v : null;
+        }
+
+        public void SetReceiptOverride(string gameCode, string value)
+        {
+            lock (Fresh())
+            {
+                if (Data.ReceiptOverride == null) Data.ReceiptOverride = new Dictionary<string, string>(); // 예전 저장 파일
+                if (value == null) Data.ReceiptOverride.Remove(gameCode); else Data.ReceiptOverride[gameCode] = value;
+                Persist();
+            }
         }
 
         public void SetContent(string gameCode, ContentToggles content)

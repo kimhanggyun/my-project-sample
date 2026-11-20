@@ -17,7 +17,8 @@ using Xunit;
 namespace Game.Server.Tests
 {
     /// <summary>관리자 페이지 (docs/impl/admin.md): 관리자 키 + 마스터 계정 둘 다 있어야, 키 설정이 없으면 꺼짐.</summary>
-    public class AdminTests : IClassFixture<AdminTests.Factory>, IClassFixture<ServerTests.Factory>, IClassFixture<AdminTests.KeyOnlyFactory>
+    public class AdminTests : IClassFixture<AdminTests.Factory>, IClassFixture<ServerTests.Factory>, IClassFixture<AdminTests.KeyOnlyFactory>,
+        IClassFixture<AdminTests.ReceiptOpenFactory>, IClassFixture<AdminTests.ReceiptLockedFactory>
     {
         private const string Key = "test-admin-key";
 
@@ -46,10 +47,98 @@ namespace Game.Server.Tests
             }
         }
 
+        /// <summary>결제 검증 덮어쓰기 (R-124): 서버 설정 off + 관리자 덮어쓰기 허용 (지금 개발 서버와 같음).</summary>
+        public sealed class ReceiptOpenFactory : WebApplicationFactory<Program>
+        {
+            protected override void ConfigureWebHost(IWebHostBuilder builder)
+            {
+                TestStore.Isolate(builder);
+                builder.UseSetting("Game:AdminKey", Key);
+                builder.UseSetting("Game:AdminGoogle", "off");
+                builder.UseSetting("Game:ReceiptVerifier", "off");
+                builder.UseSetting("Game:AllowAdminReceiptOverride", "true");
+            }
+        }
+
+        /// <summary>출시 서버: 서버 설정 off, 덮어쓰기 허용 없음.</summary>
+        public sealed class ReceiptLockedFactory : WebApplicationFactory<Program>
+        {
+            protected override void ConfigureWebHost(IWebHostBuilder builder)
+            {
+                TestStore.Isolate(builder);
+                builder.UseSetting("Game:AdminKey", Key);
+                builder.UseSetting("Game:AdminGoogle", "off");
+                builder.UseSetting("Game:ReceiptVerifier", "off");
+            }
+        }
+
+        private readonly ReceiptOpenFactory _rcOpen;
+        private readonly ReceiptLockedFactory _rcLocked;
         private readonly Factory _factory;
         private readonly ServerTests.Factory _noKey;
         private readonly KeyOnlyFactory _keyOnly;
-        public AdminTests(Factory f, ServerTests.Factory noKey, KeyOnlyFactory keyOnly) { _factory = f; _noKey = noKey; _keyOnly = keyOnly; }
+        public AdminTests(Factory f, ServerTests.Factory noKey, KeyOnlyFactory keyOnly, ReceiptOpenFactory rcOpen, ReceiptLockedFactory rcLocked)
+        { _factory = f; _noKey = noKey; _keyOnly = keyOnly; _rcOpen = rcOpen; _rcLocked = rcLocked; }
+
+        private static async Task<HttpStatusCode> Buy(HttpClient player)
+        {
+            var save = await Read<CloudSave>(await player.GetAsync(OnlineRoutes.Save(ServerSetup.DefaultGame)));
+            var buy = PlayerActionRunner.Purchase("gem_pack_small", ReceiptCheck.FakePrefix + System.Guid.NewGuid().ToString("N"));
+            return (await player.PostAsync(OnlineRoutes.Actions(ServerSetup.DefaultGame), Body(new ActionSubmission { BaseRevision = save.Revision, Actions = { buy } }))).StatusCode;
+        }
+
+        [Fact(DisplayName = "R-124 결제 검증 덮어쓰기: 서버 설정 off에서 관리자가 fake면 가짜 영수증 구매 통과, off · 지우기면 거절, googlePlay는 덮어쓰기로 못 고름")]
+        public async Task ReceiptOverride()
+        {
+            var (player, _) = await Guest(_rcOpen);
+            var admin = _rcOpen.CreateClient();
+            admin.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            string url = AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/receipts";
+            var now = await Read<AdminReceipts>(await admin.GetAsync(url));
+            Assert.Equal(("off", true, "off", (string)null), (now.Server, now.Allowed, now.Active, now.Override));
+            Assert.Equal((HttpStatusCode)422, await Buy(player));
+
+            var fake = await Read<AdminReceipts>(await admin.PostAsync(url, Body(new AdminReceiptsRequest { Override = "fake" })));
+            Assert.Equal(("fake", "fake", "ok"), (fake.Override, fake.Active, fake.Reason));
+            Assert.Equal(HttpStatusCode.OK, await Buy(player));
+
+            Assert.Equal("off", (await Read<AdminReceipts>(await admin.PostAsync(url, Body(new AdminReceiptsRequest { Override = "off" })))).Active);
+            Assert.Equal((HttpStatusCode)422, await Buy(player));
+            Assert.Equal((HttpStatusCode)422, (await admin.PostAsync(url, Body(new AdminReceiptsRequest { Override = "googlePlay" }))).StatusCode);
+            var cleared = await Read<AdminReceipts>(await admin.PostAsync(url, Body(new AdminReceiptsRequest { Override = null })));
+            Assert.Equal(((string)null, "off"), (cleared.Override, cleared.Active)); // 서버 설정 그대로
+            Assert.Equal((HttpStatusCode)422, await Buy(player));
+        }
+
+        [Fact(DisplayName = "R-124 출시 서버 (AllowAdminReceiptOverride 없음): 관리자 API 422 notAllowed, 저장소에 fake가 있어도 무시")]
+        public async Task ReceiptOverrideLocked()
+        {
+            var (player, _) = await Guest(_rcLocked);
+            var admin = _rcLocked.CreateClient();
+            admin.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            string url = AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/receipts";
+            var res = await admin.PostAsync(url, Body(new AdminReceiptsRequest { Override = "fake" }));
+            Assert.Equal((HttpStatusCode)422, res.StatusCode);
+            Assert.Equal("notAllowed", (await Read<AdminReceipts>(res)).Reason);
+            _rcLocked.Services.GetRequiredService<IStore>().SetReceiptOverride(ServerSetup.DefaultGame, "fake"); // 예전에 남은 값이 있어도
+            var now = await Read<AdminReceipts>(await admin.GetAsync(url));
+            Assert.Equal((false, "off"), (now.Allowed, now.Active));
+            Assert.Equal((HttpStatusCode)422, await Buy(player));
+        }
+
+        [Fact(DisplayName = "R-124 결제 검증 바꾸기는 관리자만: 서브 관리자는 보기 200 · 바꾸기 403")]
+        public async Task ReceiptOverrideSubAdmin()
+        {
+            var (boss, me) = await Guest(_factory);
+            _factory.Services.GetRequiredService<MasterAccounts>().Add(me.AccountId);
+            boss.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            var (sub, them) = await Guest(_factory);
+            sub.DefaultRequestHeaders.Add(AdminRoutes.KeyHeader, Key);
+            Assert.Equal(HttpStatusCode.OK, (await boss.PostAsync(AdminRoutes.Prefix + "/accounts/" + them.AccountId + "/role", Body(new AdminRoleRequest { Role = Game.Online.AccountRoles.SubAdmin }))).StatusCode);
+            string url = AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/receipts";
+            Assert.Equal(HttpStatusCode.OK, (await sub.GetAsync(url)).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await sub.PostAsync(url, Body(new AdminReceiptsRequest { Override = "fake" }))).StatusCode);
+        }
 
         [Fact(DisplayName = "관리자 (개발 중 AdminGoogle=off): 키만 맞으면 로그인 없이 상태 · 우편, 키가 틀리면 그대로 404")]
         public async Task KeyOnlyWhenGoogleOff()

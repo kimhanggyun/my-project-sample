@@ -11,12 +11,19 @@ namespace Game.Server
     /// </summary>
     public static class ReceiptVerifiers
     {
-        public static IReceiptVerifier FromConfig(IConfiguration config, Game.Foundation.Time.ITimeProvider time = null)
+        /// <summary>설정의 검증기 이름 (없으면 예전 AllowFakeReceipts로).</summary>
+        public static string IdOf(IConfiguration config)
         {
             string id = config["Game:ReceiptVerifier"];
             if (string.IsNullOrWhiteSpace(id))
                 id = string.Equals(config["Game:AllowFakeReceipts"], "false", StringComparison.OrdinalIgnoreCase) ? ReceiptVerifierIds.Off : ReceiptVerifierIds.Fake;
-            switch (id.Trim())
+            return id.Trim();
+        }
+
+        public static IReceiptVerifier FromConfig(IConfiguration config, Game.Foundation.Time.ITimeProvider time = null)
+        {
+            string id = IdOf(config);
+            switch (id)
             {
                 case ReceiptVerifierIds.Fake: return new FakeReceiptVerifier();
                 case ReceiptVerifierIds.Off: return new RejectAllReceiptVerifier();
