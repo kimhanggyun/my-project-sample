@@ -514,23 +514,58 @@ namespace Game.Server
             return result;
         });
 
-        public T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use) => Atomic(() =>
+        /// <summary>연합 문서: j(원문) + 찾기 칸 members · requests(array-contains) · nameLower.</summary>
+        private static Dictionary<string, object> AllianceDoc(Alliance a) => new Dictionary<string, object>
         {
-            var col = G(gameCode, "alliances");
-            var all = new Dictionary<string, Alliance>();
-            foreach (var d in Query(col)) { var a = FromJ<Alliance>(d); if (a != null) all[KeyOf(d)] = a; }
-            var loaded = new List<string>(all.Keys);
-            var before = all.ToDictionary(kv => kv.Key, kv => J(kv.Value));
-            var result = use(all);
-            foreach (var k in loaded) if (!all.ContainsKey(k)) Del(col.Document(Id(k)));
-            foreach (var kv in all)
+            ["j"] = J(a),
+            ["members"] = new List<string>(a.Members ?? new List<string>()),
+            ["requests"] = new List<string>(a.Requests ?? new List<string>()),
+            ["nameLower"] = AllianceScope.NameKey(a.Name),
+        };
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> AllianceIndexed = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>();
+
+        /// <summary>찾기 칸이 없던 예전 연합 문서에 칸을 채운다 (게임마다 이 서버에서 한 번, 트랜잭션 밖).</summary>
+        private void EnsureAllianceIndex(string gameCode)
+        {
+            if (Current.Value != null || AllianceIndexed.ContainsKey(_db.ProjectId + "/" + _db.DatabaseId + "/" + gameCode)) return;
+            foreach (var d in G(gameCode, "alliances").GetSnapshotAsync().GetAwaiter().GetResult().Documents)
+                if (!d.ContainsField("nameLower")) { var a = FromJ<Alliance>(d); if (a != null) d.Reference.SetAsync(AllianceDoc(a)).GetAwaiter().GetResult(); }
+            AllianceIndexed[_db.ProjectId + "/" + _db.DatabaseId + "/" + gameCode] = true;
+        }
+
+        public T WithAlliances<T>(string gameCode, AllianceScope scope, Func<Dictionary<string, Alliance>, T> use)
+        {
+            EnsureAllianceIndex(gameCode);
+            return Atomic(() =>
             {
-                string j = J(kv.Value);
-                if (before.TryGetValue(kv.Key, out var old) && old == j) continue; // 바뀐 연합만 쓴다
-                Put(col.Document(Id(kv.Key)), new Dictionary<string, object> { ["j"] = j });
-            }
-            return result;
-        });
+                var col = G(gameCode, "alliances");
+                var part = new Dictionary<string, Alliance>();
+                void Take(DocumentSnapshot d) { if (d == null || !d.Exists) return; var a = FromJ<Alliance>(d); if (a != null) part[KeyOf(d)] = a; }
+                // 범위만 읽는다 (db.md 8.1): 다른 연합의 일과 부딪히지 않게
+                foreach (var id in scope.Ids.Distinct()) Take(Read(col.Document(Id(id))));
+                foreach (var m in scope.Members.Distinct()) foreach (var d in Query(col.WhereArrayContains("members", m))) Take(d);
+                foreach (var r in scope.Requesters.Distinct()) foreach (var d in Query(col.WhereArrayContains("requests", r))) Take(d);
+                foreach (var n in scope.NamesLower.Distinct()) foreach (var d in Query(col.WhereEqualTo("nameLower", n))) Take(d);
+                var loaded = new List<string>(part.Keys);
+                var before = part.ToDictionary(kv => kv.Key, kv => J(kv.Value));
+                var result = use(part);
+                foreach (var k in loaded) if (!part.ContainsKey(k)) Del(col.Document(Id(k)));
+                foreach (var kv in part)
+                {
+                    if (before.TryGetValue(kv.Key, out var old) && old == J(kv.Value)) continue; // 바뀐 연합만 쓴다
+                    Put(col.Document(Id(kv.Key)), AllianceDoc(kv.Value));
+                }
+                return result;
+            });
+        }
+
+        public Dictionary<string, Alliance> ReadAlliances(string gameCode)
+        {
+            var all = new Dictionary<string, Alliance>();
+            foreach (var d in Query(G(gameCode, "alliances"))) { var a = FromJ<Alliance>(d); if (a != null) all[KeyOf(d)] = a; }
+            return all;
+        }
 
         public string NewKey(string prefix) => prefix + NewId(6);
 
@@ -691,7 +726,7 @@ namespace Game.Server
                     W("territory", G(g.Key, "territory").Document(Id(kv.Key)), d);
                 }
             foreach (var g in s.Alliances ?? new Dictionary<string, Dictionary<string, Alliance>>())
-                foreach (var kv in g.Value) W("alliances", G(g.Key, "alliances").Document(Id(kv.Key)), new Dictionary<string, object> { ["j"] = J(kv.Value) });
+                foreach (var kv in g.Value) W("alliances", G(g.Key, "alliances").Document(Id(kv.Key)), AllianceDoc(kv.Value));
             foreach (var g in s.SharedReplays ?? new Dictionary<string, List<InMemoryStore.SharedReplayEntry>>())
                 foreach (var e in g.Value)
                     if (e?.Summary?.Id != null)

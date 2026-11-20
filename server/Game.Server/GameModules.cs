@@ -479,7 +479,7 @@ namespace Game.Server
 
         public TerritoryResponse TerritoryAround(string accountId, string at, long radiusM)
         {
-            var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
+            var alliances = _store.ReadAlliances(Code);
             return _store.WithTerritory(Code, MapScope(accountId, at, radiusM, alliances), owners => TerritoryLedger.View(_territory, owners, accountId, Now, who => AllianceBook.Of(alliances, who)));
         }
 
@@ -493,21 +493,21 @@ namespace Game.Server
             return scope;
         }
 
-        public AllianceListResponse Alliances(string accountId) => _territory == null ? new AllianceListResponse() : _store.WithAlliances(Code, a => AllianceBook.List(_territory, a, accountId));
+        public AllianceListResponse Alliances(string accountId) => _territory == null ? new AllianceListResponse() : AllianceBook.List(_territory, _store.ReadAlliances(Code), accountId);
 
         public AllianceResponse CreateAlliance(string accountId, AllianceRequest req) =>
             _territory == null ? new AllianceResponse { Ok = false, Reason = AllianceReasons.NotFound }
-                : _store.WithAlliances(Code, a => AllianceBook.Create(_territory, a, accountId, req?.Name, _store.NewKey("a-"), Now));
+                : _store.WithAlliances(Code, AllianceScope.Account(accountId).Name(req?.Name), a => AllianceBook.Create(_territory, a, accountId, req?.Name, _store.NewKey("a-"), Now));
 
         public AllianceResponse JoinAlliance(string accountId, string allianceId) =>
             _territory == null ? new AllianceResponse { Ok = false, Reason = AllianceReasons.NotFound }
-                : _store.WithAlliances(Code, a => AllianceBook.Join(_territory, a, accountId, allianceId));
+                : _store.WithAlliances(Code, AllianceScope.Account(accountId).Id(allianceId), a => AllianceBook.Join(_territory, a, accountId, allianceId));
 
-        public AllianceResponse LeaveAlliance(string accountId) => _store.WithAlliances(Code, a => AllianceBook.Leave(a, accountId));
+        public AllianceResponse LeaveAlliance(string accountId) => _store.WithAlliances(Code, AllianceScope.Account(accountId), a => AllianceBook.Leave(a, accountId));
 
         public AllianceResponse ManageAlliance(string accountId, AllianceManageRequest req) =>
             _territory == null ? new AllianceResponse { Ok = false, Reason = AllianceReasons.NotFound }
-                : _store.WithAlliances(Code, a => AllianceBook.Manage(_territory, a, accountId, req));
+                : _store.WithAlliances(Code, AllianceScope.Account(accountId).And(req?.AccountId), a => AllianceBook.Manage(_territory, a, accountId, req));
 
         public DefenseResponse RegisterDefense(string accountId, DefenseRequest req)
         {
@@ -520,7 +520,7 @@ namespace Game.Server
         public PlantResponse PlantFlag(string accountId, PlantRequest req)
         {
             var state = FromJson(LoadOrCreate(accountId).Json);
-            var alliances = _store.WithAlliances(Code, a => new Dictionary<string, Alliance>(a));
+            var alliances = _store.ReadAlliances(Code);
             return _store.WithTerritory(Code, PlantScope(accountId, req), owners => TerritoryFlags.Plant(_territory, _defs, state, accountId, who => AllianceBook.Of(alliances, who)?.Id, owners, req, Now));
         }
 
@@ -533,7 +533,7 @@ namespace Game.Server
                 _store.AddMail(Code, who, m);
                 // 공성전 준비 시작 = 수비자 · 그 연합원에게 푸시 (R-119)
                 if (m.Kind == MailKinds.SiegeAlert && owners.TryGetValue(m.RegionId ?? "", out var flag))
-                    pushes.AddRange(PushRules.ForSiegeStart(flag, accountId, _store.WithAlliances(Code, a => AllianceBook.Of(a, who)), null));
+                    pushes.AddRange(PushRules.ForSiegeStart(flag, accountId, AllianceBook.Of(_store.ReadAlliances(Code), who), null));
             }));
             Push.Send(pushes);
             return res;
