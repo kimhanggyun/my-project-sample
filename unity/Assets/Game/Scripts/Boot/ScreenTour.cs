@@ -46,7 +46,7 @@ namespace Game.Unity.Boot
                 ("08_main_territory", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; Game.Unity.Screens.TerritoryTabView.PanM = Vector2.zero; return new MainScreen("territory"); }, 0f),
                 ("08b_territory_mid", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 3; return new MainScreen("territory"); }, 0f), // 지도 바탕: 중간 줌 (한강)
                 ("08c_territory_far", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 6; return new MainScreen("territory"); }, 0f), // 멀리 줌 (서해 · 반도)
-                ("09_main_hiring", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; return new MainScreen("hiring"); }, 2f), // 목록을 받아 온 뒤 찍기
+                ("09_main_hiring", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; HiringTabView.Tab = "hire"; return new MainScreen("hiring"); }, 2f), // 목록을 받아 온 뒤 찍기
                 ("10_step", () => new StepScreen(FirstStep()), 0f),
             };
             if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => { TroopGrowthTabView.PreparePromote(Ctx.State.Units[0].UnitId); return new MainScreen("troop"); }, 0f)); // 시안 06 승급 화면
@@ -54,6 +54,8 @@ namespace Game.Unity.Boot
             if (Ctx.State.Generals.Count > 0) shots.Add(("11_general", () => new GeneralScreen(Ctx.State.Generals[0].GeneralId), 0f));
             shots.Add(("12_gacha", () => new MainScreen("gacha"), 0f)); // 모집 탭 (따로 열던 모집 화면은 없앰)
             shots.Add(("13_codex", () => new CodexScreen(), 0f));
+            if (Ctx.State.FoundSecrets.Count > 0) shots.Add(("13c_codex_detail", () => new CodexScreen(null, Ctx.State.FoundSecrets[0]), 0f)); // [그 전투 보기 ›] (원격 #223)
+            shots.Add(("09b_hiring_mine", () => { HiringTabView.Tab = "mine"; return new MainScreen("hiring"); }, 1f)); // 등록 제한 안내 (원격 #222)
             shots.Add(("14_replays", () => new ReplayListScreen(), 0f));
             shots.Add(("15_settings", () => new SettingsScreen(), 0f));
             // 캡처에 없던 화면 (2026-11-15 사용자 요청)
