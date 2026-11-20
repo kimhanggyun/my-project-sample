@@ -19,6 +19,8 @@ namespace Game.Unity.Screens
     public sealed class HiringTabView : ITabView
     {
         private static string _tab = "hire";
+        /// <summary>위 탭 (hire · mine), 캡처 투어용.</summary>
+        internal static string Tab { get => _tab; set => _tab = value; }
         private static string _unit = "both";
         /// <summary>정렬 (09 시안 2): 승률 · 레벨 · 가격(싼 것).</summary>
         private static string _sort = "win";
