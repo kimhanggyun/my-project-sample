@@ -606,25 +606,11 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>지도 아래쪽에 잠깐 뜨는 알림 (3초 뒤 사라짐). 아래 칸 대신.</summary>
-        private static void Toast(RectTransform map, string text)
+        /// <summary>결과 알림 = 공통 토스트 (2026-11-20, 화면을 다시 그려도 남음). map이 없으면(화면이 닫힘) 띄우지 않는다.</summary>
+        private static void Toast(RectTransform map, string text, bool bad = false)
         {
-            if (map == null || string.IsNullOrEmpty(text)) return;
-            var t = Ui.Rect(map, "Toast");
-            t.anchorMin = new Vector2(0.08f, 0f);
-            t.anchorMax = new Vector2(0.92f, 0f);
-            t.pivot = new Vector2(0.5f, 0f);
-            t.anchoredPosition = new Vector2(0, 80);
-            t.sizeDelta = new Vector2(0, 76);
-            var bg = Ui.Background(t, new Color(0.16f, 0.13f, 0.1f, 0.86f));
-            bg.sprite = UiShapes.Rounded(14);
-            bg.type = Image.Type.Sliced;
-            bg.raycastTarget = false;
-            var l = Ui.Label(t, text, 22, TextAnchor.MiddleCenter, Color.white);
-            l.raycastTarget = false;
-            Ui.Fill(l.rectTransform);
-            l.rectTransform.offsetMin = new Vector2(16, 4);
-            l.rectTransform.offsetMax = new Vector2(-16, -4);
-            Object.Destroy(t.gameObject, 3f);
+            if (map == null) return;
+            Game.Unity.UI.Toast.Show(text, bad);
         }
 
         /// <summary>
@@ -714,16 +700,13 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class AllianceScreen : GameScreen
     {
-        private readonly string _notice;
         private bool _namesLoaded;
-        public AllianceScreen(string notice = null) { _notice = notice; }
 
         public override void Build()
         {
             // [연합] 탭 (공통 타이틀, 탭이라 뒤로 없음)
             var (header, list, _, _) = Ui.TitledPage(Root, T("ui.alliance.title"), null);
             InfoButton.Add(Root, T("ui.alliance.note"));
-            if (_notice != null) Ui.Label(header, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadAlliances(res =>
             {
@@ -736,7 +719,7 @@ namespace Game.Unity.Screens
                     // 연합원·신청자 닉네임을 받은 뒤 다시 그린다
                     var ids = new List<string>(mine.Members);
                     ids.AddRange(mine.Requests);
-                    Ctx.LoadNames(ids, () => { if (Root != null) Replace(new AllianceScreen(_notice) { _namesLoaded = true }); });
+                    Ctx.LoadNames(ids, () => { if (Root != null) Replace(new AllianceScreen { _namesLoaded = true }); });
                 }
                 if (mine != null)
                 {
@@ -795,7 +778,8 @@ namespace Game.Unity.Screens
         private void Reopen(AllianceResponse r)
         {
             if (Root == null) return;
-            Replace(new AllianceScreen(r == null ? T("ui.hire.failed") : T("ui.alliance.result." + r.Reason)));
+            Toast.Show(r == null ? T("ui.hire.failed") : T("ui.alliance.result." + r.Reason), r == null || !r.Ok); // 결과는 토스트 (2026-11-20)
+            Replace(new AllianceScreen());
         }
     }
 
@@ -837,11 +821,11 @@ namespace Game.Unity.Screens
         {
             if (_done) return;
             _done = true;
-            Ctx.CancelSiege(_flagKey, _ =>
+            Ctx.CancelSiege(_flagKey, Loading.Wrap<bool?>(_ =>
             {
                 TerritoryTabView.Notice = T("ui.siege.cancelled");
                 App.ShowMain("territory");
-            });
+            }));
         }
 
         public override void Tick(float deltaTime)
