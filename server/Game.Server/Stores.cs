@@ -88,8 +88,12 @@ namespace Game.Server
         /// <summary>영토 주인 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장). 우편을 보내도 된다.</summary>
         /// <param name="scope">이번에 필요한 깃발 · 지역 (db.md 4장). 규칙은 이 범위만 담긴 사전을 받는다 — 범위 밖은 보이지 않는다. 더하거나 바꾼 것은 쓰고, 범위에서 지운 것은 지운다.</param>
         T WithTerritory<T>(string gameCode, TerritoryScope scope, Func<Dictionary<string, TerritoryOwner>, T> use);
-        /// <summary>연합 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장, R-49).</summary>
-        T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use);
+        /// <summary>
+        /// 연합 장부를 잠근 채 읽거나 고친다 (고친 뒤 저장, R-49). 범위에 드는 연합만 사전에 담긴다 (db.md 8.1) — 더하거나 바꾼 것은 쓰고, 범위에서 지운 것은 지운다.
+        /// </summary>
+        T WithAlliances<T>(string gameCode, AllianceScope scope, Func<Dictionary<string, Alliance>, T> use);
+        /// <summary>연합 전체를 읽기만 (목록 · 지도 · 관리자). 잠그지 않는다 — 고칠 때는 <see cref="WithAlliances"/>.</summary>
+        Dictionary<string, Alliance> ReadAlliances(string gameCode);
         /// <summary>새 id (연합·우편 등).</summary>
         string NewKey(string prefix);
 
@@ -594,15 +598,36 @@ namespace Game.Server
             return g;
         }
 
-        public T WithAlliances<T>(string gameCode, Func<Dictionary<string, Alliance>, T> use)
+        private Dictionary<string, Alliance> AlliancesOf(string gameCode)
+        {
+            if (Data.Alliances == null) Data.Alliances = new Dictionary<string, Dictionary<string, Alliance>>();
+            if (!Data.Alliances.TryGetValue(gameCode, out var g)) Data.Alliances[gameCode] = g = new Dictionary<string, Alliance>();
+            return g;
+        }
+
+        public T WithAlliances<T>(string gameCode, AllianceScope scope, Func<Dictionary<string, Alliance>, T> use)
         {
             lock (Fresh())
             {
-                if (Data.Alliances == null) Data.Alliances = new Dictionary<string, Dictionary<string, Alliance>>();
-                if (!Data.Alliances.TryGetValue(gameCode, out var g)) Data.Alliances[gameCode] = g = new Dictionary<string, Alliance>();
-                var r = use(g);
+                var full = AlliancesOf(gameCode);
+                var part = new Dictionary<string, Alliance>();
+                foreach (var kv in full) if (scope.Matches(kv.Key, kv.Value)) part[kv.Key] = kv.Value;
+                var loaded = new List<string>(part.Keys);
+                var r = use(part);
+                foreach (var k in loaded) if (!part.ContainsKey(k)) full.Remove(k);
+                foreach (var kv in part) full[kv.Key] = kv.Value;
                 Persist();
                 return r;
+            }
+        }
+
+        public Dictionary<string, Alliance> ReadAlliances(string gameCode)
+        {
+            lock (Fresh())
+            {
+                var copy = new Dictionary<string, Alliance>();
+                foreach (var kv in AlliancesOf(gameCode)) copy[kv.Key] = OnlineJson.Read<Alliance>(OnlineJson.Write(kv.Value));
+                return copy;
             }
         }
 

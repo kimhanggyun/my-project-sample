@@ -80,3 +80,49 @@ namespace Game.Server
         }
     }
 }
+
+namespace Game.Server
+{
+    /// <summary>
+    /// 연합 장부에서 이번 요청에 필요한 연합만 고르는 범위 (db.md 8.1 약한 곳 1). 예전에는 연합을 만들고 · 들고 · 나갈 때 연합 모음 **전체**를
+    /// 한 트랜잭션에서 읽어, 다른 연합의 일과도 부딪혔다. 이제 규칙이 실제로 보는 것만 읽는다:
+    /// 연합 id · 그 계정이 든 연합(members) · 그 계정이 가입 신청한 연합(requests) · 같은 이름(소문자).
+    /// Firestore는 문서 하나 · array-contains · nameLower 질의로, 폴더 저장소는 메모리에서 거른다.
+    /// </summary>
+    public sealed class AllianceScope
+    {
+        private readonly List<string> _ids = new List<string>();
+        private readonly List<string> _members = new List<string>();
+        private readonly List<string> _requesters = new List<string>();
+        private readonly List<string> _names = new List<string>();
+
+        public IReadOnlyList<string> Ids => _ids;
+        public IReadOnlyList<string> Members => _members;
+        public IReadOnlyList<string> Requesters => _requesters;
+        public IReadOnlyList<string> NamesLower => _names;
+
+        /// <summary>그 계정이 든 연합 + 그 계정이 신청해 둔 연합 (가입하면 다른 신청을 지우므로).</summary>
+        public static AllianceScope Account(string accountId)
+        {
+            var s = new AllianceScope();
+            if (accountId != null) { s._members.Add(accountId); s._requesters.Add(accountId); }
+            return s;
+        }
+
+        public AllianceScope Id(string allianceId) { if (allianceId != null) _ids.Add(allianceId); return this; }
+        public AllianceScope Name(string name) { var n = NameKey(name); if (n.Length > 0) _names.Add(n); return this; }
+        public AllianceScope And(string accountId) { if (accountId != null) { _members.Add(accountId); _requesters.Add(accountId); } return this; }
+
+        /// <summary>이름 비교 열쇠 (앞뒤 공백 빼고 소문자) — 규칙의 대소문자 무시 비교와 같다.</summary>
+        public static string NameKey(string name) => (name ?? "").Trim().ToLowerInvariant();
+
+        public bool Matches(string id, Alliance a)
+        {
+            if (_ids.Contains(id)) return true;
+            if (a == null) return false;
+            foreach (var m in a.Members) if (_members.Contains(m)) return true;
+            if (a.Requests != null) foreach (var r in a.Requests) if (_requesters.Contains(r)) return true;
+            return _names.Contains(NameKey(a.Name));
+        }
+    }
+}

@@ -139,11 +139,28 @@ namespace Game.Server.Tests
             Assert.Single(s.MailOf(g, "a"));
             Assert.Single(s.WithTerritory(g, TerritoryScope.IncomeDue(10), o => o.Keys.ToList())); // b만 (a는 99)
 
-            s.WithAlliances(g, al => { al["x"] = new Alliance { Id = "x", Name = "연합", LeaderAccountId = "a", Members = { "a" } }; return 0; });
-            Assert.Equal("연합", s.WithAlliances(g, al => al["x"].Name));
-            s.WithAlliances(g, al => { al.Remove("x"); return 0; });
-            Assert.Empty(s.WithAlliances(g, al => al.Keys.ToList()));
+            AllianceRanges(s, g);
         }
+
+        /// <summary>연합 범위 (db.md 8.1 약한 곳 1): 범위에 드는 연합만 읽고 · 고친 것만 쓰고 · 지운 것은 지운다. 범위 밖은 보이지 않는다.</summary>
+        internal static void AllianceRanges(IStore s, string g)
+        {
+            s.WithAlliances(g, AllianceScope.Account("a"), al => { al["x"] = new Alliance { Id = "x", Name = "연합", LeaderAccountId = "a", Members = { "a" } }; return 0; });
+            s.WithAlliances(g, AllianceScope.Account("b"), al => { al["y"] = new Alliance { Id = "y", Name = "다른", LeaderAccountId = "b", Members = { "b" }, Requests = { "c" } }; return 0; });
+            Assert.Equal(new[] { "x" }, s.WithAlliances(g, AllianceScope.Account("a"), al => al.Keys.ToList())); // 내 연합만
+            Assert.Equal(new[] { "y" }, s.WithAlliances(g, AllianceScope.Account("c"), al => al.Keys.ToList())); // 신청해 둔 연합
+            Assert.Equal(new[] { "x" }, s.WithAlliances(g, AllianceScope.Account("z").Name(" 연합 "), al => al.Keys.ToList())); // 같은 이름 (공백 · 대소문자 무시)
+            Assert.Equal(new[] { "y" }, s.WithAlliances(g, AllianceScope.Account("z").Id("y"), al => al.Keys.ToList()));
+            Assert.Empty(s.WithAlliances(g, AllianceScope.Account("z"), al => al.Keys.ToList()));
+            s.WithAlliances(g, AllianceScope.Account("c"), al => { al["y"].Requests.Remove("c"); al["y"].Members.Add("c"); return 0; });
+            Assert.Equal(new[] { "y" }, s.WithAlliances(g, AllianceScope.Account("c"), al => al.Keys.ToList())); // 이제 연합원으로 찾힘
+            Assert.Equal(2, s.ReadAlliances(g).Count);
+            s.WithAlliances(g, AllianceScope.Account("a"), al => { al.Remove("x"); return 0; });
+            Assert.Equal(new[] { "y" }, s.ReadAlliances(g).Keys.ToList());
+        }
+
+        [Fact(DisplayName = "연합 범위 (db.md 8.1): 내 연합 · 신청한 연합 · 같은 이름 · id만 읽고 고친 것만 씀 — 메모리 저장소")]
+        public void AllianceRangesMemory() => AllianceRanges(new InMemoryStore(), G());
 
         [FirestoreFact(DisplayName = "옮기기: store.json(폴더 저장소) 내용을 Firestore로 — 계정 · 토큰 · 세이브 · 우편 · 영토 · 연합 · 등록 · 결제 기록이 같은 값으로 읽힌다, 두 번 해도 같음")]
         public void Import()
@@ -156,7 +173,7 @@ namespace Game.Server.Tests
             mem.PutSave(g, who.AccountId, 0, "{\"a\":1}", 6);
             mem.AddMail(g, who.AccountId, new Mail { Kind = MailKinds.AdminGift, Resource = "gem", Amount = 3 });
             mem.WithTerritory(g, TerritoryScope.All(), o => { o["flag:37500000,127000000"] = new TerritoryOwner { RegionId = "flag:37500000,127000000", OwnerAccountId = who.AccountId }; return 0; });
-            mem.WithAlliances(g, al => { al["al1"] = new Alliance { Id = "al1", Name = "옮김", Members = { who.AccountId } }; return 0; });
+            mem.WithAlliances(g, AllianceScope.Account(who.AccountId), al => { al["al1"] = new Alliance { Id = "al1", Name = "옮김", Members = { who.AccountId } }; return 0; });
             var l = mem.UpsertListing(g, new HireListing { OwnerAccountId = who.AccountId, Kind = HireKinds.General, SourceId = "avatar" });
             mem.RecordReceipts(g, new[] { new Game.Flow.ReceiptRecord { TransactionId = "t-" + g, AccountId = who.AccountId } });
 
@@ -170,7 +187,7 @@ namespace Game.Server.Tests
             Assert.Equal("{\"a\":1}", fs.GetSave(g, who.AccountId).Json);
             Assert.Single(fs.MailOf(g, who.AccountId));
             Assert.Equal(who.AccountId, fs.WithTerritory(g, TerritoryScope.Owner(who.AccountId), o => o.Values.Single().OwnerAccountId));
-            Assert.Equal("옮김", fs.WithAlliances(g, al => al["al1"].Name));
+            Assert.Equal("옮김", fs.WithAlliances(g, AllianceScope.Account(who.AccountId), al => al["al1"].Name)); // 옮긴 문서도 찾기 칸(members)으로 찾힌다
             Assert.Equal(l.Id, fs.GetListing(g, l.Id).Id);
             Assert.NotNull(fs.ReceiptOf(g, "t-" + g));
         }

@@ -136,3 +136,4 @@
 - 2026-11-20 [원격] claude/firestore-scale — db.md 8.1 서버 여러 대(MAX_INSTANCES=3) 올리기 전: 여러 대 안전 확인 · 약한 곳 3개(연합 전체 읽기 · 영토 지도 전체 읽기 · 결제 한 번만 쓰기) · 콘솔에서 볼 것 · 예산 알림
 - 2026-11-20 [데스크탑] desktop/loading — H5 공통 로딩 표시 Loading (Scripts/UI): 0.25초 뒤 어둡게 + 도는 고리, 누름 막기, 35초 안전 끝. 영토 수입 받기 · 꽂기 · 추가 파견 · 회수 · 공성전 시작, 출석에 붙임. 나머지 화면은 원격 (Loading.Wrap)
 - 2026-11-20 [데스크탑] 원격 #241 · #242 · #243 머지, backlog F에 결제 트랜잭션 틈(db.md 8.1 약한 곳 3) — 결제 켜기 전 원격
+- 2026-11-20 [원격] claude/alliance-docs — 연합 동시 처리 (db.md 8.1 약한 곳 1): AllianceScope로 내 연합 · 신청한 연합 · 대상 · 같은 이름만 트랜잭션에서 읽기 (Firestore members · requests array-contains, nameLower), 목록 · 지도 · 관리자는 잠그지 않고 ReadAlliances
