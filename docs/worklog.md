@@ -124,3 +124,4 @@
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — firestore-migrate 워크플로 고침: store 폴더를 절대 경로로 (dotnet run이 작업 폴더를 바꿔 store.json을 못 찾던 것)
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — 시작 때 버전 · 점검 확인이 늘 건너뛰어지던 것 고침 (GameApp이 서버 없음으로 고정). 온라인이 켜져 있으면 /v1/status · /content를 받는다
 - 2026-11-17 [원격] claude/nickname-check — H7 닉네임 미리 확인: GET /v1/nicknames/check (폴더 · Firestore), 닉네임 화면에서 입력을 멈추면 "쓸 수 있음 / 이미 있음", 실제 데이터 중복 없음 (닉네임 1개)
+- 2026-11-17 [데스크탑] backlog H: 사용자 요구 정리 (전투씬 세부 · 로딩 표시 · 추가 파견 체크 · 닉네임 · 관리자 등급 · 상품 표출 · 스토리 숨김 · 튜토리얼)
