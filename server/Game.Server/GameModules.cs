@@ -43,6 +43,10 @@ namespace Game.Server
         List<AdminBanner> AdminBanners();
         /// <summary>관리자: 배너 켜고 끄기를 통째로 바꾼다 (다른 종류는 그대로). 모르는 배너 id는 무시.</summary>
         List<AdminBanner> SetBanners(List<ContentToggle> banners);
+        /// <summary>관리자 (R-123): 상점 상품마다 기본값 · 지금 표출 (결제 상품 + 엽전 · 금괴 치장).</summary>
+        List<AdminProduct> AdminProducts();
+        /// <summary>관리자 (R-123): 상품 표출을 통째로 바꾼다 (다른 종류는 그대로). 데이터 기본값과 같으면 적지 않는다. 모르는 id는 무시.</summary>
+        List<AdminProduct> SetProducts(List<ContentToggle> products);
 
         // ---- 푸시 (R-119) ----
         PushSettings PushSettingsOf(string accountId);
@@ -421,6 +425,39 @@ namespace Game.Server
             }
             _store.SetContent(Code, content);
             return AdminBanners();
+        }
+
+        public List<AdminProduct> AdminProducts()
+        {
+            var content = _store.ContentOf(Code);
+            var shop = new PurchaseService(_defs) { Toggles = content };
+            var cos = new CosmeticService(_defs) { Toggles = content };
+            string Name(string key) => key != null && _defs.Strings.TryGetValue(key, out var n) ? n : key;
+            var list = new List<AdminProduct>();
+            foreach (var p in _defs.Products.Values)
+                if (p.PriceKrw.HasValue)
+                    list.Add(new AdminProduct { Id = p.Id, Kind = p.Kind, Name = Name("product." + p.Id), Price = p.PriceKrw.Value.ToString("N0") + "원", DefaultOff = p.DefaultOff, Shown = shop.OnSale(p), Overridden = content.Find(ContentKinds.Product, p.Id) != null });
+            foreach (var d in cos.Items)
+                if (d.PriceGold != null || d.PriceGem != null)
+                    list.Add(new AdminProduct { Id = d.Id, Kind = "cosmetic:" + d.Kind, Name = Name(d.NameKey), Price = d.PriceGold != null ? "엽전 " + d.PriceGold.Value.ToString("N0") : "금괴 " + d.PriceGem.Value.ToString("N0"), DefaultOff = d.ShopDefaultOff, Shown = cos.OnSale(d), Overridden = content.Find(ContentKinds.Product, d.Id) != null });
+            return list;
+        }
+
+        public List<AdminProduct> SetProducts(List<ContentToggle> products)
+        {
+            var known = new Dictionary<string, bool>(); // id → 데이터 기본 끔
+            foreach (var p in _defs.Products.Values) if (p.PriceKrw.HasValue) known[p.Id] = p.DefaultOff;
+            foreach (var d in new CosmeticService(_defs).Items) if (d.PriceGold != null || d.PriceGem != null) known[d.Id] = d.ShopDefaultOff;
+            var content = _store.ContentOf(Code);
+            content.Items.RemoveAll(x => x == null || x.Kind == ContentKinds.Product);
+            foreach (var t in products ?? new List<ContentToggle>())
+            {
+                if (t?.Id == null || !known.TryGetValue(t.Id, out bool defaultOff)) continue;
+                if (t.Off == defaultOff) continue; // 데이터 기본값 그대로면 적지 않는다
+                content.Items.Add(new ContentToggle { Kind = ContentKinds.Product, Id = t.Id, Off = t.Off });
+            }
+            _store.SetContent(Code, content);
+            return AdminProducts();
         }
 
         public AttendanceResponse CheckIn(string accountId) =>

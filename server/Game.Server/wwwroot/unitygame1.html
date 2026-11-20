@@ -68,6 +68,7 @@
       <button data-tab="territory">영토 · 연합</button>
       <button data-tab="notice">버전 · 점검</button>
       <button data-tab="banners">모집 배너</button>
+      <button data-tab="products">상점 상품</button>
     </nav>
     <div class="row"><span class="dim">게임</span><select id="game"></select><button class="sub" id="reload">새로고침</button></div>
 
@@ -115,6 +116,13 @@
       <p class="dim">배포 없이 켜고 끕니다. 끄면 게임 모집 목록에서 빠지고 서버가 모집을 거절합니다. 기간을 비우면 데이터 기간 그대로입니다. 기기는 앱을 다시 켤 때 새 값을 받습니다.</p>
       <div class="scroll"><table id="bannerTable"></table></div>
       <div class="row"><button id="bSave">저장</button><span id="bMsg"></span></div>
+    </div>
+
+    <div id="tab-products" class="card hidden">
+      <h2>상점 상품 (R-123)</h2>
+      <p class="dim">배포 없이 상점 표출을 켜고 끕니다. 끄면 상점 목록에서 빠지고 서버가 구매를 거절합니다 (이미 산 영구 상품의 복원은 됩니다). "기본 끔"은 새로 등록한 상품이라 켜야 나옵니다. 기기는 앱을 다시 켤 때 새 값을 받습니다.</p>
+      <div class="scroll"><table id="productTable"></table></div>
+      <div class="row"><button id="pSave">저장</button><span id="pMsg"></span></div>
     </div>
 
     <div id="tab-territory" class="hidden">
@@ -237,13 +245,14 @@
   async function tab(name, preloaded) {
     current = name;
     document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
-    for (const t of ["status", "accounts", "mail", "territory", "notice", "banners"]) $("tab-" + t).classList.toggle("hidden", t !== name);
+    for (const t of ["status", "accounts", "mail", "territory", "notice", "banners", "products"]) $("tab-" + t).classList.toggle("hidden", t !== name);
     try {
       if (name === "status") drawStatus(preloaded || (await api("/v1/admin/status")).data);
       if (name === "accounts") { accounts = (await api("/v1/admin/accounts")).data.Accounts || []; drawAccounts(); }
       if (name === "territory") drawTerritory((await api("/v1/admin/games/" + $("game").value + "/territory")).data);
       if (name === "notice") drawNotice((await api("/v1/admin/notice")).data);
       if (name === "banners") drawBanners((await api("/v1/admin/games/" + $("game").value + "/banners")).data);
+      if (name === "products") drawProducts((await api("/v1/admin/games/" + $("game").value + "/products")).data);
     } catch (e) { /* api가 화면을 바꿈 */ }
   }
 
@@ -375,6 +384,31 @@
       $("bMsg").className = r.status === 200 ? "good" : "bad";
       $("bMsg").textContent = r.status === 200 ? "저장했습니다." : "실패 (" + r.status + ")";
       if (r.status === 200) drawBanners(r.data);
+    } catch (e) { }
+  };
+
+  // ---- 상점 상품 표출 (R-123): GET/POST /v1/admin/games/{game}/products ----
+  function drawProducts(d) {
+    const t = $("productTable"); t.innerHTML = "";
+    t.append(el("tr", null, ...["상품", "종류", "가격", "데이터", "표출"].map(h => el("th", null, h))));
+    for (const p of (d && d.Products) || []) {
+      const on = el("input", { type: "checkbox" }); on.checked = p.Shown; on.dataset.id = p.Id; on.className = "pOn";
+      t.append(el("tr", null,
+        el("td", null, p.Name + " (" + p.Id + ")"),
+        el("td", null, p.Kind),
+        el("td", null, p.Price),
+        el("td", { class: p.DefaultOff ? "dim" : "" }, (p.DefaultOff ? "기본 끔" : "기본 켬") + (p.Overridden ? " · 바꿈" : "")),
+        el("td", null, on)));
+    }
+  }
+  $("pSave").onclick = async () => {
+    const items = [];
+    for (const on of document.querySelectorAll(".pOn")) items.push({ Kind: "product", Id: on.dataset.id, Off: !on.checked });
+    try {
+      const r = await api("/v1/admin/games/" + $("game").value + "/products", { method: "POST", body: { Items: items } });
+      $("pMsg").className = r.status === 200 ? "good" : "bad";
+      $("pMsg").textContent = r.status === 200 ? "저장했습니다." : "실패 (" + r.status + ")";
+      if (r.status === 200) drawProducts(r.data);
     } catch (e) { }
   };
 

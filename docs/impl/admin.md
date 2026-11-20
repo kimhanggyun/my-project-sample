@@ -29,6 +29,7 @@
 | 영토 · 연합 | 꽂힌 깃발 (주인 · 연합 · 장수 · 병력 · 보호 · 공성전 중), 연합 목록 | `GET /v1/admin/games/{game}/territory` |
 | 버전 · 점검 안내 (R-118) | 최소 · 최신 앱 버전, 점검 켜기(문구 키 · 끝 시각). 저장하면 바로 `GET /v1/status`에 나온다. 지우기(Clear)면 서버 설정 값으로 | `GET` · `POST /v1/admin/notice` (몸 `AdminStatusNotice`: Override · Clear) |
 | 모집 배너 (R-122) | 배너마다 켬 · 끔, 기간 덮어쓰기 (비우면 데이터 기간), 지금 열림. 저장하면 공개 `GET /v1/games/{game}/content`에 바로 나오고 서버가 꺼진 배너 모집을 거절. 기기는 앱을 다시 켤 때 받는다 | `GET` · `POST /v1/admin/games/{game}/banners` (몸 `AdminBannersRequest.Items`) |
+| 상점 상품 (R-123) | 결제 상품 · 엽전 · 금괴 치장마다 종류 · 가격 · 데이터 기본(기본 켬/끔, 바꿈) · **표출** 체크. 저장하면 공개 `/content`에 바로 나오고 서버가 꺼진 상품 구매를 거절 (영구 상품 복원은 됨). 기본 끔 = 새로 등록한 상품 | `GET` · `POST /v1/admin/games/{game}/products` (몸 `AdminBannersRequest.Items`: Id · Off) |
 | 수입 가득 푸시 (R-119) | 수입이 다 찬 깃발 주인에게 알림 보내기 (보낸 기기 수). 예약(Cloud Scheduler)이 한 시간마다 부른다 | `POST /v1/admin/games/{game}/push/sweep` |
 
 - 세이브를 직접 고치는 기능은 없다 (보기만). 자원은 우편으로만 준다 → 서버 규칙(`mail.claim`)을 그대로 거친다.

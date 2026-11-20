@@ -3,6 +3,7 @@ using Game.Campaign;
 using Game.Data.Defs;
 using Game.Data.Json;
 using Game.Economy;
+using Game.Online;
 using Newtonsoft.Json.Linq;
 
 namespace Game.Flow
@@ -32,6 +33,8 @@ namespace Game.Flow
         public long? PriceKRW { get; internal set; }
         /// <summary>플레이로 얻는 길 (story:stepXX · secret:id …).</summary>
         public IReadOnlyList<string> PlayPaths { get; internal set; } = new List<string>();
+        /// <summary>상점 판매 기본 끔 (R-123, obtain.shop.defaultOff): 관리자 [상점 상품]에서 켜야 판다.</summary>
+        public bool ShopDefaultOff { get; internal set; }
 
         /// <summary>플레이로 얻을 수 있다: 엽전으로 사거나(엽전은 보상으로 번다) 플레이 경로가 있다 (cosmetics.md 9장 1).</summary>
         public bool PlayObtainable => PriceGold != null || PlayPaths.Count > 0;
@@ -79,6 +82,7 @@ namespace Game.Flow
                     if (shop["gold"] != null) d.PriceGold = (long)shop["gold"];
                     if (shop["gem"] != null) d.PriceGem = (long)shop["gem"];
                     if (shop["priceKRW"] != null) d.PriceKRW = (long)shop["priceKRW"];
+                    d.ShopDefaultOff = shop.Value<bool?>("defaultOff") ?? false;
                 }
                 if (d.Id == null || _items.ContainsKey(d.Id)) continue;
                 _items[d.Id] = d;
@@ -87,6 +91,27 @@ namespace Game.Flow
         }
 
         public CosmeticDef Find(string id) => id != null && _items.TryGetValue(id, out var d) ? d : null;
+
+        /// <summary>운영 켜고 끄기 (R-123): 엽전 · 금괴 치장의 판매 표출 (종류 product, id = 치장 id). null이면 데이터 기본값.</summary>
+        public ContentToggles Toggles { get; set; }
+
+        /// <summary>엽전 · 금괴로 지금 파나 (R-123): 그 재화 가격이 있고 표출이 켜져 있음.</summary>
+        public bool OnSale(CosmeticDef d) =>
+            d != null && (d.PriceGold != null || d.PriceGem != null) && ContentToggles.IsShown(Toggles, ContentKinds.Product, d.Id, d.ShopDefaultOff);
+
+        /// <summary>
+        /// 꾸미기 · 상점에 보일까 (R-123): 가졌거나, 플레이로 얻는 길이 있거나, 지금 판다(엽전 · 금괴 또는 결제 상품 표출).
+        /// 표출을 끈 판매 전용 치장은 안 가진 사람에게 숨긴다.
+        /// </summary>
+        public bool Visible(CampaignState s, CosmeticDef d)
+        {
+            if (d == null) return false;
+            if (Owns(s, d.Id) || d.PlayPaths.Count > 0 || OnSale(d)) return true;
+            if (d.PriceKRW != null && _defs != null)
+                foreach (var p in _defs.Products.Values)
+                    if (p.CosmeticId == d.Id && p.PriceKrw.HasValue && ContentToggles.IsShown(Toggles, ContentKinds.Product, p.Id, p.DefaultOff)) return true;
+            return false;
+        }
 
         /// <summary>
         /// 병종의 치장 계열: 부모를 따라 올라간 1단계 병종 (공병 태그면 engineer). 사람 병사 계열이 아니면 null (투석기 · 배).
@@ -120,7 +145,7 @@ namespace Game.Flow
         public bool Buy(CampaignState s, string id)
         {
             var d = Find(id);
-            if (d == null || Owns(s, id)) return false;
+            if (d == null || Owns(s, id) || !OnSale(d)) return false; // 표출을 끈 치장은 거절 (R-123)
             var w = new Wallet(s.Wallet);
             if (d.PriceGold != null) { if (!w.TrySpend(ResourceIds.Gold, d.PriceGold.Value)) return false; }
             else if (d.PriceGem != null) { if (!w.TrySpend(ResourceIds.Gem, d.PriceGem.Value)) return false; }

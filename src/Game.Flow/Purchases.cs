@@ -16,11 +16,17 @@ namespace Game.Flow
         private readonly DefinitionSet _defs;
         public PurchaseService(DefinitionSet defs) { _defs = defs; }
 
-        /// <summary>상점에 보이는 상품 (가격이 있는 것), id 순.</summary>
+        /// <summary>운영 켜고 끄기 (R-123): 상품 표출 (종류 product). null이면 데이터 기본값 (defaultOff).</summary>
+        public ContentToggles Toggles { get; set; }
+
+        /// <summary>파는 상품인가: 가격이 있고 표출이 켜져 있음 (R-123).</summary>
+        public bool OnSale(ProductDef p) => p != null && p.PriceKrw.HasValue && ContentToggles.IsShown(Toggles, ContentKinds.Product, p.Id, p.DefaultOff);
+
+        /// <summary>상점에 보이는 상품 (가격이 있고 표출이 켜진 것), id 순.</summary>
         public List<ProductDef> Listed()
         {
             var list = new List<ProductDef>();
-            foreach (var p in _defs.Products.Values) if (p.PriceKrw.HasValue) list.Add(p);
+            foreach (var p in _defs.Products.Values) if (OnSale(p)) list.Add(p);
             list.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
             return list;
         }
@@ -28,7 +34,7 @@ namespace Game.Flow
         public bool Apply(CampaignState state, PlayerAction a)
         {
             if (a?.ProductId == null || string.IsNullOrEmpty(a.Receipt)) return false;
-            if (!_defs.Products.TryGetValue(a.ProductId, out var p) || !p.PriceKrw.HasValue) return false;
+            if (!_defs.Products.TryGetValue(a.ProductId, out var p) || !OnSale(p)) return false; // 표출을 끈 상품은 거절 (R-123)
             var wallet = new Wallet(state.Wallet);
             foreach (var kv in p.Grants) wallet.Add(kv.Key, kv.Value);
             // 치장 상품 (R-111): 얻고, 이미 가졌으면 엽전 (보상 중복과 같다)
@@ -66,8 +72,9 @@ namespace Game.Flow
         /// <summary>복원할 수 있는 상품 (영구 · 상점에 있음), id 순.</summary>
         public List<ProductDef> Restorable()
         {
-            var list = Listed();
-            list.RemoveAll(p => !p.Permanent);
+            var list = new List<ProductDef>(); // 이미 산 것은 표출을 꺼도 복원한다 (R-123)
+            foreach (var p in _defs.Products.Values) if (p.PriceKrw.HasValue && p.Permanent) list.Add(p);
+            list.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
             return list;
         }
 

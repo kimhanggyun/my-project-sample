@@ -83,6 +83,20 @@ namespace Game.Server
                 });
             });
 
+            // 상점 상품 표출 (R-123): 배포 없이. 꺼진 상품은 상점 목록에서 빠지고 서버가 구매를 거절한다 (이미 산 영구 상품의 복원은 된다).
+            app.MapGet(Prefix + "/games/{game}/products", (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
+                Guard(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(new AdminProductList { Products = g.AdminProducts() }) : Results.NotFound()));
+            app.MapPost(Prefix + "/games/{game}/products", async (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminBannersRequest>(req);
+                return Guard(req, store, masters, _ =>
+                {
+                    if (!(r.Find(game) is IGameModule g)) return Results.NotFound();
+                    if (body == null) return Results.StatusCode(StatusCodes.Status422UnprocessableEntity);
+                    return Json(new AdminProductList { Products = g.SetProducts(body.Items) });
+                });
+            });
+
             app.MapGet(Prefix + "/accounts", (HttpRequest req, IStore store, MasterAccounts masters) =>
                 Guard(req, store, masters, _ => Json(new AdminAccountList { Accounts = store.AdminAccounts() })));
 
@@ -258,6 +272,26 @@ namespace Game.Server
     public sealed class AdminBannersRequest
     {
         public List<ContentToggle> Items { get; set; } = new List<ContentToggle>();
+    }
+
+    /// <summary>관리자 상점 상품 한 줄 (R-123). Kind = 상품 종류 (치장은 "cosmetic:armor" 처럼), Price = 보이는 가격 글.</summary>
+    public sealed class AdminProduct
+    {
+        public string Id { get; set; }
+        public string Kind { get; set; }
+        public string Name { get; set; }
+        public string Price { get; set; }
+        /// <summary>데이터 기본 끔 (새로 등록한 상품).</summary>
+        public bool DefaultOff { get; set; }
+        /// <summary>지금 상점에 보이고 살 수 있음.</summary>
+        public bool Shown { get; set; }
+        /// <summary>관리자가 데이터 기본값과 다르게 정함.</summary>
+        public bool Overridden { get; set; }
+    }
+
+    public sealed class AdminProductList
+    {
+        public List<AdminProduct> Products { get; set; } = new List<AdminProduct>();
     }
 
     public sealed class AdminBannerList
