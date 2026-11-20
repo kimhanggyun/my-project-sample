@@ -231,6 +231,16 @@ namespace Game.Server
             });
         }
 
+        public NicknameResponse CheckNickname(string accountId, string nickname)
+        {
+            var n = NicknameRules.Normalize(nickname);
+            if (n == null) return new NicknameResponse { Ok = false, Reason = NicknameRules.BadName };
+            string holder = Str(Read(NickIndex(n.ToLowerInvariant())), "a");
+            return holder != null && holder != accountId
+                ? new NicknameResponse { Ok = false, Reason = NicknameRules.Taken, Nickname = n }
+                : new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n };
+        }
+
         public long RequestDeletion(string accountId, long nowUnixSeconds) => Atomic(() =>
         {
             var acct = ReadAccount(accountId) ?? new AccountDoc();

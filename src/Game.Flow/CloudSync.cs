@@ -477,6 +477,12 @@ namespace Game.Flow
             done?.Invoke(new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n });
         }
 
+        public void CheckNickname(string nickname, Action<NicknameResponse> done)
+        {
+            var n = NicknameRules.Normalize(nickname);
+            done?.Invoke(n == null ? new NicknameResponse { Ok = false, Reason = NicknameRules.BadName } : new NicknameResponse { Ok = true, Reason = NicknameRules.Ok, Nickname = n });
+        }
+
         /// <summary>가짜 서버: 계정이 하나라 연동은 늘 된 것으로 (R-105 흐름 확인용).</summary>
         public void LinkFirebase(string idToken, Action<LinkResponse> done) =>
             done?.Invoke(new LinkResponse { Ok = idToken != null, Reason = idToken != null ? LinkReasons.Ok : LinkReasons.Taken });

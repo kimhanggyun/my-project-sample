@@ -41,6 +41,8 @@ namespace Game.Online
         /// <summary>내 계정 (GET), 닉네임 정하기 (POST /v1/me/nickname).</summary>
         public const string Me = "/v1/me";
         public const string MyNickname = "/v1/me/nickname";
+        /// <summary>닉네임 미리 확인 (H7, 인증 없음 · 토큰이 있으면 내 이름은 사용 중으로 치지 않음): GET ?name=.</summary>
+        public const string NicknameCheck = "/v1/nicknames/check";
         /// <summary>계정 삭제 요청 (15 시안, R-102): 7일 유예, 그 안에 다시 로그인하면 취소.</summary>
         public const string MyDelete = "/v1/me/delete";
         /// <summary>계정 id들 → 닉네임 (GET ?ids=a,b,c).</summary>
@@ -1040,6 +1042,8 @@ namespace Game.Online
         // ---- 계정 (닿지 않으면 null) ----
         void GetProfile(Action<ProfileResponse> done);
         void SetNickname(string nickname, Action<NicknameResponse> done);
+        /// <summary>닉네임 미리 확인 (H7): Ok = 쓸 수 있음, 아니면 Reason badName / taken. 저장 때도 서버가 다시 확인한다. 닿지 않으면 null.</summary>
+        void CheckNickname(string nickname, Action<NicknameResponse> done);
         /// <summary>계정 삭제 요청 (R-102). 닿지 않으면 null.</summary>
         void DeleteAccount(Action<DeleteAccountResponse> done);
         /// <summary>지금 계정에 구글(Firebase ID 토큰)을 붙인다 (R-105). 닿지 않으면 null.</summary>
@@ -1096,6 +1100,7 @@ namespace Game.Online
         public void GetTerritory(Action<TerritoryResponse> done) => done?.Invoke(null);
         public void GetProfile(Action<ProfileResponse> done) => done?.Invoke(null);
         public void SetNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
+        public void CheckNickname(string nickname, Action<NicknameResponse> done) => done?.Invoke(null);
         public void DeleteAccount(Action<DeleteAccountResponse> done) => done?.Invoke(null);
         public void LinkFirebase(string idToken, Action<LinkResponse> done) => done?.Invoke(null);
         public void GetNames(IReadOnlyCollection<string> accountIds, Action<NamesResponse> done) => done?.Invoke(null);

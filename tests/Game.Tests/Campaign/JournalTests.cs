@@ -42,6 +42,7 @@ namespace Game.Tests.Campaign
             public void GetTerritory(Action<TerritoryResponse> done) { if (Down) done(null); else _inner.GetTerritory(done); }
             public void GetProfile(Action<ProfileResponse> done) { if (Down) done(null); else _inner.GetProfile(done); }
             public void SetNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.SetNickname(n, done); }
+            public void CheckNickname(string n, Action<NicknameResponse> done) { if (Down) done(null); else _inner.CheckNickname(n, done); }
             public void DeleteAccount(Action<DeleteAccountResponse> done) { if (Down) done(null); else _inner.DeleteAccount(done); }
             public void LinkFirebase(string t, Action<LinkResponse> done) { if (Down) done(null); else _inner.LinkFirebase(t, done); }
             public void GetNames(System.Collections.Generic.IReadOnlyCollection<string> ids, Action<NamesResponse> done) { if (Down) done(null); else _inner.GetNames(ids, done); }

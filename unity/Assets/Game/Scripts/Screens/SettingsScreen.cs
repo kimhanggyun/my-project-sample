@@ -5,11 +5,37 @@ using UnityEngine.UI;
 
 namespace Game.Unity.Screens
 {
-    /// <summary>닉네임 정하기 (공통 계정, 2~10자·글자·숫자·밑줄, 겹치면 안 됨).</summary>
+    /// <summary>닉네임 정하기 (공통 계정, 2~10자·글자·숫자·밑줄, 겹치면 안 됨). 입력을 멈추면 서버에 미리 확인해 "쓸 수 있음 / 이미 있음" (H7), 저장 때도 서버가 다시 확인.</summary>
     public sealed class NicknameScreen : GameScreen
     {
+        private const float CheckDelay = 0.6f; // 입력을 멈추고 이만큼 지나면 묻는다
         private readonly string _notice;
+        private Text _check;
+        private string _pending;
+        private float _wait;
+        private int _asked;
         public NicknameScreen(string notice = null) { _notice = notice; }
+
+        public override void Tick(float deltaTime)
+        {
+            if (_pending == null || (_wait -= deltaTime) > 0f) return;
+            string name = _pending.Trim();
+            _pending = null;
+            if (_check == null) return;
+            if (name.Length == 0) { _check.text = ""; return; }
+            if (Ctx.Nickname != null && string.Equals(name, Ctx.Nickname, System.StringComparison.OrdinalIgnoreCase)) { Show(T("ui.nickname.current"), Palette.TextDim); return; }
+            int ask = ++_asked;
+            Show(T("ui.nickname.checking"), Palette.TextDim);
+            Ctx.CheckNickname(name, r =>
+            {
+                if (_check == null || ask != _asked) return; // 화면이 닫혔거나 더 새 입력이 있다
+                if (r == null) _check.text = ""; // 서버가 없으면 저장 때 확인
+                else if (r.Ok) Show(T("ui.nickname.available"), Palette.Good);
+                else Show(T("ui.nickname." + r.Reason), Palette.Bad);
+            });
+        }
+
+        private void Show(string text, Color color) { _check.text = text; _check.color = color; }
 
         public override void Build()
         {
@@ -18,6 +44,8 @@ namespace Game.Unity.Screens
             Ui.Label(Root, T("ui.nickname.note"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
             var input = Ui.TextInput(Root, Ctx.Nickname ?? T("ui.nickname.placeholder"), Game.Online.NicknameRules.Max, 110, 34);
+            _check = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
+            input.onValueChanged.AddListener(text => { _pending = text; _wait = CheckDelay; });
             Ui.Size(Ui.Label(Root, "", Ui.FontSmall), flexibleHeight: 1);
             var row = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             Ui.Button(row, T("ui.nickname.save"), () => Ctx.SetNickname(input.text, r =>
