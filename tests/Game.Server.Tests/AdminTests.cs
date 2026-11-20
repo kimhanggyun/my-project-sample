@@ -204,8 +204,10 @@ namespace Game.Server.Tests
             var st = await Read<AdminStatus>(await c.GetAsync(AdminRoutes.Prefix + "/status"));
             Assert.Equal(who.AccountId, st.You);
             Assert.Contains(ServerSetup.DefaultGame, st.Games);
+            await c.GetAsync(OnlineRoutes.Me); // 앱이 켜질 때 → 마지막 접속
             var list = await Read<AdminAccountList>(await c.GetAsync(AdminRoutes.Prefix + "/accounts"));
             Assert.Contains(list.Accounts, a => a.AccountId == who.AccountId && a.Games.ContainsKey(ServerSetup.DefaultGame));
+            Assert.Equal(ServerTests.Clock.ToUnixTimeSeconds(), list.Accounts.Single(a => a.AccountId == who.AccountId).LastSeenAtUnixSeconds);
             var d = await Read<AdminAccountDetail>(await c.GetAsync(AdminRoutes.Prefix + "/games/" + ServerSetup.DefaultGame + "/accounts/" + who.AccountId));
             Assert.True(d.Revision > 0);
             Assert.NotNull(d.Wallet);
