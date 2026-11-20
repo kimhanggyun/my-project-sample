@@ -123,5 +123,6 @@
 - 2026-11-17 [원격] claude/firestore-store — Firestore 2 · 3단계: FirestoreStore(IStore, 트랜잭션 안 우편 묶음), Game:Store 고르기, CI 에뮬레이터로 서버 테스트 전체 한 번 더, 옮기기 도구 · firestore-migrate 워크플로, 배포 변수 GAME_STORE · MAX_INSTANCES, 사용자 할 일 db.md 8장
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — firestore-migrate 워크플로 고침: store 폴더를 절대 경로로 (dotnet run이 작업 폴더를 바꿔 store.json을 못 찾던 것)
 - 2026-11-17 [원격] claude/kind-bohr-365c76 — 시작 때 버전 · 점검 확인이 늘 건너뛰어지던 것 고침 (GameApp이 서버 없음으로 고정). 온라인이 켜져 있으면 /v1/status · /content를 받는다
+- 2026-11-17 [원격] claude/plant-sheet-checks — H6 추가 파견 판: 이 깃발 장수는 체크된 채 꺼짐("이 깃발에 나가 있음"), 다른 깃발 장수는 "다른 깃발에 나가 있음", 출전 못 하는 장수는 "지금 출전 못 함"
 - 2026-11-17 [원격] claude/story-hide — H10 스토리 탭 숨김 (mainTabs.json 한 줄로 켜고 끄기), 처음 열리는 배포 줄 탭 검사
 - 2026-11-17 [데스크탑] backlog H: 사용자 요구 정리 (전투씬 세부 · 로딩 표시 · 추가 파견 체크 · 닉네임 · 관리자 등급 · 상품 표출 · 스토리 숨김 · 튜토리얼)
