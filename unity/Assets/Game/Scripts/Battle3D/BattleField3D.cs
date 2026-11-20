@@ -86,6 +86,8 @@ namespace Game.Unity.Battle3D
         private readonly Dictionary<SubUnitState, (Vector3 prev, Vector3 cur)> _unitPos = new Dictionary<SubUnitState, (Vector3, Vector3)>();
         private readonly Dictionary<Color, Material> _lineMats = new Dictionary<Color, Material>();
         private int _flashFrame;
+        /// <summary>걷는 병사의 앞 기울기 (튀는 대신).</summary>
+        private static readonly Quaternion WalkLean = Quaternion.Euler(7f, 0f, 0f);
         /// <summary>
         /// 소부대 바닥 테두리 (H1, 2026-11-20 사용자 "아군 · 적 구분"): 병사 덩어리를 감싸는 편 색 사각형.
         /// 서로 맞붙어 섞여도 어느 덩어리가 어느 편인지 바닥 선으로 갈린다. 빛 영향 없는 재질 (밤에도 선명).
@@ -973,14 +975,16 @@ namespace Game.Unity.Battle3D
                         float phase = i * 1.7f + seedBase % 7;
                         float frontWeight = row == 0 ? 1f : row == 1 ? 0.5f : 0.15f; // 찌르기는 앞줄 위주
                         p += lunge * frontWeight * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
-                        float bob = walking ? Mathf.Abs(Mathf.Sin(clock * 12f + phase)) * 0.06f : 0f;
+                        // 2026-11-20 사용자 (참고 영상): 통통 튀지 말고 미끄러지듯 — 위아래 튀기 없이 걸을 때 몸만 앞으로 살짝 기울인다
                         if (hidden && i % 2 == 1) continue; // 숨은 군단: 반만 그려 흐릿하게
                         if (u.Confused) p += new Vector3(Mathf.Sin(clock * 23f + phase) * 0.07f, 0f, Mathf.Cos(clock * 19f + phase * 1.3f) * 0.07f); // 혼란: 갈팡질팡
                         else if (shaken) p += new Vector3(Mathf.Sin(clock * 31f + phase) * 0.025f, 0f, 0f); // 사기 바닥: 떨림
                         // 맞고 있는 군단: 앞줄 몇 명씩 번갈아 깜빡인다
                         bool flash = c.LostThisTick > 0 && row <= 1 && (i + _flashFrame / 3) % 4 == 0;
-                        p.y = GroundHeight(p.x, p.z) + bob + (flash && !isCube ? 0.08f : 0f);
-                        (flash ? hitBatch : batch).Add(p, rot);
+                        // 맞으면 위로 튀는 대신 뒤로 살짝 밀린다
+                        if (flash && !isCube) p -= rot * new Vector3(0f, 0f, 0.05f);
+                        p.y = GroundHeight(p.x, p.z);
+                        (flash ? hitBatch : batch).Add(p, walking ? rot * WalkLean : rot);
                     }
                 }
                 // 장수: 군단 한가운데 조금 뒤, 부대원보다 크게 (총대장은 군기)
