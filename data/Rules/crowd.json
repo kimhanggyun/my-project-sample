@@ -1,0 +1,18 @@
+{
+  "_comment": "샘플전투2 (병사 단위 전투, R-125, 시험 중) 수치 예시. docs/design/content/battle-crowd.md. 거리 단위 = 칸, 시간 = 초",
+  "tickSeconds": 0.1,
+  "fieldWidth": 60,
+  "fieldDepth": 60,
+  "soldierRadius": 0.2,
+  "spacing": 0.45,
+  "moveSpeed": 1.6,
+  "advanceSpeed": 1.1,
+  "engageRange": 2.2,
+  "attackReach": 0.55,
+  "attackSeconds": 0.9,
+  "attackJitterTicks": 4,
+  "soldierHp": 2,
+  "generalHp": 24,
+  "generalBack": 1.6,
+  "maxSeconds": 240
+}

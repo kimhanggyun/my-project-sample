@@ -137,6 +137,34 @@ namespace Game.Unity.Boot
                 }
             }
 
+            // 샘플전투2 (R-125, 2026-11-21): 병사 단위 전투 — 시작 화면, 맞붙는 곳 0.1초(1틱) 간격 연속 프레임, 중간 · 끝, V자 vs 두툼
+            var s2 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+            {
+                AllyFormation = Game.Battle.Model.Crowd.CrowdFormations.Wedge, EnemyFormation = Game.Battle.Model.Crowd.CrowdFormations.Line, Seed = 11,
+            });
+            yield return Shot("30_sample2_setup", () => s2, 0.3f);
+            int guard = 0;
+            while (guard++ < 400) { s2.StepForTour(5); if (s2.FightingForTour) break; }
+            s2.StepForTour(10);
+            s2.FocusFightForTour(14f);
+            yield return Shot("30b_sample2_contact", null, 0.2f);
+            for (int i = 0; i < 12; i++) { s2.StepForTour(1); yield return Shot($"30f_sample2_{i:00}", null, 0f); }
+            s2.StepForTour(60);
+            s2.FocusFightForTour(22f);
+            yield return Shot("30c_sample2_mid", null, 0.2f);
+            s2.StepForTour(2000);
+            yield return Shot("30d_sample2_end", null, 0.2f);
+            var s3 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+            {
+                AllyFormation = Game.Battle.Model.Crowd.CrowdFormations.Vee, EnemyFormation = Game.Battle.Model.Crowd.CrowdFormations.Thick, Seed = 11,
+            });
+            yield return Shot("31_sample2_vee_setup", () => s3, 0.3f);
+            guard = 0;
+            while (guard++ < 400) { s3.StepForTour(5); if (s3.FightingForTour) break; }
+            s3.StepForTour(60);
+            s3.FocusFightForTour(22f);
+            yield return Shot("31b_sample2_vee_fight", null, 0.2f);
+
             _app.ShowMain("story");
             Done = true;
             Debug.Log($"화면 캡처 {Saved.Count}장: {_folder}");
