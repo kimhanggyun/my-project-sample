@@ -199,8 +199,10 @@ namespace Game.Battle.Model.Crowd
             for (int k = 0; k < corps; k++)
             {
                 int share = count / corps + (k < count % corps ? 1 : 0);
-                string place = corps == 1 ? "center" : Places3[k];
-                string tid = troopIds != null && troopIds.Length > 0 ? troopIds[System.Math.Min(k, troopIds.Length - 1)] : "infantry";
+                // 좌 · 우는 보는 쪽(우리 편) 기준: 적은 앞이 반대라 자기 오른쪽이 화면 왼쪽 → 이름을 뒤집어 화면 왼쪽 부대가 "좌" (2026-11-21 캡처: 우리 좌군이 적 좌군을 치러 전장을 가로질러 감)
+                int pi = corps == 1 ? 1 : team == Ally ? k : 2 - k;
+                string place = corps == 1 ? "center" : Places3[pi];
+                string tid = troopIds != null && troopIds.Length > 0 ? troopIds[System.Math.Min(corps == 1 ? 0 : pi, troopIds.Length - 1)] : "infantry"; // 병종도 좌 · 중 · 우 이름 순서대로
                 made.Add(MakeArmy(team, place, place == "center", form, share, facing, CrowdTroop.Of(tid, troops)));
             }
             // 좌 · 중 · 우로 나란히 (사이 CorpsGap), 편의 가운데가 전장 가운데. 오른쪽 = 부대의 Right (적은 좌우가 뒤집힘)
