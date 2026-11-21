@@ -170,6 +170,7 @@ namespace Game.Unity.Screens
         {
             _selected = id;
             _field.SelectedArmy = id == AllCorps ? -1 : id;
+            _field.SelectAll = id == AllCorps;
             foreach (var kv in _corpsButtons) Ui.Recolor(kv.Value, kv.Key == id ? Palette.ButtonActive : Palette.Button);
             string f = CurrentFormation();
             foreach (var kv in _formationButtons) Ui.Recolor(kv.Value, kv.Key == f ? Palette.ButtonActive : Palette.Button);
@@ -197,7 +198,12 @@ namespace Game.Unity.Screens
         {
             if (!Started || _battle.IsOver) return;
             if (!_field.Rig.Ground(screen, 0f, out var world)) return;
-            var point = new Vec(Fix.FromDecimal((decimal)world.x), Fix.FromDecimal((decimal)world.z));
+            CommandAt(new Vec(Fix.FromDecimal((decimal)world.x), Fix.FromDecimal((decimal)world.z)));
+        }
+
+        /// <summary>전장 한 곳을 누른 것과 같다 (화면 누름 · 캡처 투어).</summary>
+        private void CommandAt(Vec point)
+        {
             var hit = ArmyAt(point);
             if (hit != null && hit.Team == CrowdBattle.Ally) { if (hit.Leading) Select(hit.Id); return; }
             var chosen = Chosen();
@@ -211,17 +217,23 @@ namespace Game.Unity.Screens
             foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from));
         }
 
-        /// <summary>그 자리를 덮는 부대 (살아 있는 병사 가운데에서 대열 크기 + 1칸 안, 가장 가까운 것).</summary>
+        /// <summary>
+        /// 그 자리를 덮는 부대: 부대 앞 방향 기준 직사각형 (대열 반 폭 · 반 깊이 + 여유) 안, 가장 가까운 것.
+        /// (2026-11-21 캡처: 둥근 판정이면 넓은 일자 대열 바로 앞 땅을 눌러도 그 부대를 고름)
+        /// </summary>
         private CrowdArmy ArmyAt(Vec p)
         {
             CrowdArmy best = null;
             Fix bestD = Fix.Zero;
+            Fix pad = Fix.FromRatio(8, 10), padBack = Fix.FromInt(2); // 뒤쪽은 장수까지
             foreach (var a in _battle.Armies)
             {
                 if (!_battle.Standing(a)) continue;
-                Fix d = (a.Centroid() - p).Length;
-                Fix r = Fix.Max(a.HalfWidth, a.HalfDepth) + Fix.OneValue;
-                if (d <= r && (best == null || d < bestD)) { best = a; bestD = d; }
+                var d = p - a.Centroid();
+                Fix lx = d.Dot(a.Right), ly = d.Dot(a.Facing);
+                if (lx < -(a.HalfWidth + pad) || lx > a.HalfWidth + pad || ly > a.HalfDepth + pad || ly < -(a.HalfDepth + padBack)) continue;
+                Fix dist = d.LengthSquared;
+                if (best == null || dist < bestD) { best = a; bestD = dist; }
             }
             return best;
         }
@@ -338,6 +350,13 @@ namespace Game.Unity.Screens
                 if (a.Team == CrowdBattle.Enemy && a.Place == enemyPlace) foe = a;
             }
             if (me != null && foe != null) _battle.OrderAttack(me.Id, foe.Id);
+        }
+
+        /// <summary>캡처 투어: [전체]를 고르고 그 땅을 누름.</summary>
+        public void SelectAllAndTapForTour(float x, float y)
+        {
+            Select(AllCorps);
+            CommandAt(new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y)));
         }
 
         public void MoveForTour(string place, float x, float y)
