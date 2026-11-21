@@ -56,5 +56,10 @@
   "rearPp": 30,
   "frontDot": 0.5,
   "rearDot": -0.5,
-  "routEndSeconds": 4
+  "routEndSeconds": 4,
+  "_skills": "스킬 (R-130): 정의 · 수치는 skills.json (warCry · rally · holdTheLine · forcedMarch · arrowRain). 여기는 샘플전투2에만 있는 값: 다시 쓰기까지 skillGapSeconds, 돌격 함성이 사기를 깎는 적 부대 거리 skillContactRange, 화살비 화살 수 arrowRainVolleys · 맞을 확률 arrowRainChance",
+  "skillGapSeconds": 3,
+  "skillContactRange": 8,
+  "arrowRainVolleys": 2,
+  "arrowRainChance": 0.6
 }

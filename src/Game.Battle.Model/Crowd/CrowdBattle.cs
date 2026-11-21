@@ -91,6 +91,12 @@ namespace Game.Battle.Model.Crowd
         public bool Encircled;
         /// <summary>방향마다 마지막으로 맞은 틱 (0 앞 · 1 왼쪽 · 2 오른쪽 · 3 뒤).</summary>
         public readonly int[] SideHitTick = { -9999, -9999, -9999, -9999 };
+        // 스킬 (R-130)
+        /// <summary>남은 사용 횟수 (스킬 id → 횟수).</summary>
+        public readonly Dictionary<string, int> SkillUses = new Dictionary<string, int>();
+        public int LastSkillTick = -9999;
+        public Fix AttackBuffPp, DefenseBuffPp, MoraleLossPct, MoveBuffPct, MarchEndMorale;
+        public int AttackBuffUntil = -1, FortifyUntil = -1, MarchUntil = -1;
         /// <summary>이번 틱 시작 때 살아 있는 병사 가운데 (옆 · 뒤 판정의 기준).</summary>
         public Vec TickCentroid;
         public int LastHitTick = -9999;
@@ -147,7 +153,7 @@ namespace Game.Battle.Model.Crowd
     /// 창병은 달려드는 기병을 받아친다.
     /// 규칙 계산이라 고정소수점 · 시드 난수만 쓰고, 병사를 id 순서로 계산한 뒤 한꺼번에 반영한다 (같은 입력 = 같은 결과).
     /// </summary>
-    public sealed class CrowdBattle
+    public sealed partial class CrowdBattle
     {
         public const int Ally = 0, Enemy = 1;
         public static readonly string[] Places3 = { "left", "center", "right" };
@@ -432,8 +438,8 @@ namespace Game.Battle.Model.Crowd
                 if (s.Cooldown > 0) s.Cooldown--;
                 var army = Armies[s.Army];
                 var troop = army.Troop;
-                Fix walkStep = r.MoveSpeed * army.SpeedFactor * dt;
-                Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * dt : walkStep;
+                Fix walkStep = r.MoveSpeed * army.SpeedFactor * MoveMult(army) * dt;
+                Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * MoveMult(army) * dt : walkStep;
                 if (army.Wavering) { walkStep = walkStep * r.WaverSpeed; stepLen = stepLen * r.WaverSpeed; }
                 if (army.Routed)
                 {
@@ -481,6 +487,10 @@ namespace Game.Battle.Model.Crowd
             }
             for (int i = 0; i < n; i++) if (!_knock[i].Equals(Vec.Zero)) _next[i] = _next[i] + _knock[i];
 
+            // 2.4) 스킬: 적 AI 스킬, 화살비 떨어짐, 끝난 효과
+            if (_enemyAdvance && Tick % 10 == 5) EnemySkills();
+            StepSkills();
+
             // 2.5) 다음 위치끼리 겹친 것을 두 번 풀어 준다 (뒤에서 미는 병사가 앞 병사 속으로 파고들지 않게)
             for (int pass = 0; pass < RelaxPasses; pass++) Relax();
 
@@ -489,6 +499,7 @@ namespace Game.Battle.Model.Crowd
             {
                 var ar = Arrows[k];
                 if (ar.ArriveTick > Tick) continue;
+                if (ar.TargetId < 0) { Arrows.RemoveAt(k); k--; continue; } // 화살비 화살 (보이기만, 피해는 StepSkills)
                 var t = Soldiers[ar.TargetId];
                 if (t.Alive && _rng.Chance(r.ArrowHitChance))
                 {
@@ -519,8 +530,8 @@ namespace Game.Battle.Model.Crowd
                     {
                         s.Hp = 0; s.DiedTick = Tick; s.Moved = Vec.Zero;
                         var da = Armies[s.Army];
-                        if (s.IsGeneral) da.Morale -= r.GeneralLostMorale;
-                        else da.Morale -= r.MoraleDeathTotal / System.Math.Max(1, da.StartCount);
+                        if (s.IsGeneral) LoseMorale(da, r.GeneralLostMorale);
+                        else LoseMorale(da, r.MoraleDeathTotal / System.Math.Max(1, da.StartCount));
                         continue;
                     }
                 }
@@ -572,9 +583,9 @@ namespace Game.Battle.Model.Crowd
                 for (int k = 1; k < 4; k++) if (a.SideHitTick[k] >= Tick - r.EncircleTicks) sides++;
                 a.Encircled = sides >= 2;
                 // 이번 틱 옆 · 뒤에서 맞고 있으면 초당 flankDrain · rearDrain (여러 번 맞아도 한 번)
-                if (a.SideHitTick[3] == Tick) a.Morale -= r.RearDrain * dt;
-                else if (a.SideHitTick[1] == Tick || a.SideHitTick[2] == Tick) a.Morale -= r.FlankDrain * dt;
-                if (a.Encircled) a.Morale -= r.EncircleDrain * dt;
+                if (a.SideHitTick[3] == Tick) LoseMorale(a, r.RearDrain * dt);
+                else if (a.SideHitTick[1] == Tick || a.SideHitTick[2] == Tick) LoseMorale(a, r.FlankDrain * dt);
+                if (a.Encircled) LoseMorale(a, r.EncircleDrain * dt);
                 else if (a.LastHitTick < Tick - r.CalmTicks) a.Morale = Fix.Min(r.MoraleStart, a.Morale + r.MoraleRegen * dt);
                 if (a.Morale < Fix.Zero) a.Morale = Fix.Zero;
                 a.Wavering = a.Morale <= r.WaverAt;
@@ -586,7 +597,7 @@ namespace Game.Battle.Model.Crowd
                 a.RoutedTick = Tick;
                 a.Order = CrowdOrders.Hold;
                 a.Charging = false;
-                foreach (var o in Armies) if (o.Team == a.Team && o != a && !o.Routed) o.Morale -= r.AllyRoutedMorale;
+                foreach (var o in Armies) if (o.Team == a.Team && o != a && !o.Routed) LoseMorale(o, r.AllyRoutedMorale);
             }
         }
 
@@ -608,7 +619,7 @@ namespace Game.Battle.Model.Crowd
             var foeArmy = Armies[e.Army];
             var foeTroop = foeArmy.Troop;
             int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
-            int dmg = HitDamage(troop, foeTroop, SidePp(side));
+            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy));
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
@@ -619,7 +630,7 @@ namespace Game.Battle.Model.Crowd
                 if (troop.Mounted && foeTroop.Polearm && !e.IsGeneral)
                 {
                     // 받아치기: 창끝에 걸린 기병이 피해를 입고 튕겨 나간다
-                    _damage[s.Id] += HitDamage(foeTroop, troop) * r.BraceDamage;
+                    _damage[s.Id] += HitDamage(foeTroop, troop, BuffPp(foeArmy, army)) * r.BraceDamage;
                     if (len > Fix.Zero) _knock[s.Id] = _knock[s.Id] - d * (r.ImpactPush / len);
                     s.ImpactTick = Tick;
                     e.ImpactTick = Tick;
@@ -648,7 +659,7 @@ namespace Game.Battle.Model.Crowd
             var e = Soldiers[target];
             Fix dist = (e.Pos - s.Pos).Length;
             int flight = System.Math.Max(1, (int)(dist / (r.ArrowSpeed * r.TickSeconds)).RoundToLong());
-            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop)) * r.ArrowDamageScale).RoundToLong()) });
+            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()) });
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
             s.Cooldown = r.ShootTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0);
@@ -709,7 +720,7 @@ namespace Game.Battle.Model.Crowd
             }
             var d = goal - a.Center;
             Fix dist = d.Length;
-            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor;
+            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a);
             if (a.Order == CrowdOrders.Move && dist <= baseSpeed * dt)
             {
                 a.Center = goal;

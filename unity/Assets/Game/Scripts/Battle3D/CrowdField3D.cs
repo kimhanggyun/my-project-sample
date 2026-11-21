@@ -50,7 +50,7 @@ namespace Game.Unity.Battle3D
         /// <summary>true면 장수가 살아 있는 우리 부대 모두 고른 표시 ([전체], 2026-11-21 사용자).</summary>
         public bool SelectAll;
         /// <summary>고리는 부대마다 하나씩 (고른 표시 · 목표 표시), 모자라면 더 만든다.</summary>
-        private readonly List<LineRenderer> _selRings = new List<LineRenderer>(), _goalRings = new List<LineRenderer>();
+        private readonly List<LineRenderer> _selRings = new List<LineRenderer>(), _goalRings = new List<LineRenderer>(), _fxRings = new List<LineRenderer>();
         private const int RingSegments = 48;
 
         /// <summary>병사마다 걸은 거리 (다리 박자) · 다리 흔들기 세기 (걷기 시작 · 멈출 때 부드럽게).</summary>
@@ -426,6 +426,26 @@ namespace Game.Unity.Battle3D
                     Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ShownCenter(t, alpha), RadiusOf(t));
                 }
             }
+            // 스킬 (R-130): 쓴 순간 부대 둘레로 퍼지는 고리 (0.8초), 화살비는 떨어질 때까지 그 자리 붉은 고리
+            int fx = 0;
+            float tickSec = (float)_battle.Rules.TickSeconds.ToDisplayDouble();
+            float now = (_battle.Tick + alpha) * tickSec;
+            foreach (var ev in _battle.SkillEvents)
+            {
+                if (ev.Skill == CrowdBattle.ArrowRain)
+                {
+                    if (now > ev.LandTick * tickSec + 0.3f) continue;
+                    var def = _battle.SkillDef(ev.Skill);
+                    float rad = def != null ? (float)def.Radius.ToDisplayDouble() : 2f;
+                    Circle(Pooled(_fxRings, fx++, "SkillRing", new Color(0.95f, 0.3f, 0.2f), 0.1f), ToWorld(ev.Point), rad);
+                    continue;
+                }
+                float age = now - ev.Tick * tickSec;
+                if (age < 0f || age > 0.8f) continue;
+                var army = _battle.Armies[ev.Army];
+                Circle(Pooled(_fxRings, fx++, "SkillRing", new Color(1f, 0.92f, 0.4f), 0.14f * (1f - age / 0.8f) + 0.02f), ShownCenter(army, alpha), RadiusOf(army) * (0.6f + age * 1.2f));
+            }
+            for (int i = fx; i < _fxRings.Count; i++) _fxRings[i].gameObject.SetActive(false);
             for (int i = sel; i < _selRings.Count; i++) _selRings[i].gameObject.SetActive(false);
             for (int i = goal; i < _goalRings.Count; i++) _goalRings[i].gameObject.SetActive(false);
         }

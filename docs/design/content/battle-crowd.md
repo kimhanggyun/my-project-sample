@@ -77,6 +77,21 @@
   - [예약 이동] (**명령 예약**): 누르는 땅마다 경유 지점을 차례로 더한다 (부대마다 최대 6). 화면 위 [예약 끝]으로 마침. 규칙: 이동 중에 더한 지점은 지금 목표에 닿으면 다음으로 (`OrderMove(append)`), 정지 · 공격 · 새 이동은 예약을 비운다. 목표 고리 뒤에 작은 흰 고리.
 - 적 부대를 누르면 공격, 아래 버튼(부대 고르기 · 진형 · 정지 · 돌격 · 다시)은 그대로.
 
+## 3.9 스킬 (R-130, 2026-11-21 사용자 "스킬 진행해") — 기존 skills.json의 기본 스킬 다섯을 먼저
+
+| 스킬 | 기존 데이터 (skills.json) | 샘플전투2에서 |
+|---|---|---|
+| 돌격 함성 warCry | attackBuff pp · durationSec, contactMoraleDamage amount | 그 시간 동안 공격 +pp%p. 쓸 때 `skillContactRange` 안 적 부대 사기 −amount |
+| 고무 rally | morale amount · allyRadius | 자기와 그 거리 안 같은 편 부대 사기 +amount |
+| 철벽 holdTheLine | fortify durationSec · defensePp · moraleLossPct | 그 시간 동안 맞는 피해 −defensePp%p, 사기 깎임 × (1 + moraleLossPct%) |
+| 강행군 forcedMarch | durationSec · movePct · endMorale | 걸음 · 부대 전진 +movePct%, 끝나면 사기 endMorale |
+| 화살비 arrowRain (궁병만) | target area range · radius, telegraphSec | 사거리 안 한 곳, 전조 뒤 반지름 안 병사(편 상관없이)에게 `arrowRainVolleys`번 화살 (각 `arrowRainChance`). 전조 동안 하늘을 덮는 화살이 날아간다 |
+
+- 부대마다 쓸 수 있는 횟수 = usesPerBattle (부대 병종이 궁병일 때만 화살비). 한 스킬을 쓴 뒤 `skillGapSeconds` 동안 다른 스킬도 못 쓴다. 장수를 잃거나 무너진 부대는 못 쓴다.
+- **적 AI** (적 명령 = 전진일 때): 사기 40 이하면 고무, 맞붙기 시작하면 돌격 함성, 맞붙어 사기 60 이하면 철벽.
+- **화면**: 부대 원형 메뉴 [스킬 ›] → 스킬 이름 + 남은 횟수 (못 쓰면 흐리게). 화살비는 다음에 누른 땅 (사거리 밖이면 알림). 쓴 순간 부대 둘레로 퍼지는 노란 고리, 화살비는 떨어질 곳에 붉은 고리. 켜진 스킬은 장수 이름표에.
+- 스킬 점수(cost) · 장수 능력 요구(requires)는 아직 보지 않는다 (샘플전투2는 장수 능력이 없음).
+
 ## 4. 아직 없는 것 (보고 나서)
 
-지형, 스킬, 기존 전투 · 녹화 · 서버 연결 (순서: battle-crowd 이전 계획 — 병종 → 사기 → 조작 화면 → 스킬 → 지형 → 연결). 화면 병사 수 = 병력 비율 (지금은 1:1).
+지형, 나머지 스킬, 기존 전투 · 녹화 · 서버 연결 (순서: battle-crowd 이전 계획 — 병종 → 사기 → 조작 화면 → 스킬 → 지형 → 연결). 화면 병사 수 = 병력 비율 (지금은 1:1).
