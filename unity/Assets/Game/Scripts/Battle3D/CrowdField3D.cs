@@ -120,13 +120,14 @@ namespace Game.Unity.Battle3D
             var am = Own(NewMaterial(ArrowColor));
             am.enableInstancing = true;
             _arrowBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { am }, Matrix4x4.identity);
-            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs }) _allBatches.Add(b);
             var general = SoldierMeshes.General(true, horseLegs: false);
             var horseLeg = SoldierMeshes.HorseLeg();
             _allyHorseLegs = LegBatch(horseLeg, AllyDark);
             _enemyHorseLegs = LegBatch(horseLeg, EnemyDark);
             _allyGeneral = Batch(general, AllyColor, AllyDark, GeneralModelScale); // 장수 모형은 이미 1.8배라 병사만큼 더 키우지 않음 (캡처: 장수가 대열을 가림)
             _enemyGeneral = Batch(general, EnemyColor, EnemyDark, GeneralModelScale);
+            // 모든 묶음이 만들어진 뒤에 목록으로 (2026-11-21 캡처 오류: 말 다리 · 장수 묶음이 아직 없을 때 넣어 null)
+            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs }) _allBatches.Add(b);
         }
 
         /// <summary>규칙 (x, y) → 월드 (x, 0, y): 우리 편(작은 y)이 화면 아래, 적이 위.</summary>
@@ -179,7 +180,6 @@ namespace Game.Unity.Battle3D
             float tickSec = (float)_battle.Rules.TickSeconds.ToDisplayDouble();
             float now = (_battle.Tick + alpha) * tickSec;
             foreach (var b in _allBatches) b.Matrices.Clear();
-            _allyGeneral.Matrices.Clear(); _enemyGeneral.Matrices.Clear();
             var soldiers = _battle.Soldiers;
             for (int i = 0; i < soldiers.Count; i++)
             {
