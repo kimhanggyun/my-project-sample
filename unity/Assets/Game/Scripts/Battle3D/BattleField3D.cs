@@ -17,6 +17,8 @@ namespace Game.Unity.Battle3D
     /// </summary>
     public sealed class BattleField3D
     {
+        /// <summary>소부대 하나의 화면 병사 최대 수 (7×7, 덩어리가 진형 자리 2칸 안에 들어가게 — 2026-11-21).</summary>
+        private const long MaxSoldiersPerUnit = 49;
         private const float SoldierSpacing = 0.24f; // 2026-11-13: 병사 예산 900 → 2000에 맞춰 촘촘히 (대군 느낌, 부대 덩어리 크기는 비슷)
         /// <summary>지형 높이 1단계의 월드 높이.</summary>
         private const float HeightScale = 0.8f;
@@ -177,6 +179,11 @@ namespace Game.Unity.Battle3D
             long total = 0;
             foreach (var c in ctx.Corps) total += c.StartTroops;
             _troopsPerSoldier = SoldierRatio.TroopsPerSoldier(System.Math.Max(1, total), ctx.Balance.SoldierBudget);
+            // 소부대 덩어리 크기를 규칙의 자리에 맞춘다 (2026-11-21 사용자 폰: 적 덩어리가 우리 군단을 덮음).
+            // 진형 자리는 2칸 간격 · 근접은 1~2칸에서 닿으니, 가장 큰 소부대도 MaxSoldiersPerUnit(7×7 ≈ 1.5칸) 안으로
+            long biggest = 1;
+            foreach (var c in ctx.Corps) foreach (var u in c.Units) biggest = System.Math.Max(biggest, u.StartTroops);
+            _troopsPerSoldier = System.Math.Max(_troopsPerSoldier, (biggest + MaxSoldiersPerUnit - 1) / MaxSoldiersPerUnit);
 
             // 카메라·빛
             var camGo = new GameObject("BattleCamera");

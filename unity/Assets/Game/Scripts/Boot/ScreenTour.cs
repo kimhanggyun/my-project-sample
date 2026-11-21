@@ -100,11 +100,12 @@ namespace Game.Unity.Boot
                 battle.BeginBattleForTour();
                 yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더 (진행 중)
                 // 움직임 확인 (2026-11-21): 0.1초 간격 연속 프레임 — 행군 (고른 군단 가까이) · 맞붙음 (근접이 닿은 곳)
-                battle.RunForTour(0);
-                battle.FocusSelectedForTour();
-                for (int i = 0; i < 10; i++) yield return Frame($"19w_walk_{i:00}", battle);
-                battle.RunForTour(2);
                 float waited = 0f;
+                while (!battle.FocusMovingForTour() && waited < 30f) { battle.RunForTour(2); waited += Time.unscaledDeltaTime; yield return null; }
+                battle.RunForTour(0);
+                for (int i = 0; i < 10; i++) yield return Frame($"19w_walk_{i:00}", battle); // 카메라는 고정 (따라가면 카메라가 흔들림을 만든다)
+                battle.RunForTour(2);
+                waited = 0f;
                 while (!battle.FocusMeleeForTour() && waited < 60f) { battle.RunForTour(2); waited += Time.unscaledDeltaTime; yield return null; }
                 battle.RunForTour(0);
                 yield return Shot("19m_fight_wide", null, 0.5f);

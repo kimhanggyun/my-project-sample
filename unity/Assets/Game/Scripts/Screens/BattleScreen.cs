@@ -1564,13 +1564,17 @@ namespace Game.Unity.Screens
             return false;
         }
 
-        /// <summary>캡처 투어: 고른 군단 쪽으로 카메라 (행군 연속 프레임).</summary>
-        public void FocusSelectedForTour()
+        /// <summary>캡처 투어: 길을 따라 움직이는(보이는) 군단 쪽으로 카메라 (행군 연속 프레임). 없으면 false.</summary>
+        public bool FocusMovingForTour()
         {
-            var c = _ctl.Selected;
-            if (c == null) return;
-            _field.Rig.LookAt(_field.ToWorld(c.Anchor));
-            _field.Rig.SetDistance(16f);
+            foreach (var c in _sim.Context.Corps)
+            {
+                if (!c.InBattle || !_ctl.Sees(c) || c.Path == null || c.PathIndex >= c.Path.Count) continue;
+                _field.Rig.LookAt(_field.ToWorld(c.Anchor));
+                _field.Rig.SetDistance(16f);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>작전 시간 끝 → 전투 시작 (멈춤 풀기).</summary>
