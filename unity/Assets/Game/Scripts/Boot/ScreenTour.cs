@@ -143,6 +143,10 @@ namespace Game.Unity.Boot
                 AllyFormation = Game.Battle.Model.Crowd.CrowdFormations.Wedge, EnemyFormation = Game.Battle.Model.Crowd.CrowdFormations.Line, Seed = 11,
             });
             yield return Shot("30_sample2_setup", () => s2, 0.3f);
+            // 걷기 (다리): 다가가는 우리 쐐기 앞쪽을 가까이, 1틱 간격
+            s2.StepForTour(40);
+            s2.FocusArmyForTour(0, 9f);
+            for (int i = 0; i < 8; i++) { s2.StepForTour(1); yield return Shot($"30w_sample2_walk_{i:00}", null, 0f); }
             int guard = 0;
             while (guard++ < 400) { s2.StepForTour(5); if (s2.FightingForTour) break; }
             s2.StepForTour(10);

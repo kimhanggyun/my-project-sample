@@ -29,9 +29,10 @@ namespace Game.Unity.Battle3D
 
         /// <param name="baseType">1단계 병종 id (infantry, spearman, archer, cavalry, scout). 모르는 값이면 보병.</param>
         /// <param name="armored">치장 갑옷을 입음 (cosmetics.md 2장): 어깨 덧댐 · 가슴 띠 · 둥근 투구 · 방패가 갑옷 부위(Armor)로. 말 몸은 늘 Horse 부위 (말 색).</param>
-        public static Mesh For(string baseType, bool armored = false)
+        /// <param name="legs">false = 걷는 병사의 다리를 빼고 (샘플전투2가 다리를 <see cref="Leg"/>로 따로 흔든다). 말 탄 병사는 그대로.</param>
+        public static Mesh For(string baseType, bool armored = false, bool legs = true)
         {
-            string cacheKey = (baseType ?? "") + (armored ? "#armor" : "");
+            string cacheKey = (baseType ?? "") + (armored ? "#armor" : "") + (legs ? "" : "#nolegs");
             if (Built.TryGetValue(cacheKey, out var m) && m != null) return m;
             var parts = new List<CombineInstance>[PartCount];
             for (int i = 0; i < PartCount; i++) parts[i] = new List<CombineInstance>();
@@ -73,7 +74,7 @@ namespace Game.Unity.Battle3D
                 Add(sphere, new Vector3(-0.05f, 0.13f, -0.1f), new Vector3(0.05f, 0.05f, 0.05f));
                 Add(sphere, new Vector3(0.05f, 0.13f, 0.12f), new Vector3(0.05f, 0.05f, 0.05f));
             }
-            else BuildPerson(baseType, parts, cube, sphere, capsule, cylinder, armored);
+            else BuildPerson(baseType, parts, cube, sphere, capsule, cylinder, armored, legs);
             // 비지 않은 부위만 하위 메시로 (빈 하위 메시를 그리지 않게)
             var subs0 = new List<CombineInstance>();
             var map = new List<int>();
@@ -97,7 +98,7 @@ namespace Game.Unity.Battle3D
         /// 몸통 · 팔만 팀 색, 얼굴 살색(위에서도 보이게 크게), 가는 다리 · 투구 챙 · 방패 · 활 · 말은 갈색, 칼 · 창은 쇠. 병종은 들고 있는 것으로 구분:
         /// 보병 = 둥근 방패 + 칼, 창병 = 몸보다 긴 창, 궁병 = 활 + 등 화살통, 기병 = 가는 말 + 앞으로 든 창, 정찰병 = 투구 없이 짧은 칼, 공병 = 도끼 + 등 나무.
         /// </summary>
-        private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder, bool armored)
+        private static void BuildPerson(string baseType, List<CombineInstance>[] parts, Mesh cube, Mesh sphere, Mesh capsule, Mesh cylinder, bool armored, bool legs = true)
         {
             int part = Team;
             void Add(Mesh mesh, Vector3 pos, Vector3 scale, Vector3 euler = default) =>
@@ -117,7 +118,7 @@ namespace Game.Unity.Battle3D
             }
             bool light = baseType == "scout";
             part = Dark;
-            if (!mounted)
+            if (!mounted && legs)
             {
                 // 가는 다리 (병종 그림 PNG 비율: 다리 = 키의 1/3, 살짝 벌림)
                 Add(cylinder, new Vector3(-0.02f, 0.068f, 0f), new Vector3(0.024f, 0.07f, 0.024f), new Vector3(0f, 0f, -3f));
@@ -205,6 +206,27 @@ namespace Game.Unity.Battle3D
         }
 
         /// <summary>장수 재질 순서: 0 = 갑옷·망토(팀 색), 1 = 얼굴, 2 = 금빛 장식·무기, 3 = 탈것 몸 (말 = 흰 말, 가마 = 나무).</summary>
+        /// <summary>걷는 병사 다리 한 짝의 엉덩이 높이 (다리 메시의 위 끝 = 원점).</summary>
+        public const float HipHeight = 0.138f;
+        /// <summary>엉덩이에서 다리까지 옆 간격 (왼쪽 −, 오른쪽 +).</summary>
+        public const float HipSide = 0.02f;
+
+        /// <summary>
+        /// 다리 한 짝 (샘플전투2, 2026-11-21 사용자 "귀신처럼 미끄러짐"): 위 끝(엉덩이)이 원점이라 원점을 축으로 돌리면 앞뒤로 흔들린다.
+        /// 부위 하나 (Dark) — 그리는 쪽이 편의 어두운 색을 준다.
+        /// </summary>
+        public static Mesh Leg()
+        {
+            const string key = "#leg";
+            if (Built.TryGetValue(key, out var m) && m != null) return m;
+            var cyl = Builtin("Cylinder");
+            m = new Mesh { name = "soldier_leg" };
+            m.CombineMeshes(new[] { new CombineInstance { mesh = cyl, transform = Matrix4x4.TRS(new Vector3(0f, -0.07f, 0f), Quaternion.identity, new Vector3(0.026f, 0.07f, 0.026f)) } }, true, true);
+            m.RecalculateBounds();
+            Parts[m] = new[] { Dark };
+            return Built[key] = m;
+        }
+
         public static readonly Color GoldColor = new Color(0.95f, 0.76f, 0.26f);
         public static readonly Color GeneralHorseColor = new Color(0.9f, 0.88f, 0.84f);
         public static readonly Color PalanquinWoodColor = new Color(0.45f, 0.28f, 0.16f);
