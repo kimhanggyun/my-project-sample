@@ -434,28 +434,33 @@ namespace Game.Unity.Battle3D
 
         // ---- 쓰러지는 병사 (2026-11-14): 앞줄에서 넘어지는 동작 뒤 시체가 된다 ----
         private const float DyingSeconds = 0.45f;
+        private const float SinkSeconds = 0.5f; // 넘어진 뒤 땅으로 가라앉는 시간
         private const int DyingMax = 400;
         private struct Dying { public Vector3 Pos; public Quaternion Rot; public float Start; public string Troop; public int Color; public float Dir; public int Seed; }
         private readonly List<Dying> _dying = new List<Dying>();
 
         private void AddDying(Vector3 p, Quaternion rot, string troop, int color, int seed, float clock)
         {
-            if (_dying.Count >= DyingMax) { AddFallen(p, seed); return; }
+            if (_dying.Count >= DyingMax) return; // 너무 많으면 그냥 빠진다
             _dying.Add(new Dying { Pos = p, Rot = rot, Start = clock, Troop = troop, Color = color, Dir = (seed & 1) == 0 ? 1f : -1f, Seed = seed });
         }
 
-        /// <summary>쓰러지는 병사를 그린다: 뒤(또는 앞)로 넘어가며 가라앉고, 다 넘어지면 시체로.</summary>
+        /// <summary>
+        /// 쓰러지는 병사를 그린다: 뒤(또는 앞)로 넘어간 뒤 땅으로 가라앉아 사라진다.
+        /// 2026-11-21 캡처: 남은 짙은 시체 조각이 바닥 얼룩처럼 보여 시체는 남기지 않는다 (참고 영상도 남지 않음).
+        /// </summary>
         private void DrawDying(float clock)
         {
             for (int i = _dying.Count - 1; i >= 0; i--)
             {
                 var d = _dying[i];
-                float t = (clock - d.Start) / DyingSeconds;
-                if (t >= 1f) { AddFallen(d.Pos, d.Seed); _dying.RemoveAt(i); continue; }
-                t = Mathf.Clamp01(t);
+                float age = clock - d.Start;
+                if (age >= DyingSeconds + SinkSeconds) { _dying.RemoveAt(i); continue; }
+                float t = Mathf.Clamp01(age / DyingSeconds);
                 float ease = t * t; // 처음엔 천천히, 끝에 털썩
+                float sink = Mathf.Clamp01((age - DyingSeconds) / SinkSeconds);
                 var p = d.Pos;
-                p.y = GroundHeight(p.x, p.z) - ease * 0.05f;
+                p.y = GroundHeight(p.x, p.z) - ease * 0.05f - sink * 0.3f;
                 var r = d.Rot * Quaternion.Euler(-85f * ease * d.Dir, 0f, 0f);
                 SoldierBatch(d.Troop, d.Color).Add(p, r);
             }
