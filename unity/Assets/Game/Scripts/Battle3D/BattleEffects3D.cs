@@ -16,11 +16,8 @@ namespace Game.Unity.Battle3D
         private const int MaxArrows = 400;
         private const float RingTime = 0.9f;
         private const int RingSegments = 40;
-        // 화살 (PR C 2026-11-20: 짙은 막대가 공중에 뜬 검은 막대처럼 보이던 것) — 밝은 나무색 가는 대 + 쇠 촉 + 흰 깃, 떨어지면 0.3초 꽂혀 있다 사라짐
-        private static readonly Vector3 ArrowScale = new Vector3(0.022f, 0.022f, 0.42f);
-        private static readonly Vector3 HeadScale = new Vector3(0.04f, 0.04f, 0.07f);
-        private static readonly Vector3 FletchScale = new Vector3(0.07f, 0.006f, 0.09f);
-        private const float ArrowStuck = 0.3f;
+        // 2026-11-21 캡처: 짙은 굵은 막대가 공중에 뜬 검은 줄처럼 보여 → 밝은 나무색 · 가늘고 짧게
+        private static readonly Vector3 ArrowScale = new Vector3(0.022f, 0.022f, 0.34f);
 
         private struct Arrow { public Vector3 From, To; public float Start; }
         private struct Ring { public LineRenderer Line; public Vector3 Center; public float Start, Radius; }
@@ -28,14 +25,9 @@ namespace Game.Unity.Battle3D
         private readonly BattleField3D _field;
         private readonly Game.Battle.Model.Control.BattleControl _ctl;
         private readonly Mesh _cube;
-        private readonly Material _arrowMat, _headMat, _fletchMat, _flameMat, _emberMat;
-        private readonly List<Matrix4x4> _heads = new List<Matrix4x4>(), _fletches = new List<Matrix4x4>();
+        private readonly Material _arrowMat, _flameMat, _emberMat;
         private readonly List<Arrow> _arrows = new List<Arrow>();
         private readonly Dictionary<SubUnitState, float> _nextArrow = new Dictionary<SubUnitState, float>();
-        private readonly Dictionary<SubUnitState, float> _lastShot = new Dictionary<SubUnitState, float>();
-
-        /// <summary>그 소부대가 마지막으로 화살을 쏜 연출 시각 (쏜 적 없으면 아주 옛날) — 병사가 쏘는 순간 뒤로 움찔하는 박자 (H3).</summary>
-        public float LastShot(SubUnitState u) => _lastShot.TryGetValue(u, out var t) ? t : float.NegativeInfinity;
         private readonly List<Ring> _rings = new List<Ring>();
         // 날씨·바람·전조 (D19)
         private readonly Material _rainMat, _dustMat, _snowMat;
@@ -56,15 +48,13 @@ namespace Game.Unity.Battle3D
             _ctl = ctl;
             _cube = cube;
             _newLine = newLine;
-            _arrowMat = material(new Color(0.78f, 0.62f, 0.38f)); // 밝은 나무
-            _headMat = material(new Color(0.42f, 0.42f, 0.44f)); // 쇠 촉
-            _fletchMat = material(new Color(0.93f, 0.91f, 0.86f)); // 흰 깃
+            _arrowMat = material(new Color(0.86f, 0.74f, 0.52f));
             _flameMat = material(new Color(1f, 0.55f, 0.10f));
             _emberMat = material(new Color(1f, 0.85f, 0.30f));
             _rainMat = material(new Color(0.70f, 0.78f, 0.90f));
             _dustMat = material(new Color(0.80f, 0.72f, 0.55f));
             _snowMat = material(new Color(0.95f, 0.97f, 1f));
-            foreach (var m in new[] { _arrowMat, _headMat, _fletchMat, _flameMat, _emberMat, _rainMat, _dustMat, _snowMat }) m.enableInstancing = true;
+            foreach (var m in new[] { _arrowMat, _flameMat, _emberMat, _rainMat, _dustMat, _snowMat }) m.enableInstancing = true;
         }
 
         public void Advance(float dt) => Clock += dt;
@@ -80,7 +70,6 @@ namespace Game.Unity.Battle3D
                     if (u.AttackTarget == null || !u.Troop.HasTag("ranged")) continue;
                     if (_nextArrow.TryGetValue(u, out var next) && next > Clock) continue;
                     _nextArrow[u] = Clock + ArrowEvery;
-                    _lastShot[u] = Clock;
                     var target = Owner(ctx, u.AttackTarget);
                     if (!_ctl.Sees(c) && (target == null || !_ctl.Sees(target))) continue;
                     var from = _field.ToWorld(u.Position) + Vector3.up * 0.4f;
@@ -112,24 +101,16 @@ namespace Game.Unity.Battle3D
             {
                 var a = _arrows[i];
                 float t = (Clock - a.Start) / ArrowFlight;
-                if (t >= 1f + ArrowStuck / ArrowFlight) { _arrows.RemoveAt(i); continue; } // 꽂혀 있던 0.3초가 지나면 사라짐
+                if (t >= 1f) { _arrows.RemoveAt(i); continue; }
                 if (t < 0f) continue;
                 float arc = 1.2f + Vector3.Distance(a.From, a.To) * 0.12f;
                 Vector3 P(float s) => Vector3.Lerp(a.From, a.To, s) + Vector3.up * (4f * arc * s * (1f - s));
-                bool stuck = t >= 1f;
-                float ft = Mathf.Min(t, 1f);
-                var dir = stuck ? P(1f) - P(0.95f) : P(Mathf.Min(1f, ft + 0.05f)) - P(ft);
+                var p = P(t);
+                var dir = P(Mathf.Min(1f, t + 0.05f)) - p;
                 var rot = dir.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(dir) : Quaternion.identity;
-                var fwd = rot * Vector3.forward;
-                // 꽂힌 화살은 촉이 땅에 묻히게 대를 반쯤 앞으로
-                var p = P(ft) - (stuck ? fwd * (ArrowScale.z * 0.15f) : Vector3.zero);
                 _batch.Add(Matrix4x4.TRS(p, rot, ArrowScale));
-                _heads.Add(Matrix4x4.TRS(p + fwd * (ArrowScale.z / 2f), rot, HeadScale));
-                _fletches.Add(Matrix4x4.TRS(p - fwd * (ArrowScale.z / 2f - FletchScale.z / 2f), rot, FletchScale));
             }
             Flush(_arrowMat, camera);
-            Flush(_headMat, camera, _heads);
-            Flush(_fletchMat, camera, _fletches);
 
             // 불꽃: 불타는 칸마다 깜빡이는 기둥 몇 개
             if (ctx.Environment != null && ctx.Environment.Burning.Count > 0)

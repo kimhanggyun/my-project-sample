@@ -17,6 +17,20 @@ namespace Game.Unity.Battle3D
     /// </summary>
     public sealed class BattleField3D
     {
+        /// <summary>소부대 하나의 화면 병사 최대 수 (7×7, 덩어리가 진형 자리 2칸 안에 들어가게 — 2026-11-21).</summary>
+        private const long MaxSoldiersPerUnit = 49;
+
+        /// <summary>
+        /// 소부대의 화면 병사 수 (2026-11-21): 덩어리를 진형 자리(2칸) 안에 두려고 출진 때 병사를 MaxSoldiersPerUnit까지로 줄이고,
+        /// 병력이 줄면 그 비율대로 준다. 처음 캡처에서 가장 큰 소부대 기준으로 전체 비율을 바꿨더니 작은 쪽(우리)이 몇 명만 남아 휑해서 소부대마다 따로.
+        /// </summary>
+        private long Shown(long troops, long startTroops)
+        {
+            if (troops <= 0) return 0;
+            long start = System.Math.Min(MaxSoldiersPerUnit, SoldierRatio.VisibleSoldiers(System.Math.Max(1, startTroops), _troopsPerSoldier));
+            if (troops >= startTroops) return start;
+            return System.Math.Max(1, (start * troops + startTroops - 1) / startTroops);
+        }
         private const float SoldierSpacing = 0.24f; // 2026-11-13: 병사 예산 900 → 2000에 맞춰 촘촘히 (대군 느낌, 부대 덩어리 크기는 비슷)
         /// <summary>지형 높이 1단계의 월드 높이.</summary>
         private const float HeightScale = 0.8f;
@@ -45,11 +59,10 @@ namespace Game.Unity.Battle3D
         private readonly float _depth;
         private readonly Mesh _cube;
         private readonly List<Object> _owned = new List<Object>();
-        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4, AllyShaken = 5, EnemyShaken = 6, HiddenTone = 7, DeadWhite = 8;
+        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4, AllyShaken = 5, EnemyShaken = 6, HiddenTone = 7;
         // 흔들리는 군단(사기 바닥 가까이)은 바랜 팀 색, 숨은 아군(복병 준비·은신)은 어두운 색 (D18)
         private static readonly Color[] SoldierColors = { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor,
-            new Color(0.55f, 0.62f, 0.80f), new Color(0.78f, 0.55f, 0.52f), new Color(0.22f, 0.28f, 0.22f),
-            new Color(0.97f, 0.97f, 0.95f) }; // DeadWhite: 죽는 순간 하얗게 (PR D)
+            new Color(0.55f, 0.62f, 0.80f), new Color(0.78f, 0.55f, 0.52f), new Color(0.22f, 0.28f, 0.22f) };
         // 버프·디버프 테두리 (D18): 군단 발밑 원, 버프 = 금색, 디버프(혼란·도발) = 보라
         private readonly Dictionary<CorpsState, LineRenderer> _statusRings = new Dictionary<CorpsState, LineRenderer>();
         private static readonly Color BuffColor = new Color(1f, 0.82f, 0.30f);
@@ -85,50 +98,17 @@ namespace Game.Unity.Battle3D
         private Material _waypointMat;
         /// <summary>소부대 위치: 직전 틱 → 지금 틱 (틱 사이를 부드럽게 잇는다).</summary>
         private readonly Dictionary<SubUnitState, (Vector3 prev, Vector3 cur)> _unitPos = new Dictionary<SubUnitState, (Vector3, Vector3)>();
-        // 화면용 방향 · 위치 (PR C 2026-11-20: 덜덜거림 없애기). 규칙 값(틱마다 바뀜)을 그대로 쓰지 않고 천천히 따라간다 — 규칙 계산(src/)은 그대로
-        private readonly Dictionary<CorpsState, float> _dispYaw = new Dictionary<CorpsState, float>();
-        private readonly Dictionary<CorpsState, Quaternion> _dispRot = new Dictionary<CorpsState, Quaternion>();
-        private readonly Dictionary<SubUnitState, (Vector3 pos, Vector3 vel)> _disp = new Dictionary<SubUnitState, (Vector3, Vector3)>();
-        private readonly HashSet<long> _engagedPairs = new HashSet<long>();
-        /// <summary>군단이 도는 최대 빠르기 (도/초)와 무시할 작은 변화 (도).</summary>
-        private const float TurnDegPerSec = 180f, TurnDeadDeg = 1.5f;
-        /// <summary>소부대 화면 위치가 따라가는 시간 (초), 이보다 멀면 바로 그 자리로 (순간이동).</summary>
-        private const float PosSmooth = 0.15f, SnapDist = 2f;
-        /// <summary>맞붙은 적 소부대와 앞줄끼리 띄우는 간격 (경계선).</summary>
-        private const float EngageGap = 0.3f;
         private readonly Dictionary<Color, Material> _lineMats = new Dictionary<Color, Material>();
         private int _flashFrame;
         /// <summary>걷는 병사의 앞 기울기 (튀는 대신).</summary>
         private static readonly Quaternion WalkLean = Quaternion.Euler(7f, 0f, 0f);
-
-        // ---- 병종별 공격 동작 (H3 나머지, 2026-11-21): 모두 부드러운 곡선, 병사마다 박자 어긋남, 앞줄 위주 ----
-        private enum AttackStyle { None, Spear, Sword, Horse, Ranged }
-        /// <summary>창: 앞으로 길게 찌르기 (폭 · 빠르기).</summary>
-        private const float SpearReach = 0.11f, SpearBeat = 4f;
-        /// <summary>칼 · 방패: 제자리에서 좌우로 휘두르듯 몸 돌리기 (도 · 빠르기), 앞으로는 아주 조금.</summary>
-        private const float SwordSwingDeg = 15f, SwordBeat = 4.5f, SwordStep = 0.02f;
-        /// <summary>기병: 맞붙는 순간 앞으로 짧게 돌진했다가 돌아옴 (거리 · 걸리는 초).</summary>
-        private const float HorseCharge = 0.25f, HorseChargeTime = 0.8f;
-        /// <summary>원거리: 쏘는 순간 뒤로 살짝 (거리 · 돌아오는 초).</summary>
-        private const float RangedRecoil = 0.03f, RangedRecoilTime = 0.35f;
-        private readonly Dictionary<SubUnitState, float> _meleeSince = new Dictionary<SubUnitState, float>();
-
-        private static AttackStyle StyleOf(SubUnitState u)
-        {
-            var t = u.Troop;
-            if (t.HasTag("ranged")) return AttackStyle.Ranged;
-            if (!t.HasTag("melee")) return AttackStyle.None;
-            if (t.HasTag("mounted")) return AttackStyle.Horse;
-            if (t.HasTag("polearm")) return AttackStyle.Spear;
-            return AttackStyle.Sword; // 보병 · 방패병 · 친위 · 공병 · 정찰 · 배(근접)
-        }
         /// <summary>
         /// 소부대 바닥 테두리 (H1, 2026-11-20 사용자 "아군 · 적 구분"): 병사 덩어리를 감싸는 편 색 사각형.
         /// 서로 맞붙어 섞여도 어느 덩어리가 어느 편인지 바닥 선으로 갈린다. 빛 영향 없는 재질 (밤에도 선명).
         /// </summary>
         private readonly Dictionary<SubUnitState, (LineRenderer line, int frame)> _unitOutlines = new Dictionary<SubUnitState, (LineRenderer, int)>();
         private int _outlineFrame;
-        private const float OutlineMargin = 0.2f;
+        private const float OutlineMargin = 0.12f; // 2026-11-21 캡처: 이웃 소부대 테두리가 붙어 격자처럼 어지러워 → 여백 · 굵기 줄임
         private readonly Vector2[] _outlineCorners = new Vector2[4];
         private const int OutlinePerSide = 4; // 한 변을 4토막 → 언덕에서도 땅을 따라감
 
@@ -138,7 +118,7 @@ namespace Game.Unity.Battle3D
                 o.line = Line("UnitOutline", AllyColor, 0.06f, true, true);
             var mat = UnlitMaterial(tone == Selected ? SelectedColor : tone == Ally ? AllyColor : EnemyColor);
             if (o.line.sharedMaterial != mat) o.line.sharedMaterial = mat;
-            o.line.widthMultiplier = tone == Selected ? 0.09f : 0.06f;
+            o.line.widthMultiplier = tone == Selected ? 0.08f : 0.035f;
             o.frame = _outlineFrame;
             _unitOutlines[u] = o;
             var line = o.line;
@@ -174,6 +154,8 @@ namespace Game.Unity.Battle3D
         private readonly LineRenderer _ringLine;
         private const int RingSegments = 40;
         private const float RingRadius = 1.8f;
+        /// <summary>고른 군단 링: 소부대 가운데에서 이만큼 바깥 (덩어리 반 폭 ≈ 0.75 + 여유), 너무 커지지 않게 최대.</summary>
+        private const float RingClear = 1.1f, RingRadiusMax = 4.5f;
         // 바닥 링 게이지 (18·19 시안): 고른 군단 = 바깥 병력(초록 남음 · 붉은 잃음) + 안 사기(주황), 다른 우리 군단 = 가는 병력 고리
         private static readonly Color GaugeTroops = new Color(0.3f, 0.78f, 0.36f);
         private static readonly Color GaugeLost = new Color(0.78f, 0.27f, 0.2f);
@@ -211,6 +193,7 @@ namespace Game.Unity.Battle3D
             long total = 0;
             foreach (var c in ctx.Corps) total += c.StartTroops;
             _troopsPerSoldier = SoldierRatio.TroopsPerSoldier(System.Math.Max(1, total), ctx.Balance.SoldierBudget);
+            // 소부대 덩어리 크기는 소부대마다 MaxSoldiersPerUnit 안으로 (Shown 참고)
 
             // 카메라·빛
             var camGo = new GameObject("BattleCamera");
@@ -271,13 +254,13 @@ namespace Game.Unity.Battle3D
 
             _ring = Part(_root.transform, cylinder, Own(NewMaterial(SelectedColor)), Vector3.zero, new Vector3(3.2f, 0.01f, 3.2f));
             _ring.gameObject.SetActive(false); // 원판은 쓰지 않는다 (테두리 _ringLine)
-            _ringLine = Line("SelectRing", SelectedColor, 0.12f, true, true, overlay: true);
+            _ringLine = Line("SelectRing", SelectedColor, 0.12f, true);
             _ringLine.positionCount = RingSegments;
             _ringLine.gameObject.SetActive(false); // 바닥 링 게이지로 바꿈
-            _gaugeLost = Line("GaugeLost", GaugeLost, 0.2f, false, true, overlay: true);
-            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.2f, false, true, overlay: true);
-            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.14f, false, true, overlay: true);
-            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.14f, false, true, overlay: true);
+            _gaugeLost = Line("GaugeLost", GaugeLost, 0.12f, false, true);
+            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.12f, false, true);
+            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.08f, false, true);
+            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.08f, false, true);
             _cylinder = cylinder;
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _objAlly = Own(NewMaterial(AllyColor));
@@ -437,28 +420,44 @@ namespace Game.Unity.Battle3D
             return _partMaterials[i] = m;
         }
 
+        /// <summary>쓰러진 병사 (병력이 줄어 화면 병사가 빠진 자리에 남는다, 전투가 끝날 때까지). 최대 개수까지만.</summary>
+        private const int FallenMax = 4000;
         private readonly Dictionary<Game.Battle.Model.Simulation.SubUnitState, long> _shownSoldiers = new Dictionary<Game.Battle.Model.Simulation.SubUnitState, long>();
+        private InstanceBatch _fallen;
+        private InstanceBatch Fallen
+        {
+            get
+            {
+                if (_fallen != null) return _fallen;
+                var m = Own(NewMaterial(new Color(0.18f, 0.16f, 0.14f)));
+                m.enableInstancing = true;
+                return _fallen = new InstanceBatch(_cube, new[] { m }, Matrix4x4.TRS(new Vector3(0f, SoldierMeshes.FallenScale.y / 2f, 0f), Quaternion.identity, SoldierMeshes.FallenScale));
+            }
+        }
 
-        // ---- 죽는 병사 (PR D 2026-11-20, 참고 영상): 맞닿는 선에서 하얗게 번쩍 → 적 반대쪽으로 튕기며 넘어짐 → 땅으로 가라앉아 사라짐 (0.8초).
-        // 짙은 시체 원반은 남기지 않는다 (덩어리에 묻힌 얼룩처럼 보이던 것). 이게 이어져서 "여기서 싸운다"가 한눈에 보이게
-        private const float DyingSeconds = 0.8f;
-        private const float DyingWhite = 0.18f, DyingFall = 0.35f;
-        private const float DyingKnock = 0.25f, DyingHop = 0.12f, DyingSink = 0.35f;
-        private const int DyingMax = 600;
-        private struct Dying { public Vector3 Pos; public Quaternion Rot; public Vector3 Away; public float Start; public string Troop; public int Color; public float Dir; public int Seed; }
+        private void AddFallen(Vector3 p, int seed)
+        {
+            if (Fallen.Matrices.Count >= FallenMax) return;
+            p.y = GroundHeight(p.x, p.z);
+            Fallen.Add(p, Quaternion.Euler(0f, (seed * 73) % 360, 0f));
+        }
+
+        // ---- 쓰러지는 병사 (2026-11-14): 앞줄에서 넘어지는 동작 뒤 시체가 된다 ----
+        private const float DyingSeconds = 0.45f;
+        private const float SinkSeconds = 0.5f; // 넘어진 뒤 땅으로 가라앉는 시간
+        private const int DyingMax = 400;
+        private struct Dying { public Vector3 Pos; public Quaternion Rot; public float Start; public string Troop; public int Color; public float Dir; public int Seed; }
         private readonly List<Dying> _dying = new List<Dying>();
 
-        /// <param name="rot">그 소부대의 화면 방향 (앞 = 적 쪽) — 적과 반대쪽(뒤)으로 튕긴다.</param>
         private void AddDying(Vector3 p, Quaternion rot, string troop, int color, int seed, float clock)
         {
-            if (_dying.Count >= DyingMax) return; // 너무 많으면 그냥 빠진다 (얼룩도 남기지 않음)
-            var away = rot * Vector3.back;
-            away = Quaternion.Euler(0f, ((seed * 37) % 41) - 20, 0f) * away; // 조금씩 다른 방향
-            _dying.Add(new Dying { Pos = p, Rot = rot, Away = away, Start = clock, Troop = troop, Color = color, Dir = (seed & 1) == 0 ? 1f : -1f, Seed = seed });
+            if (_dying.Count >= DyingMax) return; // 너무 많으면 그냥 빠진다
+            _dying.Add(new Dying { Pos = p, Rot = rot, Start = clock, Troop = troop, Color = color, Dir = (seed & 1) == 0 ? 1f : -1f, Seed = seed });
         }
 
         /// <summary>
-        /// 죽는 병사를 그린다: 처음 0.18초 하얀색 + 살짝 튀어 오름, 0.35초 동안 적 반대쪽으로 0.25 밀리며 넘어지고, 나머지 동안 땅으로 가라앉아 사라진다.
+        /// 쓰러지는 병사를 그린다: 뒤(또는 앞)로 넘어간 뒤 땅으로 가라앉아 사라진다.
+        /// 2026-11-21 캡처: 남은 짙은 시체 조각이 바닥 얼룩처럼 보여 시체는 남기지 않는다 (참고 영상도 남지 않음).
         /// </summary>
         private void DrawDying(float clock)
         {
@@ -466,15 +465,14 @@ namespace Game.Unity.Battle3D
             {
                 var d = _dying[i];
                 float age = clock - d.Start;
-                if (age >= DyingSeconds) { _dying.RemoveAt(i); continue; }
-                if (age < 0f) age = 0f;
-                float fall = Mathf.Clamp01(age / DyingFall);
-                float ease = 1f - (1f - fall) * (1f - fall); // 튕김은 처음에 빠르게
-                float sink = Mathf.Clamp01((age - DyingFall) / (DyingSeconds - DyingFall));
-                var p = d.Pos + d.Away * (DyingKnock * ease);
-                p.y = GroundHeight(p.x, p.z) + DyingHop * Mathf.Sin(Mathf.PI * fall) - DyingSink * sink * sink;
+                if (age >= DyingSeconds + SinkSeconds) { _dying.RemoveAt(i); continue; }
+                float t = Mathf.Clamp01(age / DyingSeconds);
+                float ease = t * t; // 처음엔 천천히, 끝에 털썩
+                float sink = Mathf.Clamp01((age - DyingSeconds) / SinkSeconds);
+                var p = d.Pos;
+                p.y = GroundHeight(p.x, p.z) - ease * 0.05f - sink * 0.3f;
                 var r = d.Rot * Quaternion.Euler(-85f * ease * d.Dir, 0f, 0f);
-                SoldierBatch(d.Troop, age < DyingWhite ? DeadWhite : d.Color).Add(p, r);
+                SoldierBatch(d.Troop, d.Color).Add(p, r);
             }
         }
 
@@ -667,10 +665,20 @@ namespace Game.Unity.Battle3D
                 var center = ToWorld(sel.Anchor) + new Vector3(0f, 0.08f, 0f);
                 float troops = sel.StartTroops > 0 ? Mathf.Clamp01((float)sel.Troops / sel.StartTroops) : 0f;
                 float morale = Mathf.Clamp01((float)sel.Morale.ToDisplayDouble() / 100f);
-                Arc(_gaugeLost, center, RingRadius, 0f, 1f);
-                Arc(_gaugeTroops, center + Vector3.up * 0.01f, RingRadius, 0f, troops);
-                Arc(_gaugeMoraleBack, center, RingRadius - 0.32f, 0f, 1f);
-                Arc(_gaugeMorale, center + Vector3.up * 0.01f, RingRadius - 0.32f, 0f, morale);
+                // 2026-11-21 캡처: 고정 반지름 링이 소부대 덩어리 위를 지나가 병사를 가림 → 살아 있는 소부대 바깥을 두른다
+                float radius = RingRadius;
+                foreach (var u in sel.Units)
+                    if (u.Alive && _unitPos.TryGetValue(u, out var up))
+                    {
+                        var dv = up.cur - center;
+                        dv.y = 0f;
+                        radius = Mathf.Max(radius, dv.magnitude + RingClear);
+                    }
+                radius = Mathf.Min(radius, RingRadiusMax);
+                Arc(_gaugeLost, center, radius, 0f, 1f);
+                Arc(_gaugeTroops, center + Vector3.up * 0.01f, radius, 0f, troops);
+                Arc(_gaugeMoraleBack, center, radius - 0.2f, 0f, 1f);
+                Arc(_gaugeMorale, center + Vector3.up * 0.01f, radius - 0.2f, 0f, morale);
             }
             // 다른 우리 군단: 가는 병력 고리 (남음 초록 · 잃음 붉은)
             foreach (var c in ctx.Corps)
@@ -679,7 +687,7 @@ namespace Game.Unity.Battle3D
                 if (!_allyGauges.TryGetValue(c, out var g))
                 {
                     if (!show) continue;
-                    g = _allyGauges[c] = (Line("AllyLost " + c.Id, GaugeLost, 0.1f, false, true, overlay: true), Line("AllyTroops " + c.Id, GaugeTroops, 0.1f, false, true, overlay: true));
+                    g = _allyGauges[c] = (Line("AllyLost " + c.Id, GaugeLost, 0.1f, false, true), Line("AllyTroops " + c.Id, GaugeTroops, 0.1f, false, true));
                 }
                 g.lost.gameObject.SetActive(show);
                 g.troops.gameObject.SetActive(show);
@@ -901,100 +909,6 @@ namespace Game.Unity.Battle3D
             return true;
         }
 
-        /// <summary>소부대 화면 대열의 반 폭 · 반 깊이 (출진 때 병사 수로 고정, 바닥 테두리 여백 포함).</summary>
-        private (float halfW, float halfD) Extent(SubUnitState u)
-        {
-            long n0 = System.Math.Max(1, SoldierRatio.VisibleSoldiers(u.StartTroops, _troopsPerSoldier));
-            int side = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(n0)));
-            int rows0 = (int)((n0 + side - 1) / side);
-            return ((side - 1) * SoldierSpacing / 2f + OutlineMargin, (rows0 - 1) * SoldierSpacing / 2f + OutlineMargin);
-        }
-
-        /// <summary>
-        /// 화면용 방향 · 위치 (PR C, 2026-11-20 사용자 녹화: 덜덜거림).
-        /// ① 군단 방향은 규칙 값 쪽으로 초당 최대 180°만 돈다 (1.5° 안의 작은 변화는 무시) — 틱마다 덩어리가 통째로 튀지 않게.
-        /// ② 소부대 위치는 틱 사이 직선 위치를 0.15초로 따라간다 (칸 중심을 지나는 꺾임 없앰), 2 이상 떨어지면 바로 그 자리로.
-        /// ③ 같은 군단 소부대의 바닥 테두리가 겹치지 않게 서로 밀고, 맞붙은 적과는 앞줄끼리 0.3 띄워 경계선을 만든다 (H2).
-        /// 규칙(src/, R-92) 계산은 그대로 — 그리는 자리만.
-        /// </summary>
-        private void UpdateDisplay(BattleContext ctx, float alpha, float dt)
-        {
-            foreach (var c in ctx.Corps)
-            {
-                if (!c.InBattle) continue;
-                var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
-                bool had = _dispYaw.TryGetValue(c, out float yaw);
-                if (facing.sqrMagnitude > 1e-6f)
-                {
-                    float target = Quaternion.LookRotation(facing).eulerAngles.y;
-                    if (!had) yaw = target;
-                    else if (Mathf.Abs(Mathf.DeltaAngle(yaw, target)) > TurnDeadDeg) yaw = Mathf.MoveTowardsAngle(yaw, target, TurnDegPerSec * dt);
-                }
-                _dispYaw[c] = yaw;
-                _dispRot[c] = Quaternion.Euler(0f, yaw, 0f);
-                foreach (var u in c.Units)
-                {
-                    if (!u.Alive) continue;
-                    var (prev, cur) = _unitPos.TryGetValue(u, out var pc) ? pc : (ToWorld(u.Position), ToWorld(u.Position));
-                    var target = Vector3.Lerp(prev, cur, alpha);
-                    if (!_disp.TryGetValue(u, out var d) || (d.pos - target).sqrMagnitude >= SnapDist * SnapDist) { _disp[u] = (target, Vector3.zero); continue; }
-                    var vel = d.vel;
-                    var pos = Vector3.SmoothDamp(d.pos, target, ref vel, PosSmooth, Mathf.Infinity, dt);
-                    _disp[u] = (pos, vel);
-                }
-            }
-            // 같은 군단 소부대끼리: 바닥 테두리(군단 방향 사각형)가 겹치면 덜 겹친 축으로 반씩 민다 (두 번 돌림)
-            for (int pass = 0; pass < 2; pass++)
-                foreach (var c in ctx.Corps)
-                {
-                    if (!c.InBattle || !_dispRot.TryGetValue(c, out var rot)) continue;
-                    var inv = Quaternion.Inverse(rot);
-                    for (int i = 0; i < c.Units.Count; i++)
-                    {
-                        var a = c.Units[i];
-                        if (!a.Alive || !_disp.TryGetValue(a, out var da)) continue;
-                        var ea = Extent(a);
-                        for (int j = i + 1; j < c.Units.Count; j++)
-                        {
-                            var b = c.Units[j];
-                            if (!b.Alive || !_disp.TryGetValue(b, out var db)) continue;
-                            var eb = Extent(b);
-                            var local = inv * (db.pos - da.pos);
-                            float ox = ea.halfW + eb.halfW - Mathf.Abs(local.x), oz = ea.halfD + eb.halfD - Mathf.Abs(local.z);
-                            if (ox <= 0f || oz <= 0f) continue;
-                            Vector3 push = ox < oz ? new Vector3((local.x >= 0f ? 1f : -1f) * ox / 2f, 0f, 0f) : new Vector3(0f, 0f, (local.z >= 0f ? 1f : -1f) * oz / 2f);
-                            var w = rot * push;
-                            _disp[a] = (da.pos - w, da.vel);
-                            _disp[b] = (db.pos + w, db.vel);
-                            da = _disp[a];
-                        }
-                    }
-                }
-            // 맞붙은 적 소부대: 앞줄끼리 EngageGap만큼 띄운다 (가운데 거리 ≥ 두 반 깊이 + 간격), 모자란 만큼 반씩 뒤로
-            _engagedPairs.Clear();
-            foreach (var c in ctx.Corps)
-            {
-                if (!c.InBattle) continue;
-                foreach (var u in c.Units)
-                {
-                    var t = u.AttackTarget;
-                    if (!u.Alive || t == null || !t.Alive || !u.Troop.HasTag("melee")) continue;
-                    if (!_disp.TryGetValue(u, out var du) || !_disp.TryGetValue(t, out var dt2)) continue;
-                    long key = u.GetHashCode() < t.GetHashCode() ? ((long)u.GetHashCode() << 32) ^ (uint)t.GetHashCode() : ((long)t.GetHashCode() << 32) ^ (uint)u.GetHashCode();
-                    if (!_engagedPairs.Add(key)) continue;
-                    var dir = dt2.pos - du.pos;
-                    dir.y = 0f;
-                    float dist = dir.magnitude;
-                    if (dist < 1e-3f) continue;
-                    float need = Extent(u).halfD + Extent(t).halfD - 2f * OutlineMargin + EngageGap; // 앞줄(병사)끼리 간격 — 테두리 여백은 빼고
-                    if (dist >= need) continue;
-                    var w = dir / dist * ((need - dist) / 2f);
-                    _disp[u] = (du.pos - w, du.vel);
-                    _disp[t] = (dt2.pos + w, dt2.vel);
-                }
-            }
-        }
-
         /// <summary>틱을 돌린 뒤 부른다: 소부대 위치를 한 칸 넘기고, 연출(화살)을 만든다.</summary>
         public void OnTicked()
         {
@@ -1021,23 +935,23 @@ namespace Game.Unity.Battle3D
             if (fxDelta > 0f) _flashFrame++;
             foreach (var b in _allSoldierBatches) b.Matrices.Clear();
             _outlineFrame++;
-            UpdateDisplay(ctx, alpha, Mathf.Min(Time.unscaledDeltaTime, 0.1f));
             foreach (var c in ctx.Corps)
             {
                 if (!c.InBattle || !_ctl.Sees(c)) continue;
                 // 고른 군단도 병사는 편 색 그대로 (투구 색으로 편 구분), 고름 표시는 노란 바닥 테두리 · 링 (H1 2026-11-20)
                 int teamColor = c.Team == _ctl.Team ? Ally : Enemy;
                 int outlineColor = c == _ctl.Selected ? Selected : teamColor;
-                // 몸 상태 (D18): 사기가 퇴각 기준 + 15 밑이면 바랜 색 (떨림은 PR C에서 없앰), 숨은 아군은 어둡고 성기게
+                // 몸 상태 (D18): 사기가 퇴각 기준 + 15 밑이면 바랜 색·떨림, 숨은 아군은 어둡고 성기게
                 bool shaken = c.Temperament != null && c.Morale <= c.Temperament.RetreatMorale + Fix.FromInt(15);
                 bool hidden = c.Team == _ctl.Team && (c.Hidden || c.HasStatus(StatusIds.AmbushSetup));
                 if (c != _ctl.Selected && shaken) teamColor = c.Team == _ctl.Team ? AllyShaken : EnemyShaken;
                 if (hidden) teamColor = HiddenTone;
-                var rot = _dispRot.TryGetValue(c, out var dr) ? dr : Quaternion.identity; // 화면용 방향 (천천히 돎)
+                var facing = new Vector3((float)c.Facing.X.ToDisplayDouble(), 0f, -(float)c.Facing.Y.ToDisplayDouble());
+                var rot = facing.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(facing) : Quaternion.identity;
                 foreach (var u in c.Units)
                 {
                     // 대열 (2026-11-14): 폭은 출진 때 병사 수로 고정, 앞줄 = 적 쪽. 병력이 줄면 앞줄에서 쓰러지고 뒷줄이 메워 깊이가 준다
-                    long n0 = System.Math.Max(1, SoldierRatio.VisibleSoldiers(u.StartTroops, _troopsPerSoldier));
+                    long n0 = System.Math.Max(1, Shown(u.StartTroops, u.StartTroops));
                     int side = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(n0)));
                     int rows0 = (int)((n0 + side - 1) / side);
                     float halfW = (side - 1) * SoldierSpacing / 2f;
@@ -1046,45 +960,37 @@ namespace Game.Unity.Battle3D
                     if (!u.Alive)
                     {
                         // 방금 전멸한 부대: 남아 있던 화면 병사가 모두 쓰러진다
-                        if (_shownSoldiers.TryGetValue(u, out var was) && was > 0 && _disp.TryGetValue(u, out var lastPos))
+                        if (_shownSoldiers.TryGetValue(u, out var was) && was > 0 && _unitPos.TryGetValue(u, out var lastPos))
                             for (int i = 0; i < was; i++)
-                                AddDying(lastPos.pos + rot * (new Vector3(i % side * SoldierSpacing - halfW, 0f, frontZ - i / side * SoldierSpacing) + Jitter(seedBase + i)), rot, SoldierKey(u), teamColor, seedBase + i, clock);
+                                AddDying(lastPos.cur + rot * (new Vector3(i % side * SoldierSpacing - halfW, 0f, frontZ - i / side * SoldierSpacing) + Jitter(seedBase + i)), rot, SoldierKey(u), teamColor, seedBase + i, clock);
                         _shownSoldiers[u] = 0;
                         continue;
                     }
                     var batch = SoldierBatch(SoldierKey(u), u.Confused ? Confused : teamColor);
+                    // 맞을 때: 상자는 밝은 색으로, 모델은 (색을 밝힐 수 없어) 살짝 튀어 오른다
                     bool isCube = batch.Mesh == _cube;
-                    long n = SoldierRatio.VisibleSoldiers(u.Troops, _troopsPerSoldier);
+                    var hitBatch = isCube ? CubeBatch(Hit) : batch;
+                    long n = Shown(u.Troops, u.StartTroops);
                     var (prev, cur) = _unitPos.TryGetValue(u, out var pc) ? pc : (ToWorld(u.Position), ToWorld(u.Position));
-                    var center = _disp.TryGetValue(u, out var dp) ? dp.pos : Vector3.Lerp(prev, cur, alpha); // 화면용 위치 (부드럽게 · 밀어냄)
+                    var center = Vector3.Lerp(prev, cur, alpha);
                     bool walking = (cur - prev).sqrMagnitude > 1e-5f;
                     // 근접 공격: 대상 쪽으로 찌르기 (병사마다 박자를 어긋나게). 앞줄일수록 크게
-                    // 공격 방향 (맞붙은 적 쪽, 원거리는 군단 앞) · 병종별 동작 (H3)
-                    var style = StyleOf(u);
-                    Vector3 toward = Vector3.zero;
-                    bool melee = u.AttackTarget != null && style != AttackStyle.Ranged && style != AttackStyle.None
-                        && _disp.TryGetValue(u.AttackTarget, out var tdisp) && (toward = tdisp.pos - center) != Vector3.zero;
-                    if (melee) { toward.y = 0f; toward = toward.sqrMagnitude > 1e-6f ? toward.normalized : Vector3.zero; }
-                    if (melee) { if (!_meleeSince.ContainsKey(u)) _meleeSince[u] = clock; } else _meleeSince.Remove(u);
-                    float chargeAge = melee && _meleeSince.TryGetValue(u, out var since) ? clock - since : -1f;
-                    float shotAge = style == AttackStyle.Ranged && u.AttackTarget != null ? clock - Effects.LastShot(u) : -1f;
-                    var forward = rot * Vector3.forward;
+                    Vector3 lunge = Vector3.zero;
+                    bool melee = u.AttackTarget != null && u.Troop.HasTag("melee") && _unitPos.TryGetValue(u.AttackTarget, out var tp) && (lunge = tp.cur - cur) != Vector3.zero;
+                    if (melee)
+                    {
+                        lunge.y = 0f;
+                        lunge = lunge.sqrMagnitude > 1e-6f ? lunge.normalized * 0.14f : Vector3.zero;
+                    }
                     // 병력이 줄어 화면 병사가 빠지면 앞줄 자리에서 쓰러진다 (쓰러지는 동작 → 시체). 뒷줄은 앞으로 메운다
                     if (_shownSoldiers.TryGetValue(u, out var before) && before > n)
                     {
-                        // 맞붙은 적이 있으면 그 적에 가장 가까운 앞줄 칸 둘레에서 (PR D: PR C 경계선 위)
-                        int nearCol = -1;
-                        if (u.AttackTarget != null && _disp.TryGetValue(u.AttackTarget, out var tdp))
-                        {
-                            var lt = Quaternion.Inverse(rot) * (tdp.pos - center);
-                            nearCol = Mathf.Clamp(Mathf.RoundToInt((lt.x + halfW) / SoldierSpacing), 0, side - 1);
-                        }
                         for (long k = n; k < before; k++)
                         {
                             int s = seedBase + (int)k * 31 + _flashFrame;
-                            int col = nearCol >= 0 ? Mathf.Clamp(nearCol + (int)((uint)(s * 2654435761u) % 5u) - 2, 0, side - 1) : (int)((uint)(s * 2654435761u) % (uint)side);
+                            int col = (int)((uint)(s * 2654435761u) % (uint)side);
                             var local = new Vector3(col * SoldierSpacing - halfW, 0f, frontZ + 0.05f) + Jitter(s);
-                            AddDying(center + rot * local, rot, SoldierKey(u), teamColor, s, clock);
+                            AddDying(cur + rot * local, rot, SoldierKey(u), teamColor, s, clock);
                         }
                     }
                     _shownSoldiers[u] = n;
@@ -1099,49 +1005,25 @@ namespace Game.Unity.Battle3D
                         var local = new Vector3(col * SoldierSpacing - halfW + rowOffset, 0f, frontZ - row * SoldierSpacing) + Jitter(seedBase + i);
                         var p = center + rot * local;
                         float phase = i * 1.7f + seedBase % 7;
-                        float frontWeight = row == 0 ? 1f : row == 1 ? 0.5f : 0.15f; // 공격 동작은 앞줄 위주
-                        float swingYaw = 0f;
-                        switch (style)
-                        {
-                            case AttackStyle.Spear when melee: // 앞으로 길게 찌르기, 느린 박자 (부드럽게: 0~1 사이 반파 제곱)
-                                {
-                                    float s = Mathf.Max(0f, Mathf.Sin(clock * SpearBeat + phase));
-                                    p += toward * (SpearReach * frontWeight * s * s);
-                                    break;
-                                }
-                            case AttackStyle.Sword when melee: // 제자리에서 좌우로 휘두르듯 몸 돌리기
-                                swingYaw = SwordSwingDeg * frontWeight * Mathf.Sin(clock * SwordBeat + phase);
-                                p += toward * (SwordStep * frontWeight * Mathf.Max(0f, Mathf.Sin(clock * SwordBeat * 2f + phase)));
-                                break;
-                            case AttackStyle.Horse when melee && chargeAge >= 0f && chargeAge < HorseChargeTime: // 맞붙는 순간 짧게 돌진 → 돌아옴
-                                {
-                                    float t = chargeAge / HorseChargeTime + (phase % 1f) * 0.08f;
-                                    if (t < 1f) p += toward * (HorseCharge * (row <= 1 ? 1f : 0.6f) * Mathf.Sin(Mathf.PI * t));
-                                    break;
-                                }
-                            case AttackStyle.Ranged when shotAge >= 0f: // 쏘는 순간 뒤로 살짝, 병사마다 조금 늦게
-                                {
-                                    float a = shotAge - (phase % 1f) * 0.06f;
-                                    if (a >= 0f && a < RangedRecoilTime) { float k = 1f - a / RangedRecoilTime; p -= forward * (RangedRecoil * k * k); }
-                                    break;
-                                }
-                        }
+                        float frontWeight = row == 0 ? 1f : row == 1 ? 0.5f : 0.15f; // 찌르기는 앞줄 위주
+                        p += lunge * frontWeight * Mathf.Max(0f, Mathf.Sin(clock * 11f + phase));
                         // 2026-11-20 사용자 (참고 영상): 통통 튀지 말고 미끄러지듯 — 위아래 튀기 없이 걸을 때 몸만 앞으로 살짝 기울인다
                         if (hidden && i % 2 == 1) continue; // 숨은 군단: 반만 그려 흐릿하게
                         if (u.Confused) p += new Vector3(Mathf.Sin(clock * 23f + phase) * 0.07f, 0f, Mathf.Cos(clock * 19f + phase * 1.3f) * 0.07f); // 혼란: 갈팡질팡
-                        // 사기 바닥은 떨지 않고 색만 바랜다 (PR C: 빠른 흔들림 없앰)
-                        // 맞으면 앞줄이 뒤로 살짝 밀린다 (H3 #254). 번갈아 깜빡이던 것은 없앰 — 죽는 병사(PR D)가 대신
-                        if (c.LostThisTick > 0 && row <= 1 && !isCube) p -= rot * new Vector3(0f, 0f, 0.04f);
+                        else if (shaken) p += new Vector3(Mathf.Sin(clock * 31f + phase) * 0.025f, 0f, 0f); // 사기 바닥: 떨림
+                        // 맞고 있는 군단: 앞줄 몇 명씩 번갈아 깜빡인다
+                        bool flash = c.LostThisTick > 0 && row <= 1 && (i + _flashFrame / 3) % 4 == 0;
+                        // 맞으면 위로 튀는 대신 뒤로 살짝 밀린다
+                        if (flash && !isCube) p -= rot * new Vector3(0f, 0f, 0.05f);
                         p.y = GroundHeight(p.x, p.z);
-                        var look = swingYaw != 0f ? rot * Quaternion.Euler(0f, swingYaw, 0f) : rot;
-                        batch.Add(p, walking ? look * WalkLean : look);
+                        (flash ? hitBatch : batch).Add(p, walking ? rot * WalkLean : rot);
                     }
                 }
                 // 장수: 군단 한가운데 조금 뒤, 부대원보다 크게 (총대장은 군기)
                 Vector3 sum = Vector3.zero;
                 int alive = 0;
                 foreach (var u in c.Units)
-                    if (u.Alive && _disp.TryGetValue(u, out var up)) { sum += up.pos; alive++; }
+                    if (u.Alive && _unitPos.TryGetValue(u, out var up)) { sum += Vector3.Lerp(up.prev, up.cur, alpha); alive++; }
                 if (alive > 0)
                 {
                     var gp = sum / alive + rot * new Vector3(0f, 0f, -0.9f);
@@ -1154,6 +1036,7 @@ namespace Game.Unity.Battle3D
             HideStaleOutlines();
             DrawDying(clock);
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
+            _fallen?.Draw(Rig.Camera);
             foreach (var b in _allPropBatches) b.Draw(Rig.Camera);
             Effects.Draw(ctx, Rig.Camera);
         }
@@ -1201,23 +1084,6 @@ namespace Game.Unity.Battle3D
             m.color = color;
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
             _unlitMats[color] = m;
-            return m;
-        }
-
-        private readonly Dictionary<Color, Material> _overlayMats = new Dictionary<Color, Material>();
-
-        /// <summary>
-        /// 병사 위에 늘 보이는 표시 재질 (PR C: 고른 군단 링 · 게이지가 병사에 가리던 것). Unlit 복사본에 Overlay 큐 + 깊이 검사 끔.
-        /// GameUnlit.mat 파일은 그대로 (복사본만 바꿈).
-        /// </summary>
-        private Material OverlayMaterial(Color color)
-        {
-            if (_overlayMats.TryGetValue(color, out var m)) return m;
-            m = Own(new Material(UnlitMaterial(color)));
-            m.renderQueue = (int)RenderQueue.Overlay;
-            if (m.HasProperty("_ZTest")) m.SetFloat("_ZTest", (float)CompareFunction.Always);
-            if (m.HasProperty("_ZWrite")) m.SetFloat("_ZWrite", 0f);
-            _overlayMats[color] = m;
             return m;
         }
 
@@ -1297,15 +1163,13 @@ namespace Game.Unity.Battle3D
         }
 
         /// <param name="unlit">빛 영향 없이 늘 같은 밝기 (표시용 게이지 · 경로, 저녁 · 밤에도 선명하게).</param>
-        /// <param name="overlay">병사에 가리지 않게 늘 위에 (고른 군단 링 · 게이지, PR C).</param>
-        private LineRenderer Line(string name, Color color, float width, bool loop, bool unlit = false, bool overlay = false)
+        private LineRenderer Line(string name, Color color, float width, bool loop, bool unlit = false)
         {
             var go = new GameObject(name);
             go.transform.SetParent(_root.transform, false);
             var line = go.AddComponent<LineRenderer>();
             Material mat;
-            if (overlay) mat = OverlayMaterial(color);
-            else if (unlit) mat = UnlitMaterial(color);
+            if (unlit) mat = UnlitMaterial(color);
             else if (!_lineMats.TryGetValue(color, out mat)) _lineMats[color] = mat = Own(NewMaterial(color));
             line.sharedMaterial = mat;
             line.widthMultiplier = width;

@@ -1534,6 +1534,49 @@ namespace Game.Unity.Screens
             if (_planning) StartBattle();
         }
 
+        /// <summary>
+        /// 캡처 투어 (2026-11-21, 전투 움직임 확인용 연속 프레임): 빠르기 정하기 · 멈춤 풀기 (퇴각 묻기 등에 멈춰도 계속).
+        /// </summary>
+        public void RunForTour(int speedIndex)
+        {
+            _speedIndex = Mathf.Clamp(speedIndex, 0, Speeds.Length - 1);
+            _paused = false;
+        }
+
+        /// <summary>캡처 투어: 우리 근접 소부대가 적과 맞붙은 곳 (없으면 null). 카메라를 거기로 옮긴다.</summary>
+        public bool FocusMeleeForTour()
+        {
+            foreach (var c in _sim.Context.Corps)
+            {
+                if (!c.InBattle || c.Team != _ctl.Team) continue;
+                foreach (var u in c.Units)
+                {
+                    var t = u.AttackTarget;
+                    if (!u.Alive || t == null || !t.Alive || !u.Troop.HasTag("melee")) continue;
+                    if ((u.Position - t.Position).Length > Game.Foundation.Math.Fix.FromInt(3)) continue;
+                    var a = _field.ToWorld(u.Position);
+                    var b = _field.ToWorld(t.Position);
+                    _field.Rig.LookAt((a + b) / 2f);
+                    _field.Rig.SetDistance(16f);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>캡처 투어: 길을 따라 움직이는(보이는) 군단 쪽으로 카메라 (행군 연속 프레임). 없으면 false.</summary>
+        public bool FocusMovingForTour()
+        {
+            foreach (var c in _sim.Context.Corps)
+            {
+                if (!c.InBattle || !_ctl.Sees(c) || c.Path == null || c.PathIndex >= c.Path.Count) continue;
+                _field.Rig.LookAt(_field.ToWorld(c.Anchor));
+                _field.Rig.SetDistance(16f);
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>작전 시간 끝 → 전투 시작 (멈춤 풀기).</summary>
         private void StartBattle()
         {
