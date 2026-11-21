@@ -96,7 +96,7 @@ namespace Game.Unity.Battle3D
         /// </summary>
         private readonly Dictionary<SubUnitState, (LineRenderer line, int frame)> _unitOutlines = new Dictionary<SubUnitState, (LineRenderer, int)>();
         private int _outlineFrame;
-        private const float OutlineMargin = 0.2f;
+        private const float OutlineMargin = 0.12f; // 2026-11-21 캡처: 이웃 소부대 테두리가 붙어 격자처럼 어지러워 → 여백 · 굵기 줄임
         private readonly Vector2[] _outlineCorners = new Vector2[4];
         private const int OutlinePerSide = 4; // 한 변을 4토막 → 언덕에서도 땅을 따라감
 
@@ -106,7 +106,7 @@ namespace Game.Unity.Battle3D
                 o.line = Line("UnitOutline", AllyColor, 0.06f, true, true);
             var mat = UnlitMaterial(tone == Selected ? SelectedColor : tone == Ally ? AllyColor : EnemyColor);
             if (o.line.sharedMaterial != mat) o.line.sharedMaterial = mat;
-            o.line.widthMultiplier = tone == Selected ? 0.09f : 0.06f;
+            o.line.widthMultiplier = tone == Selected ? 0.08f : 0.035f;
             o.frame = _outlineFrame;
             _unitOutlines[u] = o;
             var line = o.line;
