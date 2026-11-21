@@ -57,6 +57,12 @@ namespace Game.Unity.UI
             _view.Restart(Seconds);
         }
 
+        /// <summary>바로 숨긴다 (아래 탭을 눌러 다른 탭으로 갈 때 — 앞 탭의 안내가 다음 탭에 남지 않게).</summary>
+        public static void Hide()
+        {
+            if (_view != null) _view.gameObject.SetActive(false);
+        }
+
         /// <summary>지금 떠 있는 글 (캡처 · 시험용, 없으면 null).</summary>
         public static string Current => _view != null && _view.gameObject.activeSelf ? _view.Text.text : null;
     }
