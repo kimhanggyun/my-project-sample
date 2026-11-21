@@ -52,6 +52,7 @@ namespace Game.Unity.Battle3D
         private const float TurnDegPerSec = 360f;
         /// <summary>병사 모형 크기 (자리 간격 0.45에 맞춰 촘촘한 무리로 보이게).</summary>
         private const float ModelScale = 1.6f;
+        private const float GeneralModelScale = 1.0f;
 
         public CrowdField3D(CrowdBattle battle)
         {
@@ -111,8 +112,8 @@ namespace Game.Unity.Battle3D
             _allyLegs = LegBatch(leg, AllyDark);
             _enemyLegs = LegBatch(leg, EnemyDark);
             var general = SoldierMeshes.General(true);
-            _allyGeneral = Batch(general, AllyColor, AllyDark);
-            _enemyGeneral = Batch(general, EnemyColor, EnemyDark);
+            _allyGeneral = Batch(general, AllyColor, AllyDark, GeneralModelScale); // 장수 모형은 이미 1.8배라 병사만큼 더 키우지 않음 (캡처: 장수가 대열을 가림)
+            _enemyGeneral = Batch(general, EnemyColor, EnemyDark, GeneralModelScale);
         }
 
         /// <summary>규칙 (x, y) → 월드 (x, 0, y): 우리 편(작은 y)이 화면 아래, 적이 위.</summary>
@@ -265,7 +266,7 @@ namespace Game.Unity.Battle3D
         private T Own<T>(T o) where T : Object { _owned.Add(o); return o; }
 
         /// <summary>몸 · 투구 · 다리 · 갑옷은 편 색(밝게 · 어둡게), 얼굴만 살색, 무기는 쇠색 — 멀리서도 한 덩어리 편 색.</summary>
-        private InstanceBatch Batch(Mesh mesh, Color team, Color dark)
+        private InstanceBatch Batch(Mesh mesh, Color team, Color dark, float scale = ModelScale)
         {
             var parts = SoldierMeshes.PartsOf(mesh);
             var mats = new Material[parts.Length];
@@ -279,7 +280,7 @@ namespace Game.Unity.Battle3D
                 m.enableInstancing = true;
                 mats[i] = m;
             }
-            return new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * ModelScale));
+            return new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * scale));
         }
 
         private void DrawDust(float now, float tickSec)
