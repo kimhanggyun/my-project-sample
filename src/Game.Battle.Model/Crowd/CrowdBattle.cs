@@ -56,8 +56,8 @@ namespace Game.Battle.Model.Crowd
     /// <summary>샘플전투2 시작 설정.</summary>
     public sealed class CrowdSetup
     {
-        public int AllyCount = 240;
-        public int EnemyCount = 240;
+        public int AllyCount = 200;
+        public int EnemyCount = 200;
         public string AllyFormation = CrowdFormations.Line;
         public string EnemyFormation = CrowdFormations.Line;
         public bool AllyAdvance = true;
@@ -229,6 +229,9 @@ namespace Game.Battle.Model.Crowd
                 _next[i] = s.Pos + want + Separation(s, diameter);
             }
 
+            // 2.5) 다음 위치끼리 겹친 것을 두 번 풀어 준다 (뒤에서 미는 병사가 앞 병사 속으로 파고들지 않게)
+            for (int pass = 0; pass < RelaxPasses; pass++) Relax(diameter);
+
             // 3) 반영: 위치 · 피해 · 쓰러짐
             Fix maxX = r.FieldWidth, maxY = r.FieldDepth;
             for (int i = 0; i < n; i++)
@@ -260,6 +263,38 @@ namespace Game.Battle.Model.Crowd
                 int a = Armies[Ally].AliveCount, e = Armies[Enemy].AliveCount;
                 Winner = a == e ? -2 : a > e ? Ally : Enemy;
                 EndReason = "time";
+            }
+        }
+
+        private const int RelaxPasses = 2;
+
+        /// <summary>다음 위치(_next) 기준으로 겹친 두 병사를 반씩 떼어 놓는다 (id 순서, 이웃은 지금 칸 격자로).</summary>
+        private void Relax(Fix diameter)
+        {
+            Fix d2max = diameter * diameter;
+            for (int i = 0; i < Soldiers.Count; i++)
+            {
+                var s = Soldiers[i];
+                if (!s.Alive) continue;
+                long cx = s.Pos.X.FloorToLong(), cy = s.Pos.Y.FloorToLong();
+                for (long x = cx - 1; x <= cx + 1; x++)
+                    for (long y = cy - 1; y <= cy + 1; y++)
+                    {
+                        if (!_grid.TryGetValue(Key(x, y), out var list)) continue;
+                        foreach (int j in list)
+                        {
+                            if (j <= i) continue;
+                            var d = _next[i] - _next[j];
+                            Fix d2 = d.LengthSquared;
+                            if (d2 >= d2max || d2 == Fix.Zero) continue;
+                            Fix len = Fix.Sqrt(d2);
+                            var corr = d * ((diameter - len) / 2 / len);
+                            // 장수는 덜 밀린다
+                            bool gi = s.IsGeneral, gj = Soldiers[j].IsGeneral;
+                            _next[i] = _next[i] + (gi && !gj ? corr * Fix.FromRatio(1, 4) : gj && !gi ? corr * Fix.FromRatio(7, 4) : corr);
+                            _next[j] = _next[j] - (gj && !gi ? corr * Fix.FromRatio(1, 4) : gi && !gj ? corr * Fix.FromRatio(7, 4) : corr);
+                        }
+                    }
             }
         }
 

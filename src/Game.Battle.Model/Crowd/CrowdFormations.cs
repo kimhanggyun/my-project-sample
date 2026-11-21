@@ -6,7 +6,7 @@ namespace Game.Battle.Model.Crowd
 {
     /// <summary>
     /// 샘플전투2 대열 모양 (R-125): 병사 수만큼 자리(앞 = +y, 오른쪽 = +x, 칸)를 만든다. 무게중심이 (0, 0).
-    /// line = 얇은 일자(2줄), thick = 두툼한 일자(5줄), wedge = 돌격 삼각형(꼭짓점이 앞), vee = V자(벌린 쪽이 앞, 두 팔이 감싼다).
+    /// line = 얇은 일자(2줄), thick = 두툼한 일자(6줄), wedge = 돌격 삼각형(꼭짓점이 앞), vee = V자(벌린 쪽이 앞, 두 팔이 감싼다).
     /// </summary>
     public static class CrowdFormations
     {
@@ -20,7 +20,7 @@ namespace Game.Battle.Model.Crowd
             var raw = new List<Vec>(count);
             switch (id)
             {
-                case Thick: Rows(raw, count, 5, spacing); break;
+                case Thick: Rows(raw, count, 6, spacing); break;
                 case Wedge: WedgeShape(raw, count, spacing); break;
                 case Vee: VeeShape(raw, count, spacing); break;
                 default: Rows(raw, count, 2, spacing); break;
@@ -63,7 +63,7 @@ namespace Game.Battle.Model.Crowd
         {
             // 가운데 뒤(0,0)에서 앞 왼쪽 · 앞 오른쪽으로 뻗은 두 팔, 팔 두께 3줄. 앞 = +y
             const int thick = 3;
-            Fix ax = Fix.FromRatio(7, 10), ay = Fix.FromRatio(7, 10); // 팔 방향 (45도)
+            Fix ax = Fix.FromRatio(1, 2), ay = Fix.FromRatio(87, 100); // 팔 방향 (앞에서 30도 벌어짐 — 넓게 퍼지지 않고 감싸게)
             int step = 0;
             while (into.Count < count)
             {

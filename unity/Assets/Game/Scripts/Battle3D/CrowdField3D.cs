@@ -31,6 +31,8 @@ namespace Game.Unity.Battle3D
 
         private const float FlashSeconds = 0.15f, FallSeconds = 0.35f, SinkSeconds = 0.45f;
         private const float TurnDegPerSec = 360f;
+        /// <summary>병사 모형 크기 (자리 간격 0.45에 맞춰 촘촘한 무리로 보이게).</summary>
+        private const float ModelScale = 1.6f;
 
         public CrowdField3D(CrowdBattle battle)
         {
@@ -79,7 +81,8 @@ namespace Game.Unity.Battle3D
             _enemyGeneral = Batch(general, EnemyColor, EnemyDark);
         }
 
-        public Vector3 ToWorld(Vec p) => new Vector3((float)p.X.ToDisplayDouble(), 0f, _depth - (float)p.Y.ToDisplayDouble());
+        /// <summary>규칙 (x, y) → 월드 (x, 0, y): 우리 편(작은 y)이 화면 아래, 적이 위.</summary>
+        public Vector3 ToWorld(Vec p) => new Vector3((float)p.X.ToDisplayDouble(), 0f, (float)p.Y.ToDisplayDouble());
 
         public void SetViewport(Rect pixels)
         {
@@ -101,7 +104,7 @@ namespace Game.Unity.Battle3D
                 {
                     _cur[i] = _prev[i] = ToWorld(_battle.Soldiers[i].Pos);
                     var f = _battle.Armies[_battle.Soldiers[i].Team].Facing;
-                    _yaw[i] = Mathf.Atan2((float)f.X.ToDisplayDouble(), -(float)f.Y.ToDisplayDouble()) * Mathf.Rad2Deg;
+                    _yaw[i] = Mathf.Atan2((float)f.X.ToDisplayDouble(), (float)f.Y.ToDisplayDouble()) * Mathf.Rad2Deg;
                 }
             }
             if (_seenTick == _battle.Tick) return;
@@ -148,7 +151,7 @@ namespace Game.Unity.Battle3D
                     else
                     {
                         var f = _battle.Armies[s.Team].Facing;
-                        look = new Vector3((float)f.X.ToDisplayDouble(), 0f, -(float)f.Y.ToDisplayDouble());
+                        look = new Vector3((float)f.X.ToDisplayDouble(), 0f, (float)f.Y.ToDisplayDouble());
                     }
                 }
                 look.y = 0f;
@@ -198,7 +201,7 @@ namespace Game.Unity.Battle3D
                 m.enableInstancing = true;
                 mats[i] = m;
             }
-            return new InstanceBatch(mesh, mats, Matrix4x4.identity);
+            return new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * ModelScale));
         }
 
         private static Material _template;
