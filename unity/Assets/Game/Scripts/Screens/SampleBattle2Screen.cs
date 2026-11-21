@@ -326,6 +326,14 @@ namespace Game.Unity.Screens
             _field.Rig.SetDistance(distance);
         }
 
+        /// <summary>캡처 투어: 우리 총대장(말 탄 장수) 가까이로 카메라.</summary>
+        public void FocusGeneralForTour(float distance)
+        {
+            var g = _battle.Commander(CrowdBattle.Ally).General;
+            _field.Rig.LookAt(_field.ToWorld(g.Pos));
+            _field.Rig.SetDistance(distance);
+        }
+
         /// <summary>캡처 투어: 누군가 친 적이 있음 (맞붙음).</summary>
         public bool FightingForTour
         {

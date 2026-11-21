@@ -206,6 +206,22 @@ namespace Game.Unity.Battle3D
         }
 
         /// <summary>장수 재질 순서: 0 = 갑옷·망토(팀 색), 1 = 얼굴, 2 = 금빛 장식·무기, 3 = 탈것 몸 (말 = 흰 말, 가마 = 나무).</summary>
+        /// <summary>장수 말 다리 한 짝: 위 끝(어깨 · 엉덩이)이 원점. 자리는 <see cref="HorseLegAt"/> (장수 크기 GeneralScale 포함).</summary>
+        public static Mesh HorseLeg()
+        {
+            const string key = "#horseLeg";
+            if (Built.TryGetValue(key, out var m) && m != null) return m;
+            const float k = GeneralScale;
+            m = new Mesh { name = "horse_leg" };
+            m.CombineMeshes(new[] { new CombineInstance { mesh = Builtin("Cube"), transform = Matrix4x4.TRS(new Vector3(0f, -0.045f * k, 0f), Quaternion.identity, new Vector3(0.032f, 0.09f, 0.032f) * k) } }, true, true);
+            m.RecalculateBounds();
+            Parts[m] = new[] { Dark };
+            return Built[key] = m;
+        }
+
+        /// <summary>말 다리 넷의 위 끝 자리 (0 앞왼 · 1 앞오른 · 2 뒤왼 · 3 뒤오른, 장수 모형 기준).</summary>
+        public static Vector3 HorseLegAt(int i) => new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.09f, i < 2 ? 0.12f : -0.12f) * GeneralScale;
+
         /// <summary>걷는 병사 다리 한 짝의 엉덩이 높이 (다리 메시의 위 끝 = 원점).</summary>
         public const float HipHeight = 0.138f;
         /// <summary>엉덩이에서 다리까지 옆 간격 (왼쪽 −, 오른쪽 +).</summary>
@@ -243,10 +259,11 @@ namespace Game.Unity.Battle3D
         /// 총대장(commander)은 등에 군기(깃대 + 팀 색 깃발)를 하나 더 단다. 원점은 발밑.
         /// rider = false면 탈것만 (아트 장수 모델을 그 위에 올릴 때).
         /// </summary>
-        public static Mesh General(bool commander, string mount = null, bool rider = true)
+        /// <param name="horseLegs">false = 말 다리 넷을 빼고 (샘플전투2가 <see cref="HorseLeg"/>로 따로 흔든다).</param>
+        public static Mesh General(bool commander, string mount = null, bool rider = true, bool horseLegs = true)
         {
             bool palanquin = mount == Game.Data.Defs.MountRules.Palanquin;
-            string key = (commander ? "#commander" : "#general") + (palanquin ? "_palanquin" : "_horse") + (rider ? "" : "_mountOnly");
+            string key = (commander ? "#commander" : "#general") + (palanquin ? "_palanquin" : "_horse") + (rider ? "" : "_mountOnly") + (horseLegs ? "" : "_noLegs");
             if (Built.TryGetValue(key, out var m) && m != null) return m;
             var parts = new List<CombineInstance>[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
             var cube = Builtin("Cube");
@@ -290,8 +307,9 @@ namespace Game.Unity.Battle3D
                 // 흰 말
                 Add(cube, new Vector3(0f, 0.14f, 0f), new Vector3(0.13f, 0.12f, 0.32f));
                 Add(cube, new Vector3(0f, 0.24f, 0.18f), new Vector3(0.075f, 0.13f, 0.085f), new Vector3(-30f, 0f, 0f));
-                for (int i = 0; i < 4; i++)
-                    Add(cube, new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.045f, i < 2 ? 0.12f : -0.12f), new Vector3(0.032f, 0.09f, 0.032f));
+                if (horseLegs)
+                    for (int i = 0; i < 4; i++)
+                        Add(cube, new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.045f, i < 2 ? 0.12f : -0.12f), new Vector3(0.032f, 0.09f, 0.032f));
                 part = Team;
                 Add(cube, new Vector3(0f, 0.2f, 0f), new Vector3(0.14f, 0.03f, 0.2f)); // 말 안장 덮개
                 lift = 0.17f;
