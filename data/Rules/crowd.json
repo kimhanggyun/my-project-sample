@@ -61,5 +61,10 @@
   "skillGapSeconds": 3,
   "skillContactRange": 8,
   "arrowRainVolleys": 2,
-  "arrowRainChance": 0.6
+  "arrowRainChance": 0.6,
+  "_grid": "테스트 탭 3×3 배치 (R-131): 칸 사이 gridColPitch칸, 줄 사이 gridRowPitch칸, 부대 병사 수 기본 gridDefaultCount (1 ~ gridMaxCount)",
+  "gridColPitch": 15,
+  "gridRowPitch": 7,
+  "gridDefaultCount": 60,
+  "gridMaxCount": 150
 }

@@ -44,8 +44,12 @@ namespace Game.Unity.Screens
         private Button _queueDone;
         private Text _hintText;
 
-        public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false)
+        /// <summary>[닫기]로 돌아갈 메인 탭 (테스트 탭에서 열면 "test").</summary>
+        private readonly string _returnTab;
+
+        public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false, string returnTab = "test")
         {
+            _returnTab = returnTab;
             _setup = setup ?? new CrowdSetup
             {
                 AllyFormation = CrowdFormations.Wedge, EnemyFormation = CrowdFormations.Line, AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false,
@@ -69,7 +73,7 @@ namespace Game.Unity.Screens
             Ui.Size(_status, flexibleWidth: 3);
             _speedButton = Ui.Button(top, "", NextSpeed, TopHeight, fontSize: 26);
             Ui.Size(_speedButton, width: 110);
-            Ui.Size(Ui.Button(top, T("ui.sample2.close"), () => App.ShowMain("sample"), TopHeight, fontSize: 26), width: 130);
+            Ui.Size(Ui.Button(top, T("ui.sample2.close"), () => App.ShowMain(_returnTab), TopHeight, fontSize: 26), width: 130);
 
             App.SetBackdrop(false);
             _field = new CrowdField3D(_battle);
@@ -93,7 +97,7 @@ namespace Game.Unity.Screens
             _panel = Ui.Rect(Root, "Panel");
             Ui.Background(_panel, Palette.Bar);
             Ui.Column(_panel, 8, 10);
-            Ui.Size(_panel, 470);
+            Ui.Size(_panel, _setup.AllyUnits != null && _setup.AllyUnits.Count + 1 > 5 ? 520 : 470);
             BuildPanel();
             UpdateTexts();
         }
@@ -153,15 +157,22 @@ namespace Game.Unity.Screens
                 return;
             }
             // 싸우는 중: 부대 고르기 · 진형 · 정지 · 전체 돌격 · 다시
-            var pick = Ui.Row(_panel, "Pick", 84, 6);
-            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+            // 부대 버튼: 한 줄에 다섯까지 (3×3이면 두 줄)
+            var mine = new List<CrowdArmy>(_battle.TeamArmies(CrowdBattle.Ally));
+            int perRow = mine.Count + 1 > 5 ? 5 : mine.Count + 1;
+            RectTransform pick = null;
+            int inRow = 0;
+            foreach (var a in mine)
             {
+                if (pick == null || inRow >= perRow) { pick = Ui.Row(_panel, "Pick", mine.Count + 1 > 5 ? 72 : 84, 6); inRow = 0; }
                 int id = a.Id;
-                var b = Ui.Button(pick, CorpsName(a), () => Select(id), 84, Palette.Button, 22);
+                var b = Ui.Button(pick, CorpsName(a), () => Select(id), mine.Count + 1 > 5 ? 72 : 84, Palette.Button, mine.Count + 1 > 5 ? 18 : 22);
                 Ui.Size(b, flexibleWidth: 1);
                 _corpsButtons[id] = b;
+                inRow++;
             }
-            var all = Ui.Button(pick, T("ui.sample2.all"), () => Select(AllCorps), 72, Palette.Button, 24);
+            if (inRow >= perRow) pick = Ui.Row(_panel, "Pick", 72, 6);
+            var all = Ui.Button(pick, T("ui.sample2.all"), () => Select(AllCorps), 84, Palette.Button, 24);
             Ui.Size(all, flexibleWidth: 1);
             _corpsButtons[AllCorps] = all;
             FormationRow(T("ui.sample2.formation"), CurrentFormation(), id =>
@@ -188,7 +199,7 @@ namespace Game.Unity.Screens
         /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병".</summary>
         private string TagName(CrowdArmy a)
         {
-            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + T("ui.sample2.place." + a.Place) + " " + T("troop." + a.Troop.Id);
+            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id);
             // 켜져 있는 스킬 (R-130)
             int tick = _battle.Tick;
             if (a.AttackBuffUntil > tick) s += " · " + T("skill.warCry");
@@ -280,7 +291,15 @@ namespace Game.Unity.Screens
             if (_hintText != null) _hintText.text = T("ui.sample2.hint");
         }
 
-        private string CorpsName(CrowdArmy a) => T("ui.sample2.place." + a.Place) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id) + "\n" + MoraleText(a);
+        private string CorpsName(CrowdArmy a) => PlaceName(a) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id) + "\n" + MoraleText(a);
+
+        /// <summary>부대 자리 이름: 좌군 · 중군 · 우군, 3×3 칸이면 "앞 좌" 등 (R-131).</summary>
+        private string PlaceName(CrowdArmy a)
+        {
+            int k = a.Place.IndexOf('_');
+            if (k < 0) return T("ui.sample2.place." + a.Place);
+            return TestBattleTabView.CellName(Ctx, a.Place.Substring(0, k), a.Place.Substring(k + 1));
+        }
 
         /// <summary>사기 (R-128): 숫자, 흔들림 · 포위 · 무너짐 표시.</summary>
         private string MoraleText(CrowdArmy a)

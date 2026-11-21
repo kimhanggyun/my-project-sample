@@ -294,6 +294,40 @@ namespace Game.Tests.Battle
             Assert.True(b.HitDamage(inf, inf, b.Rules.RearPp) > b.HitDamage(inf, inf));
         }
 
+        // ---- 3×3 배치 (R-131) ----
+
+        [Fact]
+        public void GridPlacesUnitsByRowAndColumn()
+        {
+            var setup = new CrowdSetup
+            {
+                AllyUnits = new System.Collections.Generic.List<CrowdUnitSpec>
+                {
+                    new CrowdUnitSpec { Row = 0, Col = 0, Troop = "cavalry", Count = 40 },
+                    new CrowdUnitSpec { Row = 1, Col = 1, Troop = "infantry", Commander = true },
+                    new CrowdUnitSpec { Row = 2, Col = 2, Troop = "archer", Count = 999 },
+                },
+                EnemyUnits = new System.Collections.Generic.List<CrowdUnitSpec> { new CrowdUnitSpec { Row = 0, Col = 1, Troop = "spearman" } },
+                AllyAdvance = false,
+            };
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var allies = new System.Collections.Generic.List<CrowdArmy>(b.TeamArmies(CrowdBattle.Ally));
+            Assert.Equal(3, allies.Count);
+            var cav = allies.Find(a => a.Place == "front_left");
+            var inf = allies.Find(a => a.Place == "middle_center");
+            var arc = allies.Find(a => a.Place == "back_right");
+            Assert.Equal(40, cav.StartCount);
+            Assert.Equal(b.Rules.GridMaxCount, arc.StartCount); // 최대로 잘림
+            Assert.Equal(b.Rules.GridDefaultCount, inf.StartCount);
+            Assert.True(inf.IsCommander && !cav.IsCommander && !arc.IsCommander);
+            Assert.True(cav.Center.X < inf.Center.X && inf.Center.X < arc.Center.X); // 왼 → 오
+            Assert.True(cav.Center.Y > inf.Center.Y && inf.Center.Y > arc.Center.Y); // 앞줄이 적 쪽 (위)
+            var enemy = b.Commander(CrowdBattle.Enemy);
+            Assert.Equal("front_center", enemy.Place);
+            Assert.True(enemy.IsCommander); // 총대장 표시가 없으면 첫 부대
+            for (int t = 0; t < 50; t++) b.Step();
+        }
+
         // ---- 스킬 (R-130) ----
 
         private static CrowdBattle WithSkills(CrowdSetup setup)

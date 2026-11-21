@@ -124,9 +124,31 @@ namespace Game.Battle.Model.Crowd
         }
     }
 
+    /// <summary>
+    /// 3×3 칸에 놓는 부대 하나 (R-131, 테스트 탭): 줄(0 앞 · 1 가운데 · 2 뒤) · 칸(0 왼쪽 · 1 가운데 · 2 오른쪽, 보는 쪽 = 우리 편 기준),
+    /// 병종 · 진형 · 병사 수 · 총대장.
+    /// </summary>
+    public sealed class CrowdUnitSpec
+    {
+        public int Row;
+        public int Col;
+        public string Troop = "infantry";
+        public string Formation = CrowdFormations.Line;
+        public int Count = 60;
+        public bool Commander;
+
+        public static readonly string[] RowIds = { "front", "middle", "back" };
+        public static readonly string[] ColIds = { "left", "center", "right" };
+        /// <summary>부대 자리 이름 (CrowdArmy.Place): "front_left" 등.</summary>
+        public string Place => RowIds[Row] + "_" + ColIds[Col];
+    }
+
     /// <summary>샘플전투2 시작 설정.</summary>
     public sealed class CrowdSetup
     {
+        /// <summary>3×3 칸 배치 (R-131). 비어 있지 않으면 부대 수 · 병종 · 진형 설정 대신 이것을 쓴다.</summary>
+        public List<CrowdUnitSpec> AllyUnits;
+        public List<CrowdUnitSpec> EnemyUnits;
         /// <summary>편마다 병사 수 (부대가 여럿이면 나눠 가진다).</summary>
         public int AllyCount = 200;
         public int EnemyCount = 200;
@@ -193,8 +215,10 @@ namespace Game.Battle.Model.Crowd
             _rng = new SeededRandom(setup.Seed == 0 ? 1 : setup.Seed);
             _enemyAdvance = setup.EnemyAdvance;
             _maxRadius = Fix.Max(rules.SoldierRadius, rules.MountedRadius);
-            MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, setup.AllyTroops, troops, rules.FieldDepth * Fix.FromRatio(3, 10), new Vec(Fix.Zero, Fix.OneValue));
-            MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, setup.EnemyTroops, troops, rules.FieldDepth * Fix.FromRatio(7, 10), new Vec(Fix.Zero, -Fix.OneValue));
+            if (setup.AllyUnits != null && setup.AllyUnits.Count > 0) MakeGrid(Ally, setup.AllyUnits, troops, rules.FieldDepth * Fix.FromRatio(3, 10), new Vec(Fix.Zero, Fix.OneValue));
+            else MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, setup.AllyTroops, troops, rules.FieldDepth * Fix.FromRatio(3, 10), new Vec(Fix.Zero, Fix.OneValue));
+            if (setup.EnemyUnits != null && setup.EnemyUnits.Count > 0) MakeGrid(Enemy, setup.EnemyUnits, troops, rules.FieldDepth * Fix.FromRatio(7, 10), new Vec(Fix.Zero, -Fix.OneValue));
+            else MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, setup.EnemyTroops, troops, rules.FieldDepth * Fix.FromRatio(7, 10), new Vec(Fix.Zero, -Fix.OneValue));
             if (setup.AllyAdvance)
                 foreach (var a in Armies) if (a.Team == Ally) OrderAttack(a.Id, Commander(Enemy).Id);
         }
@@ -215,6 +239,31 @@ namespace Game.Battle.Model.Crowd
             int n = 0;
             foreach (var a in Armies) if (a.Team == team) n += a.AliveCount;
             return n;
+        }
+
+        /// <summary>
+        /// 3×3 칸 배치 (R-131): 칸(왼 · 가 · 오) → x = 전장 가운데 + (칸 − 1) × gridColPitch (보는 쪽 기준, 적도 같은 화면 왼쪽이 왼쪽),
+        /// 줄(앞 · 가운데 · 뒤) → 앞줄이 frontY, 뒤로 갈수록 자기 쪽으로 gridRowPitch씩. 총대장은 하나 (없으면 첫 부대, 여럿이면 첫 것만).
+        /// 병사 수는 1 ~ gridMaxCount.
+        /// </summary>
+        private void MakeGrid(int team, List<CrowdUnitSpec> units, IReadOnlyDictionary<string, TroopTypeDef> troops, Fix frontY, Vec facing)
+        {
+            var sorted = new List<CrowdUnitSpec>(units);
+            sorted.Sort((a, b) => a.Row != b.Row ? a.Row.CompareTo(b.Row) : a.Col.CompareTo(b.Col));
+            int cmd = sorted.FindIndex(u => u.Commander);
+            if (cmd < 0) cmd = 0;
+            var mid = Rules.FieldWidth / 2;
+            for (int k = 0; k < sorted.Count; k++)
+            {
+                var u = sorted[k];
+                int row = System.Math.Max(0, System.Math.Min(2, u.Row)), col = System.Math.Max(0, System.Math.Min(2, u.Col));
+                int count = System.Math.Max(1, System.Math.Min(Rules.GridMaxCount, u.Count));
+                var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
+                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops));
+                Fix back = Rules.GridRowPitch * row;
+                a.Center = new Vec(mid + Rules.GridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
+                foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
+            }
         }
 
         private void MakeTeam(int team, int corps, int count, string formation, string[] troopIds, IReadOnlyDictionary<string, TroopTypeDef> troops, Fix y, Vec facing)
