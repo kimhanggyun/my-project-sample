@@ -248,15 +248,16 @@ namespace Game.Unity.Boot
             yield return Shot("37_sample2_skill_setup", () => s9, 0.2f);
             // 다가오는 적이 사거리(14칸) 안에 들 때까지 기다렸다가 화살비
             bool rained = false;
+            Vector2 rainAt = Vector2.zero;
             for (int w = 0; w < 60 && !rained; w++)
             {
                 s9.StepForTour(5);
-                var near = s9.EnemyNearForTour("right");
-                rained = s9.SkillForTour("right", Game.Battle.Model.Crowd.CrowdBattle.ArrowRain, near.x, near.y);
+                rainAt = s9.EnemyNearForTour("right");
+                rained = s9.SkillForTour("right", Game.Battle.Model.Crowd.CrowdBattle.ArrowRain, rainAt.x, rainAt.y);
             }
             s9.SkillForTour("center", Game.Battle.Model.Crowd.CrowdBattle.WarCry);
             s9.StepForTour(4);
-            s9.FocusArmyForTour(0, 34f);
+            s9.FocusPointForTour(rainAt.x, rainAt.y - 5f, 22f); // 화살비 떨어질 곳 (붉은 고리 · 날아가는 화살)
             yield return Shot(rained ? "37b_sample2_skill_rain" : "37b_sample2_skill_rain_outOfRange", null, 0.2f);
             s9.StepForTour(12);
             yield return Shot("37c_sample2_skill_landed", null, 0.2f);

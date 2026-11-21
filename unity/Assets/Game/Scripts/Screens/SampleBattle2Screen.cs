@@ -545,6 +545,13 @@ namespace Game.Unity.Screens
             return false;
         }
 
+        /// <summary>캡처 투어: 전장 한 곳으로 카메라.</summary>
+        public void FocusPointForTour(float x, float y, float distance)
+        {
+            _field.Rig.LookAt(_field.ToWorld(new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y))));
+            _field.Rig.SetDistance(distance);
+        }
+
         /// <summary>캡처 투어: 그 우리 부대의 가까운 적 부대 가운데 (화살비 지점).</summary>
         public Vector2 EnemyNearForTour(string place)
         {
