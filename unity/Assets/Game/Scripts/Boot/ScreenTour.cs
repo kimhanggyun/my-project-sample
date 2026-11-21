@@ -242,6 +242,19 @@ namespace Game.Unity.Boot
             s8.QueueForTour("left", new[] { 8f, 26f, 8f, 34f, 18f, 38f });
             s8.StepForTour(20);
             yield return Shot("36c_sample2_ui_queue", null, 0.3f);
+            // 스킬 (R-130): 우군 궁병 화살비 (전조 · 떨어짐), 중군 돌격 함성
+            var s9 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, EnemyAdvance = true, Seed = 11,
+                AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = SampleBattle2Screen.Preset("mixed") });
+            yield return Shot("37_sample2_skill_setup", () => s9, 0.2f);
+            s9.StepForTour(80);
+            var near = s9.EnemyNearForTour("right");
+            bool rained = s9.SkillForTour("right", Game.Battle.Model.Crowd.CrowdBattle.ArrowRain, near.x, near.y);
+            s9.SkillForTour("center", Game.Battle.Model.Crowd.CrowdBattle.WarCry);
+            s9.StepForTour(4);
+            s9.FocusArmyForTour(0, 34f);
+            yield return Shot(rained ? "37b_sample2_skill_rain" : "37b_sample2_skill_rain_outOfRange", null, 0.2f);
+            s9.StepForTour(12);
+            yield return Shot("37c_sample2_skill_landed", null, 0.2f);
 
             _app.ShowMain("story");
             Done = true;

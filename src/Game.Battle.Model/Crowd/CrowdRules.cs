@@ -81,6 +81,12 @@ namespace Game.Battle.Model.Crowd
         public Fix RearDot { get; private set; }
         /// <summary>한 편이 모두 무너진 뒤 도망치는 모습을 보이고 끝나기까지 (초).</summary>
         public Fix RoutEndSeconds { get; private set; }
+        // 스킬 (R-130)
+        public Fix SkillGapSeconds { get; private set; }
+        public Fix SkillContactRange { get; private set; }
+        public int ArrowRainVolleys { get; private set; }
+        public Fix ArrowRainChance { get; private set; }
+        public int SkillGapTicks => System.Math.Max(1, (int)(SkillGapSeconds / TickSeconds).RoundToLong());
         public int RoutEndTicks => System.Math.Max(1, (int)(RoutEndSeconds / TickSeconds).RoundToLong());
         public int EncircleTicks => System.Math.Max(1, (int)(EncircleSeconds / TickSeconds).RoundToLong());
         public int CalmTicks => System.Math.Max(1, (int)(CalmSeconds / TickSeconds).RoundToLong());
@@ -146,6 +152,10 @@ namespace Game.Battle.Model.Crowd
                 FrontDot = JsonUtil.RequireFix(o, "frontDot", c),
                 RearDot = JsonUtil.RequireFix(o, "rearDot", c),
                 RoutEndSeconds = JsonUtil.RequireFix(o, "routEndSeconds", c),
+                SkillGapSeconds = JsonUtil.RequireFix(o, "skillGapSeconds", c),
+                SkillContactRange = JsonUtil.RequireFix(o, "skillContactRange", c),
+                ArrowRainVolleys = (int)JsonUtil.RequireLong(o, "arrowRainVolleys", c),
+                ArrowRainChance = JsonUtil.RequireFix(o, "arrowRainChance", c),
             };
         }
 

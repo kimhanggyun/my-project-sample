@@ -294,6 +294,71 @@ namespace Game.Tests.Battle
             Assert.True(b.HitDamage(inf, inf, b.Rules.RearPp) > b.HitDamage(inf, inf));
         }
 
+        // ---- 스킬 (R-130) ----
+
+        private static CrowdBattle WithSkills(CrowdSetup setup)
+        {
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            b.UseSkillData(Defs.Skills);
+            return b;
+        }
+
+        [Fact]
+        public void SkillsHaveUsesAndGap()
+        {
+            var b = WithSkills(new CrowdSetup { AllyTroops = new[] { "infantry" }, AllyAdvance = false });
+            var a = b.Commander(CrowdBattle.Ally);
+            Assert.False(a.SkillUses.ContainsKey(CrowdBattle.ArrowRain)); // 보병은 화살비 없음
+            int uses = a.SkillUses[CrowdBattle.Rally];
+            Assert.True(uses >= 1);
+            Assert.True(b.UseSkill(a.Id, CrowdBattle.Rally));
+            Assert.False(b.UseSkill(a.Id, CrowdBattle.WarCry)); // 다시 쓰기 간격
+            for (int t = 0; t < 40; t++) b.Step();
+            Assert.True(b.UseSkill(a.Id, CrowdBattle.WarCry));
+            Assert.Equal(uses - 1, a.SkillUses[CrowdBattle.Rally]);
+        }
+
+        [Fact]
+        public void WarCryHitsHarderAndHoldTheLineTakesLess()
+        {
+            var b = WithSkills(new CrowdSetup());
+            var me = b.Commander(CrowdBattle.Ally);
+            var foe = b.Commander(CrowdBattle.Enemy);
+            int baseDmg = b.HitDamage(me.Troop, foe.Troop);
+            b.UseSkill(me.Id, CrowdBattle.WarCry);
+            b.UseSkill(foe.Id, CrowdBattle.HoldTheLine);
+            // 함성 +20 · 철벽 −20 → 같음, 함성만이면 더 큼
+            var b2 = WithSkills(new CrowdSetup());
+            b2.UseSkill(b2.Commander(CrowdBattle.Ally).Id, CrowdBattle.WarCry);
+            Assert.True(b2.Commander(CrowdBattle.Ally).AttackBuffUntil > 0);
+            Assert.True(b.Commander(CrowdBattle.Enemy).FortifyUntil > 0);
+            Assert.Equal(Fix.FromInt(20), b2.Commander(CrowdBattle.Ally).AttackBuffPp); // skills.json warCry pp
+            Assert.True(b2.HitDamage(me.Troop, foe.Troop, Fix.FromInt(60)) > baseDmg); // %p가 피해에 들어감
+        }
+
+        [Fact]
+        public void RallyRaisesMoraleAndArrowRainLandsAfterTelegraph()
+        {
+            var b = WithSkills(new CrowdSetup { AllyTroops = new[] { "archer" }, AllyAdvance = false, EnemyFormation = CrowdFormations.Thick });
+            var a = b.Commander(CrowdBattle.Ally);
+            a.Morale = Fix.FromInt(30);
+            Assert.True(b.UseSkill(a.Id, CrowdBattle.Rally));
+            Assert.True(a.Morale > Fix.FromInt(30));
+            for (int t = 0; t < 40; t++) b.Step();
+            var target = b.Commander(CrowdBattle.Enemy).Centroid();
+            // 사거리 밖은 못 쓴다
+            Assert.False(b.UseSkill(a.Id, CrowdBattle.ArrowRain, target));
+            a.Center = target - new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(10));
+            foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
+            int hpBefore = EnemyHp(b);
+            Assert.True(b.UseSkill(a.Id, CrowdBattle.ArrowRain, target));
+            b.Step();
+            Assert.Equal(hpBefore, EnemyHp(b)); // 전조 동안은 아직
+            for (int t = 0; t < 30; t++) b.Step();
+            _out.WriteLine($"enemy hp {hpBefore} → {EnemyHp(b)}");
+            Assert.True(EnemyHp(b) < hpBefore - 20);
+        }
+
         /// <summary>앞 시간 동안 적이 잃은 병사.</summary>
         private static int EnemyLosses(string ally, string enemy, ulong seed, int ticks)
         {

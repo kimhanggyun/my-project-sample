@@ -101,7 +101,12 @@ namespace Game.Unity.Screens
         private bool Started => _running || _battle.Tick > 0;
 
         /// <summary>병종 데이터 · 상성을 넣어 만든다 (R-127).</summary>
-        private CrowdBattle NewBattle(CrowdRules rules) => new CrowdBattle(rules, _setup, Ctx.Defs.TroopTypes, Ctx.Defs.TroopCounters);
+        private CrowdBattle NewBattle(CrowdRules rules)
+        {
+            var b = new CrowdBattle(rules, _setup, Ctx.Defs.TroopTypes, Ctx.Defs.TroopCounters);
+            b.UseSkillData(Ctx.Defs.Skills); // 스킬 (R-130): skills.json 기본 스킬 다섯
+            return b;
+        }
 
         /// <summary>병종 고르기 (시작 전): 한 병종이면 모든 부대가 그 병종, 혼합 = 좌 기병 · 중 보병 · 우 궁병 (부대 하나면 보병).</summary>
         public static readonly string[] Presets = { "infantry", "spearman", "archer", "cavalry", "mixed" };
@@ -181,8 +186,16 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(row, text, act, 68, on ? Palette.ButtonActive : Palette.Button, 22), flexibleWidth: 1);
 
         /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병".</summary>
-        private string TagName(CrowdArmy a) =>
-            (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + T("ui.sample2.place." + a.Place) + " " + T("troop." + a.Troop.Id);
+        private string TagName(CrowdArmy a)
+        {
+            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + T("ui.sample2.place." + a.Place) + " " + T("troop." + a.Troop.Id);
+            // 켜져 있는 스킬 (R-130)
+            int tick = _battle.Tick;
+            if (a.AttackBuffUntil > tick) s += " · " + T("skill.warCry");
+            if (a.FortifyUntil > tick) s += " · " + T("skill.holdTheLine");
+            if (a.MarchUntil > tick) s += " · " + T("skill.forcedMarch");
+            return s;
+        }
 
         // ---- 부대 원형 메뉴 (R-129): 돌격 · 이동 · 예약 이동 · 정지 · 진형 ----
 
@@ -200,6 +213,7 @@ namespace Game.Unity.Screens
                 new RadialMenu.Item { Label = T("ui.sample2.queue"), OnPick = () => BeginPick("queue") },
                 Pick(T("ui.sample2.stop"), () => { foreach (var c in Chosen()) _battle.OrderHold(c.Id); }),
                 new RadialMenu.Item { Label = T("ui.radial.formation") + " ›", OnPick = () => OpenFormationMenu(a) },
+                new RadialMenu.Item { Label = T("ui.radial.skill") + " ›", Enabled = a.SkillUses.Count > 0, OnPick = () => OpenSkillMenu(a) },
             });
             FollowMenu();
         }
@@ -211,6 +225,31 @@ namespace Game.Unity.Screens
             {
                 string f = id;
                 items.Add(Pick(T("ui.sample2.f." + id), () => { foreach (var c in Chosen()) _battle.SetFormation(c.Id, f); Select(_selected); }, a.Formation == id));
+            }
+            _radial.Open(T("ui.radial.back"), () => OpenCorpsMenu(a), items);
+            FollowMenu();
+        }
+
+        /// <summary>스킬 하위 고리 (R-130): 이름 + 남은 횟수, 못 쓰면 흐리게. 화살비는 다음에 누른 땅에.</summary>
+        private void OpenSkillMenu(CrowdArmy a)
+        {
+            var items = new List<RadialMenu.Item>();
+            foreach (var id in CrowdBattle.KnownSkills)
+            {
+                if (!a.SkillUses.TryGetValue(id, out var left)) continue;
+                string sk = id;
+                var def = _battle.SkillDef(id);
+                bool can = _battle.CanUseSkill(a.Id, id);
+                items.Add(new RadialMenu.Item
+                {
+                    Label = T(def.NameKey) + "\n" + T("ui.sample2.uses", left), Enabled = can,
+                    OnPick = () =>
+                    {
+                        if (sk == CrowdBattle.ArrowRain) { BeginPick("skill:" + sk); return; }
+                        _battle.UseSkill(a.Id, sk);
+                        _radial.Close();
+                    },
+                });
             }
             _radial.Open(T("ui.radial.back"), () => OpenCorpsMenu(a), items);
             FollowMenu();
@@ -231,7 +270,7 @@ namespace Game.Unity.Screens
             _radial.Close();
             _pickMode = mode;
             _queueDone.gameObject.SetActive(mode == "queue");
-            if (_hintText != null) _hintText.text = T(mode == "queue" ? "ui.sample2.queueHint" : "ui.sample2.moveHint");
+            if (_hintText != null) _hintText.text = T(mode == "queue" ? "ui.sample2.queueHint" : mode.StartsWith("skill:") ? "ui.sample2.skillHint" : "ui.sample2.moveHint");
         }
 
         private void EndPick()
@@ -331,6 +370,15 @@ namespace Game.Unity.Screens
             if (_radial.IsOpen) { _radial.Close(); return; } // 메뉴가 열려 있으면 바깥 누름 = 닫기
             var chosen = Chosen();
             if (chosen.Count == 0) return;
+            if (_pickMode != null && _pickMode.StartsWith("skill:"))
+            {
+                // 범위 스킬 (화살비): 누른 곳에 (사거리 밖이면 알림)
+                string sk = _pickMode.Substring(6);
+                bool used = _selected >= 0 && _battle.UseSkill(_selected, sk, point);
+                if (!used) Toast.Show(T("ui.sample2.outOfRange"), bad: true);
+                EndPick();
+                return;
+            }
             if (hit != null) { foreach (var a in chosen) _battle.OrderAttack(a.Id, hit.Id); EndPick(); return; }
             bool queue = _pickMode == "queue";
             if (_pickMode == "move") EndPick();
@@ -486,6 +534,33 @@ namespace Game.Unity.Screens
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);
             BeginPick("queue");
             for (int i = 0; i + 1 < xy.Length; i += 2) CommandAt(new Vec(Fix.FromDecimal((decimal)xy[i]), Fix.FromDecimal((decimal)xy[i + 1])));
+        }
+
+        /// <summary>캡처 투어: 스킬 쓰기 (화면 조작과 같은 규칙 길).</summary>
+        public bool SkillForTour(string place, string skill, float x = -1f, float y = -1f)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+                if (a.Place == place)
+                    return x < 0 ? _battle.UseSkill(a.Id, skill) : _battle.UseSkill(a.Id, skill, new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y)));
+            return false;
+        }
+
+        /// <summary>캡처 투어: 그 우리 부대의 가까운 적 부대 가운데 (화살비 지점).</summary>
+        public Vector2 EnemyNearForTour(string place)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+                if (a.Place == place)
+                {
+                    var me = a.Centroid();
+                    CrowdArmy best = null; Fix bd = Fix.Zero;
+                    foreach (var e in _battle.TeamArmies(CrowdBattle.Enemy))
+                    {
+                        Fix d = Vec.DistanceSquared(e.Centroid(), me);
+                        if (best == null || d < bd) { best = e; bd = d; }
+                    }
+                    if (best != null) { var c = best.Centroid(); return new Vector2((float)c.X.ToDisplayDouble(), (float)c.Y.ToDisplayDouble()); }
+                }
+            return Vector2.zero;
         }
 
         /// <summary>캡처 투어: 적 총대장 부대가 무너짐.</summary>
