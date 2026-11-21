@@ -237,7 +237,7 @@ namespace Game.Unity.Boot
             yield return Shot("36_sample2_ui_setup", () => s8, 0.2f);
             s8.StepForTour(1);
             s8.FocusArmyForTour(0, 34f);
-            s8.OpenMenuForTour("left");
+            s8.OpenCommandForTour("left", "move"); // 조작 화면 (R-132): 원형 메뉴 대신 아래 명령 줄 · 세부 줄
             yield return Shot("36b_sample2_ui_menu", null, 0.4f);
             s8.QueueForTour("left", new[] { 8f, 26f, 8f, 34f, 18f, 38f });
             s8.StepForTour(20);
@@ -268,6 +268,43 @@ namespace Game.Unity.Boot
             s10.StepForTour(60);
             s10.FocusArmyForTour(0, 36f);
             yield return Shot("38c_test_battle_moving", null, 0.2f);
+            // 조작 화면 (R-132): ① 부대 줄 · ② 명령 줄 · ③ 세부 줄, 경로 그리기, 위임 · 근접 공격 · 후퇴 · 일시정지 · 끝 창
+            var s11 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, EnemyAdvance = false, Seed = 11,
+                AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = SampleBattle2Screen.Preset("mixed") }, startNow: true);
+            yield return Shot("39_ctl_open", () => s11, 0.3f); // 화면을 먼저 띄운 뒤 카메라 (띄우기 전엔 전장이 없음)
+            s11.FocusArmyForTour(0, 46f);
+            yield return Shot("39_ctl_all", null, 0.2f);
+            s11.StepForTour(1);
+            s11.FocusArmyForTour(0, 46f);
+            s11.OpenCommandForTour("right", "formation");
+            yield return Shot("39b_ctl_formation", null, 0.2f);
+            s11.OpenCommandForTour("right", "skill");
+            yield return Shot("39c_ctl_skill", null, 0.2f);
+            s11.OpenCommandForTour("left", "attack");
+            yield return Shot("39d_ctl_attack", null, 0.2f);
+            var foe = s11.EnemyNearForTour("left");
+            s11.FocusPointForTour(14f, 30f, 40f); // 그린 길이 보이게
+            s11.DrawPathForTour("left", new[] { 14f, 22f, 6f, 28f, 5f, 36f, foe.x, foe.y }, false);
+            yield return Shot("39e_ctl_path_drawing", null, 0.2f);
+            s11.ReleasePathForTour();
+            s11.StepForTour(40);
+            yield return Shot("39f_ctl_path_moving", null, 0.2f);
+            s11.PressForTour("center", "delegate");
+            s11.PressForTour("right", "nearest");
+            s11.StepForTour(80);
+            s11.SelectForTour("center");
+            s11.FocusArmyForTour(0, 40f);
+            yield return Shot("39g_ctl_delegate_nearest", null, 0.2f);
+            s11.PressForTour(null, "retreat");
+            s11.StepForTour(25);
+            s11.FocusArmyForTour(0, 46f);
+            yield return Shot("39h_ctl_retreat", null, 0.2f);
+            s11.PauseForTour(true);
+            yield return Shot("39i_ctl_paused", null, 0.2f);
+            s11.PauseForTour(false);
+            s11.PressForTour(null, "delegate");
+            for (int w = 0; w < 40 && !s11.OverForTour; w++) s11.StepForTour(100);
+            yield return Shot("39j_ctl_result", null, 0.4f);
 
             _app.ShowMain("story");
             Done = true;

@@ -52,6 +52,11 @@ namespace Game.Unity.Battle3D
         /// <summary>고리는 부대마다 하나씩 (고른 표시 · 목표 표시), 모자라면 더 만든다.</summary>
         private readonly List<LineRenderer> _selRings = new List<LineRenderer>(), _goalRings = new List<LineRenderer>(), _fxRings = new List<LineRenderer>();
         private const int RingSegments = 48;
+        /// <summary>그리는 중인 길 (월드, 화면이 채움 — R-132 경로 그리기).</summary>
+        public readonly List<Vector3> Trail = new List<Vector3>();
+        /// <summary>길 선 (그리는 중 자취 · 고른 부대의 남은 이동 길).</summary>
+        private readonly List<LineRenderer> _pathLines = new List<LineRenderer>();
+        private readonly List<Vector3> _pts = new List<Vector3>();
 
         /// <summary>병사마다 걸은 거리 (다리 박자) · 다리 흔들기 세기 (걷기 시작 · 멈출 때 부드럽게).</summary>
         private float[] _stride = new float[0], _legAmp = new float[0];
@@ -406,7 +411,8 @@ namespace Game.Unity.Battle3D
 
         private void DrawRings(float alpha)
         {
-            int sel = 0, goal = 0;
+            int sel = 0, goal = 0, path = 0;
+            if (Trail.Count >= 2) Polyline(PathLine(path++), Trail); // 그리는 중인 길
             var targeted = new HashSet<int>();
             foreach (var a in _battle.Armies)
             {
@@ -417,8 +423,20 @@ namespace Game.Unity.Battle3D
                 // 목표: 이동 = 그 땅에 작은 고리, 공격 = 대상 부대 둘레 (같은 대상은 한 번만)
                 if (a.Order == CrowdOrders.Move)
                 {
-                    Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(a.OrderPoint), 0.6f);
-                    foreach (var w in a.Waypoints) Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(w), 0.4f); // 예약 경유 지점 (R-129)
+                    // 남은 길: 부대 → 목표 → 경유 지점들 (지나간 곳은 지워짐), 끝에 고리
+                    _pts.Clear();
+                    _pts.Add(ShownCenter(a, alpha));
+                    _pts.Add(ToWorld(a.OrderPoint));
+                    foreach (var w in a.Waypoints) _pts.Add(ToWorld(w));
+                    Polyline(PathLine(path++), _pts);
+                    Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), _pts[_pts.Count - 1], 0.6f);
+                    if (a.Waypoints.Count <= CrowdBattle.MaxWaypoints)
+                        foreach (var w in a.Waypoints) Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(w), 0.4f); // 예약 경유 지점 (R-129)
+                    if (a.PathThenAttack >= 0 && targeted.Add(a.PathThenAttack))
+                    {
+                        var t = _battle.Armies[a.PathThenAttack];
+                        Circle(Pooled(_goalRings, goal++, "GoalRing", new Color(1f, 0.55f, 0.45f), 0.08f), ShownCenter(t, alpha), RadiusOf(t));
+                    }
                 }
                 else if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && targeted.Add(a.OrderTarget))
                 {
@@ -448,6 +466,7 @@ namespace Game.Unity.Battle3D
             for (int i = fx; i < _fxRings.Count; i++) _fxRings[i].gameObject.SetActive(false);
             for (int i = sel; i < _selRings.Count; i++) _selRings[i].gameObject.SetActive(false);
             for (int i = goal; i < _goalRings.Count; i++) _goalRings[i].gameObject.SetActive(false);
+            for (int i = path; i < _pathLines.Count; i++) _pathLines[i].gameObject.SetActive(false);
         }
 
         private LineRenderer Pooled(List<LineRenderer> pool, int index, string name, Color color, float width)
@@ -456,6 +475,19 @@ namespace Game.Unity.Battle3D
             var line = pool[index];
             if (!line.gameObject.activeSelf) line.gameObject.SetActive(true);
             return line;
+        }
+
+        private LineRenderer PathLine(int index)
+        {
+            var line = Pooled(_pathLines, index, "PathLine", new Color(1f, 1f, 1f, 0.9f), 0.12f);
+            line.loop = false;
+            return line;
+        }
+
+        private static void Polyline(LineRenderer line, List<Vector3> pts)
+        {
+            line.positionCount = pts.Count;
+            for (int i = 0; i < pts.Count; i++) line.SetPosition(i, pts[i] + new Vector3(0f, 0.07f, 0f));
         }
 
         private static void Circle(LineRenderer line, Vector3 c, float radius)

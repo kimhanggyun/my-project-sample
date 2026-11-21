@@ -86,6 +86,11 @@ namespace Game.Battle.Model.Crowd
         public Fix SkillContactRange { get; private set; }
         public int ArrowRainVolleys { get; private set; }
         public Fix ArrowRainChance { get; private set; }
+        /// <summary>병종(뿌리 병종 id)마다 추천 진형 (R-132, 진형 고르기에 "추천" 표시). 없으면 표시 없음.</summary>
+        public System.Collections.Generic.IReadOnlyDictionary<string, string> RecommendedFormation { get; private set; } = new System.Collections.Generic.Dictionary<string, string>();
+        // 후퇴 (R-132)
+        public Fix RetreatSpeed { get; private set; }
+        public Fix RetreatMargin { get; private set; }
         // 3×3 배치 (R-131)
         public Fix GridColPitch { get; private set; }
         public Fix GridRowPitch { get; private set; }
@@ -102,7 +107,7 @@ namespace Game.Battle.Model.Crowd
         public static CrowdRules From(JObject o)
         {
             const string c = "crowd";
-            return new CrowdRules
+            var rules = new CrowdRules
             {
                 TickSeconds = JsonUtil.RequireFix(o, "tickSeconds", c),
                 FieldWidth = JsonUtil.RequireFix(o, "fieldWidth", c),
@@ -161,11 +166,22 @@ namespace Game.Battle.Model.Crowd
                 SkillContactRange = JsonUtil.RequireFix(o, "skillContactRange", c),
                 ArrowRainVolleys = (int)JsonUtil.RequireLong(o, "arrowRainVolleys", c),
                 ArrowRainChance = JsonUtil.RequireFix(o, "arrowRainChance", c),
+                RetreatSpeed = JsonUtil.RequireFix(o, "retreatSpeed", c),
+                RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),
                 GridDefaultCount = (int)JsonUtil.RequireLong(o, "gridDefaultCount", c),
                 GridMaxCount = (int)JsonUtil.RequireLong(o, "gridMaxCount", c),
             };
+            var rec = new System.Collections.Generic.Dictionary<string, string>();
+            foreach (var p in JsonUtil.RequireObject(o, "recommendedFormation", c).Properties())
+            {
+                string f = (string)p.Value;
+                if (!CrowdFormations.IsKnown(f)) throw new System.FormatException(c + ".recommendedFormation." + p.Name + ": unknown formation " + f);
+                rec[p.Name] = f;
+            }
+            rules.RecommendedFormation = rec;
+            return rules;
         }
 
         public static CrowdRules Load(IDataSource source) => From(JsonUtil.ParseObject(source.ReadText("Rules/" + File)));
