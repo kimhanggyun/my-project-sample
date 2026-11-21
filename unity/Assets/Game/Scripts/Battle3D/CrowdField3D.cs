@@ -416,7 +416,10 @@ namespace Game.Unity.Battle3D
                 Circle(Pooled(_selRings, sel++, "SelectRing", new Color(1f, 0.85f, 0.25f), 0.12f), ShownCenter(a, alpha), RadiusOf(a));
                 // 목표: 이동 = 그 땅에 작은 고리, 공격 = 대상 부대 둘레 (같은 대상은 한 번만)
                 if (a.Order == CrowdOrders.Move)
+                {
                     Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(a.OrderPoint), 0.6f);
+                    foreach (var w in a.Waypoints) Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(w), 0.4f); // 예약 경유 지점 (R-129)
+                }
                 else if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && targeted.Add(a.OrderTarget))
                 {
                     var t = _battle.Armies[a.OrderTarget];

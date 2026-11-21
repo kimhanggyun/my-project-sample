@@ -68,6 +68,8 @@ namespace Game.Battle.Model.Crowd
         public Vec Facing;
         public string Order = CrowdOrders.Hold;
         public Vec OrderPoint;
+        /// <summary>이동 명령 뒤에 이어 갈 경유 지점들 (R-129 명령 예약): 지금 목표에 닿으면 다음 지점으로.</summary>
+        public readonly List<Vec> Waypoints = new List<Vec>();
         public int OrderTarget = -1;
         /// <summary>돌격 중 (공격 명령으로 적에게 ChargeRange 안까지 다가옴, 맞붙기 전까지) — 병사 · 부대가 빨라진다. 궁병은 돌격하지 않음.</summary>
         public bool Charging;
@@ -311,18 +313,29 @@ namespace Game.Battle.Model.Crowd
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
             a.Order = CrowdOrders.Hold; a.OrderTarget = -1; a.Charging = false;
+            a.Waypoints.Clear();
         }
 
-        /// <summary>땅 한 곳으로 이동 (가면서 만나는 적과는 싸운다, 도착하면 제자리).</summary>
-        public void OrderMove(int army, Vec point)
+        private Vec InField(Vec p) => new Vec(Fix.Clamp(p.X, Fix.Zero, Rules.FieldWidth), Fix.Clamp(p.Y, Fix.Zero, Rules.FieldDepth));
+
+        /// <summary>
+        /// 땅 한 곳으로 이동 (가면서 만나는 적과는 싸운다, 도착하면 제자리).
+        /// append = true면 예약 (R-129): 지금 이동 중이면 그 뒤 경유 지점으로 붙이고, 아니면 바로 간다.
+        /// </summary>
+        public void OrderMove(int army, Vec point, bool append = false)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
+            if (append && a.Order == CrowdOrders.Move) { if (a.Waypoints.Count < MaxWaypoints) a.Waypoints.Add(InField(point)); return; }
             a.Order = CrowdOrders.Move;
-            a.OrderPoint = new Vec(Fix.Clamp(point.X, Fix.Zero, Rules.FieldWidth), Fix.Clamp(point.Y, Fix.Zero, Rules.FieldDepth));
+            a.OrderPoint = InField(point);
+            a.Waypoints.Clear();
             a.OrderTarget = -1;
             a.Charging = false;
         }
+
+        /// <summary>한 부대가 예약해 둘 수 있는 경유 지점 수.</summary>
+        public const int MaxWaypoints = 6;
 
         /// <summary>적 부대 공격 (그 부대 쪽으로 가서, 가까워지면 돌격 — 궁병은 사거리에서 멈춰 쏜다).</summary>
         public void OrderAttack(int army, int target)
@@ -332,6 +345,7 @@ namespace Game.Battle.Model.Crowd
             if (!a.Leading || Armies[target].Team == a.Team) return;
             a.Order = CrowdOrders.Attack;
             a.OrderTarget = target;
+            a.Waypoints.Clear();
         }
 
         /// <summary>그 부대가 아직 싸울 수 있음 (병사나 장수가 남음).</summary>
@@ -696,7 +710,14 @@ namespace Game.Battle.Model.Crowd
             var d = goal - a.Center;
             Fix dist = d.Length;
             Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor;
-            if (a.Order == CrowdOrders.Move && dist <= baseSpeed * dt) { a.Center = goal; a.Order = CrowdOrders.Hold; a.Charging = false; return; }
+            if (a.Order == CrowdOrders.Move && dist <= baseSpeed * dt)
+            {
+                a.Center = goal;
+                // 예약한 경유 지점이 있으면 다음으로, 없으면 제자리
+                if (a.Waypoints.Count > 0) { a.OrderPoint = a.Waypoints[0]; a.Waypoints.RemoveAt(0); }
+                else { a.Order = CrowdOrders.Hold; a.Charging = false; }
+                return;
+            }
             if (a.Order == CrowdOrders.Attack && dist <= Fix.OneValue) return;
             if (dist > Fix.OneValue) a.Facing = d.Normalized(); // 도착 직전에는 방향을 그대로 (뒤집히지 않게)
             int alive = System.Math.Max(1, a.AliveCount);

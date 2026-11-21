@@ -120,6 +120,31 @@ namespace Game.Tests.Battle
         }
 
         [Fact]
+        public void WaypointsAreFollowedInOrder()
+        {
+            // 명령 예약 (R-129): 이동 중에 더한 지점들을 차례로 지나 마지막에서 제자리
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyAdvance = false, Seed = 2 });
+            var a = b.Commander(CrowdBattle.Ally);
+            var p1 = new Game.Battle.Model.Geometry.Vec(Fix.FromInt(20), Fix.FromInt(20));
+            var p2 = new Game.Battle.Model.Geometry.Vec(Fix.FromInt(40), Fix.FromInt(20));
+            b.OrderMove(a.Id, p1);
+            b.OrderMove(a.Id, p2, append: true);
+            Assert.Single(a.Waypoints);
+            bool passedP1 = false;
+            for (int t = 0; t < 600 && a.Order != CrowdOrders.Hold; t++)
+            {
+                b.Step();
+                if ((a.Center - p1).Length <= Fix.OneValue) passedP1 = true;
+            }
+            Assert.True(passedP1, "did not pass p1");
+            Assert.Equal(CrowdOrders.Hold, a.Order);
+            Assert.True((a.Center - p2).Length <= Fix.OneValue, "center " + a.Center);
+            b.OrderMove(a.Id, p1);
+            b.OrderHold(a.Id);
+            Assert.Empty(a.Waypoints);
+        }
+
+        [Fact]
         public void ThreeCorpsDeterministicAndCommanderDecides()
         {
             var setup = new CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyFormation = CrowdFormations.Wedge, EnemyFormation = CrowdFormations.Thick, EnemyAdvance = true, Seed = 9 };
