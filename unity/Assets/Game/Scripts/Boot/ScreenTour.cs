@@ -200,6 +200,8 @@ namespace Game.Unity.Boot
             s5.StepForTour(10);
             s5.FocusArmyForTour(0, 38f);
             yield return Shot("33b_sample2_all_move", null, 0.2f);
+            // 말 탄 총대장이 달리는 모습 (말 다리 넷, 2026-11-21 사용자) — 1틱 간격, 카메라가 따라감
+            for (int i = 0; i < 6; i++) { s5.StepForTour(1); s5.FocusGeneralForTour(5f); yield return Shot($"33h_sample2_horse_{i:00}", null, 0f); }
 
             _app.ShowMain("story");
             Done = true;

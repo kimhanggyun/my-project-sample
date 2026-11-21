@@ -629,6 +629,9 @@ namespace Game.Unity.Boot
         /// <summary>시작할 때 기록된 수단으로 자동 로그인. 끝날 때까지 <see cref="StartSync"/>는 기다린다.</summary>
         public void AutoSignIn(string method)
         {
+            // 이미 자동 로그인 중이면 새로 시작하지 않는다 (2026-11-21 사용자 폰: 시작 단계가 넘어갈 때마다 불려 구글 로그인 시트가 여러 번 떴음).
+            // 끝을 기다리는 쪽은 StartSync가 _afterAutoSignIn으로 기다린다
+            if (_autoSigningIn) return;
             _autoSigningIn = true;
             SignInFailed = false;
             SignIn(method, ok =>
