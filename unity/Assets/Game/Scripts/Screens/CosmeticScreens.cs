@@ -13,15 +13,16 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class CosmeticScreen : GameScreen
     {
-        private readonly string _line, _notice;
+        private readonly string _line;
         private readonly string _previewArmor, _previewHorse;
         private readonly bool _hasPreview;
 
-        public CosmeticScreen(string line, string notice = null) { _line = line; _notice = notice; }
+        /// <param name="notice">결과 알림 → 공통 토스트 (2026-11-20: 위 글줄 대신).</param>
+        public CosmeticScreen(string line, string notice = null, bool bad = false) { _line = line; if (notice != null) Toast.Show(notice, bad); }
 
         private CosmeticScreen(string line, string notice, string previewArmor, string previewHorse)
         {
-            _line = line; _notice = notice; _previewArmor = previewArmor; _previewHorse = previewHorse; _hasPreview = true;
+            _line = line; if (notice != null) Toast.Show(notice); _previewArmor = previewArmor; _previewHorse = previewHorse; _hasPreview = true;
         }
 
         public override void Build()
@@ -44,7 +45,6 @@ namespace Game.Unity.Screens
             Ui.Size(big, 420, 420).flexibleWidth = 0;
             string looking = (showArmor == wornArmor && showHorse == wornHorse) ? T("ui.cos.now") : T("ui.cos.trying");
             Ui.Label(stage, looking, 24, TextAnchor.MiddleCenter, Palette.TextDim);
-            if (_notice != null) Ui.Label(body, _notice, 26, TextAnchor.MiddleCenter, Palette.Good);
 
             Section(body, svc, CosmeticKinds.Armor, T("ui.cos.armor"), wornArmor, showArmor, showHorse);
             if (mounted) Section(body, svc, CosmeticKinds.Horse, T("ui.cos.horse"), wornHorse, showArmor, showHorse);
@@ -124,18 +124,18 @@ namespace Game.Unity.Screens
         private void Wear(string kind, string id)
         {
             bool ok = Ctx.Do(PlayerActionRunner.EquipCosmetic(_line, kind, id));
-            App.Show(new CosmeticScreen(_line, ok ? T("ui.cos.wore") : T("ui.cmd.rejected")));
+            App.Show(new CosmeticScreen(_line, ok ? T("ui.cos.wore") : T("ui.cmd.rejected"), !ok));
         }
 
         private void BuyAndWear(CosmeticService svc, string kind, CosmeticDef d)
         {
             var w = new Wallet(Ctx.State.Wallet);
-            if (d.PriceGold != null && w.Get(ResourceIds.Gold) < d.PriceGold.Value) { App.Show(new CosmeticScreen(_line, T("ui.cos.notEnough.gold"))); return; }
-            if (d.PriceGem != null && w.Get(ResourceIds.Gem) < d.PriceGem.Value) { App.Show(new CosmeticScreen(_line, T("ui.cos.notEnough.gem"))); return; }
+            if (d.PriceGold != null && w.Get(ResourceIds.Gold) < d.PriceGold.Value) { App.Show(new CosmeticScreen(_line, T("ui.cos.notEnough.gold"), true)); return; }
+            if (d.PriceGem != null && w.Get(ResourceIds.Gem) < d.PriceGem.Value) { App.Show(new CosmeticScreen(_line, T("ui.cos.notEnough.gem"), true)); return; }
             Ui.Confirm(Root, T(d.NameKey), T("ui.cos.buyConfirm", d.PriceGold != null ? T("ui.cos.price.gold", d.PriceGold.Value.ToString("N0")) : T("ui.cos.price.gem", d.PriceGem.Value.ToString("N0"))), T("ui.cos.buy"), () =>
             {
                 bool ok = Ctx.Do(PlayerActionRunner.BuyCosmetic(d.Id)) && Ctx.Do(PlayerActionRunner.EquipCosmetic(_line, kind, d.Id));
-                App.Show(new CosmeticScreen(_line, ok ? T("ui.cos.boughtWore") : T("ui.cmd.rejected")));
+                App.Show(new CosmeticScreen(_line, ok ? T("ui.cos.boughtWore") : T("ui.cmd.rejected"), !ok));
             }, (T("ui.common.cancel"), () => { }));
         }
     }

@@ -22,8 +22,6 @@ namespace Game.Unity.Screens
         private const float CardHeight = 238f, Indent = 70f, Spacing = 14f;
         private static readonly Color LineColor = new Color(0.47f, 0.43f, 0.37f);
 
-        private static string _notice;
-        private static bool _noticeBad;
         /// <summary>다음에 그릴 때 목록 대신 열 승급 화면 (그 부대 id). 한 번 그리면 지운다.</summary>
         private static string _promoteUnit;
         /// <summary>승급 화면에서 고른 인원 ("부대|병종" → 인원). 목록에서 새로 열면 지운다.</summary>
@@ -58,11 +56,6 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Rect(head, "InfoGap"), 70, 66).flexibleWidth = 0;
             var info = InfoButton.Add(root, ctx.T("ui.troops.note"));
             ((RectTransform)info.transform).anchoredPosition = new Vector2(-25f, -(25f + 50f - InfoButton.Size / 2f));
-            if (_notice != null)
-            {
-                Ui.Size(Ui.Label(list, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, _noticeBad ? Palette.Bad : Palette.Good), 50);
-                _notice = null;
-            }
             var units = ctx.State.Units;
             for (int i = 0; i < units.Count; i++)
             {
@@ -237,13 +230,12 @@ namespace Game.Unity.Screens
             Ui.Label(panel, desc, 26, TextAnchor.UpperLeft, Palette.PromptText);
         }
 
-        /// <summary>행동을 보내고 결과 한 줄을 남긴 채 목록을 다시 그린다. check가 null이면 행동 결과만 본다.</summary>
+        /// <summary>행동을 보내고 결과를 토스트로 알린 뒤 목록을 다시 그린다 (2026-11-20: 위 글줄 대신). check가 null이면 행동 결과만 본다.</summary>
         internal static void Do(GameApp app, Game.Online.PlayerAction action, string check)
         {
             var ctx = app.Context;
             bool ok = (check == null || check == TroopGrowthService.Ok) && ctx.Do(action);
-            _notice = ctx.T("ui.troops.result." + (ok ? TroopGrowthService.Ok : check ?? "failed"));
-            _noticeBad = !ok;
+            Toast.Show(ctx.T("ui.troops.result." + (ok ? TroopGrowthService.Ok : check ?? "failed")), !ok);
             app.ShowMain("troop");
         }
     }
