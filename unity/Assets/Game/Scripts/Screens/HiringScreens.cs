@@ -319,7 +319,6 @@ namespace Game.Unity.Screens
         private readonly string _id;
         private string _payWith = ResourceIds.Gold;
         private long? _price;
-        private string _notice;
 
         public HirePriceScreen(string kind, string id) { _kind = kind; _id = id; }
 
@@ -360,20 +359,16 @@ namespace Game.Unity.Screens
             Ui.Button(row, "-" + step.ToString("N0"), () => { _price = System.Math.Max(0, price - step); Rebuild(); });
             Ui.Button(row, "+" + step.ToString("N0"), () => { _price = System.Math.Min(max, price + step); Rebuild(); });
             Ui.Button(Root, T("ui.hire.payWith", T("resource." + _payWith)), () => { _payWith = _payWith == ResourceIds.Gold ? ResourceIds.Supply : ResourceIds.Gold; _price = null; Rebuild(); });
-            if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleCenter, Palette.Text);
             Ui.Size(Ui.Label(Root, "", Ui.FontSmall), flexibleHeight: 1);
             var buttons = Ui.Row(Root, "Buttons", Ui.ButtonHeight);
             var submit = Ui.Button(buttons, T("ui.hire.submit"), () =>
             {
                 var req = new HireListingRequest { Kind = _kind, Price = price, PayWith = _payWith };
                 if (_kind == HireKinds.General) req.GeneralId = _id; else req.UnitId = _id;
-                _notice = T("ui.hire.loading");
-                Rebuild();
                 Ctx.RegisterHire(req, Loading.Wrap<HireListingResponse>(r =>
                 {
                     if (r != null && r.Ok) { App.ShowMain("hiring"); return; }
-                    _notice = r == null ? T("ui.hire.failed") : T("ui.hire.result." + r.Reason);
-                    Rebuild();
+                    Toast.Show(r == null ? T("ui.hire.failed") : T("ui.hire.result." + r.Reason), true); // 결과는 토스트 (2026-11-20)
                 }));
             });
             Ui.SetEnabled(submit, blocked == null);
@@ -381,7 +376,7 @@ namespace Game.Unity.Screens
 
         private void Rebuild()
         {
-            var next = new HirePriceScreen(_kind, _id) { _payWith = _payWith, _price = _price, _notice = _notice };
+            var next = new HirePriceScreen(_kind, _id) { _payWith = _payWith, _price = _price };
             App.Show(next);
         }
     }
@@ -389,10 +384,20 @@ namespace Game.Unity.Screens
     /// <summary>우편함: 고용 보상 받기 (행동 mail.claim — 서버가 우편을 확인하고 같은 규칙으로 더한다).</summary>
     public sealed class MailScreen : GameScreen
     {
-        private readonly string _notice;
         private readonly string _backTab;
+        /// <param name="notice">결과 알림 → 공통 토스트로 (2026-11-20: 위 글줄 대신).</param>
         /// <param name="backTab">[뒤로]로 돌아갈 메인 탭 (고용 / 영토).</param>
-        public MailScreen(string notice = null, string backTab = "hiring") { _notice = notice; _backTab = backTab; }
+        public MailScreen(string notice = null, string backTab = "hiring", bool bad = false)
+        {
+            _backTab = backTab;
+            if (notice != null) Toast.Show(notice, bad);
+        }
+
+        private void ClaimOne(Mail item)
+        {
+            bool ok = Ctx.ClaimMail(item);
+            Replace(new MailScreen(ok ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab, bad: !ok));
+        }
 
         /// <summary>마지막 출석 결과 (차례 표시 · 이미 받음 안내).</summary>
         private static AttendanceResponse _lastAttendance;
@@ -430,7 +435,7 @@ namespace Game.Unity.Screens
             Ctx.CheckIn(r =>
             {
                 _lastAttendance = r;
-                if (r == null) { end(); Replace(new MailScreen(T("ui.hire.failed"), _backTab)); return; }
+                if (r == null) { end(); Replace(new MailScreen(T("ui.hire.failed"), _backTab, bad: true)); return; }
                 Ctx.ClaimMailWhere(m => m.Kind == MailKinds.Attendance, sum =>
                 {
                     end();
@@ -477,7 +482,6 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             var (header, list, _, _) = Ui.TitledPage(Root, T("ui.hire.mailTitle"), () => App.ShowMain(_backTab), infoGap: false);
-            if (_notice != null) Ui.Label(header, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             AttendanceCard(header);
             var loading = Ui.Label(list, T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             Ctx.LoadMail(mail =>
@@ -522,7 +526,7 @@ namespace Game.Unity.Screens
                     Ui.Label(card, line, Ui.FontSmall, TextAnchor.MiddleLeft, m.Kind == MailKinds.SiegeAlert ? Palette.Bad : Palette.Text);
                     // 받을 것이 있는 우편만 [받기] (공성전 알림은 알림뿐)
                     if (m.Kind != MailKinds.SiegeAlert && m.Amount > 0)
-                        Ui.Button(card, T("ui.hire.claim"), () => Replace(new MailScreen(Ctx.ClaimMail(item) ? T("ui.hire.claimed") : T("ui.hire.failed"), _backTab)), 72, fontSize: 26);
+                        Ui.Button(card, T("ui.hire.claim"), () => ClaimOne(item), 72, fontSize: 26);
                 }
             });
         }

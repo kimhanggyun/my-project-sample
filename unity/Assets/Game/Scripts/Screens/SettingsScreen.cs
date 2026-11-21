@@ -9,12 +9,12 @@ namespace Game.Unity.Screens
     public sealed class NicknameScreen : GameScreen
     {
         private const float CheckDelay = 0.6f; // 입력을 멈추고 이만큼 지나면 묻는다
-        private readonly string _notice;
         private Text _check;
         private string _pending;
         private float _wait;
         private int _asked;
-        public NicknameScreen(string notice = null) { _notice = notice; }
+        /// <param name="notice">저장 실패 까닭 → 공통 토스트 (2026-11-20).</param>
+        public NicknameScreen(string notice = null) { if (notice != null) Toast.Show(notice, bad: true); }
 
         public override void Tick(float deltaTime)
         {
@@ -42,7 +42,6 @@ namespace Game.Unity.Screens
             Ui.Column(Root, 16, 32);
             Ui.TitleBar(Root, T("ui.nickname.title"), () => Replace(new SettingsScreen()), infoGap: false);
             Ui.Label(Root, T("ui.nickname.note"), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
-            if (_notice != null) Ui.Label(Root, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
             var input = Ui.TextInput(Root, Ctx.Nickname ?? T("ui.nickname.placeholder"), Game.Online.NicknameRules.Max, 110, 34);
             _check = Ui.Label(Root, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
             input.onValueChanged.AddListener(text => { _pending = text; _wait = CheckDelay; });
@@ -64,19 +63,17 @@ namespace Game.Unity.Screens
     public sealed class SettingsScreen : GameScreen
     {
         private static readonly string[] NotifyKinds = { "attacked", "allyHelp", "incomeFull" };
-        private readonly string _notice;
         private bool _confirmReset;
         private Text _resetNote;
         private Text _serverNote;
 
-        public SettingsScreen(string notice = null) { _notice = notice; }
+        /// <param name="notice">결과 알림 → 공통 토스트 (2026-11-20: 위 글줄 대신).</param>
+        public SettingsScreen(string notice = null, bool bad = false) { if (notice != null) Toast.Show(notice, bad); }
 
         public override void Build()
         {
             var (header, body, _) = Ui.PageLayout(Root, 0);
             Ui.TitleBar(header, T("ui.settings.header"), () => App.ShowMain(), infoGap: false);
-            if (_notice != null) Ui.Label(header, _notice, 24, TextAnchor.MiddleLeft, Palette.Good);
-
             BuildMe(body);
             BuildAccount(body);
             BuildGame(body);
@@ -226,7 +223,7 @@ namespace Game.Unity.Screens
                 var end = Loading.Begin(); // 삭제 요청 → 로그아웃까지 한 번에 (H5)
                 Ctx.RequestAccountDeletion(r =>
                 {
-                    if (r == null || !r.Ok) { end(); Replace(new SettingsScreen(T("ui.hire.failed"))); return; }
+                    if (r == null || !r.Ok) { end(); Replace(new SettingsScreen(T("ui.hire.failed"), bad: true)); return; }
                     Ctx.LogOut(true, _ => { end(); App.Reboot(); }); // 토큰까지 지워야 다시 시작할 때 /me가 삭제를 취소하지 않는다 (7일 안에 직접 로그인해야 취소)
                 });
             }, 96, Palette.Danger, 28);
@@ -335,7 +332,8 @@ namespace Game.Unity.Screens
             Arrow(restore, "›", () =>
             {
                 if (Ctx.Store == null) return;
-                Ctx.Store.RestorePurchases(list => Replace(new SettingsScreen(T("ui.settings.restored", list?.Count ?? 0))));
+                var end = Loading.Begin(); // 스토어 확인 → 서버 복원까지 (H5)
+                Ctx.Store.RestorePurchases(list => { end(); Replace(new SettingsScreen(T("ui.settings.restored", list?.Count ?? 0))); });
             }, Ctx.Store != null && Ctx.Store.IsAvailable);
         }
 
@@ -430,15 +428,14 @@ namespace Game.Unity.Screens
     /// </summary>
     public sealed class ProfileScreen : GameScreen
     {
-        private readonly string _notice;
-        public ProfileScreen(string notice = null) { _notice = notice; }
+        /// <param name="notice">결과 알림 → 공통 토스트 (2026-11-20).</param>
+        public ProfileScreen(string notice = null) { if (notice != null) Toast.Show(notice); }
 
         public override void Build()
         {
             Ctx.EnsureAvatar(); // 닉네임 장수 (장수 수 · Lv)
             var (header, body, _) = Ui.PageLayout(Root, 0);
             Ui.TitleBar(header, T("ui.profile.title"), () => App.ShowMain(), infoGap: false);
-            if (_notice != null) Ui.Label(header, _notice, 24, TextAnchor.MiddleLeft, Palette.Good);
 
             var card = Ui.Card(body, "Me", 24, 10);
             var row = Ui.Row(card, "Row", 180, 20);

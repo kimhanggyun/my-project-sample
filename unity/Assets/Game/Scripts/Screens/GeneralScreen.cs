@@ -18,7 +18,6 @@ namespace Game.Unity.Screens
         private static string _tab = "grow";
 
         private readonly string _generalId;
-        private Text _notice;
 
         public GeneralScreen(string generalId) { _generalId = generalId; }
 
@@ -98,7 +97,6 @@ namespace Game.Unity.Screens
                 Ui.Size(Ui.Tag(traitRow, Ctx.Defs.Traits.Traits.TryGetValue(t, out var td) ? T(td.NameKey) : t, Palette.Good, 20, 44), width: 140);
             InfoButton.Add(Root, T("ui.general.note"));
             Ui.SegmentTabs(header, new[] { ("grow", T("ui.general.tab.grow")), ("skill", T("ui.general.tab.skill")), ("record", T("ui.general.tab.record")) }, _tab, t => { _tab = t; App.Show(new GeneralScreen(_generalId)); }, 58, 300);
-            _notice = Ui.Label(body, "", 26, TextAnchor.MiddleLeft, Palette.Good);
 
             if (_tab == "grow")
             {
@@ -158,7 +156,7 @@ namespace Game.Unity.Screens
                     if (unlock != null)
                     {
                         long gem = unlock.Value;
-                        var ub = Ui.Button(row, T("ui.general.unlock", gem.ToString("N0")), () => Reopen(Ctx.Do(PlayerActionRunner.UnlockSkillLearn(sid)) ? T("ui.general.unlocked") : T("ui.cos.notEnough.gem")), 64, fontSize: 22);
+                        var ub = Ui.Button(row, T("ui.general.unlock", gem.ToString("N0")), () => { bool ok = Ctx.Do(PlayerActionRunner.UnlockSkillLearn(sid)); Reopen(ok ? T("ui.general.unlocked") : T("ui.cos.notEnough.gem"), !ok); }, 64, fontSize: 22);
                         Ui.SetEnabled(ub, Ctx.Resource(ResourceIds.Gem) >= gem);
                     }
                 }
@@ -192,7 +190,7 @@ namespace Game.Unity.Screens
         private void Buy(SkillBookService books, string skillId)
         {
             bool ok = Ctx.Do(PlayerActionRunner.BuySkillBook(skillId));
-            Reopen(ok ? T("ui.general.bought") : T("ui.general.cannotBuy"));
+            Reopen(ok ? T("ui.general.bought") : T("ui.general.cannotBuy"), !ok);
         }
 
         private void Learn(SkillBookService books, string skillId)
@@ -200,20 +198,20 @@ namespace Game.Unity.Screens
             // 안 되는 까닭을 먼저 보고, 되면 행동으로 (서버도 같은 규칙으로 적용, R-41)
             var r = books.Check(Ctx.State, _generalId, skillId);
             if (r == LearnCheck.Ok && !Ctx.Do(PlayerActionRunner.LearnSkill(_generalId, skillId))) r = books.Check(Ctx.State, _generalId, skillId);
-            Reopen(r == LearnCheck.Ok ? T("ui.general.learned") : T("ui.learn." + r));
+            Reopen(r == LearnCheck.Ok ? T("ui.general.learned") : T("ui.learn." + r), r != LearnCheck.Ok);
         }
 
         private void LimitBreak()
         {
             bool ok = Ctx.Do(PlayerActionRunner.LimitBreak(_generalId));
-            Reopen(ok ? T("ui.limitBreak.done", LimitBreakService.MaxLevelOf(Ctx.Defs, Ctx.State.FindGeneral(_generalId))) : T("ui.limitBreak." + new LimitBreakService(Ctx.Defs).Check(Ctx.State, _generalId)));
+            Reopen(ok ? T("ui.limitBreak.done", LimitBreakService.MaxLevelOf(Ctx.Defs, Ctx.State.FindGeneral(_generalId))) : T("ui.limitBreak." + new LimitBreakService(Ctx.Defs).Check(Ctx.State, _generalId)), !ok);
         }
 
-        private void Reopen(string notice)
+        /// <summary>결과를 공통 토스트로 알리고 다시 그린다 (2026-11-20: 글줄 대신). bad = 실패(붉은 띠).</summary>
+        private void Reopen(string notice, bool bad = false)
         {
-            var next = new GeneralScreen(_generalId);
-            App.Show(next);
-            next._notice.text = notice;
+            App.Show(new GeneralScreen(_generalId));
+            Toast.Show(notice, bad);
         }
     }
 }

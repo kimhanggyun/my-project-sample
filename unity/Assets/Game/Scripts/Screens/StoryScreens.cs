@@ -24,7 +24,7 @@ namespace Game.Unity.Screens
             var (cleared, total) = StoryBoard.Progress(ctx.Defs, ctx.State);
             var head = Ui.HeaderRow(list, ctx.T("ui.story.header"), ctx.T("ui.story.progress", cleared, total));
             int found = SecretText.FoundCount(ctx, out int secrets);
-            if (secrets > 0) Small(head, ctx.T("ui.codex.short", found, secrets), () => app.Show(new CodexScreen()));
+            if (secrets > 0) Small(head, ctx.T("ui.codex.short", found, secrets), () => app.ShowMain("codex"));
             Small(head, ctx.T("ui.replay.short", ctx.Replays.Items.Count), () => app.Show(new ReplayListScreen()));
 
             // 훈련 전투 (R-85): 그 병종이 있으면 머리 아래 작은 버튼 (반복 가능)
