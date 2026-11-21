@@ -196,7 +196,7 @@ namespace Game.Unity.Boot
             var s5 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, Seed = 11 });
             yield return Shot("33_sample2_all_setup", () => s5, 0.2f);
             s5.StepForTour(1);
-            s5.SelectAllAndTapForTour(30f, 26f);
+            s5.SelectAllAndTapForTour(30f, 28f);
             s5.StepForTour(10);
             s5.FocusArmyForTour(0, 38f);
             yield return Shot("33b_sample2_all_move", null, 0.2f);

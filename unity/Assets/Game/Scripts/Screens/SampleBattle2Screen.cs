@@ -217,17 +217,23 @@ namespace Game.Unity.Screens
             foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from));
         }
 
-        /// <summary>그 자리를 덮는 부대 (살아 있는 병사 가운데에서 대열 크기 + 1칸 안, 가장 가까운 것).</summary>
+        /// <summary>
+        /// 그 자리를 덮는 부대: 부대 앞 방향 기준 직사각형 (대열 반 폭 · 반 깊이 + 여유) 안, 가장 가까운 것.
+        /// (2026-11-21 캡처: 둥근 판정이면 넓은 일자 대열 바로 앞 땅을 눌러도 그 부대를 고름)
+        /// </summary>
         private CrowdArmy ArmyAt(Vec p)
         {
             CrowdArmy best = null;
             Fix bestD = Fix.Zero;
+            Fix pad = Fix.FromRatio(8, 10), padBack = Fix.FromInt(2); // 뒤쪽은 장수까지
             foreach (var a in _battle.Armies)
             {
                 if (!_battle.Standing(a)) continue;
-                Fix d = (a.Centroid() - p).Length;
-                Fix r = Fix.Max(a.HalfWidth, a.HalfDepth) + Fix.OneValue;
-                if (d <= r && (best == null || d < bestD)) { best = a; bestD = d; }
+                var d = p - a.Centroid();
+                Fix lx = d.Dot(a.Right), ly = d.Dot(a.Facing);
+                if (lx < -(a.HalfWidth + pad) || lx > a.HalfWidth + pad || ly > a.HalfDepth + pad || ly < -(a.HalfDepth + padBack)) continue;
+                Fix dist = d.LengthSquared;
+                if (best == null || dist < bestD) { best = a; bestD = dist; }
             }
             return best;
         }
