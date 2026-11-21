@@ -45,10 +45,11 @@ namespace Game.Unity.Battle3D
         private readonly float _depth;
         private readonly Mesh _cube;
         private readonly List<Object> _owned = new List<Object>();
-        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4, AllyShaken = 5, EnemyShaken = 6, HiddenTone = 7;
+        private const int Ally = 0, Enemy = 1, Selected = 2, Confused = 3, Hit = 4, AllyShaken = 5, EnemyShaken = 6, HiddenTone = 7, DeadWhite = 8;
         // 흔들리는 군단(사기 바닥 가까이)은 바랜 팀 색, 숨은 아군(복병 준비·은신)은 어두운 색 (D18)
         private static readonly Color[] SoldierColors = { AllyColor, EnemyColor, SelectedColor, ConfusedColor, HitColor,
-            new Color(0.55f, 0.62f, 0.80f), new Color(0.78f, 0.55f, 0.52f), new Color(0.22f, 0.28f, 0.22f) };
+            new Color(0.55f, 0.62f, 0.80f), new Color(0.78f, 0.55f, 0.52f), new Color(0.22f, 0.28f, 0.22f),
+            new Color(0.97f, 0.97f, 0.95f) }; // DeadWhite: 죽는 순간 하얗게 (PR D)
         // 버프·디버프 테두리 (D18): 군단 발밑 원, 버프 = 금색, 디버프(혼란·도발) = 보라
         private readonly Dictionary<CorpsState, LineRenderer> _statusRings = new Dictionary<CorpsState, LineRenderer>();
         private static readonly Color BuffColor = new Color(1f, 0.82f, 0.30f);
@@ -414,54 +415,44 @@ namespace Game.Unity.Battle3D
             return _partMaterials[i] = m;
         }
 
-        /// <summary>쓰러진 병사 (병력이 줄어 화면 병사가 빠진 자리에 남는다, 전투가 끝날 때까지). 최대 개수까지만.</summary>
-        private const int FallenMax = 4000;
         private readonly Dictionary<Game.Battle.Model.Simulation.SubUnitState, long> _shownSoldiers = new Dictionary<Game.Battle.Model.Simulation.SubUnitState, long>();
-        private InstanceBatch _fallen;
-        private InstanceBatch Fallen
-        {
-            get
-            {
-                if (_fallen != null) return _fallen;
-                var m = Own(NewMaterial(new Color(0.18f, 0.16f, 0.14f)));
-                m.enableInstancing = true;
-                return _fallen = new InstanceBatch(_cube, new[] { m }, Matrix4x4.TRS(new Vector3(0f, SoldierMeshes.FallenScale.y / 2f, 0f), Quaternion.identity, SoldierMeshes.FallenScale));
-            }
-        }
 
-        private void AddFallen(Vector3 p, int seed)
-        {
-            if (Fallen.Matrices.Count >= FallenMax) return;
-            p.y = GroundHeight(p.x, p.z);
-            Fallen.Add(p, Quaternion.Euler(0f, (seed * 73) % 360, 0f));
-        }
-
-        // ---- 쓰러지는 병사 (2026-11-14): 앞줄에서 넘어지는 동작 뒤 시체가 된다 ----
-        private const float DyingSeconds = 0.45f;
-        private const int DyingMax = 400;
-        private struct Dying { public Vector3 Pos; public Quaternion Rot; public float Start; public string Troop; public int Color; public float Dir; public int Seed; }
+        // ---- 죽는 병사 (PR D 2026-11-20, 참고 영상): 맞닿는 선에서 하얗게 번쩍 → 적 반대쪽으로 튕기며 넘어짐 → 땅으로 가라앉아 사라짐 (0.8초).
+        // 짙은 시체 원반은 남기지 않는다 (덩어리에 묻힌 얼룩처럼 보이던 것). 이게 이어져서 "여기서 싸운다"가 한눈에 보이게
+        private const float DyingSeconds = 0.8f;
+        private const float DyingWhite = 0.18f, DyingFall = 0.35f;
+        private const float DyingKnock = 0.25f, DyingHop = 0.12f, DyingSink = 0.35f;
+        private const int DyingMax = 600;
+        private struct Dying { public Vector3 Pos; public Quaternion Rot; public Vector3 Away; public float Start; public string Troop; public int Color; public float Dir; public int Seed; }
         private readonly List<Dying> _dying = new List<Dying>();
 
+        /// <param name="rot">그 소부대의 화면 방향 (앞 = 적 쪽) — 적과 반대쪽(뒤)으로 튕긴다.</param>
         private void AddDying(Vector3 p, Quaternion rot, string troop, int color, int seed, float clock)
         {
-            if (_dying.Count >= DyingMax) { AddFallen(p, seed); return; }
-            _dying.Add(new Dying { Pos = p, Rot = rot, Start = clock, Troop = troop, Color = color, Dir = (seed & 1) == 0 ? 1f : -1f, Seed = seed });
+            if (_dying.Count >= DyingMax) return; // 너무 많으면 그냥 빠진다 (얼룩도 남기지 않음)
+            var away = rot * Vector3.back;
+            away = Quaternion.Euler(0f, ((seed * 37) % 41) - 20, 0f) * away; // 조금씩 다른 방향
+            _dying.Add(new Dying { Pos = p, Rot = rot, Away = away, Start = clock, Troop = troop, Color = color, Dir = (seed & 1) == 0 ? 1f : -1f, Seed = seed });
         }
 
-        /// <summary>쓰러지는 병사를 그린다: 뒤(또는 앞)로 넘어가며 가라앉고, 다 넘어지면 시체로.</summary>
+        /// <summary>
+        /// 죽는 병사를 그린다: 처음 0.18초 하얀색 + 살짝 튀어 오름, 0.35초 동안 적 반대쪽으로 0.25 밀리며 넘어지고, 나머지 동안 땅으로 가라앉아 사라진다.
+        /// </summary>
         private void DrawDying(float clock)
         {
             for (int i = _dying.Count - 1; i >= 0; i--)
             {
                 var d = _dying[i];
-                float t = (clock - d.Start) / DyingSeconds;
-                if (t >= 1f) { AddFallen(d.Pos, d.Seed); _dying.RemoveAt(i); continue; }
-                t = Mathf.Clamp01(t);
-                float ease = t * t; // 처음엔 천천히, 끝에 털썩
-                var p = d.Pos;
-                p.y = GroundHeight(p.x, p.z) - ease * 0.05f;
+                float age = clock - d.Start;
+                if (age >= DyingSeconds) { _dying.RemoveAt(i); continue; }
+                if (age < 0f) age = 0f;
+                float fall = Mathf.Clamp01(age / DyingFall);
+                float ease = 1f - (1f - fall) * (1f - fall); // 튕김은 처음에 빠르게
+                float sink = Mathf.Clamp01((age - DyingFall) / (DyingSeconds - DyingFall));
+                var p = d.Pos + d.Away * (DyingKnock * ease);
+                p.y = GroundHeight(p.x, p.z) + DyingHop * Mathf.Sin(Mathf.PI * fall) - DyingSink * sink * sink;
                 var r = d.Rot * Quaternion.Euler(-85f * ease * d.Dir, 0f, 0f);
-                SoldierBatch(d.Troop, d.Color).Add(p, r);
+                SoldierBatch(d.Troop, age < DyingWhite ? DeadWhite : d.Color).Add(p, r);
             }
         }
 
@@ -1056,10 +1047,17 @@ namespace Game.Unity.Battle3D
                     // 병력이 줄어 화면 병사가 빠지면 앞줄 자리에서 쓰러진다 (쓰러지는 동작 → 시체). 뒷줄은 앞으로 메운다
                     if (_shownSoldiers.TryGetValue(u, out var before) && before > n)
                     {
+                        // 맞붙은 적이 있으면 그 적에 가장 가까운 앞줄 칸 둘레에서 (PR D: PR C 경계선 위)
+                        int nearCol = -1;
+                        if (u.AttackTarget != null && _disp.TryGetValue(u.AttackTarget, out var tdp))
+                        {
+                            var lt = Quaternion.Inverse(rot) * (tdp.pos - center);
+                            nearCol = Mathf.Clamp(Mathf.RoundToInt((lt.x + halfW) / SoldierSpacing), 0, side - 1);
+                        }
                         for (long k = n; k < before; k++)
                         {
                             int s = seedBase + (int)k * 31 + _flashFrame;
-                            int col = (int)((uint)(s * 2654435761u) % (uint)side);
+                            int col = nearCol >= 0 ? Mathf.Clamp(nearCol + (int)((uint)(s * 2654435761u) % 5u) - 2, 0, side - 1) : (int)((uint)(s * 2654435761u) % (uint)side);
                             var local = new Vector3(col * SoldierSpacing - halfW, 0f, frontZ + 0.05f) + Jitter(s);
                             AddDying(center + rot * local, rot, SoldierKey(u), teamColor, s, clock);
                         }
@@ -1105,7 +1103,6 @@ namespace Game.Unity.Battle3D
             HideStaleOutlines();
             DrawDying(clock);
             foreach (var b in _allSoldierBatches) b.Draw(Rig.Camera);
-            _fallen?.Draw(Rig.Camera);
             foreach (var b in _allPropBatches) b.Draw(Rig.Camera);
             Effects.Draw(ctx, Rig.Camera);
         }

@@ -144,5 +144,6 @@
 - 2026-11-20 [데스크탑] desktop/tab-frame — 탭 안 화면(모집 · 연합 · 녹화 · 도감 · 우편 · 설정)이 다시 그릴 때 새 페이지로 가던 것 → GameScreen.Replace(탭 틀 유지), 녹화 재생 빈 값 오류(위 막대 전투명), 장수 좌우 = 목록 정렬 순서
 - 2026-11-20 [원격] claude/receipt-override — R-124 관리자 결제 검증 덮어쓰기 (null · off · fake, 저장소 게임별), Game:AllowAdminReceiptOverride (배포 변수 ALLOW_ADMIN_RECEIPT 기본 true, 출시 전 false — backlog F), 관리자만 바꿈, [상점 상품] 탭 결제 검증 칸 · 가짜 허용 빨간 띠
 - 2026-11-20 [원격] claude/battle-smooth — PR C 전투 덜덜거림: 군단 화면 방향 초당 180°까지 · 1.5° 무시, 소부대 화면 위치 SmoothDamp 0.15초(2 이상은 바로), 사기 떨림 없앰 · 찌르기 절반 · 깜빡임 없앰, 같은 군단 테두리 겹침 밀어내기 · 맞붙은 적 앞줄 0.3 간격, 화살 밝은 나무 · 촉 · 깃 · 0.3초 꽂힘, 링 · 게이지 Overlay
+- 2026-11-20 [원격] claude/battle-dying — PR D 죽는 병사: 처음 0.18초 하얗게 · 적 반대쪽으로 0.25 튕기며 넘어짐 · 0.8초 안에 가라앉아 사라짐, 시체 원반 없앰, 맞붙은 적에 가까운 앞줄 칸에서 쓰러짐
 - 2026-11-20 [원격] claude/toast — PR A 공통 토스트 (Scripts/UI/Toast.cs, 캔버스 맨 위 · 3초 · 실패 붉은 띠 · 연달아면 바꿈), 결과 글줄(_notice) 10개 화면에서 없애고 토스트로, 공성 취소 · 결제 복원에 로딩
 - 2026-11-20 [원격] claude/codex-tab — PR B 장수 화면 · 스토리의 [도감]은 아래 도감 탭으로 (ShowMain("codex")), 탭으로 연 도감 목록은 [‹] 없음 (숨은 보상 자세히만 [‹] → 목록)
