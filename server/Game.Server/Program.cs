@@ -357,9 +357,15 @@ namespace Game.Server
                 registry.Register(new StrategyGameModule(DefaultGame, new[] { "net.itgold.unitygame1" },
                     new FileDataSource(ServerPaths.DataRoot(config["Game:DataRoot"])), DefaultGame, time, store));
             var receipts = ReceiptVerifiers.FromConfig(config, time);
+            string receiptId = ReceiptVerifiers.IdOf(config);
+            bool allowOverride = string.Equals(config["Game:AllowAdminReceiptOverride"], "true", StringComparison.OrdinalIgnoreCase); // R-124, 기본 끔
             var push = PushSenders.FromConfig(config, time);
             foreach (var code in registry.Codes)
-                if (registry.Find(code) is StrategyGameModule m) { m.Receipts = receipts; m.PushSender = push; if (masters != null) m.Masters = masters; }
+                if (registry.Find(code) is StrategyGameModule m)
+                {
+                    m.Receipts = receipts; m.ReceiptVerifierId = receiptId; m.AllowReceiptOverride = allowOverride; m.PushSender = push;
+                    if (masters != null) m.Masters = masters;
+                }
             return registry;
         }
     }

@@ -43,6 +43,10 @@ namespace Game.Server
         List<AdminBanner> AdminBanners();
         /// <summary>관리자: 배너 켜고 끄기를 통째로 바꾼다 (다른 종류는 그대로). 모르는 배너 id는 무시.</summary>
         List<AdminBanner> SetBanners(List<ContentToggle> banners);
+        /// <summary>관리자 (R-124): 결제 검증 — 덮어쓰기 · 서버 설정 · 허용 여부 · 지금 쓰는 것.</summary>
+        AdminReceipts AdminReceipts();
+        /// <summary>관리자 (R-124): 덮어쓰기 정하기 (null = 서버 설정 그대로, off · fake). 허용이 아니면 notAllowed, 모르는 값이면 badValue.</summary>
+        string SetReceiptOverride(string value);
         /// <summary>관리자 (R-123): 상점 상품마다 기본값 · 지금 표출 (결제 상품 + 엽전 · 금괴 치장).</summary>
         List<AdminProduct> AdminProducts();
         /// <summary>관리자 (R-123): 상품 표출을 통째로 바꾼다 (다른 종류는 그대로). 데이터 기본값과 같으면 적지 않는다. 모르는 id는 무시.</summary>
@@ -137,6 +141,39 @@ namespace Game.Server
         /// 결제 영수증 검증기 (R-64 · R-114): 설정 Game:ReceiptVerifier (fake 기본 · off · googlePlay). 참고 · 테스트 서버는 가짜 영수증("fake:")을 받는다.
         /// </summary>
         public IReceiptVerifier Receipts { get; set; } = new FakeReceiptVerifier();
+        /// <summary>서버 설정의 검증기 이름 (fake · off · googlePlay, 관리자 표시용).</summary>
+        public string ReceiptVerifierId { get; set; } = ReceiptVerifierIds.Fake;
+        /// <summary>
+        /// 관리자 덮어쓰기 허용 (R-124, 설정 Game:AllowAdminReceiptOverride, 기본 false). false면 저장소의 덮어쓰기를 무시한다 — 출시 서버는 끈다.
+        /// </summary>
+        public bool AllowReceiptOverride { get; set; }
+
+        /// <summary>덮어쓸 수 있는 값 (googlePlay는 서버 설정으로만).</summary>
+        public static bool IsOverrideValue(string v) => v == ReceiptVerifierIds.Off || v == ReceiptVerifierIds.Fake;
+
+        /// <summary>이번 요청에 쓸 검증기 (R-124): 허용이면 덮어쓰기 값 → 없으면 서버 설정.</summary>
+        public IReceiptVerifier ActiveReceipts(out string id)
+        {
+            string o = AllowReceiptOverride ? _store.ReceiptOverrideOf(Code) : null;
+            if (o == ReceiptVerifierIds.Fake) { id = o; return new FakeReceiptVerifier(); }
+            if (o == ReceiptVerifierIds.Off) { id = o; return new RejectAllReceiptVerifier(); }
+            id = ReceiptVerifierId;
+            return Receipts;
+        }
+
+        public string SetReceiptOverride(string value)
+        {
+            if (!AllowReceiptOverride) return "notAllowed";
+            if (value != null && !IsOverrideValue(value)) return "badValue";
+            _store.SetReceiptOverride(Code, value);
+            return "ok";
+        }
+
+        public AdminReceipts AdminReceipts()
+        {
+            ActiveReceipts(out var active);
+            return new AdminReceipts { Override = _store.ReceiptOverrideOf(Code), Server = ReceiptVerifierId, Allowed = AllowReceiptOverride, Active = active };
+        }
 
         /// <summary>마스터 계정 (R-86, 설정 Game:Masters). 개발 행동 dev.*은 여기 있는 계정의 것만 받는다.</summary>
         public MasterAccounts Masters { get; set; } = new MasterAccounts();
@@ -262,7 +299,8 @@ namespace Game.Server
             // 우편 받기: 내 우편함에 같은 자원·양으로 있어야 하고, 한 묶음에서 두 번 받을 수 없다
             var box = _store.MailOf(Code, accountId);
             var claimed = new HashSet<string>(StringComparer.Ordinal);
-            var receipts = new ReceiptCheck(Receipts, tx => _store.ReceiptOf(Code, tx) != null) // 쓴 거래는 저장소에 (서버를 다시 띄워도 남음, R-116)
+            var verifier = ActiveReceipts(out _);
+            var receipts = new ReceiptCheck(verifier, tx => _store.ReceiptOf(Code, tx) != null) // 쓴 거래는 저장소에 (서버를 다시 띄워도 남음, R-116)
             {
                 OwnerOf = tx => _store.ReceiptOf(Code, tx)?.AccountId, // 복원: 이미 반영한 계정 (R-117)
                 AccountId = accountId,
@@ -290,14 +328,14 @@ namespace Game.Server
             }
             if (!ok) return new ActionVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             foreach (var id in claimed) _store.TakeMail(Code, accountId, id);
-            if (receipts.Pending.Count > 0) SettleReceipts(receipts.Pending);
+            if (receipts.Pending.Count > 0) SettleReceipts(verifier, receipts.Pending);
             return new ActionVerdict { Valid = true, Reason = VerdictReasons.Ok, Save = current };
         }
 
         /// <summary>반영한 결제를 스토어에 알린다 (영구 = acknowledge, 소모성 = consume, R-116). 기록은 세이브와 함께 이미 저장소에. 알리기 실패는 지급에 영향 없음.</summary>
-        private void SettleReceipts(List<ReceiptRecord> pending)
+        private void SettleReceipts(IReceiptVerifier verifier, List<ReceiptRecord> pending)
         {
-            if (!(Receipts is IReceiptSettler settler)) return;
+            if (!(verifier is IReceiptSettler settler)) return; // 가짜 · 끔은 스토어에 알릴 것이 없다
             foreach (var r in pending)
             {
                 _defs.Products.TryGetValue(r.ProductId ?? "", out var p);

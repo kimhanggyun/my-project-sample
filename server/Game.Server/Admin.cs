@@ -101,6 +101,23 @@ namespace Game.Server
                 });
             });
 
+            // 결제 검증 켜고 끄기 (R-124): 보기는 서브 관리자도, 바꾸기는 관리자만. 서버 설정 Game:AllowAdminReceiptOverride가 false면 422 notAllowed (출시 서버).
+            app.MapGet(Prefix + "/games/{game}/receipts", (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
+                GuardSub(req, store, masters, _ => r.Find(game) is IGameModule g ? Json(g.AdminReceipts()) : Results.NotFound()));
+            app.MapPost(Prefix + "/games/{game}/receipts", async (string game, HttpRequest req, IStore store, GameRegistry r, MasterAccounts masters) =>
+            {
+                var body = await Body<AdminReceiptsRequest>(req);
+                return Guard(req, store, masters, _ =>
+                {
+                    if (!(r.Find(game) is IGameModule g)) return Results.NotFound();
+                    string value = string.IsNullOrEmpty(body?.Override) ? null : body.Override;
+                    string reason = body == null ? "badValue" : g.SetReceiptOverride(value);
+                    var now = g.AdminReceipts();
+                    now.Reason = reason;
+                    return reason == "ok" ? Json(now) : Json(now, StatusCodes.Status422UnprocessableEntity);
+                });
+            });
+
             app.MapGet(Prefix + "/accounts", (HttpRequest req, IStore store, MasterAccounts masters) =>
                 GuardSub(req, store, masters, _ =>
                 {
@@ -330,6 +347,23 @@ namespace Game.Server
         public bool Shown { get; set; }
         /// <summary>관리자가 데이터 기본값과 다르게 정함.</summary>
         public bool Overridden { get; set; }
+    }
+
+    /// <summary>결제 검증 (R-124). Override = 관리자 덮어쓰기(null · off · fake), Server = 서버 설정, Allowed = 덮어쓰기 허용(설정), Active = 지금 쓰는 것.</summary>
+    public sealed class AdminReceipts
+    {
+        public string Override { get; set; }
+        public string Server { get; set; }
+        public bool Allowed { get; set; }
+        public string Active { get; set; }
+        /// <summary>저장 결과 (ok · notAllowed · badValue). 보기에는 없음.</summary>
+        public string Reason { get; set; }
+    }
+
+    public sealed class AdminReceiptsRequest
+    {
+        /// <summary>null · 빈 글 = 서버 설정 그대로, "off" · "fake".</summary>
+        public string Override { get; set; }
     }
 
     public sealed class AdminProductList

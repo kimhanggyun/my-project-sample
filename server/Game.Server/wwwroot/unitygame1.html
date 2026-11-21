@@ -41,6 +41,7 @@
   <span id="who" class="dim"></span>
   <button id="logout" class="sub hidden">나가기</button>
 </header>
+<div id="fakeBanner" class="hidden" style="background:var(--bad);color:#fff;font-weight:bold;text-align:center;padding:10px 12px">가짜 결제 허용 중 — 출시 전 끄기 (상점 상품 탭 → 결제 검증)</div>
 <main>
   <!-- 1. 관리자 키 -->
   <section id="stepKey" class="card">
@@ -123,6 +124,15 @@
       <p class="dim">배포 없이 상점 표출을 켜고 끕니다. 끄면 상점 목록에서 빠지고 서버가 구매를 거절합니다 (이미 산 영구 상품의 복원은 됩니다). "기본 끔"은 새로 등록한 상품이라 켜야 나옵니다. 기기는 앱을 다시 켤 때 새 값을 받습니다.</p>
       <div class="scroll"><table id="productTable"></table></div>
       <div class="row"><button id="pSave">저장</button><span id="pMsg"></span></div>
+      <h2>결제 검증 (R-124)</h2>
+      <p class="dim">개발 중 시험용: [가짜 허용]이면 앱의 가짜 결제("fake:" 영수증)가 통과해 돈 없이 상품이 들어갑니다. [끔]이면 모든 결제를 거절합니다. 바꾸기는 관리자만. 서버 설정 ALLOW_ADMIN_RECEIPT가 꺼진 서버(출시)에서는 이 칸이 듣지 않습니다.</p>
+      <div id="rcInfo" class="dim"></div>
+      <div class="row">
+        <label><input type="radio" name="rcMode" value=""> 서버 설정 그대로</label>
+        <label><input type="radio" name="rcMode" value="off"> 끔</label>
+        <label><input type="radio" name="rcMode" value="fake"> 가짜 허용</label>
+        <button id="rcSave">저장</button><span id="rcMsg"></span>
+      </div>
     </div>
 
     <div id="tab-territory" class="hidden">
@@ -252,7 +262,7 @@
       if (name === "territory") drawTerritory((await api("/v1/admin/games/" + $("game").value + "/territory")).data);
       if (name === "notice") drawNotice((await api("/v1/admin/notice")).data);
       if (name === "banners") drawBanners((await api("/v1/admin/games/" + $("game").value + "/banners")).data);
-      if (name === "products") drawProducts((await api("/v1/admin/games/" + $("game").value + "/products")).data);
+      if (name === "products") { drawProducts((await api("/v1/admin/games/" + $("game").value + "/products")).data); drawReceipts((await api("/v1/admin/games/" + $("game").value + "/receipts")).data); }
     } catch (e) { /* api가 화면을 바꿈 */ }
   }
 
@@ -269,6 +279,7 @@
       el("dt", null, "Firebase 프로젝트"), el("dd", null, st.FirebaseProjectId || "-"),
       el("dt", null, "나"), el("dd", null, st.You + " · " + roleName(st.YourRole))));
     myRole = st.YourRole;
+    refreshFakeBanner();
   }
   // 계정 등급 (H8): 관리자 = 전부 · 등급 지정, 서브 관리자 = 보기 · 우편 · 공지만
   const roleName = r => r === "admin" ? "관리자" : r === "subAdmin" ? "서브 관리자" : "일반";
@@ -412,6 +423,30 @@
       $("bMsg").className = r.status === 200 ? "good" : "bad";
       $("bMsg").textContent = r.status === 200 ? "저장했습니다." : "실패 (" + r.status + ")";
       if (r.status === 200) drawBanners(r.data);
+    } catch (e) { }
+  };
+
+  // ---- 결제 검증 (R-124): GET/POST /v1/admin/games/{game}/receipts ----
+  const RC = { fake: "가짜 허용", off: "끔", googlePlay: "구글 플레이 실제 검증" };
+  function drawReceipts(d) {
+    if (!d) return;
+    $("rcInfo").textContent = "서버 설정: " + (RC[d.Server] || d.Server) + " · 지금 쓰는 것: " + (RC[d.Active] || d.Active)
+      + (d.Allowed ? "" : " · 이 서버는 덮어쓰기를 허용하지 않음 (ALLOW_ADMIN_RECEIPT=false)");
+    for (const r of document.querySelectorAll("input[name=rcMode]")) { r.checked = r.value === (d.Override || ""); r.disabled = !d.Allowed || myRole !== "admin"; }
+    $("rcSave").disabled = !d.Allowed || myRole !== "admin";
+    $("fakeBanner").classList.toggle("hidden", d.Active !== "fake");
+  }
+  async function refreshFakeBanner() {
+    try { const r = await api("/v1/admin/games/" + $("game").value + "/receipts"); if (r.status === 200) $("fakeBanner").classList.toggle("hidden", r.data.Active !== "fake"); } catch (e) { }
+  }
+  $("rcSave").onclick = async () => {
+    const v = document.querySelector("input[name=rcMode]:checked");
+    if (v && v.value === "fake" && !confirm("가짜 결제를 허용할까요? 앱에서 돈 없이 현금 상품이 들어갑니다 (개발 중 시험용).")) return;
+    try {
+      const r = await api("/v1/admin/games/" + $("game").value + "/receipts", { method: "POST", body: { Override: v ? (v.value || null) : null } });
+      $("rcMsg").className = r.status === 200 ? "good" : "bad";
+      $("rcMsg").textContent = r.status === 200 ? " 저장했습니다." : " 실패 (" + ((r.data && r.data.Reason) || r.status) + ")";
+      drawReceipts(r.data);
     } catch (e) { }
   };
 

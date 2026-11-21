@@ -141,6 +141,23 @@ namespace Game.Server.Tests
             Assert.Null(s.ReceiptOf(g, tx2));
         }
 
+        /// <summary>결제 검증 덮어쓰기 (R-124): 게임별로 저장 · 지우기.</summary>
+        internal static void ReceiptOverrideStore(IStore s, string g)
+        {
+            Assert.Null(s.ReceiptOverrideOf(g));
+            s.SetReceiptOverride(g, "fake");
+            Assert.Equal("fake", s.ReceiptOverrideOf(g));
+            Assert.Null(s.ReceiptOverrideOf(g + "x")); // 다른 게임은 그대로
+            s.SetReceiptOverride(g, null);
+            Assert.Null(s.ReceiptOverrideOf(g));
+        }
+
+        [FirestoreFact(DisplayName = "R-124 결제 검증 덮어쓰기 저장 — Firestore")]
+        public void ReceiptOverrideFirestore() => ReceiptOverrideStore(New(), G());
+
+        [Fact(DisplayName = "R-124 결제 검증 덮어쓰기 저장 — 메모리")]
+        public void ReceiptOverrideMemory() => ReceiptOverrideStore(new InMemoryStore(), G());
+
         [FirestoreFact(DisplayName = "결제 한 트랜잭션 (backlog F): 같은 영수증을 두 계정이 동시에 내면 하나만 저장 · 기록, 판 번호가 다르면 기록 안 함 — Firestore")]
         public void SameReceiptRaceFirestore() => SameReceiptRace(New(), G());
 
@@ -218,6 +235,7 @@ namespace Game.Server.Tests
             mem.WithTerritory(g, TerritoryScope.All(), o => { o["flag:37500000,127000000"] = new TerritoryOwner { RegionId = "flag:37500000,127000000", OwnerAccountId = who.AccountId }; return 0; });
             mem.WithAlliances(g, AllianceScope.Account(who.AccountId), al => { al["al1"] = new Alliance { Id = "al1", Name = "옮김", Members = { who.AccountId } }; return 0; });
             var l = mem.UpsertListing(g, new HireListing { OwnerAccountId = who.AccountId, Kind = HireKinds.General, SourceId = "avatar" });
+            mem.SetReceiptOverride(g, "off");
             mem.RecordReceipts(g, new[] { new Game.Flow.ReceiptRecord { TransactionId = "t-" + g, AccountId = who.AccountId } });
 
             var fs = New();
@@ -233,6 +251,7 @@ namespace Game.Server.Tests
             Assert.Equal("옮김", fs.WithAlliances(g, AllianceScope.Account(who.AccountId), al => al["al1"].Name)); // 옮긴 문서도 찾기 칸(members)으로 찾힌다
             Assert.Equal(l.Id, fs.GetListing(g, l.Id).Id);
             Assert.NotNull(fs.ReceiptOf(g, "t-" + g));
+            Assert.Equal("off", fs.ReceiptOverrideOf(g)); // 결제 검증 덮어쓰기도 옮김 (R-124)
         }
 
         [Fact(DisplayName = "옮기기 도구: store.json이 없으면 2, --dry면 수만 세고 0 (Firestore 없이)")]
