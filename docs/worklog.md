@@ -152,3 +152,5 @@
 - 2026-11-21 [데스크탑] desktop/sample-battle-2 — R-125 샘플전투2: 병사 단위 전투 (src/Game.Battle.Model/Crowd, data/Rules/crowd.json, CrowdField3D · SampleBattle2Screen, 샘플전투 탭 맨 위 카드), 캡처 30 · 31
 - 2026-11-21 [데스크탑] desktop/sample2-legs — 샘플전투2 다리 걷기 (다리 따로 흔들기), 바닥 직접 만든 판 (폰 MeshCollider 오류) (#262)
 - 2026-11-21 [데스크탑] desktop/sample2-control — R-126 샘플전투2 조작: 부대 셋 (좌 · 중★ · 우) · 이동 · 공격 명령 · 적 전진 AI, 돌격 가속 · 부딪침 (피해 더 · 밀침), 화면 고르기 고리 · 흙먼지 · 흔들림 · 달리기, 캡처 32
+- 2026-11-21 [데스크탑] desktop/sample2-select-all · login-ring-horse — [전체] 고리 · 다리 V자 · 누름 판정 (#264), 구글 자동 로그인 한 번만 · 고리 부드럽게 · 장수 말 다리 (#265)
+- 2026-11-21 [데스크탑] desktop/sample2-troops — R-127 샘플전투2 병종 · 상성: 부대마다 병종 (troopTypes · troopCounters 그대로), 창 길게 닿음 · 궁병 화살 · 기병 빠름 · 부딪침 2배 · 창병 받아치기, 병종 모형 · 기병 말 다리 · 화살 포물선, 시작 전 병종 고르기, 캡처 34

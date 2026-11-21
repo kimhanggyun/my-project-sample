@@ -27,7 +27,12 @@ namespace Game.Unity.Battle3D
         private static readonly Color EnemyColor = new Color(0.86f, 0.22f, 0.18f);
         private static readonly Color EnemyDark = new Color(0.50f, 0.13f, 0.11f);
         private static readonly Color DeadWhite = new Color(0.97f, 0.97f, 0.94f);
-        private readonly InstanceBatch _ally, _enemy, _white, _allyGeneral, _enemyGeneral, _allyWhole, _enemyWhole, _allyLegs, _enemyLegs;
+        private readonly InstanceBatch _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch;
+        /// <summary>병종(1단계 뿌리) · 편 · 모양(0 다리 뺀 몸, 1 통째, 2 하얀 통째)마다 묶음 (R-127).</summary>
+        private readonly Dictionary<(string troop, int team, int kind), InstanceBatch> _troopBatches = new Dictionary<(string, int, int), InstanceBatch>();
+        private readonly List<InstanceBatch> _allBatches = new List<InstanceBatch>();
+        private const float CavStride = 0.7f, CavSwingDeg = 40f;
+        private static readonly Color ArrowColor = new Color(0.86f, 0.74f, 0.52f);
         /// <summary>장수 말 다리 (2026-11-21 사용자 "말이 발을 안 움직임"): 달리면 앞다리 둘 · 뒷다리 둘이 번갈아 뻗는다.</summary>
         private readonly InstanceBatch _allyHorseLegs, _enemyHorseLegs;
         private const float HorseStride = 0.9f, HorseSwingDeg = 38f;
@@ -102,19 +107,20 @@ namespace Game.Unity.Battle3D
             ground.AddComponent<MeshRenderer>().sharedMaterial = Own(NewMaterial(new Color(0.50f, 0.64f, 0.38f)));
 
             // 살아 있는 병사 = 다리 없는 몸 + 따로 흔드는 다리 두 짝, 쓰러지는 병사 = 다리 붙은 통째
-            var body = SoldierMeshes.For("infantry", legs: false);
-            var whole = SoldierMeshes.For("infantry");
-            _ally = Batch(body, AllyColor, AllyDark);
-            _enemy = Batch(body, EnemyColor, EnemyDark);
-            _allyWhole = Batch(whole, AllyColor, AllyDark);
-            _enemyWhole = Batch(whole, EnemyColor, EnemyDark);
-            _white = Batch(whole, DeadWhite, DeadWhite);
+            // 병종 모형은 처음 쓸 때 만든다 (TroopBatch)
             var dm = Own(NewMaterial(DustColor));
             dm.enableInstancing = true;
             _dustBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Sphere.fbx"), new[] { dm }, Matrix4x4.identity);
             var leg = SoldierMeshes.Leg();
             _allyLegs = LegBatch(leg, AllyDark);
             _enemyLegs = LegBatch(leg, EnemyDark);
+            var cavLeg = SoldierMeshes.CavalryLeg();
+            _allyCavLegs = LegBatch(cavLeg, AllyDark);
+            _enemyCavLegs = LegBatch(cavLeg, EnemyDark);
+            var am = Own(NewMaterial(ArrowColor));
+            am.enableInstancing = true;
+            _arrowBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { am }, Matrix4x4.identity);
+            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs }) _allBatches.Add(b);
             var general = SoldierMeshes.General(true, horseLegs: false);
             var horseLeg = SoldierMeshes.HorseLeg();
             _allyHorseLegs = LegBatch(horseLeg, AllyDark);
@@ -172,9 +178,7 @@ namespace Game.Unity.Battle3D
             SyncTick();
             float tickSec = (float)_battle.Rules.TickSeconds.ToDisplayDouble();
             float now = (_battle.Tick + alpha) * tickSec;
-            _ally.Matrices.Clear(); _enemy.Matrices.Clear(); _white.Matrices.Clear();
-            _allyWhole.Matrices.Clear(); _enemyWhole.Matrices.Clear(); _allyLegs.Matrices.Clear(); _enemyLegs.Matrices.Clear();
-            _allyHorseLegs.Matrices.Clear(); _enemyHorseLegs.Matrices.Clear();
+            foreach (var b in _allBatches) b.Matrices.Clear();
             _allyGeneral.Matrices.Clear(); _enemyGeneral.Matrices.Clear();
             var soldiers = _battle.Soldiers;
             for (int i = 0; i < soldiers.Count; i++)
@@ -192,7 +196,8 @@ namespace Game.Unity.Battle3D
                     p += back * Vector3.back * (0.18f * (1f - (1f - fall) * (1f - fall)));
                     p.y = 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
                     var rot = back * Quaternion.Euler(-80f * fall * fall, 0f, 0f);
-                    (age < FlashSeconds ? _white : s.IsGeneral ? (ally ? _allyGeneral : _enemyGeneral) : ally ? _allyWhole : _enemyWhole).Add(p, rot);
+                    (s.IsGeneral ? (age < FlashSeconds ? TroopBatch("infantry", 2, 2) : ally ? _allyGeneral : _enemyGeneral)
+                        : TroopBatch(TroopOf(s), age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
                     continue;
                 }
                 // 바라볼 방향: 치는 중이면 대상, 걸으면 걷는 쪽, 아니면 군 앞
@@ -217,7 +222,14 @@ namespace Game.Unity.Battle3D
                 }
                 var r = Quaternion.Euler(0f, _yaw[i], 0f);
                 bool walking = (_cur[i] - _prev[i]).sqrMagnitude > 1e-5f;
-                if (attacking)
+                bool ranged = !s.IsGeneral && _battle.Armies[s.Army].Troop.Ranged;
+                if (attacking && ranged)
+                {
+                    // 활 (R-127): 쏘는 순간 몸을 살짝 젖혀 시위를 당겼다 놓는다
+                    float ph = Mathf.Clamp01((now - s.LastAttackTick * tickSec) / (_battle.Rules.AttackTicks * tickSec));
+                    r = r * Quaternion.Euler(-12f * Mathf.Sin(ph * Mathf.PI), 0f, 0f);
+                }
+                else if (attacking)
                 {
                     // 공격 한 번 (AttackTicks 동안): 앞으로 찌르며 몸을 비틀어 무기를 휘두른다
                     float ph = Mathf.Clamp01((now - s.LastAttackTick * tickSec) / (_battle.Rules.AttackTicks * tickSec));
@@ -258,8 +270,22 @@ namespace Game.Unity.Battle3D
                     }
                     continue;
                 }
-                (ally ? _ally : _enemy).Add(p, bodyRot);
+                TroopBatch(TroopOf(s), s.Team, 0).Add(p, bodyRot);
                 float walked = _stride[i] - (1f - alpha) * (_cur[i] - _prev[i]).magnitude; // 틱 사이도 이어서
+                if (_battle.Armies[s.Army].Troop.Mounted)
+                {
+                    // 기병 말 다리 넷 (앞 둘 · 뒤 둘 번갈아)
+                    float cph = walked / CavStride * Mathf.PI * 2f + i * 0.9f;
+                    float camp = Mathf.Min(1.2f, _legAmp[i]);
+                    var cl = ally ? _allyCavLegs : _enemyCavLegs;
+                    var cm = Matrix4x4.TRS(p, bodyRot, Vector3.one * ModelScale);
+                    for (int k = 0; k < 4; k++)
+                    {
+                        float sw = Mathf.Sin(cph + (k < 2 ? 0f : Mathf.PI) + (k % 2 == 0 ? 0f : 0.5f)) * CavSwingDeg * camp;
+                        cl.Matrices.Add(cm * Matrix4x4.TRS(SoldierMeshes.CavalryLegAt(k), Quaternion.Euler(sw, 0f, 0f), Vector3.one));
+                    }
+                    continue;
+                }
                 float step = walked / StrideLength * Mathf.PI * 2f + i * 0.7f;
                 float swingL = Mathf.Sin(step) * LegSwingDeg * _legAmp[i];
                 if (attacking) swingL = Mathf.Lerp(swingL, 18f, 0.6f); // 칠 때 한 발 앞으로 디딤
@@ -268,6 +294,7 @@ namespace Game.Unity.Battle3D
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(-SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(swingL, 0f, 0f), Vector3.one));
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(attacking ? -12f : -swingL, 0f, 0f), Vector3.one));
             }
+            DrawArrows(now, tickSec);
             DrawDust(now, tickSec);
             DrawRings(alpha);
             // 흔들림: 카메라를 제자리로 맞춘 뒤 조금 흔든다 (금방 잦아듦)
@@ -279,9 +306,7 @@ namespace Game.Unity.Battle3D
             }
             var cam = Rig.Camera;
             _dustBatch.Draw(cam);
-            _ally.Draw(cam); _enemy.Draw(cam); _white.Draw(cam); _allyGeneral.Draw(cam); _enemyGeneral.Draw(cam);
-            _allyWhole.Draw(cam); _enemyWhole.Draw(cam); _allyLegs.Draw(cam); _enemyLegs.Draw(cam);
-            _allyHorseLegs.Draw(cam); _enemyHorseLegs.Draw(cam);
+            foreach (var b in _allBatches) b.Draw(cam);
         }
 
         public void Destroy()
@@ -308,6 +333,39 @@ namespace Game.Unity.Battle3D
                 mats[i] = m;
             }
             return new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * scale));
+        }
+
+        private string TroopOf(CrowdSoldier s) => _battle.Armies[s.Army].Troop.BaseId;
+
+        /// <summary>병종 모양 묶음 (kind 0 다리 뺀 몸 · 1 통째 · 2 하얀 통째, team 2 = 하양).</summary>
+        private InstanceBatch TroopBatch(string troop, int team, int kind)
+        {
+            if (_troopBatches.TryGetValue((troop, team, kind), out var b)) return b;
+            var mesh = SoldierMeshes.For(troop, legs: kind != 0);
+            b = kind == 2 || team == 2 ? Batch(mesh, DeadWhite, DeadWhite)
+                : team == CrowdBattle.Ally ? Batch(mesh, AllyColor, AllyDark) : Batch(mesh, EnemyColor, EnemyDark);
+            _troopBatches[(troop, team, kind)] = b;
+            _allBatches.Add(b);
+            return b;
+        }
+
+        /// <summary>화살 (R-127): 쏜 자리 → 쏠 때 대상 자리로 포물선, 날아가는 쪽을 본다.</summary>
+        private void DrawArrows(float now, float tickSec)
+        {
+            foreach (var a in _battle.Arrows)
+            {
+                float t0 = a.FireTick * tickSec, t1 = a.ArriveTick * tickSec;
+                float u = Mathf.Clamp01((now - t0) / Mathf.Max(0.01f, t1 - t0));
+                var from = ToWorld(a.From) + Vector3.up * 0.4f;
+                var to = ToWorld(a.To) + Vector3.up * 0.2f;
+                float dist = Vector3.Distance(from, to);
+                float arc = 0.6f + dist * 0.18f;
+                Vector3 P(float x) => Vector3.Lerp(from, to, x) + Vector3.up * (4f * arc * x * (1f - x));
+                var p = P(u);
+                var dir = P(Mathf.Min(1f, u + 0.02f)) - P(Mathf.Max(0f, u - 0.02f));
+                if (dir.sqrMagnitude < 1e-6f) continue;
+                _arrowBatch.Matrices.Add(Matrix4x4.TRS(p, Quaternion.LookRotation(dir), new Vector3(0.03f, 0.03f, 0.42f)));
+            }
         }
 
         private void DrawDust(float now, float tickSec)

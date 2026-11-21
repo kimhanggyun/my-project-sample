@@ -11,7 +11,7 @@
   "attackReach": 0.55,
   "attackSeconds": 0.9,
   "attackJitterTicks": 4,
-  "soldierHp": 2,
+  "soldierHp": 10,
   "generalHp": 24,
   "generalBack": 1.6,
   "maxSeconds": 240,
@@ -22,5 +22,18 @@
   "impactDamage": 1,
   "impactPush": 0.35,
   "_corps": "부대 셋(좌 · 중 · 우)일 때 부대 사이 간격 (칸)",
-  "corpsGap": 3
+  "corpsGap": 3,
+  "_troops": "병종 (R-127): 피해 = hitDamage × (1 + (공격 − 방어) × statPpPerPoint% + 상성%(troopCounters.json)). 빠르기 = speed ÷ baseSpeedStat 배. 창(attackRange 2~3)은 (attackRange − 1) × polearmReach칸 더 닿는다. 궁병은 attackRange × rangeScale칸 안이면 shootSeconds마다 쏜다 (arrowSpeed칸/초, 맞을 확률 arrowHitChance). 기병은 반지름 mountedRadius, 부딪침 mountedImpact배, 창병에게 달려들면 받아치기 (기병이 braceDamage배 피해 · 튕김)",
+  "hitDamage": 4,
+  "statPpPerPoint": 1,
+  "baseSpeedStat": 45,
+  "polearmReach": 0.3,
+  "rangeScale": 1,
+  "shootSeconds": 2.5,
+  "arrowSpeed": 14,
+  "arrowHitChance": 0.3,
+  "arrowDamageScale": 1,
+  "mountedRadius": 0.32,
+  "mountedImpact": 2,
+  "braceDamage": 2
 }

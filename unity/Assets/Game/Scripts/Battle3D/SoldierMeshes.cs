@@ -112,8 +112,9 @@ namespace Game.Unity.Battle3D
                 Add(capsule, new Vector3(0f, 0.13f, 0f), new Vector3(0.07f, 0.12f, 0.07f), new Vector3(90f, 0f, 0f));
                 Add(cube, new Vector3(0f, 0.2f, 0.12f), new Vector3(0.035f, 0.11f, 0.045f), new Vector3(-35f, 0f, 0f));
                 Add(cube, new Vector3(0f, 0.245f, 0.17f), new Vector3(0.035f, 0.035f, 0.075f), new Vector3(10f, 0f, 0f));
-                for (int i = 0; i < 4; i++)
-                    Add(cylinder, new Vector3(i % 2 == 0 ? -0.022f : 0.022f, 0.045f, i < 2 ? 0.08f : -0.08f), new Vector3(0.016f, 0.045f, 0.016f));
+                if (legs) // 말 다리 (샘플전투2는 CavalryLeg로 따로 흔든다)
+                    for (int i = 0; i < 4; i++)
+                        Add(cylinder, new Vector3(i % 2 == 0 ? -0.022f : 0.022f, 0.045f, i < 2 ? 0.08f : -0.08f), new Vector3(0.016f, 0.045f, 0.016f));
                 Add(cube, new Vector3(0f, 0.13f, -0.135f), new Vector3(0.015f, 0.07f, 0.015f), new Vector3(25f, 0f, 0f));
             }
             bool light = baseType == "scout";
@@ -218,6 +219,21 @@ namespace Game.Unity.Battle3D
             Parts[m] = new[] { Dark };
             return Built[key] = m;
         }
+
+        /// <summary>기병(병사) 말 다리 한 짝: 위 끝이 원점 (병사 크기). 자리는 <see cref="CavalryLegAt"/>.</summary>
+        public static Mesh CavalryLeg()
+        {
+            const string key = "#cavalryLeg";
+            if (Built.TryGetValue(key, out var m) && m != null) return m;
+            m = new Mesh { name = "cavalry_leg" };
+            m.CombineMeshes(new[] { new CombineInstance { mesh = Builtin("Cylinder"), transform = Matrix4x4.TRS(new Vector3(0f, -0.045f, 0f), Quaternion.identity, new Vector3(0.016f, 0.045f, 0.016f)) } }, true, true);
+            m.RecalculateBounds();
+            Parts[m] = new[] { Horse };
+            return Built[key] = m;
+        }
+
+        /// <summary>기병 말 다리 넷의 위 끝 자리 (0 앞왼 · 1 앞오른 · 2 뒤왼 · 3 뒤오른).</summary>
+        public static Vector3 CavalryLegAt(int i) => new Vector3(i % 2 == 0 ? -0.022f : 0.022f, 0.09f, i < 2 ? 0.08f : -0.08f);
 
         /// <summary>말 다리 넷의 위 끝 자리 (0 앞왼 · 1 앞오른 · 2 뒤왼 · 3 뒤오른, 장수 모형 기준).</summary>
         public static Vector3 HorseLegAt(int i) => new Vector3(i % 2 == 0 ? -0.045f : 0.045f, 0.09f, i < 2 ? 0.12f : -0.12f) * GeneralScale;

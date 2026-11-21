@@ -43,6 +43,21 @@ namespace Game.Battle.Model.Crowd
         public Fix ImpactPush { get; private set; }
         /// <summary>부대 셋일 때 부대 사이 간격.</summary>
         public Fix CorpsGap { get; private set; }
+        // 병종 (R-127)
+        public int HitDamage { get; private set; }
+        public Fix StatPpPerPoint { get; private set; }
+        public Fix BaseSpeedStat { get; private set; }
+        public Fix PolearmReach { get; private set; }
+        public Fix RangeScale { get; private set; }
+        public Fix ShootSeconds { get; private set; }
+        public Fix ArrowSpeed { get; private set; }
+        public Fix ArrowHitChance { get; private set; }
+        /// <summary>화살 한 대 피해 = 근접 피해 × 이 배수 (활은 많이 쏘는 대신 한 대는 약하게).</summary>
+        public Fix ArrowDamageScale { get; private set; }
+        public Fix MountedRadius { get; private set; }
+        public int MountedImpact { get; private set; }
+        public int BraceDamage { get; private set; }
+        public int ShootTicks => System.Math.Max(1, (int)(ShootSeconds / TickSeconds).RoundToLong());
 
         public int AttackTicks => System.Math.Max(1, (int)(AttackSeconds / TickSeconds).RoundToLong());
         public int MaxTicks => (int)(MaxSeconds / TickSeconds).FloorToLong();
@@ -73,6 +88,18 @@ namespace Game.Battle.Model.Crowd
                 ImpactDamage = (int)JsonUtil.RequireLong(o, "impactDamage", c),
                 ImpactPush = JsonUtil.RequireFix(o, "impactPush", c),
                 CorpsGap = JsonUtil.RequireFix(o, "corpsGap", c),
+                HitDamage = (int)JsonUtil.RequireLong(o, "hitDamage", c),
+                StatPpPerPoint = JsonUtil.RequireFix(o, "statPpPerPoint", c),
+                BaseSpeedStat = JsonUtil.RequireFix(o, "baseSpeedStat", c),
+                PolearmReach = JsonUtil.RequireFix(o, "polearmReach", c),
+                RangeScale = JsonUtil.RequireFix(o, "rangeScale", c),
+                ShootSeconds = JsonUtil.RequireFix(o, "shootSeconds", c),
+                ArrowSpeed = JsonUtil.RequireFix(o, "arrowSpeed", c),
+                ArrowHitChance = JsonUtil.RequireFix(o, "arrowHitChance", c),
+                ArrowDamageScale = JsonUtil.RequireFix(o, "arrowDamageScale", c),
+                MountedRadius = JsonUtil.RequireFix(o, "mountedRadius", c),
+                MountedImpact = (int)JsonUtil.RequireLong(o, "mountedImpact", c),
+                BraceDamage = (int)JsonUtil.RequireLong(o, "braceDamage", c),
             };
         }
 

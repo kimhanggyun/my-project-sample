@@ -40,7 +40,11 @@ namespace Game.Unity.Screens
 
         public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false)
         {
-            _setup = setup ?? new CrowdSetup { AllyFormation = CrowdFormations.Wedge, EnemyFormation = CrowdFormations.Line, AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false };
+            _setup = setup ?? new CrowdSetup
+            {
+                AllyFormation = CrowdFormations.Wedge, EnemyFormation = CrowdFormations.Line, AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false,
+                AllyTroops = Preset("mixed"), EnemyTroops = Preset("mixed"),
+            };
             _startNow = startNow;
         }
 
@@ -48,7 +52,7 @@ namespace Game.Unity.Screens
         {
             var rules = CrowdRules.Load(Ctx.Data);
             if (_setup.Seed <= 1) _setup.Seed = (ulong)Ctx.NewSeed();
-            _battle = new CrowdBattle(rules, _setup);
+            _battle = NewBattle(rules);
             _tickSeconds = (float)rules.TickSeconds.ToDisplayDouble();
             _running = _startNow;
 
@@ -74,12 +78,34 @@ namespace Game.Unity.Screens
             _panel = Ui.Rect(Root, "Panel");
             Ui.Background(_panel, Palette.Bar);
             Ui.Column(_panel, 8, 10);
-            Ui.Size(_panel, 400);
+            Ui.Size(_panel, 470);
             BuildPanel();
             UpdateTexts();
         }
 
         private bool Started => _running || _battle.Tick > 0;
+
+        /// <summary>병종 데이터 · 상성을 넣어 만든다 (R-127).</summary>
+        private CrowdBattle NewBattle(CrowdRules rules) => new CrowdBattle(rules, _setup, Ctx.Defs.TroopTypes, Ctx.Defs.TroopCounters);
+
+        /// <summary>병종 고르기 (시작 전): 한 병종이면 모든 부대가 그 병종, 혼합 = 좌 기병 · 중 보병 · 우 궁병 (부대 하나면 보병).</summary>
+        public static readonly string[] Presets = { "infantry", "spearman", "archer", "cavalry", "mixed" };
+
+        public static string[] Preset(string id) => id == "mixed" ? new[] { "cavalry", "infantry", "archer" } : new[] { id };
+
+        private static string PresetOf(string[] troops) => troops == null || troops.Length == 0 ? "infantry" : troops.Length > 1 ? "mixed" : troops[0];
+
+        private void TroopRow(string label, string[] current, System.Action<string[]> pick)
+        {
+            var row = Ui.Row(_panel, "Troops " + label, 64, 4);
+            Ui.Size(Ui.Label(row, label, 22), width: 150);
+            string cur = PresetOf(current);
+            foreach (var id in Presets)
+            {
+                string p = id;
+                Choice(row, T(id == "mixed" ? "ui.sample2.mixed" : "troop." + id), id == cur, () => pick(Preset(p)));
+            }
+        }
 
         private void BuildPanel()
         {
@@ -91,6 +117,8 @@ namespace Game.Unity.Screens
                 // 시작 전: 우리 진형 · 적 진형 · 부대 수 · 적 명령
                 FormationRow(T("ui.sample2.ally"), _setup.AllyFormation, id => { _setup.AllyFormation = id; Restart(); });
                 FormationRow(T("ui.sample2.enemy"), _setup.EnemyFormation, id => { _setup.EnemyFormation = id; Restart(); });
+                TroopRow(T("ui.sample2.allyTroops"), _setup.AllyTroops, t => { _setup.AllyTroops = t; Restart(); });
+                TroopRow(T("ui.sample2.enemyTroops"), _setup.EnemyTroops, t => { _setup.EnemyTroops = t; Restart(); });
                 var corps = Ui.Row(_panel, "Corps", 68, 6);
                 Ui.Size(Ui.Label(corps, T("ui.sample2.corps"), 24), width: 150);
                 Choice(corps, T("ui.sample2.ally1"), _setup.AllyCorps == 1, () => { _setup.AllyCorps = 1; Restart(); });
@@ -128,6 +156,7 @@ namespace Game.Unity.Screens
             {
                 AllyFormation = _setup.AllyFormation, EnemyFormation = _setup.EnemyFormation, EnemyAdvance = _setup.EnemyAdvance,
                 AllyCorps = _setup.AllyCorps, EnemyCorps = _setup.EnemyCorps, AllyAdvance = false,
+                AllyTroops = _setup.AllyTroops, EnemyTroops = _setup.EnemyTroops,
             })), 76, Palette.Button, 26), flexibleWidth: 1);
             Ui.Label(_panel, T("ui.sample2.hint"), 22, TextAnchor.MiddleCenter, Palette.TextDim);
             Select(_selected);
@@ -136,7 +165,7 @@ namespace Game.Unity.Screens
         private void Choice(RectTransform row, string text, bool on, System.Action act) =>
             Ui.Size(Ui.Button(row, text, act, 68, on ? Palette.ButtonActive : Palette.Button, 22), flexibleWidth: 1);
 
-        private string CorpsName(CrowdArmy a) => T("ui.sample2.place." + a.Place) + (a.IsCommander ? "★" : "");
+        private string CorpsName(CrowdArmy a) => T("ui.sample2.place." + a.Place) + (a.IsCommander ? "★" : "") + "\n" + T("troop." + a.Troop.Id);
 
         private void FormationRow(string label, string current, System.Action<string> pick)
         {
@@ -243,7 +272,7 @@ namespace Game.Unity.Screens
         {
             _field?.Destroy();
             _setup.Seed = (ulong)Ctx.NewSeed();
-            _battle = new CrowdBattle(CrowdRules.Load(Ctx.Data), _setup);
+            _battle = NewBattle(CrowdRules.Load(Ctx.Data));
             _field = new CrowdField3D(_battle);
             _accumulator = 0f;
             _running = false;
