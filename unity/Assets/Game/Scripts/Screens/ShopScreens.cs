@@ -30,7 +30,6 @@ namespace Game.Unity.Screens
                     : ctx.T("ui.shop.adFreeUntil", System.DateTimeOffset.FromUnixTimeSeconds(ctx.State.AdFreeUntilUnixSeconds).ToLocalTime().ToString("yyyy-MM-dd")), Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good);
             if (!ctx.Store.IsAvailable) Ui.Label(list, Ui.Colored(ctx.T("ui.shop.unavailable"), Palette.Bad), Ui.FontSmall);
 
-            if (_notice != null) { Ui.Label(list, _notice, Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Good); _notice = null; }
             if (Tab == Cash) CashSection(app, list);
             else
             {
@@ -66,7 +65,6 @@ namespace Game.Unity.Screens
             }
         }
 
-        private static string _notice;
 
         /// <summary>[치장] 묶음 (R-111): 그 탭의 수단(엽전 · 금괴)으로 사는 갑옷 · 말 색 (결제 치장은 [현금] 탭). 산 것은 꾸미기에서 입힌다.</summary>
         private static void CosmeticSection(GameApp app, RectTransform list, string pay)
@@ -90,7 +88,7 @@ namespace Game.Unity.Screens
                 var buy = Ui.Button(row, ctx.T(gold ? "ui.cos.price.gold" : "ui.cos.price.gem", price.ToString("N0")), () =>
                 {
                     bool ok = ctx.Do(PlayerActionRunner.BuyCosmetic(id));
-                    _notice = ok ? ctx.T("ui.shop.cosmeticBought", ctx.T(d.NameKey)) : ctx.T(gold ? "ui.cos.notEnough.gold" : "ui.cos.notEnough.gem");
+                    Toast.Show(ok ? ctx.T("ui.shop.cosmeticBought", ctx.T(d.NameKey)) : ctx.T(gold ? "ui.cos.notEnough.gold" : "ui.cos.notEnough.gem"), !ok);
                     app.ShowMain(TabId);
                 }, 84, Palette.ButtonActive, 24);
                 Ui.Size(buy, width: 300);
@@ -127,7 +125,7 @@ namespace Game.Unity.Screens
                     var b = Ui.Button(row, ctx.T("resource." + from) + " " + Ui.Compact(amount) + " → " + ctx.T("resource." + to) + " " + Ui.Compact(get), () =>
                     {
                         bool ok = ctx.Do(PlayerActionRunner.Exchange(from, to, amount, ctx.Clock.UtcNow.ToUnixTimeSeconds()));
-                        _notice = ok ? ctx.T("ui.shop.exchanged") : ctx.T("ui.shop.exchangeFailed");
+                        Toast.Show(ok ? ctx.T("ui.shop.exchanged") : ctx.T("ui.shop.exchangeFailed"), !ok);
                         app.ShowMain(TabId);
                     }, 72, fontSize: 22);
                     Ui.SetEnabled(b, get > 0 && amount <= left && ctx.Resource(from) >= amount);

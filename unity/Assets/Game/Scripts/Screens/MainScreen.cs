@@ -148,7 +148,7 @@ namespace Game.Unity.Screens
                 foreach (var t in rowTabs)
                 {
                     var tab = t;
-                    var b = Ui.Button(bar, T(t.NameKey), () => Select(tab), h - 16, fontSize: small ? 22 : 28);
+                    var b = Ui.Button(bar, T(t.NameKey), () => { Toast.Hide(); Select(tab); }, h - 16, fontSize: small ? 22 : 28);
                     Ui.Size(b, width: width);
                     if (t.Status != MainTabEntry.Active) b.GetComponentInChildren<Text>().color = Palette.TextDim;
                     _tabButtons[t.Id] = b;
