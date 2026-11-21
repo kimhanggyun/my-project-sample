@@ -53,6 +53,11 @@ namespace Game.Unity.Screens
             Ui.Fill((RectTransform)list.parent.parent);
             InfoButton.Add(root, ctx.T("ui.sample.note"));
             var error = Ui.Label(list, "", Ui.FontSmall, TextAnchor.MiddleLeft, Palette.Bad);
+            // 샘플전투2 (R-125, 2026-11-21): 병사 단위 새 전투 방식 시험
+            var card2 = Ui.Card(list, "Sample2");
+            Ui.Label(card2, ctx.T("ui.sample2.title"), Ui.FontBody);
+            Ui.Label(card2, ctx.T("ui.sample2.desc"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Button(card2, ctx.T("ui.sample2.open"), () => app.Show(new SampleBattle2Screen()), 96, Palette.ButtonActive);
             bool siege = false;
             foreach (var m in SampleBattles.Catalog(ctx.Defs, ctx.Flow))
             {

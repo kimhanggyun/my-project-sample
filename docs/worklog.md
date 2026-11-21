@@ -148,3 +148,5 @@
 - 2026-11-20 [원격] claude/toast — PR A 공통 토스트 (Scripts/UI/Toast.cs, 캔버스 맨 위 · 3초 · 실패 붉은 띠 · 연달아면 바꿈), 결과 글줄(_notice) 10개 화면에서 없애고 토스트로, 공성 취소 · 결제 복원에 로딩
 - 2026-11-20 [원격] claude/codex-tab — PR B 장수 화면 · 스토리의 [도감]은 아래 도감 탭으로 (ShowMain("codex")), 탭으로 연 도감 목록은 [‹] 없음 (숨은 보상 자세히만 [‹] → 목록)
 - 2026-11-21 [원격] claude/attack-styles — H3 병종별 공격 동작: 창 길게 찌르기(느린 박자) · 칼/방패 좌우 ±15° 휘두르기 · 기병 맞붙는 순간 짧은 돌진 · 원거리 쏠 때 뒤로 0.03 (화살 박자), 부드러운 곡선 · 박자 어긋남 · 앞줄 위주. backlog H1 · H2 · H3 · H5 정리
+- 2026-11-21 [데스크탑] desktop/battle-reset — 전투 그리기 #254로 되돌림 · 하나씩 다시 (소부대 화면 병사 최대 49 · 화살 · 테두리 · 시체 · 링), 캡처 연속 프레임 19w_walk · 19m_fight (#260)
+- 2026-11-21 [데스크탑] desktop/sample-battle-2 — R-125 샘플전투2: 병사 단위 전투 (src/Game.Battle.Model/Crowd, data/Rules/crowd.json, CrowdField3D · SampleBattle2Screen, 샘플전투 탭 맨 위 카드), 캡처 30 · 31
