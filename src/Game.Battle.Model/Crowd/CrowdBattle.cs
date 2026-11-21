@@ -52,6 +52,10 @@ namespace Game.Battle.Model.Crowd
     public static class CrowdOrders
     {
         public const string Hold = "hold", Move = "move", Attack = "attack";
+        /// <summary>진군 (R-132): 진형을 지킨 채 적 쪽으로 곧게, 만나는 적과 싸운다 (궁병은 적이 사거리에 들면 멈춰 쏜다).</summary>
+        public const string Advance = "advance";
+        /// <summary>후퇴 (R-132): 자기 쪽 끝으로 대열 그대로 물러난다 (등을 보인 것으로 쳐 뒤에서 맞음, 쫓지 않음).</summary>
+        public const string Retreat = "retreat";
     }
 
     /// <summary>부대 하나: 병종 · 대열 모양 · 가운데 · 앞 방향 · 명령 (제자리 · 땅으로 이동 · 적 부대 공격).</summary>
@@ -71,6 +75,12 @@ namespace Game.Battle.Model.Crowd
         /// <summary>이동 명령 뒤에 이어 갈 경유 지점들 (R-129 명령 예약): 지금 목표에 닿으면 다음 지점으로.</summary>
         public readonly List<Vec> Waypoints = new List<Vec>();
         public int OrderTarget = -1;
+        /// <summary>위임 (R-132): AI가 알아서 싸운다 (적 AI와 같은 규칙 — 가까운 적 공격 · 스킬).</summary>
+        public bool Delegated;
+        /// <summary>근접 공격 (R-132): 궁병도 활을 놓고 붙으러 간다.</summary>
+        public bool Melee;
+        /// <summary>경로 끝에 닿으면 공격할 적 부대 (R-132 경로 그리기, 없으면 -1).</summary>
+        public int PathThenAttack = -1;
         /// <summary>돌격 중 (공격 명령으로 적에게 ChargeRange 안까지 다가옴, 맞붙기 전까지) — 병사 · 부대가 빨라진다. 궁병은 돌격하지 않음.</summary>
         public bool Charging;
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
@@ -369,6 +379,7 @@ namespace Game.Battle.Model.Crowd
             var a = Armies[army];
             a.Order = CrowdOrders.Hold; a.OrderTarget = -1; a.Charging = false;
             a.Waypoints.Clear();
+            a.Melee = false; a.PathThenAttack = -1;
         }
 
         private Vec InField(Vec p) => new Vec(Fix.Clamp(p.X, Fix.Zero, Rules.FieldWidth), Fix.Clamp(p.Y, Fix.Zero, Rules.FieldDepth));
@@ -387,6 +398,75 @@ namespace Game.Battle.Model.Crowd
             a.Waypoints.Clear();
             a.OrderTarget = -1;
             a.Charging = false;
+            a.Melee = false; a.PathThenAttack = -1;
+        }
+
+        /// <summary>한 경로에 넣을 수 있는 점 수 (손으로 그린 길, R-132).</summary>
+        public const int MaxPathPoints = 16;
+
+        /// <summary>
+        /// 경로 이동 (R-132, 손으로 그린 길): 점들을 차례로 지나간다 (MaxPathPoints까지). thenAttack이 적 부대면 끝에 닿은 뒤 그 부대를 공격.
+        /// </summary>
+        public void OrderPath(int army, IReadOnlyList<Vec> points, int thenAttack = -1)
+        {
+            if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading || points == null || points.Count == 0) return;
+            var a = Armies[army];
+            OrderMove(army, points[0]);
+            for (int k = 1; k < points.Count && k < MaxPathPoints; k++) a.Waypoints.Add(InField(points[k]));
+            if (thenAttack >= 0 && thenAttack < Armies.Count && Armies[thenAttack].Team != a.Team) a.PathThenAttack = thenAttack;
+        }
+
+        /// <summary>진군 (R-132): 진형을 지킨 채 적 쪽 끝으로 곧게 (만나는 적과 싸움, 가까워지면 돌격).</summary>
+        public void OrderAdvance(int army)
+        {
+            if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
+            var a = Armies[army];
+            OrderHold(army);
+            a.Order = CrowdOrders.Advance;
+        }
+
+        /// <summary>후퇴 (R-132): 자기 쪽 끝(retreatMargin 안쪽)으로 대열 그대로 물러난다. 물러나는 동안은 등을 보인 것으로 친다 (앞에서 맞아도 뒤).</summary>
+        public void OrderRetreat(int army)
+        {
+            if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
+            var a = Armies[army];
+            OrderHold(army);
+            a.Order = CrowdOrders.Retreat;
+        }
+
+        /// <summary>가장 가까운 서 있는 적 부대 (없으면 -1).</summary>
+        public int NearestEnemyArmy(int army)
+        {
+            if (army < 0 || army >= Armies.Count) return -1;
+            var a = Armies[army];
+            int best = -1;
+            Fix bestD = Fix.Zero;
+            var me = a.Centroid();
+            foreach (var o in Armies)
+            {
+                if (o.Team == a.Team || !Standing(o)) continue;
+                Fix d = Vec.DistanceSquared(o.Centroid(), me);
+                if (best < 0 || d < bestD) { best = o.Id; bestD = d; }
+            }
+            return best;
+        }
+
+        /// <summary>근접 공격 (R-132): 가장 가까운 적 부대에게 붙는다 (궁병도 활 대신 칼). 적이 없으면 false.</summary>
+        public bool OrderAttackNearest(int army)
+        {
+            int t = NearestEnemyArmy(army);
+            if (t < 0) return false;
+            OrderAttack(army, t);
+            if (Armies[army].Order != CrowdOrders.Attack) return false;
+            Armies[army].Melee = true;
+            return true;
+        }
+
+        /// <summary>위임 켜기 · 끄기 (R-132). 켜면 다음 AI 차례부터 가까운 적을 공격 · 스킬을 쓴다.</summary>
+        public void SetDelegated(int army, bool on)
+        {
+            if (army < 0 || army >= Armies.Count) return;
+            Armies[army].Delegated = on;
         }
 
         /// <summary>한 부대가 예약해 둘 수 있는 경유 지점 수.</summary>
@@ -401,7 +481,14 @@ namespace Game.Battle.Model.Crowd
             a.Order = CrowdOrders.Attack;
             a.OrderTarget = target;
             a.Waypoints.Clear();
+            a.Melee = false; a.PathThenAttack = -1;
         }
+
+        /// <summary>활을 쏘는 부대 (원거리 병종이고 근접 공격 중이 아님).</summary>
+        public static bool Shooting(CrowdArmy a) => a.Troop.Ranged && !a.Melee;
+
+        /// <summary>AI가 움직이는 부대: 적은 전진 설정이면, 우리는 위임이면 (R-132).</summary>
+        private bool AiControls(CrowdArmy a) => a.Team == Enemy ? _enemyAdvance : a.Delegated;
 
         /// <summary>그 부대가 아직 싸울 수 있음 (병사나 장수가 남음).</summary>
         public bool Standing(CrowdArmy a) => a.General.Alive || a.AliveCount > 0;
@@ -420,6 +507,7 @@ namespace Game.Battle.Model.Crowd
         {
             var d = (attackerPos - defenderPos).Normalized();
             Fix dot = d.Dot(defender.Facing);
+            if (defender.Order == CrowdOrders.Retreat) dot = -dot; // 후퇴 중 = 적에게 등 (R-132): 앞에서 친 것이 뒤
             if (dot >= Rules.FrontDot) return 0;
             if (dot <= Rules.RearDot) return 3;
             return d.Dot(defender.Right) < Fix.Zero ? 1 : 2;
@@ -469,12 +557,12 @@ namespace Game.Battle.Model.Crowd
 
             // 1) 부대: 적 AI 명령, 맞붙은 비율, 돌격 여부, 가운데 옮기기
             foreach (var a in Armies) a.TickCentroid = a.Centroid();
-            if (_enemyAdvance && Tick % 10 == 1) EnemyThink();
+            if (Tick % 10 == 1) AiThink();
             var engaged = new int[Armies.Count];
             for (int i = 0; i < n; i++)
             {
                 var s = Soldiers[i];
-                if (s.Alive && s.LastAttackTick >= Tick - r.AttackTicks * 2 && !Armies[s.Army].Troop.Ranged) engaged[s.Army]++;
+                if (s.Alive && s.LastAttackTick >= Tick - r.AttackTicks * 2 && !Shooting(Armies[s.Army])) engaged[s.Army]++;
             }
             foreach (var a in Armies) MoveArmy(a, engaged[a.Id]);
 
@@ -502,7 +590,7 @@ namespace Game.Battle.Model.Crowd
                 Vec want;
                 int foe = s.IsGeneral ? -1 : NearestEnemy(s, engage2, r.EngageRange);
                 // 궁병: 맞붙을 만큼 가깝지 않으면 사거리 안의 적에게 쏜다 (자리를 지킨 채)
-                if (!s.IsGeneral && troop.Ranged && foe < 0)
+                if (!s.IsGeneral && Shooting(army) && foe < 0)
                 {
                     if (s.Cooldown == 0)
                     {
@@ -524,6 +612,7 @@ namespace Game.Battle.Model.Crowd
                         want = Vec.Zero; // 닿았다: 서서 친다
                         if (s.Cooldown == 0) Strike(s, e, d, d2, army, walkStep);
                     }
+                    else if (army.Order == CrowdOrders.Retreat) want = ToSlot(army, s, stepLen); // 후퇴: 닿은 적만 치고 쫓지 않는다
                     else
                     {
                         Fix len = Fix.Sqrt(d2);
@@ -537,7 +626,7 @@ namespace Game.Battle.Model.Crowd
             for (int i = 0; i < n; i++) if (!_knock[i].Equals(Vec.Zero)) _next[i] = _next[i] + _knock[i];
 
             // 2.4) 스킬: 적 AI 스킬, 화살비 떨어짐, 끝난 효과
-            if (_enemyAdvance && Tick % 10 == 5) EnemySkills();
+            if (Tick % 10 == 5) AiSkills();
             StepSkills();
 
             // 2.5) 다음 위치끼리 겹친 것을 두 번 풀어 준다 (뒤에서 미는 병사가 앞 병사 속으로 파고들지 않게)
@@ -714,22 +803,14 @@ namespace Game.Battle.Model.Crowd
             s.Cooldown = r.ShootTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0);
         }
 
-        /// <summary>적 부대: 공격 대상이 없거나 무너졌으면 가장 가까운 우리 부대를 공격.</summary>
-        private void EnemyThink()
+        /// <summary>AI 부대 (적 전진 · 우리 위임, R-132): 공격 대상이 없거나 무너졌으면 가장 가까운 상대 부대를 공격.</summary>
+        private void AiThink()
         {
             foreach (var a in Armies)
             {
-                if (a.Team != Enemy || !a.Leading) continue;
+                if (!a.Leading || !AiControls(a)) continue;
                 if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && Standing(Armies[a.OrderTarget])) continue;
-                int best = -1;
-                Fix bestD = Fix.Zero;
-                var me = a.Centroid();
-                foreach (var o in Armies)
-                {
-                    if (o.Team == a.Team || !Standing(o)) continue;
-                    Fix d = Vec.DistanceSquared(o.Centroid(), me);
-                    if (best < 0 || d < bestD) { best = o.Id; bestD = d; }
-                }
+                int best = NearestEnemyArmy(a.Id);
                 if (best >= 0) OrderAttack(a.Id, best);
             }
         }
@@ -741,14 +822,56 @@ namespace Game.Battle.Model.Crowd
             Fix dt = r.TickSeconds;
             if (a.Order == CrowdOrders.Hold || a.Routed) { a.Charging = false; return; }
             Vec goal;
+            Fix ahead = a.Team == Ally ? Fix.OneValue : -Fix.OneValue;
             if (a.Order == CrowdOrders.Move) goal = a.OrderPoint;
+            else if (a.Order == CrowdOrders.Retreat)
+            {
+                a.Charging = false;
+                Fix edge = r.RetreatMargin + a.HalfDepth;
+                goal = new Vec(a.Center.X, a.Team == Ally ? edge : r.FieldDepth - edge);
+                var dr = goal - a.Center;
+                Fix step = r.AdvanceSpeed * r.RetreatSpeed * a.SpeedFactor * MoveMult(a) * dt;
+                if (dr.Length <= step)
+                {
+                    a.Center = goal;
+                    a.Order = CrowdOrders.Hold;
+                    return;
+                }
+                // 대열은 그대로 (앞 방향을 뒤집으면 병사들이 서로 자리를 바꾸며 엉킴, 캡처 39h) 뒤로 물러난다 — 맞는 쪽은 등으로 친다 (SideOf)
+                a.Center = a.Center + dr.Normalized() * step;
+                return;
+            }
+            else if (a.Order == CrowdOrders.Advance)
+            {
+                Fix edge = a.HalfDepth + Fix.FromInt(2);
+                goal = new Vec(a.Center.X, a.Team == Ally ? r.FieldDepth - edge : edge);
+                int near = NearestEnemyArmy(a.Id);
+                if (near >= 0)
+                {
+                    var t = Armies[near];
+                    Fix gap = (t.Centroid() - a.Center).Length - a.HalfDepth - t.HalfDepth;
+                    if (Shooting(a))
+                    {
+                        a.Charging = false;
+                        if (gap <= RangeOf(a.Troop) * Fix.FromRatio(4, 5)) return; // 궁병: 적이 사거리에 들면 멈춰 쏜다
+                    }
+                    else
+                    {
+                        int alive0 = System.Math.Max(1, a.AliveCount);
+                        bool contact = engagedSoldiers * 10 >= alive0;
+                        if (contact) a.Charging = false;
+                        else if (gap <= r.ChargeRange) a.Charging = true;
+                    }
+                }
+                if ((goal - a.Center).Length <= Fix.OneValue) { a.Order = CrowdOrders.Hold; a.Charging = false; return; }
+            }
             else
             {
                 var t = Armies[a.OrderTarget];
                 if (!Standing(t)) { a.Order = CrowdOrders.Hold; a.Charging = false; return; }
                 goal = t.Centroid();
                 Fix gap = (goal - a.Center).Length - a.HalfDepth - t.HalfDepth;
-                if (a.Troop.Ranged)
+                if (Shooting(a))
                 {
                     // 궁병: 사거리의 80% 안이면 멈춰서 쏜다 (방향만 맞춤)
                     a.Charging = false;
@@ -775,11 +898,13 @@ namespace Game.Battle.Model.Crowd
                 a.Center = goal;
                 // 예약한 경유 지점이 있으면 다음으로, 없으면 제자리
                 if (a.Waypoints.Count > 0) { a.OrderPoint = a.Waypoints[0]; a.Waypoints.RemoveAt(0); }
-                else { a.Order = CrowdOrders.Hold; a.Charging = false; }
+                else if (a.PathThenAttack >= 0 && Standing(Armies[a.PathThenAttack])) OrderAttack(a.Id, a.PathThenAttack); // 그린 길 끝이 적이면 공격
+                else { a.Order = CrowdOrders.Hold; a.Charging = false; a.PathThenAttack = -1; }
                 return;
             }
             if (a.Order == CrowdOrders.Attack && dist <= Fix.OneValue) return;
-            if (dist > Fix.OneValue) a.Facing = d.Normalized(); // 도착 직전에는 방향을 그대로 (뒤집히지 않게)
+            if (a.Order == CrowdOrders.Advance) a.Facing = new Vec(Fix.Zero, ahead); // 진군: 곧게 앞으로
+            else if (dist > Fix.OneValue) a.Facing = d.Normalized(); // 도착 직전에는 방향을 그대로 (뒤집히지 않게)
             int alive = System.Math.Max(1, a.AliveCount);
             Fix slow = Fix.OneValue - Fix.Min(Fix.OneValue, Fix.FromRatio(engagedSoldiers * 2, alive));
             a.Center = a.Center + a.Facing * Fix.Min(dist, baseSpeed * dt * slow);

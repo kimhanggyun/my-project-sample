@@ -328,6 +328,95 @@ namespace Game.Tests.Battle
             for (int t = 0; t < 50; t++) b.Step();
         }
 
+        // ---- 조작 명령 (R-132): 진군 · 후퇴 · 근접 공격 · 위임 · 경로 ----
+
+        [Fact]
+        public void AdvanceGoesStraightAheadAndFights()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyAdvance = false, Seed = 5 }, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            var startX = a.Center.X;
+            var startY = a.Center.Y;
+            b.OrderAdvance(a.Id);
+            Assert.Equal(CrowdOrders.Advance, a.Order);
+            bool fought = false;
+            for (int t = 0; t < 300 && !b.IsOver; t++) { b.Step(); foreach (var s in a.Soldiers) if (s.LastAttackTick >= 0) fought = true; }
+            Assert.True(a.Center.Y > startY + Fix.FromInt(5));
+            Assert.Equal(startX, a.Center.X); // 곧게
+            Assert.True(fought);
+        }
+
+        [Fact]
+        public void RetreatGoesBackShowingTheBack()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyAdvance = false, Seed = 5 }, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            var startY = a.Center.Y;
+            b.OrderRetreat(a.Id);
+            b.Step();
+            Assert.True(a.Facing.Y > Fix.Zero); // 대열은 뒤집지 않는다
+            Assert.Equal(3, b.SideOf(a, a.Center, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(5)))); // 쫓는 적(앞)에게 맞아도 뒤
+            for (int t = 0; t < 400 && a.Order == CrowdOrders.Retreat; t++) b.Step();
+            Assert.Equal(CrowdOrders.Hold, a.Order);
+            Assert.True(a.Center.Y < startY);
+            Assert.True(a.Center.Y <= b.Rules.RetreatMargin + a.HalfDepth + Fix.OneValue);
+            Assert.Equal(0, b.SideOf(a, a.Center, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(5)))); // 다 물러나면 다시 앞
+        }
+
+        [Fact]
+        public void AttackNearestSendsArchersIntoMelee()
+        {
+            var setup = new CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyTroops = new[] { "infantry", "archer", "infantry" }, AllyAdvance = false, Seed = 4 };
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var archers = b.Commander(CrowdBattle.Ally);
+            Assert.True(archers.Troop.Ranged);
+            Assert.True(b.OrderAttackNearest(archers.Id));
+            Assert.True(archers.Melee);
+            Assert.Equal(b.NearestEnemyArmy(archers.Id), archers.OrderTarget);
+            Assert.Equal("center", b.Armies[archers.OrderTarget].Place); // 마주 보는 적
+            bool struck = false;
+            for (int t = 0; t < 400 && !b.IsOver && !struck; t++)
+            {
+                b.Step();
+                foreach (var s in archers.Soldiers) if (!s.IsGeneral && s.LastAttackTick == b.Tick && b.Soldiers[s.LastTargetId].Pos.Y - s.Pos.Y < Fix.FromInt(3)) struck = true;
+            }
+            Assert.True(struck); // 활 대신 붙어서 친다
+            Assert.Empty(b.Arrows.FindAll(ar => b.Soldiers[ar.ShooterId].Army == archers.Id));
+            b.OrderHold(archers.Id);
+            Assert.False(archers.Melee);
+        }
+
+        [Fact]
+        public void DelegatedAllyFightsByItself()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyAdvance = false, Seed = 2 }, Defs.TroopTypes, Defs.TroopCounters);
+            b.UseSkillData(Defs.Skills);
+            var a = b.Commander(CrowdBattle.Ally);
+            for (int t = 0; t < 20; t++) b.Step();
+            Assert.Equal(CrowdOrders.Hold, a.Order); // 위임 전에는 제자리
+            b.SetDelegated(a.Id, true);
+            for (int t = 0; t < 20; t++) b.Step();
+            Assert.Equal(CrowdOrders.Attack, a.Order);
+            Assert.Equal(b.Commander(CrowdBattle.Enemy).Id, a.OrderTarget);
+        }
+
+        [Fact]
+        public void PathFollowsPointsThenAttacks()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyAdvance = false, Seed = 2 }, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            var foe = b.Commander(CrowdBattle.Enemy);
+            var pts = new System.Collections.Generic.List<Game.Battle.Model.Geometry.Vec>();
+            for (int k = 0; k < 20; k++) pts.Add(new Game.Battle.Model.Geometry.Vec(Fix.FromInt(10 + k), Fix.FromInt(20 + k / 2)));
+            b.OrderPath(a.Id, pts, foe.Id);
+            Assert.Equal(CrowdOrders.Move, a.Order);
+            Assert.Equal(CrowdBattle.MaxPathPoints - 1, a.Waypoints.Count); // 상한
+            Assert.Equal(foe.Id, a.PathThenAttack);
+            for (int t = 0; t < 600 && a.Order == CrowdOrders.Move; t++) b.Step();
+            Assert.Equal(CrowdOrders.Attack, a.Order); // 길 끝에서 공격
+            Assert.Equal(foe.Id, a.OrderTarget);
+        }
+
         // ---- 스킬 (R-130) ----
 
         private static CrowdBattle WithSkills(CrowdSetup setup)

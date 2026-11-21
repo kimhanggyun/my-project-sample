@@ -185,16 +185,24 @@ namespace Game.Battle.Model.Crowd
             a.Morale -= amount;
         }
 
-        /// <summary>적 부대 AI 스킬: 사기가 낮으면 고무, 맞붙기 시작하면 돌격 함성 · 철벽 (명령 전진일 때만).</summary>
-        private void EnemySkills()
+        /// <summary>
+        /// AI 스킬 (적 전진 · 우리 위임, R-132): 사기가 낮으면 고무, 맞붙기 시작하면 돌격 함성 · 철벽,
+        /// 궁병은 가까운 적 부대가 사거리 안이면 그 가운데에 화살비.
+        /// </summary>
+        private void AiSkills()
         {
             foreach (var a in Armies)
             {
-                if (a.Team != Enemy || !a.Leading) continue;
+                if (!a.Leading || !AiControls(a)) continue;
                 if (a.Morale <= Fix.FromInt(40) && UseSkill(a.Id, Rally)) continue;
                 bool engaged = a.LastHitTick >= Tick - 5;
                 if (engaged && UseSkill(a.Id, WarCry)) continue;
-                if (engaged && a.Morale <= Fix.FromInt(60)) UseSkill(a.Id, HoldTheLine);
+                if (engaged && a.Morale <= Fix.FromInt(60) && UseSkill(a.Id, HoldTheLine)) continue;
+                if (a.SkillUses.ContainsKey(ArrowRain))
+                {
+                    int t = NearestEnemyArmy(a.Id);
+                    if (t >= 0) UseSkill(a.Id, ArrowRain, Armies[t].Centroid());
+                }
             }
         }
     }

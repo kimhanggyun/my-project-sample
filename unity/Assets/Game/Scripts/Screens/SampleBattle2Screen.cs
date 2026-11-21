@@ -11,8 +11,10 @@ namespace Game.Unity.Screens
 {
     /// <summary>
     /// 샘플전투2 (R-125 · R-126, 시험 중): 병사 단위 전투.
-    /// 시작 전: 우리 · 적 진형, 부대 수(하나 · 셋), 적 명령. 싸우는 중: 부대를 고르고 (아래 버튼 또는 전장에서 눌러)
-    /// 땅을 누르면 이동, 적 부대를 누르면 공격 (가까워지면 돌격), 진형 바꾸기 · 정지 · 전체 돌격.
+    /// 시작 전: 우리 · 적 진형, 부대 수(하나 · 셋), 적 명령 (캡처 투어용, 테스트 탭에서 열면 바로 시작).
+    /// 싸우는 중 (R-132, 아래 3단): ① 부대 줄 [전체][부대…] (좌우로 넘김) · ② 명령 줄 (전체 = 위임 · 진군 · 대기 · 후퇴,
+    /// 부대 = 위임 · 진군 · 공격 · 이동 · 스킬 · 진형 · 대기 · 후퇴) · ③ 세부 줄 (누른 명령의 선택지, 없으면 고른 부대 정보).
+    /// 전장 지름길: 우리 부대를 누르면 고르기, 적 부대 = 공격, 땅 = 이동. 경로는 손가락으로 길을 그린다. 위쪽 [일시정지].
     /// 기존 샘플전투와 따로 (규칙 CrowdBattle, 그리기 CrowdField3D). 보상 없음, 세이브에 남지 않음.
     /// </summary>
     public sealed class SampleBattle2Screen : GameScreen
@@ -20,6 +22,7 @@ namespace Game.Unity.Screens
         private const float TopHeight = 76f;
         private const int AllCorps = -2;
         private static readonly int[] Speeds = { 1, 2, 4 };
+        private const float RowHeight = 80f;
 
         private readonly CrowdSetup _setup;
         private readonly bool _startNow;
@@ -31,18 +34,26 @@ namespace Game.Unity.Screens
         private RectTransform _panel;
         private float _accumulator, _tickSeconds;
         private bool _running;
+        private bool _paused;
         private int _speed;
         /// <summary>고른 우리 부대 (Armies 번호), 전체면 AllCorps.</summary>
         private int _selected = AllCorps;
         private readonly Dictionary<int, Button> _corpsButtons = new Dictionary<int, Button>();
+        private readonly Dictionary<int, RectTransform> _moraleFills = new Dictionary<int, RectTransform>();
         private readonly Dictionary<string, Button> _formationButtons = new Dictionary<string, Button>();
-        private Button _speedButton;
+        private readonly Dictionary<string, Button> _commandButtons = new Dictionary<string, Button>();
+        private readonly Dictionary<string, Button> _skillButtons = new Dictionary<string, Button>();
+        private Button _speedButton, _pauseButton;
         private CrowdHud _hud;
-        private RadialMenu _radial;
-        /// <summary>원형 메뉴로 고른 다음 누를 것: null · "move" (다음 땅 = 이동) · "queue" (땅마다 경유 지점 예약, [예약 끝]까지).</summary>
+        /// <summary>② 명령 줄에서 펼친 명령 (③ 세부 줄): null · attack · move · skill · formation.</summary>
+        private string _cmd;
+        /// <summary>다음 누름 · 끌기가 할 일: null · attack (적 고르기) · move · queue (땅마다 예약) · path (길 그리기) · "skill:id" (범위 스킬 지점).</summary>
         private string _pickMode;
-        private Button _queueDone;
-        private Text _hintText;
+        private RectTransform _detailRow, _commandRow, _corpsRow;
+        private Text _infoText;
+        /// <summary>그리는 중인 길 (전장 좌표).</summary>
+        private readonly List<Vec> _trail = new List<Vec>();
+        private RectTransform _result;
 
         /// <summary>[닫기]로 돌아갈 메인 탭 (테스트 탭에서 열면 "test").</summary>
         private readonly string _returnTab;
@@ -71,33 +82,28 @@ namespace Game.Unity.Screens
             Ui.Background(top, Palette.Bar);
             _status = Ui.Label(top, "", 26, TextAnchor.MiddleLeft);
             Ui.Size(_status, flexibleWidth: 3);
+            _pauseButton = Ui.Button(top, "", TogglePause, TopHeight, fontSize: 24);
+            Ui.Size(_pauseButton, width: 130);
             _speedButton = Ui.Button(top, "", NextSpeed, TopHeight, fontSize: 26);
-            Ui.Size(_speedButton, width: 110);
-            Ui.Size(Ui.Button(top, T("ui.sample2.close"), () => App.ShowMain(_returnTab), TopHeight, fontSize: 26), width: 130);
+            Ui.Size(_speedButton, width: 100);
+            Ui.Size(Ui.Button(top, T("ui.sample2.close"), () => App.ShowMain(_returnTab), TopHeight, fontSize: 26), width: 120);
 
             App.SetBackdrop(false);
             _field = new CrowdField3D(_battle);
             _fieldArea = Ui.Rect(Root, "Field");
             Ui.Size(_fieldArea, flexibleHeight: 1);
             Ui.Background(_fieldArea, new Color(0, 0, 0, 0));
+            _fieldArea.gameObject.AddComponent<RectMask2D>(); // 이름표가 위 줄을 덮지 않게 (캡처 39j)
             var gestures = _fieldArea.gameObject.AddComponent<GestureArea>();
             gestures.Tapped += OnFieldTap;
-            gestures.Dragged += (a, b) => _field.Rig.Pan(a, b);
+            gestures.Dragged += OnFieldDrag;
+            gestures.DragEnded += OnFieldDragEnd;
             gestures.Zoomed += f => _field.Rig.Zoom(f);
             _hud = new CrowdHud(_battle, _field, _fieldArea, TagName);
-            _radial = new RadialMenu(_fieldArea); // 부대 원형 메뉴 (기존 전투 battle.md 4.3.3을 옮김, R-129)
-            _queueDone = Ui.Button(_fieldArea, T("ui.sample2.queueDone"), EndPick, 72, Palette.ButtonActive, 26);
-            var qr = (RectTransform)_queueDone.transform;
-            qr.anchorMin = qr.anchorMax = new Vector2(0.5f, 1f);
-            qr.pivot = new Vector2(0.5f, 1f);
-            qr.anchoredPosition = new Vector2(0f, -12f);
-            qr.sizeDelta = new Vector2(260f, 72f);
-            _queueDone.gameObject.SetActive(false);
 
             _panel = Ui.Rect(Root, "Panel");
             Ui.Background(_panel, Palette.Bar);
-            Ui.Column(_panel, 8, 10);
-            Ui.Size(_panel, _setup.AllyUnits != null && _setup.AllyUnits.Count + 1 > 5 ? 520 : 470);
+            Ui.Column(_panel, 6, 8);
             BuildPanel();
             UpdateTexts();
         }
@@ -136,11 +142,16 @@ namespace Game.Unity.Screens
             Ui.Clear(_panel);
             _formationButtons.Clear();
             _corpsButtons.Clear();
+            _moraleFills.Clear();
+            _commandButtons.Clear();
+            _skillButtons.Clear();
+            _infoText = null;
             if (!Started)
             {
                 // 시작 전: 우리 진형 · 적 진형 · 부대 수 · 적 명령
-                FormationRow(T("ui.sample2.ally"), _setup.AllyFormation, id => { _setup.AllyFormation = id; Restart(); });
-                FormationRow(T("ui.sample2.enemy"), _setup.EnemyFormation, id => { _setup.EnemyFormation = id; Restart(); });
+                Ui.Size(_panel, 470);
+                FormationRow(_panel, T("ui.sample2.ally"), _setup.AllyFormation, id => { _setup.AllyFormation = id; Restart(); });
+                FormationRow(_panel, T("ui.sample2.enemy"), _setup.EnemyFormation, id => { _setup.EnemyFormation = id; Restart(); });
                 TroopRow(T("ui.sample2.allyTroops"), _setup.AllyTroops, t => { _setup.AllyTroops = t; Restart(); });
                 TroopRow(T("ui.sample2.enemyTroops"), _setup.EnemyTroops, t => { _setup.EnemyTroops = t; Restart(); });
                 var corps = Ui.Row(_panel, "Corps", 68, 6);
@@ -156,50 +167,59 @@ namespace Game.Unity.Screens
                 Ui.Button(_panel, T("ui.sample2.start"), () => { _running = true; BuildPanel(); }, 76, Palette.ButtonActive, 30);
                 return;
             }
-            // 싸우는 중: 부대 고르기 · 진형 · 정지 · 전체 돌격 · 다시
-            // 부대 버튼: 한 줄에 다섯까지 (3×3이면 두 줄)
-            var mine = new List<CrowdArmy>(_battle.TeamArmies(CrowdBattle.Ally));
-            int perRow = mine.Count + 1 > 5 ? 5 : mine.Count + 1;
-            RectTransform pick = null;
-            int inRow = 0;
-            foreach (var a in mine)
-            {
-                if (pick == null || inRow >= perRow) { pick = Ui.Row(_panel, "Pick", mine.Count + 1 > 5 ? 72 : 84, 6); inRow = 0; }
-                int id = a.Id;
-                var b = Ui.Button(pick, CorpsName(a), () => Select(id), mine.Count + 1 > 5 ? 72 : 84, Palette.Button, mine.Count + 1 > 5 ? 18 : 22);
-                Ui.Size(b, flexibleWidth: 1);
-                _corpsButtons[id] = b;
-                inRow++;
-            }
-            if (inRow >= perRow) pick = Ui.Row(_panel, "Pick", 72, 6);
-            var all = Ui.Button(pick, T("ui.sample2.all"), () => Select(AllCorps), 84, Palette.Button, 24);
-            Ui.Size(all, flexibleWidth: 1);
-            _corpsButtons[AllCorps] = all;
-            FormationRow(T("ui.sample2.formation"), CurrentFormation(), id =>
-            {
-                foreach (var a in Chosen()) _battle.SetFormation(a.Id, id);
-                foreach (var kv in _formationButtons) Ui.Recolor(kv.Value, kv.Key == id ? Palette.ButtonActive : Palette.Button);
-            });
-            var orders = Ui.Row(_panel, "Orders", 76, 8);
-            Ui.Size(Ui.Button(orders, T("ui.sample2.stop"), () => { foreach (var a in Chosen()) _battle.OrderHold(a.Id); }, 76, Palette.Button, 26), flexibleWidth: 1);
-            Ui.Size(Ui.Button(orders, T("ui.sample2.charge"), ChargeAll, 76, Palette.ButtonActive, 26), flexibleWidth: 1);
-            Ui.Size(Ui.Button(orders, T("ui.sample2.again"), () => App.Show(new SampleBattle2Screen(new CrowdSetup
-            {
-                AllyFormation = _setup.AllyFormation, EnemyFormation = _setup.EnemyFormation, EnemyAdvance = _setup.EnemyAdvance,
-                AllyCorps = _setup.AllyCorps, EnemyCorps = _setup.EnemyCorps, AllyAdvance = false,
-                AllyTroops = _setup.AllyTroops, EnemyTroops = _setup.EnemyTroops,
-            })), 76, Palette.Button, 26), flexibleWidth: 1);
-            _hintText = Ui.Label(_panel, T("ui.sample2.hint"), 22, TextAnchor.MiddleCenter, Palette.TextDim);
+            // 싸우는 중 (R-132): ③ 세부 줄 · ② 명령 줄 · ① 부대 줄 (아래에서 위로 읽으면 고르기 → 명령 → 선택지)
+            Ui.Size(_panel, RowHeight * 2 + 112 + 6 * 2 + 16);
+            _detailRow = Ui.Row(_panel, "Detail", RowHeight, 6);
+            _commandRow = Ui.Row(_panel, "Commands", RowHeight, 6);
+            _corpsRow = Ui.HScrollRow(_panel, "Corps", 112, 8, 4);
+            CorpsButton(AllCorps, null);
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) CorpsButton(a.Id, a);
             Select(_selected);
+        }
+
+        /// <summary>① 부대 줄의 버튼: 이름 (★ 총대장 · 병종) · 사기 숫자 · 아래 사기 막대 (병종 색 띠).</summary>
+        private void CorpsButton(int id, CrowdArmy a)
+        {
+            var b = Ui.Button(_corpsRow, a == null ? T("ui.sample2.all") : CorpsName(a), () => Select(id), 104, Palette.Button, a == null ? 26 : 20);
+            Ui.Size(b, 104, a == null ? 150 : 200);
+            _corpsButtons[id] = b;
+            if (a == null) return;
+            var back = Ui.Rect(b.transform, "Morale");
+            back.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            back.anchorMin = new Vector2(0f, 0f);
+            back.anchorMax = new Vector2(1f, 0f);
+            back.pivot = new Vector2(0.5f, 0f);
+            back.offsetMin = new Vector2(10f, 6f);
+            back.offsetMax = new Vector2(-10f, 14f);
+            Ui.Background(back, new Color(0f, 0f, 0f, 0.45f)).raycastTarget = false;
+            var fill = Ui.Rect(back, "Fill");
+            fill.anchorMin = Vector2.zero; // 왼쪽부터 채움 (캡처: 가운데부터 차 보임)
+            Ui.Background(fill, TroopColor(a.Troop.BaseId)).raycastTarget = false;
+            Ui.SetGauge(fill, 1f);
+            _moraleFills[id] = fill;
+        }
+
+        /// <summary>병종 색 (부대 줄 사기 막대): 보병 회갈 · 창병 초록 · 궁병 노랑 · 기병 하늘 · 정찰 보라.</summary>
+        private static Color TroopColor(string baseId)
+        {
+            switch (baseId)
+            {
+                case "spearman": return new Color(0.45f, 0.78f, 0.45f);
+                case "archer": return new Color(0.95f, 0.8f, 0.35f);
+                case "cavalry": return new Color(0.45f, 0.75f, 0.95f);
+                case "scout": return new Color(0.75f, 0.55f, 0.9f);
+                default: return new Color(0.85f, 0.75f, 0.65f);
+            }
         }
 
         private void Choice(RectTransform row, string text, bool on, System.Action act) =>
             Ui.Size(Ui.Button(row, text, act, 68, on ? Palette.ButtonActive : Palette.Button, 22), flexibleWidth: 1);
 
-        /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병".</summary>
+        /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병", 위임이면 "· 자동".</summary>
         private string TagName(CrowdArmy a)
         {
             string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id);
+            if (a.Team == CrowdBattle.Ally && a.Delegated) s += " · " + T("ui.sample2.auto");
             // 켜져 있는 스킬 (R-130)
             int tick = _battle.Tick;
             if (a.AttackBuffUntil > tick) s += " · " + T("skill.warCry");
@@ -208,90 +228,225 @@ namespace Game.Unity.Screens
             return s;
         }
 
-        // ---- 부대 원형 메뉴 (R-129): 돌격 · 이동 · 예약 이동 · 정지 · 진형 ----
+        // ---- ② 명령 줄 · ③ 세부 줄 (R-132) ----
 
-        private RadialMenu.Item Pick(string label, System.Action act, bool active = false) =>
-            new RadialMenu.Item { Label = label, Active = active, OnPick = () => { act(); _radial.Close(); } };
-
-        private void OpenCorpsMenu(CrowdArmy a)
+        private void BuildCommands()
         {
-            EndPick();
-            Select(a.Id);
-            _radial.Open(T("ui.radial.close"), () => _radial.Close(), new List<RadialMenu.Item>
+            if (_commandRow == null) return;
+            Ui.Clear(_commandRow);
+            _commandButtons.Clear();
+            bool all = _selected == AllCorps;
+            int font = all ? 26 : 22;
+            CommandButton("delegate", DelegateLabel(), ToggleDelegate, font);
+            CommandButton("advance", T("ui.sample2.cmd.advance"), () => Order(a => _battle.OrderAdvance(a.Id)), font);
+            if (!all)
             {
-                Pick(T("ui.sample2.charge"), ChargeAll),
-                new RadialMenu.Item { Label = T("ui.radial.move"), OnPick = () => BeginPick("move") },
-                new RadialMenu.Item { Label = T("ui.sample2.queue"), OnPick = () => BeginPick("queue") },
-                Pick(T("ui.sample2.stop"), () => { foreach (var c in Chosen()) _battle.OrderHold(c.Id); }),
-                new RadialMenu.Item { Label = T("ui.radial.formation") + " ›", OnPick = () => OpenFormationMenu(a) },
-                new RadialMenu.Item { Label = T("ui.radial.skill") + " ›", Enabled = a.SkillUses.Count > 0, OnPick = () => OpenSkillMenu(a) },
-            });
-            FollowMenu();
-        }
-
-        private void OpenFormationMenu(CrowdArmy a)
-        {
-            var items = new List<RadialMenu.Item>();
-            foreach (var id in CrowdFormations.All)
-            {
-                string f = id;
-                items.Add(Pick(T("ui.sample2.f." + id), () => { foreach (var c in Chosen()) _battle.SetFormation(c.Id, f); Select(_selected); }, a.Formation == id));
+                CommandButton("attack", T("ui.sample2.cmd.attack"), () => OpenCommand("attack"), font);
+                CommandButton("move", T("ui.sample2.cmd.move"), () => OpenCommand("move"), font);
+                CommandButton("skill", T("ui.sample2.cmd.skill"), () => OpenCommand("skill"), font);
+                CommandButton("formation", T("ui.sample2.cmd.formation"), () => OpenCommand("formation"), font);
             }
-            _radial.Open(T("ui.radial.back"), () => OpenCorpsMenu(a), items);
-            FollowMenu();
+            CommandButton("hold", T("ui.sample2.cmd.hold"), () => Order(a => _battle.OrderHold(a.Id)), font);
+            CommandButton("retreat", T("ui.sample2.cmd.retreat"), () => Order(a => _battle.OrderRetreat(a.Id)), font);
+            RecolorCommands();
+            BuildDetail();
         }
 
-        /// <summary>스킬 하위 고리 (R-130): 이름 + 남은 횟수, 못 쓰면 흐리게. 화살비는 다음에 누른 땅에.</summary>
-        private void OpenSkillMenu(CrowdArmy a)
+        private void CommandButton(string id, string text, System.Action act, int font)
         {
-            var items = new List<RadialMenu.Item>();
-            foreach (var id in CrowdBattle.KnownSkills)
+            var b = Ui.Button(_commandRow, text, act, RowHeight, Palette.Button, font);
+            Ui.Size(b, flexibleWidth: 1);
+            _commandButtons[id] = b;
+        }
+
+        private string DelegateLabel()
+        {
+            var c = Chosen();
+            bool on = c.Count > 0 && c.TrueForAll(a => a.Delegated);
+            return T("ui.sample2.cmd.delegate") + "\n" + T(on ? "ui.sample2.on" : "ui.sample2.off");
+        }
+
+        /// <summary>명령 버튼 색: 펼친 명령 · 위임 켬 · 고른 부대가 모두 그 명령 중이면 밝게.</summary>
+        private void RecolorCommands()
+        {
+            var c = Chosen();
+            bool Every(string order) => c.Count > 0 && c.TrueForAll(a => a.Order == order && !a.Delegated);
+            foreach (var kv in _commandButtons)
             {
-                if (!a.SkillUses.TryGetValue(id, out var left)) continue;
-                string sk = id;
-                var def = _battle.SkillDef(id);
-                bool can = _battle.CanUseSkill(a.Id, id);
-                items.Add(new RadialMenu.Item
+                bool on = kv.Key == _cmd
+                    || (kv.Key == "delegate" && c.Count > 0 && c.TrueForAll(a => a.Delegated))
+                    || (kv.Key == "advance" && Every(CrowdOrders.Advance))
+                    || (kv.Key == "hold" && Every(CrowdOrders.Hold))
+                    || (kv.Key == "retreat" && Every(CrowdOrders.Retreat));
+                Ui.Recolor(kv.Value, on ? Palette.ButtonActive : Palette.Button);
+            }
+            if (_commandButtons.TryGetValue("delegate", out var d)) d.GetComponentInChildren<Text>().text = DelegateLabel();
+        }
+
+        private void OpenCommand(string cmd)
+        {
+            EndPick(false);
+            _cmd = _cmd == cmd ? null : cmd; // 다시 누르면 접기
+            RecolorCommands();
+            BuildDetail();
+        }
+
+        /// <summary>③ 세부 줄: 고르는 중이면 안내 + [취소], 펼친 명령이면 선택지, 아니면 고른 부대 정보.</summary>
+        private void BuildDetail()
+        {
+            if (_detailRow == null) return;
+            Ui.Clear(_detailRow);
+            _formationButtons.Clear();
+            _skillButtons.Clear();
+            _infoText = null;
+            var one = _selected >= 0 ? _battle.Armies[_selected] : null;
+            if (_pickMode != null)
+            {
+                string hint = _pickMode == "attack" ? "ui.sample2.pickAttack" : _pickMode == "queue" ? "ui.sample2.queueHint"
+                    : _pickMode == "path" ? "ui.sample2.pathHint" : _pickMode.StartsWith("skill:") ? "ui.sample2.skillHint" : "ui.sample2.moveHint";
+                Ui.Size(Ui.Label(_detailRow, T(hint), 22, TextAnchor.MiddleCenter, Palette.Text), flexibleWidth: 3);
+                Ui.Size(Ui.Button(_detailRow, T(_pickMode == "queue" ? "ui.sample2.queueDone" : "ui.sample2.cancel"), () => EndPick(), RowHeight,
+                    _pickMode == "queue" ? Palette.ButtonActive : Palette.Button, 24), width: 200);
+                return;
+            }
+            if (one != null && _cmd == "attack")
+            {
+                Detail(T("ui.sample2.attack.pick"), () => BeginPick("attack"));
+                Detail(T("ui.sample2.attack.nearest"), () => Order(a => _battle.OrderAttackNearest(a.Id)));
+                return;
+            }
+            if (one != null && _cmd == "move")
+            {
+                Detail(T("ui.sample2.move.move"), () => BeginPick("move"));
+                Detail(T("ui.sample2.queue"), () => BeginPick("queue"));
+                Detail(T("ui.sample2.move.path"), () => BeginPick("path"));
+                return;
+            }
+            if (one != null && _cmd == "skill")
+            {
+                bool any = false;
+                foreach (var id in CrowdBattle.KnownSkills)
                 {
-                    Label = T(def.NameKey) + "\n" + T("ui.sample2.uses", left), Enabled = can,
-                    OnPick = () =>
-                    {
-                        if (sk == CrowdBattle.ArrowRain) { BeginPick("skill:" + sk); return; }
-                        _battle.UseSkill(a.Id, sk);
-                        _radial.Close();
-                    },
-                });
+                    if (!one.SkillUses.TryGetValue(id, out var left)) continue;
+                    any = true;
+                    string sk = id;
+                    var b = Detail(T(_battle.SkillDef(id).NameKey) + "\n" + T("ui.sample2.uses", left), () => UseSkill(sk), 20);
+                    _skillButtons[id] = b;
+                }
+                if (!any) Ui.Label(_detailRow, T("ui.sample2.noSkill"), 22, TextAnchor.MiddleCenter, Palette.TextDim);
+                RefreshSkills();
+                return;
             }
-            _radial.Open(T("ui.radial.back"), () => OpenCorpsMenu(a), items);
-            FollowMenu();
+            if (one != null && _cmd == "formation")
+            {
+                _battle.Rules.RecommendedFormation.TryGetValue(one.Troop.BaseId, out var rec);
+                foreach (var id in CrowdFormations.All)
+                {
+                    string f = id;
+                    string text = T("ui.sample2.f." + id) + (id == rec ? "\n" + T("ui.sample2.recommended") : "");
+                    var b = Detail(text, () => { foreach (var a in Chosen()) _battle.SetFormation(a.Id, f); RecolorFormations(); }, id == rec ? 20 : 24);
+                    _formationButtons[id] = b;
+                }
+                RecolorFormations();
+                return;
+            }
+            _infoText = Ui.Label(_detailRow, "", 22, TextAnchor.MiddleCenter, Palette.Text);
+            Ui.Size(_infoText, flexibleWidth: 1);
+            RefreshInfo();
         }
 
-        /// <summary>원형 메뉴를 고른 부대 장수 위에 둔다 (부대가 움직이면 따라감).</summary>
-        private void FollowMenu()
+        private Button Detail(string text, System.Action act, int font = 24)
         {
-            if (!_radial.IsOpen || _selected < 0) return;
+            var b = Ui.Button(_detailRow, text, act, RowHeight, Palette.Button, font);
+            Ui.Size(b, flexibleWidth: 1);
+            return b;
+        }
+
+        private void RecolorFormations()
+        {
+            string f = CurrentFormation();
+            foreach (var kv in _formationButtons) Ui.Recolor(kv.Value, kv.Key == f ? Palette.ButtonActive : Palette.Button);
+        }
+
+        private void RefreshSkills()
+        {
+            if (_selected < 0) return;
             var a = _battle.Armies[_selected];
-            var cam = _field.Rig.Camera;
-            var sp = cam.WorldToScreenPoint(_field.ToWorld(a.General.Alive ? a.General.Pos : a.Centroid()));
-            if (sp.z > 0 && RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local)) _radial.Follow(local);
+            foreach (var kv in _skillButtons)
+            {
+                Ui.SetEnabled(kv.Value, _battle.CanUseSkill(a.Id, kv.Key));
+                a.SkillUses.TryGetValue(kv.Key, out var left);
+                kv.Value.GetComponentInChildren<Text>().text = T(_battle.SkillDef(kv.Key).NameKey) + "\n" + T("ui.sample2.uses", left);
+            }
+        }
+
+        /// <summary>③ 정보: 부대 하나 = 병종 · 병사 · 사기 · 명령 (위임이면 자동), 전체 = 부대 수 · 병사 · 위임 수.</summary>
+        private void RefreshInfo()
+        {
+            if (_infoText == null) return;
+            if (_selected >= 0)
+            {
+                var a = _battle.Armies[_selected];
+                string order = a.Delegated ? T("ui.sample2.auto") : T("ui.sample2.order." + a.Order);
+                _infoText.text = T("ui.sample2.info", T("troop." + a.Troop.Id), a.AliveCount, a.StartCount, MoraleText(a), order);
+                return;
+            }
+            int n = 0, soldiers = 0, auto = 0;
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+            {
+                if (!_battle.Standing(a)) continue;
+                n++; soldiers += a.AliveCount;
+                if (a.Delegated) auto++;
+            }
+            _infoText.text = T("ui.sample2.allInfo", n, soldiers, auto);
+        }
+
+        /// <summary>고른 부대들에게 명령 (위임은 꺼진다 — 직접 명령이 우선).</summary>
+        private void Order(System.Action<CrowdArmy> act)
+        {
+            EndPick(false);
+            foreach (var a in Chosen()) { _battle.SetDelegated(a.Id, false); act(a); }
+            _cmd = null;
+            RecolorCommands();
+            BuildDetail();
+        }
+
+        /// <summary>위임 켜기 · 끄기: 하나라도 꺼져 있으면 모두 켬, 다 켜져 있으면 모두 끔.</summary>
+        private void ToggleDelegate()
+        {
+            var c = Chosen();
+            bool on = !c.TrueForAll(a => a.Delegated);
+            foreach (var a in c) _battle.SetDelegated(a.Id, on);
+            RecolorCommands();
+            RefreshInfo();
+        }
+
+        private void UseSkill(string skill)
+        {
+            if (_selected < 0) return;
+            if (skill == CrowdBattle.ArrowRain) { BeginPick("skill:" + skill); return; }
+            if (!_battle.UseSkill(_selected, skill)) Toast.Show(T("ui.sample2.cantSkill"), bad: true);
+            RefreshSkills();
         }
 
         private void BeginPick(string mode)
         {
-            _radial.Close();
             _pickMode = mode;
-            _queueDone.gameObject.SetActive(mode == "queue");
-            if (_hintText != null) _hintText.text = T(mode == "queue" ? "ui.sample2.queueHint" : mode.StartsWith("skill:") ? "ui.sample2.skillHint" : "ui.sample2.moveHint");
+            _trail.Clear();
+            _field.Trail.Clear();
+            BuildDetail();
         }
 
-        private void EndPick()
+        private void EndPick(bool rebuild = true)
         {
             _pickMode = null;
-            if (_queueDone != null) _queueDone.gameObject.SetActive(false);
-            if (_hintText != null) _hintText.text = T("ui.sample2.hint");
+            _trail.Clear();
+            _field?.Trail.Clear();
+            if (rebuild) BuildDetail();
         }
 
-        private string CorpsName(CrowdArmy a) => PlaceName(a) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id) + "\n" + MoraleText(a);
+        private string CorpsName(CrowdArmy a) => PlaceName(a) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id)
+            + (a.Delegated ? " · " + T("ui.sample2.auto") : "") + "\n" + MoraleText(a);
 
         /// <summary>부대 자리 이름: 좌군 · 중군 · 우군, 3×3 칸이면 "앞 좌" 등 (R-131).</summary>
         private string PlaceName(CrowdArmy a)
@@ -306,15 +461,15 @@ namespace Game.Unity.Screens
         {
             if (a.Routed) return Ui.Colored(T("ui.sample2.routed"), Palette.Bad);
             if (!a.General.Alive) return Ui.Colored(T("ui.sample2.noGeneral"), Palette.Bad);
-            string m = T("ui.sample2.morale", (int)a.Morale.FloorToLong());
+            string m = T("ui.sample2.morale", System.Math.Max(0, (int)a.Morale.FloorToLong()));
             if (a.Encircled) m += " " + T("ui.sample2.encircled");
             else if (a.Wavering) m += " " + T("ui.sample2.wavering");
             return a.Wavering || a.Encircled ? Ui.Colored(m, Palette.Bad) : m;
         }
 
-        private void FormationRow(string label, string current, System.Action<string> pick)
+        private void FormationRow(RectTransform parent, string label, string current, System.Action<string> pick)
         {
-            var row = Ui.Row(_panel, "Formation " + label, 68, 6);
+            var row = Ui.Row(parent, "Formation " + label, 68, 6);
             Ui.Size(Ui.Label(row, label, 24), width: 150);
             foreach (var id in CrowdFormations.All)
             {
@@ -342,28 +497,18 @@ namespace Game.Unity.Screens
 
         private void Select(int id)
         {
+            bool changed = id != _selected;
             _selected = id;
             _field.SelectedArmy = id == AllCorps ? -1 : id;
             _field.SelectAll = id == AllCorps;
             foreach (var kv in _corpsButtons) Ui.Recolor(kv.Value, kv.Key == id ? Palette.ButtonActive : Palette.Button);
-            string f = CurrentFormation();
-            foreach (var kv in _formationButtons) Ui.Recolor(kv.Value, kv.Key == f ? Palette.ButtonActive : Palette.Button);
-        }
-
-        /// <summary>전체 돌격: 고른 우리 부대마다 가장 가까운 적 부대를 공격.</summary>
-        private void ChargeAll()
-        {
-            foreach (var a in Chosen())
+            if (changed || _commandRow == null || _commandRow.childCount == 0)
             {
-                int best = -1;
-                Fix bestD = Fix.Zero;
-                foreach (var e in _battle.TeamArmies(CrowdBattle.Enemy))
-                {
-                    if (!_battle.Standing(e)) continue;
-                    Fix d = Vec.DistanceSquared(e.Centroid(), a.Centroid());
-                    if (best < 0 || d < bestD) { best = e.Id; bestD = d; }
-                }
-                if (best >= 0) _battle.OrderAttack(a.Id, best);
+                _pickMode = null;
+                _trail.Clear();
+                _field.Trail.Clear();
+                if (id == AllCorps) _cmd = null; // 전체는 펼칠 명령이 없다
+                BuildCommands();
             }
         }
 
@@ -372,21 +517,21 @@ namespace Game.Unity.Screens
         {
             if (!Started || _battle.IsOver) return;
             if (!_field.Rig.Ground(screen, 0f, out var world)) return;
-            CommandAt(new Vec(Fix.FromDecimal((decimal)world.x), Fix.FromDecimal((decimal)world.z)));
+            CommandAt(ToField(world));
         }
+
+        private static Vec ToField(Vector3 world) => new Vec(Fix.FromDecimal((decimal)world.x), Fix.FromDecimal((decimal)world.z));
 
         /// <summary>전장 한 곳을 누른 것과 같다 (화면 누름 · 캡처 투어).</summary>
         private void CommandAt(Vec point)
         {
             var hit = ArmyAt(point);
-            if (hit != null && hit.Team == CrowdBattle.Ally)
+            if (hit != null && hit.Team == CrowdBattle.Ally && _pickMode == null)
             {
-                if (!hit.Leading) return;
-                if (_radial.IsOpen && _selected == hit.Id) { _radial.Close(); return; }
-                OpenCorpsMenu(hit); // 우리 부대를 누르면 고르고 원형 메뉴
+                if (hit.Leading) Select(hit.Id); // 우리 부대를 누르면 고르기
                 return;
             }
-            if (_radial.IsOpen) { _radial.Close(); return; } // 메뉴가 열려 있으면 바깥 누름 = 닫기
+            if (_pickMode == "path") return; // 길은 끌어서 그린다
             var chosen = Chosen();
             if (chosen.Count == 0) return;
             if (_pickMode != null && _pickMode.StartsWith("skill:"))
@@ -398,15 +543,73 @@ namespace Game.Unity.Screens
                 EndPick();
                 return;
             }
-            if (hit != null) { foreach (var a in chosen) _battle.OrderAttack(a.Id, hit.Id); EndPick(); return; }
+            if (_pickMode == "attack" && (hit == null || hit.Team == CrowdBattle.Ally)) { Toast.Show(T("ui.sample2.pickAttack")); return; }
+            if (hit != null && hit.Team != CrowdBattle.Ally) { int t = hit.Id; Order(a => _battle.OrderAttack(a.Id, t)); return; }
             bool queue = _pickMode == "queue";
-            if (_pickMode == "move") EndPick();
-            if (chosen.Count == 1) { _battle.OrderMove(chosen[0].Id, point, queue); return; }
-            // 전체 이동: 총대장 부대(없으면 첫 부대)를 그 자리로, 나머지는 지금 떨어진 만큼 그대로
-            var lead = chosen[0];
-            foreach (var a in chosen) if (a.IsCommander) lead = a;
-            var from = lead.Center;
-            foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from), queue);
+            foreach (var a in chosen) _battle.SetDelegated(a.Id, false);
+            if (chosen.Count == 1) _battle.OrderMove(chosen[0].Id, point, queue);
+            else
+            {
+                // 전체 이동: 총대장 부대(없으면 첫 부대)를 그 자리로, 나머지는 지금 떨어진 만큼 그대로
+                var lead = chosen[0];
+                foreach (var a in chosen) if (a.IsCommander) lead = a;
+                var from = lead.Center;
+                foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from), queue);
+            }
+            if (!queue) { _pickMode = null; _cmd = null; }
+            RecolorCommands();
+            BuildDetail();
+        }
+
+        // ---- 경로 그리기 (R-132, 기존 전투 경로를 옮김) ----
+
+        /// <summary>전장 끌기: 길 그리는 중이면 손가락 자취를 모으고 (지도는 그대로), 아니면 지도 이동.</summary>
+        private void OnFieldDrag(Vector2 a, Vector2 b)
+        {
+            if (_pickMode != "path") { _field.Rig.Pan(a, b); return; }
+            if (_trail.Count == 0 && _field.Rig.Ground(a, 0f, out var w0)) AddTrail(ToField(w0));
+            if (_field.Rig.Ground(b, 0f, out var w)) AddTrail(ToField(w));
+        }
+
+        private void AddTrail(Vec p)
+        {
+            if (_trail.Count > 0 && (p - _trail[_trail.Count - 1]).LengthSquared < Fix.FromRatio(1, 4)) return; // 0.5칸보다 가까우면 건너뜀
+            _trail.Add(p);
+            _field.Trail.Add(_field.ToWorld(p));
+        }
+
+        /// <summary>
+        /// 길 그리기를 마침: 자취를 길이대로 고르게 MaxPathPoints 점으로 나눠 그 길로 (손을 떼면 바로).
+        /// 끝이 적 부대 위면 마지막 점 대신 도착 뒤 그 부대를 공격.
+        /// </summary>
+        private void OnFieldDragEnd()
+        {
+            if (_pickMode != "path") return;
+            if (_trail.Count < 2 || _selected < 0) { _trail.Clear(); _field.Trail.Clear(); return; }
+            var end = ArmyAt(_trail[_trail.Count - 1]);
+            int then = end != null && end.Team != CrowdBattle.Ally ? end.Id : -1;
+            var points = Resample(_trail, CrowdBattle.MaxPathPoints);
+            if (then >= 0 && points.Count > 1) points.RemoveAt(points.Count - 1);
+            int sel = _selected;
+            Order(a => _battle.OrderPath(sel, points, then));
+        }
+
+        /// <summary>자취를 길이대로 고르게 k점으로 (첫 점 = 처음에서 1/k만큼 간 곳, 끝 점 = 자취 끝).</summary>
+        private static List<Vec> Resample(List<Vec> trail, int k)
+        {
+            var cum = new List<Fix> { Fix.Zero };
+            for (int i = 1; i < trail.Count; i++) cum.Add(cum[i - 1] + (trail[i] - trail[i - 1]).Length);
+            var total = cum[cum.Count - 1];
+            var pts = new List<Vec>();
+            if (total < Fix.OneValue) { pts.Add(trail[trail.Count - 1]); return pts; }
+            int j = 0;
+            for (int s = 1; s <= k; s++)
+            {
+                var want = total * Fix.FromInt(s) / Fix.FromInt(k);
+                while (j < cum.Count - 1 && cum[j] < want) j++;
+                if (pts.Count == 0 || !pts[pts.Count - 1].Equals(trail[j])) pts.Add(trail[j]);
+            }
+            return pts;
         }
 
         /// <summary>
@@ -439,8 +642,8 @@ namespace Game.Unity.Screens
             _field = new CrowdField3D(_battle);
             _hud?.Destroy();
             _hud = new CrowdHud(_battle, _field, _fieldArea, TagName);
-            _radial.Close();
-            EndPick();
+            _pickMode = null;
+            _cmd = null;
             _accumulator = 0f;
             _running = false;
             _selected = AllCorps;
@@ -450,6 +653,9 @@ namespace Game.Unity.Screens
 
         private void NextSpeed() { _speed = (_speed + 1) % Speeds.Length; UpdateTexts(); }
 
+        /// <summary>일시정지: 멈춘 채로 명령을 줄 수 있다 (R-132).</summary>
+        private void TogglePause() { _paused = !_paused; UpdateTexts(); }
+
         private void UpdateTexts()
         {
             var eg = _battle.Commander(CrowdBattle.Enemy).General;
@@ -457,16 +663,29 @@ namespace Game.Unity.Screens
             if (_battle.IsOver)
                 head = T(_battle.Winner == CrowdBattle.Ally ? "ui.sample2.win" : _battle.Winner == CrowdBattle.Enemy ? "ui.sample2.lose" : "ui.sample2.draw")
                     + " · " + T("ui.sample2.end." + _battle.EndReason) + "  " + head;
-            _status.text = head + "  " + T("ui.sample2.enemyMorale", (int)_battle.Commander(CrowdBattle.Enemy).Morale.FloorToLong());
+            else if (_paused) head = Ui.Colored(T("ui.sample2.paused"), Palette.Bad) + "  " + head;
+            _status.text = head + "  " + T("ui.sample2.enemyMorale", System.Math.Max(0, (int)_battle.Commander(CrowdBattle.Enemy).Morale.FloorToLong()));
             foreach (var kv in _corpsButtons)
-                if (kv.Key >= 0) kv.Value.GetComponentInChildren<Text>().text = CorpsName(_battle.Armies[kv.Key]);
+            {
+                if (kv.Key < 0) continue;
+                var a = _battle.Armies[kv.Key];
+                kv.Value.GetComponentInChildren<Text>().text = CorpsName(a);
+                if (!_battle.Standing(a) || a.Routed) Ui.Recolor(kv.Value, Palette.ButtonDisabled); // 무너지거나 쓰러진 부대는 회색
+                if (_moraleFills.TryGetValue(kv.Key, out var fill)) Ui.SetGauge(fill, (float)(a.Morale / _battle.Rules.MoraleStart).ToDisplayDouble());
+            }
             _speedButton.GetComponentInChildren<Text>().text = "×" + Speeds[_speed];
+            _pauseButton.GetComponentInChildren<Text>().text = T(_paused ? "ui.sample2.resume" : "ui.sample2.pause");
+            Ui.Recolor(_pauseButton, _paused ? Palette.ButtonActive : Palette.Button);
+            RefreshInfo();
+            if (_cmd == "skill") RefreshSkills();
+            if (_commandButtons.Count > 0) RecolorCommands();
         }
 
         public override void Tick(float deltaTime)
         {
             if (_battle == null) return;
-            if (_running && !_battle.IsOver)
+            bool stepping = _running && !_paused && !_battle.IsOver;
+            if (stepping)
             {
                 _accumulator += deltaTime * Speeds[_speed];
                 int steps = 0;
@@ -479,12 +698,36 @@ namespace Game.Unity.Screens
                 if (steps >= 8) _accumulator = 0f;
                 if (steps > 0) UpdateTexts();
             }
+            if (_battle.IsOver && Started && _result == null) ShowResult();
             _fieldArea.GetWorldCorners(_corners);
             _field.SetViewport(new Rect(_corners[0].x, _corners[0].y, _corners[2].x - _corners[0].x, _corners[2].y - _corners[0].y));
-            _field.Draw(_running && !_battle.IsOver ? Mathf.Clamp01(_accumulator / _tickSeconds) : 1f, deltaTime);
+            _field.Draw(stepping ? Mathf.Clamp01(_accumulator / _tickSeconds) : 1f, _paused ? 0f : deltaTime); // 멈추면 흙먼지 · 흔들림도 멈춤
             _hud.Tick(deltaTime);
-            _radial.Tick(deltaTime);
-            FollowMenu();
+        }
+
+        /// <summary>끝 창 (R-132, [다시] 버튼 대신): 결과 · [같은 설정으로 다시] · [돌아가기].</summary>
+        private void ShowResult()
+        {
+            UpdateTexts();
+            _result = Ui.Rect(_fieldArea, "Result");
+            _result.anchorMin = _result.anchorMax = new Vector2(0.5f, 0.5f);
+            _result.pivot = new Vector2(0.5f, 0.5f);
+            _result.sizeDelta = new Vector2(640f, 340f);
+            Ui.Background(_result, Palette.PromptBack);
+            Ui.Column(_result, 14, 24);
+            string title = T(_battle.Winner == CrowdBattle.Ally ? "ui.sample2.win" : _battle.Winner == CrowdBattle.Enemy ? "ui.sample2.lose" : "ui.sample2.draw");
+            Ui.Label(_result, title, 44, TextAnchor.MiddleCenter, _battle.Winner == CrowdBattle.Ally ? Palette.Good : Palette.Bad);
+            Ui.Label(_result, T("ui.sample2.end." + _battle.EndReason) + " · " + T("ui.sample2.resultCount", _battle.AliveCount(CrowdBattle.Ally), _battle.AliveCount(CrowdBattle.Enemy)),
+                24, TextAnchor.MiddleCenter, Palette.PromptText);
+            Ui.Button(_result, T("ui.sample2.result.again"), Again, 84, Palette.ButtonActive, 28);
+            Ui.Button(_result, T(_returnTab == "test" ? "ui.sample2.result.backTest" : "ui.sample2.result.back"), () => App.ShowMain(_returnTab), 76, Palette.Button, 26);
+        }
+
+        /// <summary>같은 설정 · 새 시드로 다시 (바로 시작).</summary>
+        private void Again()
+        {
+            _setup.Seed = 0;
+            App.Show(new SampleBattle2Screen(_setup, true, _returnTab));
         }
 
         public override void Close()
@@ -542,11 +785,48 @@ namespace Game.Unity.Screens
             get { foreach (var s in _battle.Soldiers) if (s.LastAttackTick >= 0) return true; return false; }
         }
 
-        /// <summary>캡처 투어: 우리 부대 원형 메뉴 열기 · 예약 이동 (화면 조작과 같은 길).</summary>
-        public void OpenMenuForTour(string place)
+        /// <summary>캡처 투어: 우리 부대를 고르고 명령 줄의 명령을 펼친다 (attack · move · skill · formation, null = 정보).</summary>
+        public void OpenCommandForTour(string place, string cmd)
         {
-            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) OpenCorpsMenu(a);
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);
+            if (cmd != null) OpenCommand(cmd);
         }
+
+        /// <summary>캡처 투어: 명령 줄 버튼 누르기 (advance · hold · retreat · delegate), place null = 전체.</summary>
+        public void PressForTour(string place, string cmd)
+        {
+            if (place == null) Select(AllCorps);
+            else foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);
+            if (cmd == "delegate") ToggleDelegate();
+            else if (cmd == "advance") Order(a => _battle.OrderAdvance(a.Id));
+            else if (cmd == "hold") Order(a => _battle.OrderHold(a.Id));
+            else if (cmd == "retreat") Order(a => _battle.OrderRetreat(a.Id));
+            else if (cmd == "nearest") Order(a => _battle.OrderAttackNearest(a.Id));
+        }
+
+        /// <summary>캡처 투어: 길 그리기 (점들을 끌어 그린 것처럼, 놓기 전 = 그리는 중 모습).</summary>
+        public void DrawPathForTour(string place, float[] xy, bool release)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);
+            OpenCommand("move");
+            BeginPick("path");
+            for (int i = 0; i + 1 < xy.Length; i += 2)
+            {
+                // 점 사이를 촘촘히 (손가락 자취처럼)
+                var p = new Vec(Fix.FromDecimal((decimal)xy[i]), Fix.FromDecimal((decimal)xy[i + 1]));
+                if (_trail.Count > 0)
+                {
+                    var from = _trail[_trail.Count - 1];
+                    for (int k = 1; k <= 8; k++) AddTrail(from + (p - from) * Fix.FromRatio(k, 8));
+                }
+                else AddTrail(p);
+            }
+            if (release) OnFieldDragEnd();
+        }
+
+        public void ReleasePathForTour() => OnFieldDragEnd();
+
+        public void PauseForTour(bool paused) { _paused = paused; UpdateTexts(); }
 
         public void QueueForTour(string place, float[] xy)
         {
@@ -577,14 +857,8 @@ namespace Game.Unity.Screens
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
                 if (a.Place == place)
                 {
-                    var me = a.Centroid();
-                    CrowdArmy best = null; Fix bd = Fix.Zero;
-                    foreach (var e in _battle.TeamArmies(CrowdBattle.Enemy))
-                    {
-                        Fix d = Vec.DistanceSquared(e.Centroid(), me);
-                        if (best == null || d < bd) { best = e; bd = d; }
-                    }
-                    if (best != null) { var c = best.Centroid(); return new Vector2((float)c.X.ToDisplayDouble(), (float)c.Y.ToDisplayDouble()); }
+                    int t = _battle.NearestEnemyArmy(a.Id);
+                    if (t >= 0) { var c = _battle.Armies[t].Centroid(); return new Vector2((float)c.X.ToDisplayDouble(), (float)c.Y.ToDisplayDouble()); }
                 }
             return Vector2.zero;
         }
@@ -594,6 +868,9 @@ namespace Game.Unity.Screens
 
         /// <summary>캡처 투어: 이번 틱에 부딪침이 있음.</summary>
         public bool ImpactForTour => _battle.ImpactsThisTick > 0;
+
+        /// <summary>캡처 투어: 끝났음.</summary>
+        public bool OverForTour => _battle.IsOver;
 
         /// <summary>캡처 투어: 우리 부대 고르기 · 명령 (화면 조작과 같은 길).</summary>
         public void SelectForTour(string place)

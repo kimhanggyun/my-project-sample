@@ -107,10 +107,18 @@ namespace Game.Unity.Screens
         {
             Ui.Clear(_root);
             var list = Ui.ScrollList(_root, "List", 14, 20);
-            Ui.Fill((RectTransform)list.parent.parent);
+            var scroll = Ui.Fill((RectTransform)list.parent.parent);
+            scroll.offsetMin = new Vector2(0f, StartBarHeight); // 아래는 [전투 시작] 자리 (늘 보임, 2026-11-21 사용자)
             InfoButton.Add(_root, T("ui.test.note"));
 
             Grid(list, false);
+            // 적 명령: 적 칸과 맵 사이 (2026-11-21 사용자)
+            var order = Ui.Row(list, "EnemyOrder", 72, 8);
+            Ui.Size(Ui.Label(order, T("ui.sample2.enemyOrder"), 24), width: 160);
+            Ui.Size(Ui.Button(order, T("ui.sample2.hold"), () => { TestBattleSetup.EnemyAdvance = false; TestBattleSetup.Save(); Redraw(); }, 72,
+                TestBattleSetup.EnemyAdvance ? Palette.Button : Palette.ButtonActive, 24), flexibleWidth: 1);
+            Ui.Size(Ui.Button(order, T("ui.sample2.advance"), () => { TestBattleSetup.EnemyAdvance = true; TestBattleSetup.Save(); Redraw(); }, 72,
+                TestBattleSetup.EnemyAdvance ? Palette.ButtonActive : Palette.Button, 24), flexibleWidth: 1);
             // 맵: 좌우로 넘기는 카드 (지금은 평지 하나)
             Ui.Label(list, T("ui.test.map"), Ui.FontBody);
             var maps = Ui.HScrollRow(list, "Maps", 110);
@@ -123,18 +131,21 @@ namespace Game.Unity.Screens
             }
             Grid(list, true);
 
-            var order = Ui.Row(list, "EnemyOrder", 72, 8);
-            Ui.Size(Ui.Label(order, T("ui.sample2.enemyOrder"), 24), width: 160);
-            Ui.Size(Ui.Button(order, T("ui.sample2.hold"), () => { TestBattleSetup.EnemyAdvance = false; TestBattleSetup.Save(); Redraw(); }, 72,
-                TestBattleSetup.EnemyAdvance ? Palette.Button : Palette.ButtonActive, 24), flexibleWidth: 1);
-            Ui.Size(Ui.Button(order, T("ui.sample2.advance"), () => { TestBattleSetup.EnemyAdvance = true; TestBattleSetup.Save(); Redraw(); }, 72,
-                TestBattleSetup.EnemyAdvance ? Palette.ButtonActive : Palette.Button, 24), flexibleWidth: 1);
-
             bool ready = TestBattleSetup.Ally.Count > 0 && TestBattleSetup.Enemy.Count > 0;
-            var start = Ui.Button(list, T("ui.test.start"), Start, 96, Palette.ButtonActive, 32);
-            if (!ready) Ui.SetEnabled(start, false);
             if (!ready) Ui.Label(list, T("ui.test.needBoth"), 22, TextAnchor.MiddleCenter, Palette.Bad);
+            // [전투 시작]: 목록과 따로 맨 아래에 붙여 둔다 (스크롤해도 늘 보임)
+            var bar = Ui.Rect(_root, "StartBar");
+            bar.anchorMin = new Vector2(0f, 0f);
+            bar.anchorMax = new Vector2(1f, 0f);
+            bar.pivot = new Vector2(0.5f, 0f);
+            bar.offsetMin = new Vector2(20f, 10f);
+            bar.offsetMax = new Vector2(-20f, StartBarHeight - 10f);
+            var start = Ui.Button(bar, T("ui.test.start"), Start, StartBarHeight - 20f, Palette.ButtonActive, 32);
+            Ui.Fill((RectTransform)start.transform);
+            if (!ready) Ui.SetEnabled(start, false);
         }
+
+        private const float StartBarHeight = 116f;
 
         /// <summary>한 편의 3×3 칸. 적은 뒷줄이 위 (앞줄이 아래 = 우리 쪽), 아군은 앞줄이 위 (적 쪽).</summary>
         private void Grid(RectTransform list, bool ally)
