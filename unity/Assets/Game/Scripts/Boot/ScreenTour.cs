@@ -246,9 +246,14 @@ namespace Game.Unity.Boot
             var s9 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, EnemyAdvance = true, Seed = 11,
                 AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = SampleBattle2Screen.Preset("mixed") });
             yield return Shot("37_sample2_skill_setup", () => s9, 0.2f);
-            s9.StepForTour(80);
-            var near = s9.EnemyNearForTour("right");
-            bool rained = s9.SkillForTour("right", Game.Battle.Model.Crowd.CrowdBattle.ArrowRain, near.x, near.y);
+            // 다가오는 적이 사거리(14칸) 안에 들 때까지 기다렸다가 화살비
+            bool rained = false;
+            for (int w = 0; w < 60 && !rained; w++)
+            {
+                s9.StepForTour(5);
+                var near = s9.EnemyNearForTour("right");
+                rained = s9.SkillForTour("right", Game.Battle.Model.Crowd.CrowdBattle.ArrowRain, near.x, near.y);
+            }
             s9.SkillForTour("center", Game.Battle.Model.Crowd.CrowdBattle.WarCry);
             s9.StepForTour(4);
             s9.FocusArmyForTour(0, 34f);
