@@ -49,9 +49,9 @@ namespace Game.Unity.Screens
         /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
         public override bool OnBack() => false;
 
-        private readonly string _notice;
         private readonly List<(Button button, SignInOption option)> _buttons = new List<(Button, SignInOption)>();
-        public SignInScreen(string notice = null) { _notice = notice; }
+        /// <param name="notice">알림 → 공통 토스트 (2026-11-20: 오류 글줄 대신).</param>
+        public SignInScreen(string notice = null) { if (notice != null) Toast.Show(notice, bad: true); }
 
         public override void Build()
         {
@@ -60,14 +60,14 @@ namespace Game.Unity.Screens
             Ui.Column(Root, 0, 0);
             Ui.TitleHeader(Root, Ctx, 700 - Mathf.Max(0, shown - 3) * 160); // 버튼이 늘면 그림 자리를 줄인다
             Ui.Spacer(Root);
-            var error = Ui.ErrorLine(Root, _notice);
+            Ui.ErrorLine(Root, null); // 예전 오류 글줄 자리 (배치 그대로 — 알림은 토스트)
             var box = Ui.Inset(Root, "Buttons", 80, 30);
             foreach (var o in Ctx.Startup.SignInOptions)
             {
                 if (o.Status == "hidden") continue;
                 var option = o;
                 Button b = null;
-                b = Brand(box, option, () => Press(option, b, error));
+                b = Brand(box, option, () => Press(option, b));
                 _buttons.Add((b, option));
             }
             var note = Ui.Label(box, T("ui.signIn.note"), 28, TextAnchor.UpperCenter, Palette.TextDim);
@@ -107,9 +107,8 @@ namespace Game.Unity.Screens
             g.alpha = off ? 0.45f : 1f;
         }
 
-        private void Press(SignInOption option, Button pressed, Text error)
+        private void Press(SignInOption option, Button pressed)
         {
-            error.text = "";
             var label = pressed.GetComponentInChildren<Text>();
             string before = label.text;
             label.text = T("ui.signIn.waiting");
@@ -122,7 +121,7 @@ namespace Game.Unity.Screens
                 label.text = before;
                 pressed.interactable = true;
                 foreach (var (b, o) in _buttons) if (b != pressed) Dim(b, !o.IsActive);
-                error.text = T("ui.signIn.failed");
+                Toast.Show(T("ui.signIn.failed"), bad: true);
             });
         }
     }

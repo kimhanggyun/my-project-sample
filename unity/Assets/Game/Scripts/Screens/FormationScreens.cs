@@ -22,7 +22,6 @@ namespace Game.Unity.Screens
         private static readonly HashSet<int> Collapsed = new HashSet<int>();
         /// <summary>군단 편성(포진판) 페이지를 보고 있나.</summary>
         internal static bool BoardOpen;
-        private static string _notice;
 
         public void Build(GameApp app, RectTransform root)
         {
@@ -52,7 +51,7 @@ namespace Game.Unity.Screens
                 {
                     string target = id == "" ? null : id;
                     if (target == ed.Situation) continue;
-                    items.Add((label, null, true, () => { _notice = ed.CopyTo(target) ? ctx.T("ui.formation.copied", label) : ctx.T("ui.formation.copyFailed"); app.ShowMain("formation"); }));
+                    items.Add((label, null, true, () => { bool ok = ed.CopyTo(target); Toast.Show(ok ? ctx.T("ui.formation.copied", label) : ctx.T("ui.formation.copyFailed"), !ok); app.ShowMain("formation"); }));
                 }
                 Ui.PickMenu(root, copyRt, 360, items.ToArray());
             });
@@ -75,7 +74,6 @@ namespace Game.Unity.Screens
                     left < 0 ? Ui.MiniState.Warn : left == 0 ? Ui.MiniState.Dim : Ui.MiniState.Normal, () => QuickAdd(app, unitId, left));
             }
             Ui.MoreHint((RectTransform)troopsRow.parent.parent, 170, Palette.Background);
-            if (_notice != null) { Ui.Hint(header, _notice, 40); _notice = null; }
 
             // ---- 군단 카드 ----
             var errors = ed.Errors();
@@ -115,7 +113,7 @@ namespace Game.Unity.Screens
                 long n = System.Math.Min(System.Math.Max(0, left), room) + (have?.Troops ?? 0);
                 if (n > 0 && ed.SetPick(i, unitId, n)) { app.ShowMain("formation"); return; }
             }
-            _notice = ctx.T("ui.formation.quickAddFailed");
+            Toast.Show(ctx.T("ui.formation.quickAddFailed"), bad: true);
             app.ShowMain("formation");
         }
 
@@ -323,7 +321,7 @@ namespace Game.Unity.Screens
         {
             var ctx = app.Context;
             var ed = ctx.Formation;
-            if (ed.Errors().Count == 0 && ctx.Do(PlayerActionRunner.SaveFormation(ed.Situation, ed.Draft))) { ctx.DiscardFormationDraft(); _notice = ctx.T("ui.formation.saved"); }
+            if (ed.Errors().Count == 0 && ctx.Do(PlayerActionRunner.SaveFormation(ed.Situation, ed.Draft))) { ctx.DiscardFormationDraft(); Toast.Show(ctx.T("ui.formation.saved")); }
             app.ShowMain("formation");
         }
 
@@ -349,7 +347,6 @@ namespace Game.Unity.Screens
     /// </summary>
     internal static class CorpsBoardView
     {
-        private static string _notice;
 
         public static void Build(GameApp app, RectTransform root)
         {
@@ -422,8 +419,7 @@ namespace Game.Unity.Screens
                 foreach (var gph in card.GetComponentsInChildren<Graphic>()) if (gph != bg) gph.raycastTarget = false;
                 Draggable(app, root, card, "c|" + index, targets);
             }
-            Ui.Hint(body, _notice ?? ctx.T("ui.board.hint"), 60);
-            _notice = null;
+            Ui.Hint(body, ctx.T("ui.board.hint"), 60);
             Ui.PrimaryButton(footer, ctx.T("ui.board.done"), () => { FormationTabView.BoardOpen = false; app.ShowMain("formation"); }, 92, 32);
         }
 
@@ -460,7 +456,7 @@ namespace Game.Unity.Screens
                         var rank = Army.Rank(ctx.Defs, ctx.State);
                         RankDef more = null;
                         foreach (var r in ctx.Defs.Campaign.Ranks) if (r.MinLevel > ctx.State.LordLevel && r.Corps > rank.Corps) { more = r; break; }
-                        _notice = more == null ? ctx.T("ui.board.fullMax", ed.Draft.Count, rank.Corps) : ctx.T("ui.board.full", ed.Draft.Count, rank.Corps, ctx.T("rank." + more.Id), more.MinLevel, more.Corps);
+                        Toast.Show(more == null ? ctx.T("ui.board.fullMax", ed.Draft.Count, rank.Corps) : ctx.T("ui.board.full", ed.Draft.Count, rank.Corps, ctx.T("rank." + more.Id), more.MinLevel, more.Corps), bad: true);
                     }
                     else ed.SetBoard(ed.Draft.Count - 1, to.row, to.col);
                 }

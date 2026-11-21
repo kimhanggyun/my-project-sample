@@ -20,7 +20,6 @@ namespace Game.Unity.Screens
         private readonly GachaResult _last;
         private readonly Mode _mode;
         private readonly bool[] _open;
-        private readonly string _notice;
 
         public GachaScreen(string bannerId = "standard", GachaResult last = null, bool showRates = false, bool[] open = null, string notice = null)
         {
@@ -28,8 +27,12 @@ namespace Game.Unity.Screens
             _last = last;
             _mode = showRates ? Mode.Rates : last != null && last.Ok ? Mode.Result : Mode.Main;
             _open = open ?? (last != null ? new bool[last.Pulls.Count] : null);
-            _notice = notice ?? (last != null && !last.Ok ? Reason(last.Reason) : null);
+            // 실패 · 안내는 공통 토스트 (2026-11-20: 위 글줄 대신). 까닭 문구는 화면이 붙은 뒤(Build)에 T로
+            _pendingNotice = notice;
+            _pendingReason = last != null && !last.Ok ? last.Reason : null;
         }
+
+        private string _pendingNotice, _pendingReason;
 
         private string Reason(string r) => r == GachaService.NoFree ? T("ui.gacha.noFree") : r == GachaService.Closed ? T("ui.gacha.closed") : T("ui.gacha.notEnough");
 
@@ -52,7 +55,7 @@ namespace Game.Unity.Screens
             if (_mode == Mode.Main) Ui.NoTitle(header);
             else Ui.TitleBar(header, T(_mode == Mode.Result ? "ui.gacha.result" : "ui.gacha.ratesHead"), Back);
             InfoButton.Add(Root, T("ui.gacha.note"));
-            if (_notice != null) Ui.Label(header, Ui.Colored(_notice, Palette.Bad), 24);
+            if (_pendingNotice != null || _pendingReason != null) { Toast.Show(_pendingNotice ?? Reason(_pendingReason), bad: true); _pendingNotice = _pendingReason = null; }
 
             if (_mode == Mode.Result) BuildResult(body, footer, b);
             else if (_mode == Mode.Rates) BuildRates(body, footer, b);
