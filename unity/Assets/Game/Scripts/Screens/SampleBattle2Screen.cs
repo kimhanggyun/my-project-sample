@@ -298,7 +298,7 @@ namespace Game.Unity.Screens
         {
             int k = a.Place.IndexOf('_');
             if (k < 0) return T("ui.sample2.place." + a.Place);
-            return T("ui.test.row." + a.Place.Substring(0, k)) + " " + T("ui.test.col." + a.Place.Substring(k + 1));
+            return TestBattleTabView.CellName(Ctx, a.Place.Substring(0, k), a.Place.Substring(k + 1));
         }
 
         /// <summary>사기 (R-128): 숫자, 흔들림 · 포위 · 무너짐 표시.</summary>

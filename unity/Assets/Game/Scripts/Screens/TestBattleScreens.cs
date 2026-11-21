@@ -161,6 +161,13 @@ namespace Game.Unity.Screens
             Ui.Label(card, T(ally ? "ui.test.allyHint" : "ui.test.enemyHint"), 20, TextAnchor.MiddleCenter, Palette.TextDim);
         }
 
+        /// <summary>칸 이름: 가운데 줄 = 좌군 · 중군 · 우군, 앞 · 뒤 줄 = "앞 좌군" · "뒤 우군" (캡처: "중 중"이 어색).</summary>
+        public static string CellName(Game.Unity.Boot.GameContext ctx, string row, string col)
+        {
+            string name = ctx.T("ui.sample2.place." + col);
+            return row == "middle" ? name : ctx.T("ui.test.row." + row) + " " + name;
+        }
+
         private void OnCell(bool ally, int row, int col)
         {
             var u = TestBattleSetup.At(ally, row, col);
@@ -179,7 +186,7 @@ namespace Game.Unity.Screens
         /// <summary>선택 판: 병종 · 진형 · 병사 수 · 총대장 · 빼기.</summary>
         private void OpenSheet(bool ally, CrowdUnitSpec u)
         {
-            string title = T(ally ? "ui.test.sheetAlly" : "ui.test.sheetEnemy", T("ui.test.row." + CrowdUnitSpec.RowIds[u.Row]) + " " + T("ui.test.col." + CrowdUnitSpec.ColIds[u.Col]));
+            string title = T(ally ? "ui.test.sheetAlly" : "ui.test.sheetEnemy", CellName(_app.Context, CrowdUnitSpec.RowIds[u.Row], CrowdUnitSpec.ColIds[u.Col]));
             var (content, close) = Ui.BottomSheet(_root, title, 640);
             Ui.Column(content, 12, 0);
             void Changed() { TestBattleSetup.Save(); close(); Redraw(); OpenSheet(ally, u); }
