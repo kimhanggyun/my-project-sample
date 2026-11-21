@@ -16,7 +16,8 @@ namespace Game.Unity.Battle3D
         private const int MaxArrows = 400;
         private const float RingTime = 0.9f;
         private const int RingSegments = 40;
-        private static readonly Vector3 ArrowScale = new Vector3(0.04f, 0.04f, 0.45f);
+        // 2026-11-21 캡처: 짙은 굵은 막대가 공중에 뜬 검은 줄처럼 보여 → 밝은 나무색 · 가늘고 짧게
+        private static readonly Vector3 ArrowScale = new Vector3(0.022f, 0.022f, 0.34f);
 
         private struct Arrow { public Vector3 From, To; public float Start; }
         private struct Ring { public LineRenderer Line; public Vector3 Center; public float Start, Radius; }
@@ -47,7 +48,7 @@ namespace Game.Unity.Battle3D
             _ctl = ctl;
             _cube = cube;
             _newLine = newLine;
-            _arrowMat = material(new Color(0.25f, 0.18f, 0.10f));
+            _arrowMat = material(new Color(0.86f, 0.74f, 0.52f));
             _flameMat = material(new Color(1f, 0.55f, 0.10f));
             _emberMat = material(new Color(1f, 0.85f, 0.30f));
             _rainMat = material(new Color(0.70f, 0.78f, 0.90f));
