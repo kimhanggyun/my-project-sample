@@ -192,6 +192,14 @@ namespace Game.Unity.Boot
             s4.StepForTour(80);
             s4.FocusArmyForTour(0, 40f);
             yield return Shot("32c_sample2_corps_fight", null, 0.2f);
+            // [전체] 고르기 · 땅 누르기: 우리 부대마다 노란 고리, 땅마다 흰 목표 고리 (2026-11-21 사용자)
+            var s5 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, Seed = 11 });
+            yield return Shot("33_sample2_all_setup", () => s5, 0.2f);
+            s5.StepForTour(1);
+            s5.SelectAllAndTapForTour(30f, 26f);
+            s5.StepForTour(10);
+            s5.FocusArmyForTour(0, 38f);
+            yield return Shot("33b_sample2_all_move", null, 0.2f);
 
             _app.ShowMain("story");
             Done = true;

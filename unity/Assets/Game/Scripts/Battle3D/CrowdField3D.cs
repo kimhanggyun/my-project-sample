@@ -39,7 +39,10 @@ namespace Game.Unity.Battle3D
         // ---- 고른 부대 표시 (R-126 조작): 노란 고리, 이동 목표 · 공격 대상 고리 ----
         /// <summary>화면이 고른 우리 부대 (Armies 번호, 없으면 -1).</summary>
         public int SelectedArmy = -1;
-        private readonly LineRenderer _selRing, _goalRing;
+        /// <summary>true면 장수가 살아 있는 우리 부대 모두 고른 표시 ([전체], 2026-11-21 사용자).</summary>
+        public bool SelectAll;
+        /// <summary>고리는 부대마다 하나씩 (고른 표시 · 목표 표시), 모자라면 더 만든다.</summary>
+        private readonly List<LineRenderer> _selRings = new List<LineRenderer>(), _goalRings = new List<LineRenderer>();
         private const int RingSegments = 48;
 
         /// <summary>병사마다 걸은 거리 (다리 박자) · 다리 흔들기 세기 (걷기 시작 · 멈출 때 부드럽게).</summary>
@@ -106,8 +109,6 @@ namespace Game.Unity.Battle3D
             var dm = Own(NewMaterial(DustColor));
             dm.enableInstancing = true;
             _dustBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Sphere.fbx"), new[] { dm }, Matrix4x4.identity);
-            _selRing = Ring("SelectRing", new Color(1f, 0.85f, 0.25f), 0.12f);
-            _goalRing = Ring("GoalRing", new Color(1f, 1f, 1f), 0.08f);
             var leg = SoldierMeshes.Leg();
             _allyLegs = LegBatch(leg, AllyDark);
             _enemyLegs = LegBatch(leg, EnemyDark);
@@ -304,19 +305,33 @@ namespace Game.Unity.Battle3D
 
         private void DrawRings()
         {
-            bool sel = SelectedArmy >= 0 && SelectedArmy < _battle.Armies.Count && _battle.Standing(_battle.Armies[SelectedArmy]);
-            _selRing.gameObject.SetActive(sel);
-            _goalRing.gameObject.SetActive(false);
-            if (!sel) return;
-            var a = _battle.Armies[SelectedArmy];
-            Circle(_selRing, ToWorld(a.Centroid()), RadiusOf(a));
-            if (a.Order == CrowdOrders.Move) { _goalRing.gameObject.SetActive(true); Circle(_goalRing, ToWorld(a.OrderPoint), 0.6f); }
-            else if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0)
+            int sel = 0, goal = 0;
+            var targeted = new HashSet<int>();
+            foreach (var a in _battle.Armies)
             {
-                var t = _battle.Armies[a.OrderTarget];
-                _goalRing.gameObject.SetActive(true);
-                Circle(_goalRing, ToWorld(t.Centroid()), RadiusOf(t));
+                if (a.Team != CrowdBattle.Ally || !_battle.Standing(a)) continue;
+                bool chosen = SelectAll ? a.Leading : a.Id == SelectedArmy;
+                if (!chosen) continue;
+                Circle(Pooled(_selRings, sel++, "SelectRing", new Color(1f, 0.85f, 0.25f), 0.12f), ToWorld(a.Centroid()), RadiusOf(a));
+                // 목표: 이동 = 그 땅에 작은 고리, 공격 = 대상 부대 둘레 (같은 대상은 한 번만)
+                if (a.Order == CrowdOrders.Move)
+                    Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(a.OrderPoint), 0.6f);
+                else if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && targeted.Add(a.OrderTarget))
+                {
+                    var t = _battle.Armies[a.OrderTarget];
+                    Circle(Pooled(_goalRings, goal++, "GoalRing", Color.white, 0.08f), ToWorld(t.Centroid()), RadiusOf(t));
+                }
             }
+            for (int i = sel; i < _selRings.Count; i++) _selRings[i].gameObject.SetActive(false);
+            for (int i = goal; i < _goalRings.Count; i++) _goalRings[i].gameObject.SetActive(false);
+        }
+
+        private LineRenderer Pooled(List<LineRenderer> pool, int index, string name, Color color, float width)
+        {
+            while (pool.Count <= index) pool.Add(Ring(name, color, width));
+            var line = pool[index];
+            if (!line.gameObject.activeSelf) line.gameObject.SetActive(true);
+            return line;
         }
 
         private static void Circle(LineRenderer line, Vector3 c, float radius)

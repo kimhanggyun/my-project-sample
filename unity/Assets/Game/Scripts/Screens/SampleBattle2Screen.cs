@@ -170,6 +170,7 @@ namespace Game.Unity.Screens
         {
             _selected = id;
             _field.SelectedArmy = id == AllCorps ? -1 : id;
+            _field.SelectAll = id == AllCorps;
             foreach (var kv in _corpsButtons) Ui.Recolor(kv.Value, kv.Key == id ? Palette.ButtonActive : Palette.Button);
             string f = CurrentFormation();
             foreach (var kv in _formationButtons) Ui.Recolor(kv.Value, kv.Key == f ? Palette.ButtonActive : Palette.Button);
@@ -197,7 +198,12 @@ namespace Game.Unity.Screens
         {
             if (!Started || _battle.IsOver) return;
             if (!_field.Rig.Ground(screen, 0f, out var world)) return;
-            var point = new Vec(Fix.FromDecimal((decimal)world.x), Fix.FromDecimal((decimal)world.z));
+            CommandAt(new Vec(Fix.FromDecimal((decimal)world.x), Fix.FromDecimal((decimal)world.z)));
+        }
+
+        /// <summary>전장 한 곳을 누른 것과 같다 (화면 누름 · 캡처 투어).</summary>
+        private void CommandAt(Vec point)
+        {
             var hit = ArmyAt(point);
             if (hit != null && hit.Team == CrowdBattle.Ally) { if (hit.Leading) Select(hit.Id); return; }
             var chosen = Chosen();
@@ -338,6 +344,13 @@ namespace Game.Unity.Screens
                 if (a.Team == CrowdBattle.Enemy && a.Place == enemyPlace) foe = a;
             }
             if (me != null && foe != null) _battle.OrderAttack(me.Id, foe.Id);
+        }
+
+        /// <summary>캡처 투어: [전체]를 고르고 그 땅을 누름.</summary>
+        public void SelectAllAndTapForTour(float x, float y)
+        {
+            Select(AllCorps);
+            CommandAt(new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y)));
         }
 
         public void MoveForTour(string place, float x, float y)
