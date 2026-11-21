@@ -231,6 +231,17 @@ namespace Game.Unity.Boot
             yield return Shot("35b_sample2_rout_start", null, 0.2f);
             s7.StepForTour(25);
             yield return Shot("35c_sample2_rout_flee", null, 0.2f);
+            // 조작 화면 (R-129): 이름표 · 미니맵 · 부대 원형 메뉴 · 예약 이동
+            var s8 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, Seed = 11,
+                AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = SampleBattle2Screen.Preset("mixed") });
+            yield return Shot("36_sample2_ui_setup", () => s8, 0.2f);
+            s8.StepForTour(1);
+            s8.FocusArmyForTour(0, 34f);
+            s8.OpenMenuForTour("left");
+            yield return Shot("36b_sample2_ui_menu", null, 0.4f);
+            s8.QueueForTour("left", new[] { 8f, 26f, 8f, 34f, 18f, 38f });
+            s8.StepForTour(20);
+            yield return Shot("36c_sample2_ui_queue", null, 0.3f);
 
             _app.ShowMain("story");
             Done = true;

@@ -37,6 +37,12 @@ namespace Game.Unity.Screens
         private readonly Dictionary<int, Button> _corpsButtons = new Dictionary<int, Button>();
         private readonly Dictionary<string, Button> _formationButtons = new Dictionary<string, Button>();
         private Button _speedButton;
+        private CrowdHud _hud;
+        private RadialMenu _radial;
+        /// <summary>원형 메뉴로 고른 다음 누를 것: null · "move" (다음 땅 = 이동) · "queue" (땅마다 경유 지점 예약, [예약 끝]까지).</summary>
+        private string _pickMode;
+        private Button _queueDone;
+        private Text _hintText;
 
         public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false)
         {
@@ -74,6 +80,15 @@ namespace Game.Unity.Screens
             gestures.Tapped += OnFieldTap;
             gestures.Dragged += (a, b) => _field.Rig.Pan(a, b);
             gestures.Zoomed += f => _field.Rig.Zoom(f);
+            _hud = new CrowdHud(_battle, _field, _fieldArea, TagName);
+            _radial = new RadialMenu(_fieldArea); // 부대 원형 메뉴 (기존 전투 battle.md 4.3.3을 옮김, R-129)
+            _queueDone = Ui.Button(_fieldArea, T("ui.sample2.queueDone"), EndPick, 72, Palette.ButtonActive, 26);
+            var qr = (RectTransform)_queueDone.transform;
+            qr.anchorMin = qr.anchorMax = new Vector2(0.5f, 1f);
+            qr.pivot = new Vector2(0.5f, 1f);
+            qr.anchoredPosition = new Vector2(0f, -12f);
+            qr.sizeDelta = new Vector2(260f, 72f);
+            _queueDone.gameObject.SetActive(false);
 
             _panel = Ui.Rect(Root, "Panel");
             Ui.Background(_panel, Palette.Bar);
@@ -158,12 +173,73 @@ namespace Game.Unity.Screens
                 AllyCorps = _setup.AllyCorps, EnemyCorps = _setup.EnemyCorps, AllyAdvance = false,
                 AllyTroops = _setup.AllyTroops, EnemyTroops = _setup.EnemyTroops,
             })), 76, Palette.Button, 26), flexibleWidth: 1);
-            Ui.Label(_panel, T("ui.sample2.hint"), 22, TextAnchor.MiddleCenter, Palette.TextDim);
+            _hintText = Ui.Label(_panel, T("ui.sample2.hint"), 22, TextAnchor.MiddleCenter, Palette.TextDim);
             Select(_selected);
         }
 
         private void Choice(RectTransform row, string text, bool on, System.Action act) =>
             Ui.Size(Ui.Button(row, text, act, 68, on ? Palette.ButtonActive : Palette.Button, 22), flexibleWidth: 1);
+
+        /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병".</summary>
+        private string TagName(CrowdArmy a) =>
+            (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + T("ui.sample2.place." + a.Place) + " " + T("troop." + a.Troop.Id);
+
+        // ---- 부대 원형 메뉴 (R-129): 돌격 · 이동 · 예약 이동 · 정지 · 진형 ----
+
+        private RadialMenu.Item Pick(string label, System.Action act, bool active = false) =>
+            new RadialMenu.Item { Label = label, Active = active, OnPick = () => { act(); _radial.Close(); } };
+
+        private void OpenCorpsMenu(CrowdArmy a)
+        {
+            EndPick();
+            Select(a.Id);
+            _radial.Open(T("ui.radial.close"), () => _radial.Close(), new List<RadialMenu.Item>
+            {
+                Pick(T("ui.sample2.charge"), ChargeAll),
+                new RadialMenu.Item { Label = T("ui.radial.move"), OnPick = () => BeginPick("move") },
+                new RadialMenu.Item { Label = T("ui.sample2.queue"), OnPick = () => BeginPick("queue") },
+                Pick(T("ui.sample2.stop"), () => { foreach (var c in Chosen()) _battle.OrderHold(c.Id); }),
+                new RadialMenu.Item { Label = T("ui.radial.formation") + " ›", OnPick = () => OpenFormationMenu(a) },
+            });
+            FollowMenu();
+        }
+
+        private void OpenFormationMenu(CrowdArmy a)
+        {
+            var items = new List<RadialMenu.Item>();
+            foreach (var id in CrowdFormations.All)
+            {
+                string f = id;
+                items.Add(Pick(T("ui.sample2.f." + id), () => { foreach (var c in Chosen()) _battle.SetFormation(c.Id, f); Select(_selected); }, a.Formation == id));
+            }
+            _radial.Open(T("ui.radial.back"), () => OpenCorpsMenu(a), items);
+            FollowMenu();
+        }
+
+        /// <summary>원형 메뉴를 고른 부대 장수 위에 둔다 (부대가 움직이면 따라감).</summary>
+        private void FollowMenu()
+        {
+            if (!_radial.IsOpen || _selected < 0) return;
+            var a = _battle.Armies[_selected];
+            var cam = _field.Rig.Camera;
+            var sp = cam.WorldToScreenPoint(_field.ToWorld(a.General.Alive ? a.General.Pos : a.Centroid()));
+            if (sp.z > 0 && RectTransformUtility.ScreenPointToLocalPointInRectangle(_fieldArea, sp, null, out var local)) _radial.Follow(local);
+        }
+
+        private void BeginPick(string mode)
+        {
+            _radial.Close();
+            _pickMode = mode;
+            _queueDone.gameObject.SetActive(mode == "queue");
+            if (_hintText != null) _hintText.text = T(mode == "queue" ? "ui.sample2.queueHint" : "ui.sample2.moveHint");
+        }
+
+        private void EndPick()
+        {
+            _pickMode = null;
+            if (_queueDone != null) _queueDone.gameObject.SetActive(false);
+            if (_hintText != null) _hintText.text = T("ui.sample2.hint");
+        }
 
         private string CorpsName(CrowdArmy a) => T("ui.sample2.place." + a.Place) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id) + "\n" + MoraleText(a);
 
@@ -245,16 +321,25 @@ namespace Game.Unity.Screens
         private void CommandAt(Vec point)
         {
             var hit = ArmyAt(point);
-            if (hit != null && hit.Team == CrowdBattle.Ally) { if (hit.Leading) Select(hit.Id); return; }
+            if (hit != null && hit.Team == CrowdBattle.Ally)
+            {
+                if (!hit.Leading) return;
+                if (_radial.IsOpen && _selected == hit.Id) { _radial.Close(); return; }
+                OpenCorpsMenu(hit); // 우리 부대를 누르면 고르고 원형 메뉴
+                return;
+            }
+            if (_radial.IsOpen) { _radial.Close(); return; } // 메뉴가 열려 있으면 바깥 누름 = 닫기
             var chosen = Chosen();
             if (chosen.Count == 0) return;
-            if (hit != null) { foreach (var a in chosen) _battle.OrderAttack(a.Id, hit.Id); return; }
-            if (chosen.Count == 1) { _battle.OrderMove(chosen[0].Id, point); return; }
+            if (hit != null) { foreach (var a in chosen) _battle.OrderAttack(a.Id, hit.Id); EndPick(); return; }
+            bool queue = _pickMode == "queue";
+            if (_pickMode == "move") EndPick();
+            if (chosen.Count == 1) { _battle.OrderMove(chosen[0].Id, point, queue); return; }
             // 전체 이동: 총대장 부대(없으면 첫 부대)를 그 자리로, 나머지는 지금 떨어진 만큼 그대로
             var lead = chosen[0];
             foreach (var a in chosen) if (a.IsCommander) lead = a;
             var from = lead.Center;
-            foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from));
+            foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from), queue);
         }
 
         /// <summary>
@@ -285,6 +370,10 @@ namespace Game.Unity.Screens
             _setup.Seed = (ulong)Ctx.NewSeed();
             _battle = NewBattle(CrowdRules.Load(Ctx.Data));
             _field = new CrowdField3D(_battle);
+            _hud?.Destroy();
+            _hud = new CrowdHud(_battle, _field, _fieldArea, TagName);
+            _radial.Close();
+            EndPick();
             _accumulator = 0f;
             _running = false;
             _selected = AllCorps;
@@ -326,10 +415,14 @@ namespace Game.Unity.Screens
             _fieldArea.GetWorldCorners(_corners);
             _field.SetViewport(new Rect(_corners[0].x, _corners[0].y, _corners[2].x - _corners[0].x, _corners[2].y - _corners[0].y));
             _field.Draw(_running && !_battle.IsOver ? Mathf.Clamp01(_accumulator / _tickSeconds) : 1f, deltaTime);
+            _hud.Tick(deltaTime);
+            _radial.Tick(deltaTime);
+            FollowMenu();
         }
 
         public override void Close()
         {
+            _hud?.Destroy();
             _field?.Destroy();
             App.SetBackdrop(true);
         }
@@ -380,6 +473,19 @@ namespace Game.Unity.Screens
         public bool FightingForTour
         {
             get { foreach (var s in _battle.Soldiers) if (s.LastAttackTick >= 0) return true; return false; }
+        }
+
+        /// <summary>캡처 투어: 우리 부대 원형 메뉴 열기 · 예약 이동 (화면 조작과 같은 길).</summary>
+        public void OpenMenuForTour(string place)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) OpenCorpsMenu(a);
+        }
+
+        public void QueueForTour(string place, float[] xy)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);
+            BeginPick("queue");
+            for (int i = 0; i + 1 < xy.Length; i += 2) CommandAt(new Vec(Fix.FromDecimal((decimal)xy[i]), Fix.FromDecimal((decimal)xy[i + 1])));
         }
 
         /// <summary>캡처 투어: 적 총대장 부대가 무너짐.</summary>
