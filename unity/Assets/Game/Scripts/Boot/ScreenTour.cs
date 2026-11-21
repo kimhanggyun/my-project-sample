@@ -261,6 +261,13 @@ namespace Game.Unity.Boot
             yield return Shot(rained ? "37b_sample2_skill_rain" : "37b_sample2_skill_rain_outOfRange", null, 0.2f);
             s9.StepForTour(12);
             yield return Shot("37c_sample2_skill_landed", null, 0.2f);
+            // 테스트 탭 (R-131): 3×3 칸 설정 화면, 그 설정으로 전투
+            yield return Shot("38_test_tab", () => new MainScreen("test"), 0.3f);
+            var s10 = new SampleBattle2Screen(TestBattleTabView.Setup(), startNow: true, returnTab: "test");
+            yield return Shot("38b_test_battle", () => s10, 0.3f);
+            s10.StepForTour(60);
+            s10.FocusArmyForTour(0, 36f);
+            yield return Shot("38c_test_battle_moving", null, 0.2f);
 
             _app.ShowMain("story");
             Done = true;

@@ -86,6 +86,11 @@ namespace Game.Battle.Model.Crowd
         public Fix SkillContactRange { get; private set; }
         public int ArrowRainVolleys { get; private set; }
         public Fix ArrowRainChance { get; private set; }
+        // 3×3 배치 (R-131)
+        public Fix GridColPitch { get; private set; }
+        public Fix GridRowPitch { get; private set; }
+        public int GridDefaultCount { get; private set; }
+        public int GridMaxCount { get; private set; }
         public int SkillGapTicks => System.Math.Max(1, (int)(SkillGapSeconds / TickSeconds).RoundToLong());
         public int RoutEndTicks => System.Math.Max(1, (int)(RoutEndSeconds / TickSeconds).RoundToLong());
         public int EncircleTicks => System.Math.Max(1, (int)(EncircleSeconds / TickSeconds).RoundToLong());
@@ -156,6 +161,10 @@ namespace Game.Battle.Model.Crowd
                 SkillContactRange = JsonUtil.RequireFix(o, "skillContactRange", c),
                 ArrowRainVolleys = (int)JsonUtil.RequireLong(o, "arrowRainVolleys", c),
                 ArrowRainChance = JsonUtil.RequireFix(o, "arrowRainChance", c),
+                GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
+                GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),
+                GridDefaultCount = (int)JsonUtil.RequireLong(o, "gridDefaultCount", c),
+                GridMaxCount = (int)JsonUtil.RequireLong(o, "gridMaxCount", c),
             };
         }
 
