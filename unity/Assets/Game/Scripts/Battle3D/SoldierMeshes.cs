@@ -124,7 +124,7 @@ namespace Game.Unity.Battle3D
                 Add(cylinder, new Vector3(-0.02f, 0.068f, 0f), new Vector3(0.024f, 0.07f, 0.024f), new Vector3(0f, 0f, -3f));
                 Add(cylinder, new Vector3(0.02f, 0.068f, 0f), new Vector3(0.024f, 0.07f, 0.024f), new Vector3(0f, 0f, 3f));
             }
-            else
+            else if (mounted) // 말 탄 다리 (걷는 병사의 다리를 뺀 몸에는 아무것도 — 2026-11-21 캡처: 다리를 빼자 이 짧은 다리 둘이 V자로 붙어 있었음)
             {
                 Add(cylinder, new Vector3(-0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, 30f)); // 말 탄 다리
                 Add(cylinder, new Vector3(0.035f, lift + 0.03f, 0.01f), new Vector3(0.018f, 0.04f, 0.018f), new Vector3(0f, 0f, -30f));
