@@ -67,7 +67,7 @@ namespace Game.Tests.Battle
             for (int t = 0; t < 2400 && !b.IsOver; t++)
             {
                 b.Step();
-                var g = b.Armies[CrowdBattle.Enemy].General;
+                var g = b.Commander(CrowdBattle.Enemy).General;
                 if (g.Hp < g.MaxHp) return b.Tick;
             }
             return 99999;
@@ -86,11 +86,57 @@ namespace Game.Tests.Battle
             Assert.True(thin < thick, $"thin {thin} thick {thick}");
         }
 
+        [Fact]
+        public void ChargeSpeedsUpAndImpactPushes()
+        {
+            // 공격 명령: 가까워지면 돌격 (빨라짐), 달려와 처음 친 한 방은 부딪침 (밀침 · 피해 더)
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyFormation = CrowdFormations.Thick, EnemyFormation = CrowdFormations.Line, Seed = 4 });
+            var ally = b.Commander(CrowdBattle.Ally);
+            bool charged = false;
+            int impacts = 0;
+            for (int t = 0; t < 600 && !b.IsOver; t++)
+            {
+                b.Step();
+                charged |= ally.Charging;
+                impacts += b.ImpactsThisTick;
+            }
+            _out.WriteLine($"charged {charged}, impacts {impacts}");
+            Assert.True(charged);
+            Assert.True(impacts > 10, "impacts " + impacts);
+        }
+
+        [Fact]
+        public void MoveOrderGoesToPointAndHolds()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, Seed = 2 });
+            var left = b.Armies[0];
+            Assert.Equal("left", left.Place);
+            var goal = new Game.Battle.Model.Geometry.Vec(Fix.FromInt(8), Fix.FromInt(26));
+            b.OrderMove(left.Id, goal);
+            for (int t = 0; t < 300; t++) b.Step();
+            Assert.Equal(CrowdOrders.Hold, left.Order);
+            Assert.True((left.Center - goal).Length <= Fix.OneValue, "center " + left.Center);
+            Assert.True((left.Centroid() - goal).Length <= Fix.FromInt(2), "soldiers " + left.Centroid());
+        }
+
+        [Fact]
+        public void ThreeCorpsDeterministicAndCommanderDecides()
+        {
+            var setup = new CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyFormation = CrowdFormations.Wedge, EnemyFormation = CrowdFormations.Thick, EnemyAdvance = true, Seed = 9 };
+            var a = Run(setup, 3000);
+            var b = Run(setup, 3000);
+            Assert.Equal(a.Fingerprint(), b.Fingerprint());
+            Assert.True(a.IsOver);
+            _out.WriteLine($"winner {a.Winner} ({a.EndReason}) at {a.Tick}, ally {a.AliveCount(0)} enemy {a.AliveCount(1)}");
+            if (a.EndReason == "general")
+                Assert.False(a.Commander(a.Winner == CrowdBattle.Ally ? CrowdBattle.Enemy : CrowdBattle.Ally).General.Alive);
+        }
+
         /// <summary>앞 시간 동안 적이 잃은 병사.</summary>
         private static int EnemyLosses(string ally, string enemy, ulong seed, int ticks)
         {
             var b = Run(new CrowdSetup { AllyFormation = ally, EnemyFormation = enemy, Seed = seed }, ticks);
-            return b.Armies[CrowdBattle.Enemy].StartCount - b.Armies[CrowdBattle.Enemy].AliveCount;
+            return 200 - b.AliveCount(CrowdBattle.Enemy);
         }
 
         [Fact]

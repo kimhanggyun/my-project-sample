@@ -150,3 +150,5 @@
 - 2026-11-21 [원격] claude/attack-styles — H3 병종별 공격 동작: 창 길게 찌르기(느린 박자) · 칼/방패 좌우 ±15° 휘두르기 · 기병 맞붙는 순간 짧은 돌진 · 원거리 쏠 때 뒤로 0.03 (화살 박자), 부드러운 곡선 · 박자 어긋남 · 앞줄 위주. backlog H1 · H2 · H3 · H5 정리
 - 2026-11-21 [데스크탑] desktop/battle-reset — 전투 그리기 #254로 되돌림 · 하나씩 다시 (소부대 화면 병사 최대 49 · 화살 · 테두리 · 시체 · 링), 캡처 연속 프레임 19w_walk · 19m_fight (#260)
 - 2026-11-21 [데스크탑] desktop/sample-battle-2 — R-125 샘플전투2: 병사 단위 전투 (src/Game.Battle.Model/Crowd, data/Rules/crowd.json, CrowdField3D · SampleBattle2Screen, 샘플전투 탭 맨 위 카드), 캡처 30 · 31
+- 2026-11-21 [데스크탑] desktop/sample2-legs — 샘플전투2 다리 걷기 (다리 따로 흔들기), 바닥 직접 만든 판 (폰 MeshCollider 오류) (#262)
+- 2026-11-21 [데스크탑] desktop/sample2-control — R-126 샘플전투2 조작: 부대 셋 (좌 · 중★ · 우) · 이동 · 공격 명령 · 적 전진 AI, 돌격 가속 · 부딪침 (피해 더 · 밀침), 화면 고르기 고리 · 흙먼지 · 흔들림 · 달리기, 캡처 32

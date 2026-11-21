@@ -14,5 +14,13 @@
   "soldierHp": 2,
   "generalHp": 24,
   "generalBack": 1.6,
-  "maxSeconds": 240
+  "maxSeconds": 240,
+  "_charge": "돌격 (R-126): 공격 명령으로 두 대열 가장자리 사이가 chargeRange 안이면 맞붙기 전까지 빨라진다. 달려와 처음 친 한 방 = 부딪침 (impactDamage 더, 상대를 impactPush 밀침)",
+  "chargeRange": 6,
+  "chargeSpeed": 2.8,
+  "chargeAdvanceSpeed": 2.2,
+  "impactDamage": 1,
+  "impactPush": 0.35,
+  "_corps": "부대 셋(좌 · 중 · 우)일 때 부대 사이 간격 (칸)",
+  "corpsGap": 3
 }

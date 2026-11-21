@@ -10,11 +10,13 @@ namespace Game.Battle.Model.Crowd
     {
         public int Id;
         public int Team;
+        /// <summary>속한 부대 (CrowdBattle.Armies 번호).</summary>
+        public int Army;
         public bool IsGeneral;
         public Vec Pos;
-        /// <summary>대열 안 자리 (군단 기준, 앞 = +y).</summary>
+        /// <summary>대열 안 자리 (부대 기준, 앞 = +y).</summary>
         public Vec Slot;
-        /// <summary>지난 틱에 움직인 양 (화면이 걷기 · 방향에 씀).</summary>
+        /// <summary>지난 틱에 움직인 양 (화면이 걷기 · 달리기 · 방향에 씀).</summary>
         public Vec Moved;
         public int Hp;
         public int MaxHp;
@@ -22,118 +24,216 @@ namespace Game.Battle.Model.Crowd
         /// <summary>마지막으로 친 틱 · 대상 (화면 공격 동작). 친 적 없으면 -1.</summary>
         public int LastAttackTick = -1;
         public int LastTargetId = -1;
+        /// <summary>돌격해 부딪친 틱 (친 쪽 · 맞은 쪽 둘 다, 화면 흙먼지 · 흔들림). 없으면 -1.</summary>
+        public int ImpactTick = -1;
         /// <summary>쓰러진 틱 (살아 있으면 -1).</summary>
         public int DiedTick = -1;
         public bool Alive => DiedTick < 0;
     }
 
-    /// <summary>한쪽 군 (군단 하나): 대열 모양 · 가운데 · 앞 방향 · 명령.</summary>
+    public static class CrowdOrders
+    {
+        public const string Hold = "hold", Move = "move", Attack = "attack";
+    }
+
+    /// <summary>부대 하나: 대열 모양 · 가운데 · 앞 방향 · 명령 (제자리 · 땅으로 이동 · 적 부대 공격).</summary>
     public sealed class CrowdArmy
     {
+        public int Id;
         public int Team;
+        /// <summary>left · center · right (부대 하나면 center). 총대장 부대는 center.</summary>
+        public string Place;
+        public bool IsCommander;
         public string Formation;
         public Vec Center;
         public Vec Facing;
-        /// <summary>true = 적 장수 쪽으로 전진, false = 제자리.</summary>
-        public bool Advance;
+        public string Order = CrowdOrders.Hold;
+        public Vec OrderPoint;
+        public int OrderTarget = -1;
+        /// <summary>돌격 중 (공격 명령으로 적에게 ChargeRange 안까지 다가옴, 맞붙기 전까지) — 병사 · 부대가 빨라진다.</summary>
+        public bool Charging;
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
         public CrowdSoldier General;
         public int StartCount;
+        /// <summary>대열 반 폭 · 반 깊이 (자리에서, 칸).</summary>
+        public Fix HalfWidth, HalfDepth;
 
         public int AliveCount
         {
             get { int n = 0; foreach (var s in Soldiers) if (s.Alive && !s.IsGeneral) n++; return n; }
         }
 
+        /// <summary>장수가 살아 있으면 명령을 받는다 (장수를 잃은 부대는 제자리에서 싸움만).</summary>
+        public bool Leading => General.Alive;
+
+        public Vec Right => new Vec(Facing.Y, -Facing.X); // 앞이 +y일 때 오른쪽 +x
+
         /// <summary>대열 자리의 전장 위치.</summary>
-        public Vec SlotWorld(Vec slot)
+        public Vec SlotWorld(Vec slot) => Center + Right * slot.X + Facing * slot.Y;
+
+        /// <summary>살아 있는 병사 가운데 (없으면 부대 가운데).</summary>
+        public Vec Centroid()
         {
-            var right = new Vec(Facing.Y, -Facing.X); // 앞이 +y일 때 오른쪽 +x
-            return Center + right * slot.X + Facing * slot.Y;
+            Fix sx = Fix.Zero, sy = Fix.Zero;
+            int n = 0;
+            foreach (var s in Soldiers) if (s.Alive && !s.IsGeneral) { sx += s.Pos.X; sy += s.Pos.Y; n++; }
+            return n == 0 ? (General.Alive ? General.Pos : Center) : new Vec(sx / n, sy / n);
         }
     }
 
     /// <summary>샘플전투2 시작 설정.</summary>
     public sealed class CrowdSetup
     {
+        /// <summary>편마다 병사 수 (부대가 여럿이면 나눠 가진다).</summary>
         public int AllyCount = 200;
         public int EnemyCount = 200;
+        /// <summary>편마다 부대 수 (1 또는 3: 좌 · 중 · 우, 가운데가 총대장).</summary>
+        public int AllyCorps = 1;
+        public int EnemyCorps = 1;
         public string AllyFormation = CrowdFormations.Line;
         public string EnemyFormation = CrowdFormations.Line;
+        /// <summary>true면 시작부터 우리 부대가 모두 적 총대장 부대를 공격 (시험 · 캡처). 사용자 조작이면 false.</summary>
         public bool AllyAdvance = true;
+        /// <summary>true면 적 부대가 가장 가까운 우리 부대를 공격, false면 제자리.</summary>
         public bool EnemyAdvance;
         public ulong Seed = 1;
     }
 
     /// <summary>
-    /// 샘플전투2: 병사 단위 전투 (R-125, 시험 중 — docs/design/content/battle-crowd.md).
+    /// 샘플전투2: 병사 단위 전투 (R-125 · R-126, 시험 중 — docs/design/content/battle-crowd.md).
     /// 병사마다 자리 · 체력이 있고, 서로 밀어내 겹치지 않으며 (적과도), 가까운 적(EngageRange 안)에게 몰려가 닿으면 친다.
-    /// 진형 모양이 그대로 결과를 바꾼다: 얇은 줄은 뚫리고, 두꺼운 줄은 뒷줄이 메우고, V는 여러 방향에서 동시에 닿는다.
+    /// 편마다 부대가 하나 또는 셋 (좌 · 중 · 우)이고, 부대마다 명령(제자리 · 이동 · 공격)과 진형을 따로 받는다.
+    /// 공격 명령으로 다가가면 가까워질 때 돌격(빨라짐)하고, 돌격해 처음 맞닿으면 부딪침(상대를 밀치고 피해 더).
     /// 규칙 계산이라 고정소수점 · 시드 난수만 쓰고, 병사를 id 순서로 계산한 뒤 한꺼번에 반영한다 (같은 입력 = 같은 결과).
     /// </summary>
     public sealed class CrowdBattle
     {
         public const int Ally = 0, Enemy = 1;
+        public static readonly string[] Places3 = { "left", "center", "right" };
 
         public CrowdRules Rules { get; }
         public int Tick { get; private set; }
-        public readonly CrowdArmy[] Armies = new CrowdArmy[2];
+        public readonly List<CrowdArmy> Armies = new List<CrowdArmy>();
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
         /// <summary>끝났으면 이긴 편 (Ally · Enemy), 비기면 -2, 진행 중이면 -1.</summary>
         public int Winner { get; private set; } = -1;
-        /// <summary>끝난 까닭: general (장수 사로잡음) · wiped (전멸) · time.</summary>
+        /// <summary>끝난 까닭: general (총대장 사로잡음) · wiped (전멸) · time.</summary>
         public string EndReason { get; private set; }
         public bool IsOver => Winner != -1;
+        /// <summary>이번 틱 부딪침 수 (화면 흔들림).</summary>
+        public int ImpactsThisTick { get; private set; }
 
+        private readonly bool _enemyAdvance;
         private readonly SeededRandom _rng;
         private readonly Dictionary<long, List<int>> _grid = new Dictionary<long, List<int>>();
         private Vec[] _next = new Vec[0];
+        private Vec[] _knock = new Vec[0];
         private int[] _damage = new int[0];
 
         public CrowdBattle(CrowdRules rules, CrowdSetup setup)
         {
             Rules = rules;
             _rng = new SeededRandom(setup.Seed == 0 ? 1 : setup.Seed);
-            var mid = rules.FieldWidth / 2;
-            Armies[Ally] = MakeArmy(Ally, setup.AllyFormation, setup.AllyCount, new Vec(mid, rules.FieldDepth * Fix.FromRatio(3, 10)), new Vec(Fix.Zero, Fix.OneValue), setup.AllyAdvance);
-            Armies[Enemy] = MakeArmy(Enemy, setup.EnemyFormation, setup.EnemyCount, new Vec(mid, rules.FieldDepth * Fix.FromRatio(7, 10)), new Vec(Fix.Zero, -Fix.OneValue), setup.EnemyAdvance);
+            _enemyAdvance = setup.EnemyAdvance;
+            MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, rules.FieldDepth * Fix.FromRatio(3, 10), new Vec(Fix.Zero, Fix.OneValue));
+            MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, rules.FieldDepth * Fix.FromRatio(7, 10), new Vec(Fix.Zero, -Fix.OneValue));
+            if (setup.AllyAdvance)
+                foreach (var a in Armies) if (a.Team == Ally) OrderAttack(a.Id, Commander(Enemy).Id);
         }
 
-        private CrowdArmy MakeArmy(int team, string formation, int count, Vec center, Vec facing, bool advance)
+        public CrowdArmy Commander(int team)
         {
-            var a = new CrowdArmy { Team = team, Formation = CrowdFormations.IsKnown(formation) ? formation : CrowdFormations.Line, Center = center, Facing = facing, Advance = advance, StartCount = count };
-            var slots = CrowdFormations.Slots(a.Formation, count, Rules.Spacing);
+            foreach (var a in Armies) if (a.Team == team && a.IsCommander) return a;
+            return null;
+        }
+
+        public IEnumerable<CrowdArmy> TeamArmies(int team)
+        {
+            foreach (var a in Armies) if (a.Team == team) yield return a;
+        }
+
+        public int AliveCount(int team)
+        {
+            int n = 0;
+            foreach (var a in Armies) if (a.Team == team) n += a.AliveCount;
+            return n;
+        }
+
+        private void MakeTeam(int team, int corps, int count, string formation, Fix y, Vec facing)
+        {
+            corps = corps >= 3 ? 3 : 1;
+            var form = CrowdFormations.IsKnown(formation) ? formation : CrowdFormations.Line;
+            var made = new List<CrowdArmy>();
+            for (int k = 0; k < corps; k++)
+            {
+                int share = count / corps + (k < count % corps ? 1 : 0);
+                string place = corps == 1 ? "center" : Places3[k];
+                made.Add(MakeArmy(team, place, place == "center", form, share, facing));
+            }
+            // 좌 · 중 · 우로 나란히 (사이 CorpsGap), 편의 가운데가 전장 가운데. 오른쪽 = 부대의 Right (적은 좌우가 뒤집힘)
+            Fix total = Fix.Zero;
+            foreach (var a in made) total += a.HalfWidth * 2;
+            total += Rules.CorpsGap * (made.Count - 1);
+            Fix x = -total / 2;
+            var mid = new Vec(Rules.FieldWidth / 2, y);
+            foreach (var a in made)
+            {
+                Fix cx = x + a.HalfWidth;
+                a.Center = mid + a.Right * cx;
+                x += a.HalfWidth * 2 + Rules.CorpsGap;
+                foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
+            }
+        }
+
+        private CrowdArmy MakeArmy(int team, string place, bool commander, string formation, int count, Vec facing)
+        {
+            var a = new CrowdArmy { Id = Armies.Count, Team = team, Place = place, IsCommander = commander, Formation = formation, Facing = facing, StartCount = count };
+            var slots = CrowdFormations.Slots(formation, count, Rules.Spacing);
             foreach (var slot in slots)
             {
-                var s = new CrowdSoldier { Id = Soldiers.Count, Team = team, Slot = slot, Hp = Rules.SoldierHp, MaxHp = Rules.SoldierHp };
-                s.Pos = a.SlotWorld(slot);
+                var s = new CrowdSoldier { Id = Soldiers.Count, Team = team, Army = a.Id, Slot = slot, Hp = Rules.SoldierHp, MaxHp = Rules.SoldierHp };
                 s.Cooldown = _rng.NextInt(Rules.AttackTicks);
                 a.Soldiers.Add(s);
                 Soldiers.Add(s);
             }
-            var g = new CrowdSoldier { Id = Soldiers.Count, Team = team, IsGeneral = true, Hp = Rules.GeneralHp, MaxHp = Rules.GeneralHp };
+            var g = new CrowdSoldier { Id = Soldiers.Count, Team = team, Army = a.Id, IsGeneral = true, Hp = Rules.GeneralHp, MaxHp = Rules.GeneralHp };
             g.Slot = new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
-            g.Pos = a.SlotWorld(g.Slot);
             a.General = g;
             a.Soldiers.Add(g);
             Soldiers.Add(g);
+            Measure(a, slots);
+            Armies.Add(a);
             return a;
         }
+
+        private static void Measure(CrowdArmy a, List<Vec> slots)
+        {
+            Fix minX = Fix.Zero, maxX = Fix.Zero, minY = Fix.Zero, maxY = Fix.Zero;
+            foreach (var s in slots)
+            {
+                if (s.X < minX) minX = s.X; if (s.X > maxX) maxX = s.X;
+                if (s.Y < minY) minY = s.Y; if (s.Y > maxY) maxY = s.Y;
+            }
+            a.HalfWidth = (maxX - minX) / 2;
+            a.HalfDepth = (maxY - minY) / 2;
+        }
+
+        // ---- 명령 ----
 
         /// <summary>
         /// 대열 바꾸기: 새 모양 자리를 병사들에게 다시 나눠 준다 (지금 위치의 좌우 순서를 지켜 서로 덜 엇갈리게).
         /// 병사는 다음 틱부터 새 자리로 걸어간다 (맞붙은 병사는 싸움을 계속).
         /// </summary>
-        public void SetFormation(int team, string formation)
+        public void SetFormation(int army, string formation)
         {
-            if (!CrowdFormations.IsKnown(formation) || IsOver) return;
-            var a = Armies[team];
+            if (!CrowdFormations.IsKnown(formation) || IsOver || army < 0 || army >= Armies.Count) return;
+            var a = Armies[army];
+            if (!a.Leading) return;
             a.Formation = formation;
             var alive = new List<CrowdSoldier>();
             foreach (var s in a.Soldiers) if (s.Alive && !s.IsGeneral) alive.Add(s);
             var slots = CrowdFormations.Slots(formation, alive.Count, Rules.Spacing);
-            var right = new Vec(a.Facing.Y, -a.Facing.X);
-            // 지금 위치를 군단 기준 (오른쪽, 앞)으로 → 오른쪽 순, 같으면 앞 순으로 줄 세워 같은 순서의 자리와 짝짓기
+            var right = a.Right;
             alive.Sort((p, q) =>
             {
                 var dp = p.Pos - a.Center; var dq = q.Pos - a.Center;
@@ -145,9 +245,41 @@ namespace Game.Battle.Model.Crowd
             slots.Sort((p, q) => { int c = p.X.CompareTo(q.X); return c != 0 ? c : p.Y.CompareTo(q.Y); });
             for (int i = 0; i < alive.Count; i++) alive[i].Slot = slots[i];
             a.General.Slot = new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
+            Measure(a, slots);
         }
 
-        public void SetAdvance(int team, bool advance) { if (!IsOver) Armies[team].Advance = advance; }
+        public void OrderHold(int army)
+        {
+            if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
+            var a = Armies[army];
+            a.Order = CrowdOrders.Hold; a.OrderTarget = -1; a.Charging = false;
+        }
+
+        /// <summary>땅 한 곳으로 이동 (가면서 만나는 적과는 싸운다, 도착하면 제자리).</summary>
+        public void OrderMove(int army, Vec point)
+        {
+            if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
+            var a = Armies[army];
+            a.Order = CrowdOrders.Move;
+            a.OrderPoint = new Vec(Fix.Clamp(point.X, Fix.Zero, Rules.FieldWidth), Fix.Clamp(point.Y, Fix.Zero, Rules.FieldDepth));
+            a.OrderTarget = -1;
+            a.Charging = false;
+        }
+
+        /// <summary>적 부대 공격 (그 부대 쪽으로 가서, 가까워지면 돌격).</summary>
+        public void OrderAttack(int army, int target)
+        {
+            if (IsOver || army < 0 || army >= Armies.Count || target < 0 || target >= Armies.Count) return;
+            var a = Armies[army];
+            if (!a.Leading || Armies[target].Team == a.Team) return;
+            a.Order = CrowdOrders.Attack;
+            a.OrderTarget = target;
+        }
+
+        /// <summary>그 부대가 아직 싸울 수 있음 (병사나 장수가 남음).</summary>
+        public bool Standing(CrowdArmy a) => a.General.Alive || a.AliveCount > 0;
+
+        // ---- 한 틱 ----
 
         public void Step()
         {
@@ -155,46 +287,37 @@ namespace Game.Battle.Model.Crowd
             Tick++;
             var r = Rules;
             Fix dt = r.TickSeconds;
-            Fix stepLen = r.MoveSpeed * dt;
             Fix diameter = r.SoldierRadius * 2;
             Fix reach = diameter + r.AttackReach;
             Fix reach2 = reach * reach;
             Fix engage2 = r.EngageRange * r.EngageRange;
+            Fix walkStep = r.MoveSpeed * dt;
+            Fix fast = walkStep * Fix.FromRatio(11, 10);
 
             int n = Soldiers.Count;
-            if (_next.Length < n) { _next = new Vec[n]; _damage = new int[n]; }
+            if (_next.Length < n) { _next = new Vec[n]; _damage = new int[n]; _knock = new Vec[n]; }
             BuildGrid();
+            ImpactsThisTick = 0;
 
-            // 1) 군단 가운데: 전진이면 적 장수 쪽으로 (맞붙은 병사 비율만큼 느리게)
-            var engaged = new int[2];
+            // 1) 부대: 적 AI 명령, 맞붙은 비율, 돌격 여부, 가운데 옮기기
+            if (_enemyAdvance && Tick % 10 == 1) EnemyThink();
+            var engaged = new int[Armies.Count];
             for (int i = 0; i < n; i++)
             {
                 var s = Soldiers[i];
-                if (!s.Alive) continue;
-                if (s.LastAttackTick >= Tick - r.AttackTicks * 2) engaged[s.Team]++;
+                if (s.Alive && s.LastAttackTick >= Tick - r.AttackTicks * 2) engaged[s.Army]++;
             }
-            for (int t = 0; t < 2; t++)
-            {
-                var a = Armies[t];
-                var foe = Armies[1 - t];
-                if (!a.Advance) continue;
-                var goal = foe.General.Alive ? foe.General.Pos : foe.Center;
-                var d = goal - a.Center;
-                if (d.LengthSquared <= Fix.OneValue) continue;
-                a.Facing = d.Normalized();
-                int alive = System.Math.Max(1, a.AliveCount);
-                Fix slow = Fix.OneValue - Fix.Min(Fix.OneValue, Fix.FromRatio(engaged[t] * 2, alive));
-                a.Center = a.Center + a.Facing * (r.AdvanceSpeed * dt * slow);
-            }
+            foreach (var a in Armies) MoveArmy(a, engaged[a.Id]);
 
             // 2) 병사마다 갈 곳 · 칠 대상 (id 순서로 계산, 반영은 한꺼번에)
-            for (int i = 0; i < n; i++) { _next[i] = Soldiers[i].Pos; _damage[i] = 0; }
+            for (int i = 0; i < n; i++) { _next[i] = Soldiers[i].Pos; _damage[i] = 0; _knock[i] = Vec.Zero; }
             for (int i = 0; i < n; i++)
             {
                 var s = Soldiers[i];
                 if (!s.Alive) continue;
                 if (s.Cooldown > 0) s.Cooldown--;
-                var army = Armies[s.Team];
+                var army = Armies[s.Army];
+                Fix stepLen = army.Charging ? r.ChargeSpeed * dt : walkStep;
                 Vec want;
                 int foe = s.IsGeneral ? -1 : NearestEnemy(s, engage2);
                 if (foe >= 0)
@@ -208,6 +331,16 @@ namespace Game.Battle.Model.Crowd
                         if (s.Cooldown == 0)
                         {
                             _damage[foe]++;
+                            // 부딪침: 빠르게 달려와 처음 친 한 방은 상대를 밀치고 피해를 더 준다
+                            if (s.Moved.LengthSquared > fast * fast && s.LastAttackTick < Tick - r.AttackTicks * 3)
+                            {
+                                _damage[foe] += r.ImpactDamage;
+                                Fix len = Fix.Sqrt(d2);
+                                if (len > Fix.Zero) _knock[foe] = _knock[foe] + d * (r.ImpactPush / len);
+                                s.ImpactTick = Tick;
+                                e.ImpactTick = Tick;
+                                ImpactsThisTick++;
+                            }
                             s.LastAttackTick = Tick;
                             s.LastTargetId = foe;
                             s.Cooldown = r.AttackTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks + 1) : 0);
@@ -228,6 +361,7 @@ namespace Game.Battle.Model.Crowd
                 }
                 _next[i] = s.Pos + want + Separation(s, diameter);
             }
+            for (int i = 0; i < n; i++) if (!_knock[i].Equals(Vec.Zero)) _next[i] = _next[i] + _knock[i];
 
             // 2.5) 다음 위치끼리 겹친 것을 두 번 풀어 준다 (뒤에서 미는 병사가 앞 병사 속으로 파고들지 않게)
             for (int pass = 0; pass < RelaxPasses; pass++) Relax(diameter);
@@ -248,22 +382,75 @@ namespace Game.Battle.Model.Crowd
                     if (s.Hp <= 0) { s.Hp = 0; s.DiedTick = Tick; s.Moved = Vec.Zero; }
                 }
             }
+            foreach (var a in Armies)
+                if (!a.General.Alive && a.Order != CrowdOrders.Hold) { a.Order = CrowdOrders.Hold; a.Charging = false; } // 장수를 잃으면 제자리
 
-            // 4) 끝: 장수를 사로잡거나 (체력 0) 병사가 다 쓰러지면, 시간이 다 되면 남은 병사 많은 쪽
-            bool allyOut = !Armies[Ally].General.Alive || Armies[Ally].AliveCount == 0;
-            bool enemyOut = !Armies[Enemy].General.Alive || Armies[Enemy].AliveCount == 0;
+            // 4) 끝: 총대장을 사로잡거나 (체력 0) 병사가 다 쓰러지면, 시간이 다 되면 남은 병사 많은 쪽
+            bool allyOut = !Commander(Ally).General.Alive || AliveCount(Ally) == 0;
+            bool enemyOut = !Commander(Enemy).General.Alive || AliveCount(Enemy) == 0;
             if (allyOut || enemyOut)
             {
                 Winner = allyOut && enemyOut ? -2 : allyOut ? Enemy : Ally;
-                var loser = Armies[allyOut ? Ally : Enemy];
+                var loser = Commander(allyOut ? Ally : Enemy);
                 EndReason = !loser.General.Alive ? "general" : "wiped";
             }
             else if (Tick >= r.MaxTicks)
             {
-                int a = Armies[Ally].AliveCount, e = Armies[Enemy].AliveCount;
+                int a = AliveCount(Ally), e = AliveCount(Enemy);
                 Winner = a == e ? -2 : a > e ? Ally : Enemy;
                 EndReason = "time";
             }
+        }
+
+        /// <summary>적 부대: 공격 대상이 없거나 무너졌으면 가장 가까운 우리 부대를 공격.</summary>
+        private void EnemyThink()
+        {
+            foreach (var a in Armies)
+            {
+                if (a.Team != Enemy || !a.Leading) continue;
+                if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && Standing(Armies[a.OrderTarget])) continue;
+                int best = -1;
+                Fix bestD = Fix.Zero;
+                var me = a.Centroid();
+                foreach (var o in Armies)
+                {
+                    if (o.Team == a.Team || !Standing(o)) continue;
+                    Fix d = Vec.DistanceSquared(o.Centroid(), me);
+                    if (best < 0 || d < bestD) { best = o.Id; bestD = d; }
+                }
+                if (best >= 0) OrderAttack(a.Id, best);
+            }
+        }
+
+        /// <summary>부대 가운데를 명령대로 옮긴다. 공격이면 가까워질 때 돌격, 맞붙으면 돌격 끝 · 느려짐.</summary>
+        private void MoveArmy(CrowdArmy a, int engagedSoldiers)
+        {
+            var r = Rules;
+            Fix dt = r.TickSeconds;
+            if (a.Order == CrowdOrders.Hold) { a.Charging = false; return; }
+            Vec goal;
+            if (a.Order == CrowdOrders.Move) goal = a.OrderPoint;
+            else
+            {
+                var t = Armies[a.OrderTarget];
+                if (!Standing(t)) { a.Order = CrowdOrders.Hold; a.Charging = false; return; }
+                goal = t.Centroid();
+                // 돌격: 두 대열 가장자리 사이가 ChargeRange 안이고 아직 맞붙지 않았으면
+                Fix gap = (goal - a.Center).Length - a.HalfDepth - t.HalfDepth;
+                int alive0 = System.Math.Max(1, a.AliveCount);
+                bool contact = engagedSoldiers * 10 >= alive0; // 10% 넘게 맞붙음
+                if (contact) a.Charging = false;
+                else if (gap <= r.ChargeRange) a.Charging = true;
+            }
+            var d = goal - a.Center;
+            Fix dist = d.Length;
+            if (a.Order == CrowdOrders.Move && dist <= r.AdvanceSpeed * dt) { a.Center = goal; a.Order = CrowdOrders.Hold; a.Charging = false; return; }
+            if (a.Order == CrowdOrders.Attack && dist <= Fix.OneValue) return;
+            if (dist > Fix.OneValue) a.Facing = d.Normalized(); // 도착 직전에는 방향을 그대로 (뒤집히지 않게)
+            int alive = System.Math.Max(1, a.AliveCount);
+            Fix slow = Fix.OneValue - Fix.Min(Fix.OneValue, Fix.FromRatio(engagedSoldiers * 2, alive));
+            Fix speed = a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed;
+            a.Center = a.Center + a.Facing * Fix.Min(dist, speed * dt * slow);
         }
 
         private const int RelaxPasses = 2;
@@ -289,7 +476,6 @@ namespace Game.Battle.Model.Crowd
                             if (d2 >= d2max || d2 == Fix.Zero) continue;
                             Fix len = Fix.Sqrt(d2);
                             var corr = d * ((diameter - len) / 2 / len);
-                            // 장수는 덜 밀린다
                             bool gi = s.IsGeneral, gj = Soldiers[j].IsGeneral;
                             _next[i] = _next[i] + (gi && !gj ? corr * Fix.FromRatio(1, 4) : gj && !gi ? corr * Fix.FromRatio(7, 4) : corr);
                             _next[j] = _next[j] - (gj && !gi ? corr * Fix.FromRatio(1, 4) : gi && !gj ? corr * Fix.FromRatio(7, 4) : corr);
@@ -356,14 +542,12 @@ namespace Game.Battle.Model.Crowd
                         if (d2 >= d2max) continue;
                         if (d2 == Fix.Zero)
                         {
-                            // 같은 자리: id로 정한 방향으로 살짝
                             Fix e = Fix.FromRatio(1, 100);
                             px += s.Id < j ? -e : e;
                             continue;
                         }
                         Fix len = Fix.Sqrt(d2);
                         Fix push = (diameter - len) / 2;
-                        // 장수는 덜 밀린다 (대열 뒤에서 버팀)
                         if (s.IsGeneral) push = push / 2;
                         px += d.X * push / len;
                         py += d.Y * push / len;

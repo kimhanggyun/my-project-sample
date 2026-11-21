@@ -168,6 +168,30 @@ namespace Game.Unity.Boot
             s3.StepForTour(60);
             s3.FocusFightForTour(22f);
             yield return Shot("31b_sample2_vee_fight", null, 0.2f);
+            // 조작 · 돌격 · 부딪침 (R-126): 셋 대 셋, 중군은 적 중군 공격, 좌 · 우군은 바깥으로 돌아 들어감
+            var s4 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+            {
+                AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, Seed = 11,
+                AllyFormation = Game.Battle.Model.Crowd.CrowdFormations.Wedge, EnemyFormation = Game.Battle.Model.Crowd.CrowdFormations.Line,
+            });
+            yield return Shot("32_sample2_corps_setup", () => s4, 0.3f);
+            s4.StepForTour(1);
+            s4.AttackForTour("center", "center");
+            s4.MoveForTour("left", 4f, 34f);
+            s4.MoveForTour("right", 56f, 34f);
+            s4.SelectForTour("center");
+            s4.StepForTour(60);
+            s4.FocusArmyForTour(0, 40f);
+            yield return Shot("32b_sample2_corps_move", null, 0.2f);
+            s4.AttackForTour("left", "left");
+            s4.AttackForTour("right", "right");
+            guard = 0;
+            while (guard++ < 600 && !s4.ImpactForTour) s4.StepForTour(1);
+            s4.FocusFightForTour(12f);
+            for (int i = 0; i < 8; i++) { yield return Shot($"32i_sample2_impact_{i:00}", null, 0f); s4.StepForTour(1); }
+            s4.StepForTour(80);
+            s4.FocusArmyForTour(0, 40f);
+            yield return Shot("32c_sample2_corps_fight", null, 0.2f);
 
             _app.ShowMain("story");
             Done = true;

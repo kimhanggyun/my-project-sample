@@ -28,6 +28,20 @@ namespace Game.Unity.Battle3D
         private static readonly Color EnemyDark = new Color(0.50f, 0.13f, 0.11f);
         private static readonly Color DeadWhite = new Color(0.97f, 0.97f, 0.94f);
         private readonly InstanceBatch _ally, _enemy, _white, _allyGeneral, _enemyGeneral, _allyWhole, _enemyWhole, _allyLegs, _enemyLegs;
+        // ---- 부딪침 (R-126): 흙먼지 · 화면 흔들림 ----
+        private const int MaxDust = 260;
+        private const float DustSeconds = 0.7f;
+        private static readonly Color DustColor = new Color(0.80f, 0.71f, 0.55f);
+        private readonly List<(Vector3 pos, int tick, int seed)> _dust = new List<(Vector3, int, int)>();
+        private readonly InstanceBatch _dustBatch;
+        private float _shake;
+
+        // ---- 고른 부대 표시 (R-126 조작): 노란 고리, 이동 목표 · 공격 대상 고리 ----
+        /// <summary>화면이 고른 우리 부대 (Armies 번호, 없으면 -1).</summary>
+        public int SelectedArmy = -1;
+        private readonly LineRenderer _selRing, _goalRing;
+        private const int RingSegments = 48;
+
         /// <summary>병사마다 걸은 거리 (다리 박자) · 다리 흔들기 세기 (걷기 시작 · 멈출 때 부드럽게).</summary>
         private float[] _stride = new float[0], _legAmp = new float[0];
         /// <summary>한 걸음 주기 동안 가는 거리 (월드). 짧을수록 종종걸음.</summary>
@@ -88,6 +102,11 @@ namespace Game.Unity.Battle3D
             _allyWhole = Batch(whole, AllyColor, AllyDark);
             _enemyWhole = Batch(whole, EnemyColor, EnemyDark);
             _white = Batch(whole, DeadWhite, DeadWhite);
+            var dm = Own(NewMaterial(DustColor));
+            dm.enableInstancing = true;
+            _dustBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Sphere.fbx"), new[] { dm }, Matrix4x4.identity);
+            _selRing = Ring("SelectRing", new Color(1f, 0.85f, 0.25f), 0.12f);
+            _goalRing = Ring("GoalRing", new Color(1f, 1f, 1f), 0.08f);
             var leg = SoldierMeshes.Leg();
             _allyLegs = LegBatch(leg, AllyDark);
             _enemyLegs = LegBatch(leg, EnemyDark);
@@ -120,7 +139,7 @@ namespace Game.Unity.Battle3D
                 for (int i = 0; i < n; i++)
                 {
                     _cur[i] = _prev[i] = ToWorld(_battle.Soldiers[i].Pos);
-                    var f = _battle.Armies[_battle.Soldiers[i].Team].Facing;
+                    var f = _battle.Armies[_battle.Soldiers[i].Army].Facing;
                     _yaw[i] = Mathf.Atan2((float)f.X.ToDisplayDouble(), (float)f.Y.ToDisplayDouble()) * Mathf.Rad2Deg;
                 }
             }
@@ -130,7 +149,11 @@ namespace Game.Unity.Battle3D
                 _prev[i] = _cur[i];
                 _cur[i] = ToWorld(_battle.Soldiers[i].Pos);
                 _stride[i] += (_cur[i] - _prev[i]).magnitude; // 다리 박자는 틱마다 간 거리로 (화면 시간과 무관 — 캡처 · 배속에서도 같음)
+                var s = _battle.Soldiers[i];
+                if (s.ImpactTick == _battle.Tick && _dust.Count < MaxDust)
+                    _dust.Add((_cur[i] + new Vector3(((i * 37) % 7 - 3) * 0.04f, 0f, ((i * 53) % 7 - 3) * 0.04f), _battle.Tick, (i * 13) % 5));
             }
+            if (_battle.ImpactsThisTick >= 3) _shake = Mathf.Min(0.14f, _shake + 0.012f * _battle.ImpactsThisTick);
             _seenTick = _battle.Tick;
         }
 
@@ -173,7 +196,7 @@ namespace Game.Unity.Battle3D
                     if (mv.sqrMagnitude > 1e-5f) look = mv;
                     else
                     {
-                        var f = _battle.Armies[s.Team].Facing;
+                        var f = _battle.Armies[s.Army].Facing;
                         look = new Vector3((float)f.X.ToDisplayDouble(), 0f, (float)f.Y.ToDisplayDouble());
                     }
                 }
@@ -195,9 +218,17 @@ namespace Game.Unity.Battle3D
                 }
                 // 다리: 움직인 거리만큼 박자가 가고, 걷기 시작 · 멈출 때 흔들기 세기가 부드럽게 오르내린다
                 float speed = (_cur[i] - _prev[i]).magnitude / Mathf.Max(1e-4f, tickSec);
-                _legAmp[i] = walking ? Mathf.Max(_legAmp[i], Mathf.Clamp01(speed / 1.2f)) : Mathf.MoveTowards(_legAmp[i], 0f, dt * 4f);
+                // 돌격(R-126)으로 빠르면 달리기: 다리 세기 1.5까지, 몸을 더 숙인다
+                float want = walking ? Mathf.Clamp(speed / 1.2f, 0f, 1.5f) : 0f;
+                _legAmp[i] = walking ? Mathf.MoveTowards(_legAmp[i], want, dt * 6f) : Mathf.MoveTowards(_legAmp[i], 0f, dt * 4f);
                 var bodyRot = r;
-                if (!attacking && walking) bodyRot = r * Quaternion.Euler(6f * _legAmp[i], 0f, 0f); // 걸을 때 살짝 앞으로
+                if (!attacking && walking) bodyRot = r * Quaternion.Euler(6f * _legAmp[i] + (speed > 2f ? 8f : 0f), 0f, 0f); // 걸을 때 살짝, 달릴 때 더 앞으로
+                // 부딪쳐 밀린 병사: 잠깐 뒤로 젖혀진다
+                if (s.ImpactTick >= 0 && s.ImpactTick != s.LastAttackTick)
+                {
+                    float hit = now - s.ImpactTick * tickSec;
+                    if (hit >= 0f && hit < 0.4f) bodyRot = bodyRot * Quaternion.Euler(-22f * Mathf.Sin(hit / 0.4f * Mathf.PI), 0f, 0f);
+                }
                 p.y = 0f;
                 if (s.IsGeneral) { (ally ? _allyGeneral : _enemyGeneral).Add(p, bodyRot); continue; }
                 (ally ? _ally : _enemy).Add(p, bodyRot);
@@ -210,7 +241,17 @@ namespace Game.Unity.Battle3D
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(-SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(swingL, 0f, 0f), Vector3.one));
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(attacking ? -12f : -swingL, 0f, 0f), Vector3.one));
             }
+            DrawDust(now, tickSec);
+            DrawRings();
+            // 흔들림: 카메라를 제자리로 맞춘 뒤 조금 흔든다 (금방 잦아듦)
+            Rig.Refresh();
+            if (_shake > 0.001f)
+            {
+                Rig.Camera.transform.position += new Vector3(Mathf.Sin(now * 71f), Mathf.Sin(now * 53f) * 0.5f, Mathf.Cos(now * 67f)) * _shake;
+                _shake = Mathf.MoveTowards(_shake, 0f, dt * 0.5f);
+            }
             var cam = Rig.Camera;
+            _dustBatch.Draw(cam);
             _ally.Draw(cam); _enemy.Draw(cam); _white.Draw(cam); _allyGeneral.Draw(cam); _enemyGeneral.Draw(cam);
             _allyWhole.Draw(cam); _enemyWhole.Draw(cam); _allyLegs.Draw(cam); _enemyLegs.Draw(cam);
         }
@@ -239,6 +280,71 @@ namespace Game.Unity.Battle3D
                 mats[i] = m;
             }
             return new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * ModelScale));
+        }
+
+        private void DrawDust(float now, float tickSec)
+        {
+            _dustBatch.Matrices.Clear();
+            for (int k = _dust.Count - 1; k >= 0; k--)
+            {
+                var d = _dust[k];
+                float age = now - d.tick * tickSec;
+                if (age > DustSeconds) { _dust.RemoveAt(k); continue; }
+                if (age < 0f) continue;
+                float t = age / DustSeconds;
+                float size = Mathf.Lerp(0.12f, 0.5f, t) * (1f - t * t); // 피어오르다 작아지며 사라짐
+                var p = d.pos + new Vector3((d.seed - 2) * 0.05f * t, 0.08f + 0.25f * t, 0f);
+                _dustBatch.Matrices.Add(Matrix4x4.TRS(p, Quaternion.identity, new Vector3(size, size * 0.6f, size)));
+            }
+        }
+
+        /// <summary>대열 주위 고리 반지름.</summary>
+        private static float RadiusOf(CrowdArmy a) => (float)Game.Foundation.Math.Fix.Max(a.HalfWidth, a.HalfDepth).ToDisplayDouble() + 0.9f;
+
+        private void DrawRings()
+        {
+            bool sel = SelectedArmy >= 0 && SelectedArmy < _battle.Armies.Count && _battle.Standing(_battle.Armies[SelectedArmy]);
+            _selRing.gameObject.SetActive(sel);
+            _goalRing.gameObject.SetActive(false);
+            if (!sel) return;
+            var a = _battle.Armies[SelectedArmy];
+            Circle(_selRing, ToWorld(a.Centroid()), RadiusOf(a));
+            if (a.Order == CrowdOrders.Move) { _goalRing.gameObject.SetActive(true); Circle(_goalRing, ToWorld(a.OrderPoint), 0.6f); }
+            else if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0)
+            {
+                var t = _battle.Armies[a.OrderTarget];
+                _goalRing.gameObject.SetActive(true);
+                Circle(_goalRing, ToWorld(t.Centroid()), RadiusOf(t));
+            }
+        }
+
+        private static void Circle(LineRenderer line, Vector3 c, float radius)
+        {
+            for (int i = 0; i < RingSegments; i++)
+            {
+                float t = i / (float)RingSegments * Mathf.PI * 2f;
+                line.SetPosition(i, c + new Vector3(Mathf.Cos(t) * radius, 0.06f, Mathf.Sin(t) * radius));
+            }
+        }
+
+        private LineRenderer Ring(string name, Color color, float width)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(_root.transform, false);
+            var line = go.AddComponent<LineRenderer>();
+            var tpl = Resources.Load<Material>("Materials/GameUnlit");
+            var mat = Own(tpl != null ? new Material(tpl) : NewMaterial(color));
+            mat.color = color;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            line.sharedMaterial = mat;
+            line.widthMultiplier = width;
+            line.loop = true;
+            line.useWorldSpace = true;
+            line.positionCount = RingSegments;
+            line.shadowCastingMode = ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            go.SetActive(false);
+            return line;
         }
 
         /// <summary>다리 묶음: 행렬을 직접 넣는다 (모델 크기 · 엉덩이 위치 · 흔들기를 곱한 것).</summary>
