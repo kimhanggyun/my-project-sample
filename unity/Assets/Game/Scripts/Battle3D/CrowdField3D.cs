@@ -52,8 +52,8 @@ namespace Game.Unity.Battle3D
             cam.farClipPlane = 300f;
             cam.fieldOfView = 40f;
             Rig = new BattleCameraRig(cam, _width, _depth);
-            Rig.SetDistance(24f);
-            Rig.LookAt(new Vector3(_width / 2f, 0f, _depth / 2f));
+            Rig.SetDistance(36f); // 처음엔 양쪽 군이 다 보이게 (캡처 2026-11-21: 우리 쐐기가 아래로 잘림)
+            Rig.LookAt(new Vector3(_width / 2f, 0f, _depth * 0.45f));
 
             var lightGo = new GameObject("Sun");
             lightGo.transform.SetParent(_root.transform, false);
