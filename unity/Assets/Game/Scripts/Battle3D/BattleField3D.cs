@@ -100,6 +100,28 @@ namespace Game.Unity.Battle3D
         private int _flashFrame;
         /// <summary>걷는 병사의 앞 기울기 (튀는 대신).</summary>
         private static readonly Quaternion WalkLean = Quaternion.Euler(7f, 0f, 0f);
+
+        // ---- 병종별 공격 동작 (H3 나머지, 2026-11-21): 모두 부드러운 곡선, 병사마다 박자 어긋남, 앞줄 위주 ----
+        private enum AttackStyle { None, Spear, Sword, Horse, Ranged }
+        /// <summary>창: 앞으로 길게 찌르기 (폭 · 빠르기).</summary>
+        private const float SpearReach = 0.11f, SpearBeat = 4f;
+        /// <summary>칼 · 방패: 제자리에서 좌우로 휘두르듯 몸 돌리기 (도 · 빠르기), 앞으로는 아주 조금.</summary>
+        private const float SwordSwingDeg = 15f, SwordBeat = 4.5f, SwordStep = 0.02f;
+        /// <summary>기병: 맞붙는 순간 앞으로 짧게 돌진했다가 돌아옴 (거리 · 걸리는 초).</summary>
+        private const float HorseCharge = 0.25f, HorseChargeTime = 0.8f;
+        /// <summary>원거리: 쏘는 순간 뒤로 살짝 (거리 · 돌아오는 초).</summary>
+        private const float RangedRecoil = 0.03f, RangedRecoilTime = 0.35f;
+        private readonly Dictionary<SubUnitState, float> _meleeSince = new Dictionary<SubUnitState, float>();
+
+        private static AttackStyle StyleOf(SubUnitState u)
+        {
+            var t = u.Troop;
+            if (t.HasTag("ranged")) return AttackStyle.Ranged;
+            if (!t.HasTag("melee")) return AttackStyle.None;
+            if (t.HasTag("mounted")) return AttackStyle.Horse;
+            if (t.HasTag("polearm")) return AttackStyle.Spear;
+            return AttackStyle.Sword; // 보병 · 방패병 · 친위 · 공병 · 정찰 · 배(근접)
+        }
         /// <summary>
         /// 소부대 바닥 테두리 (H1, 2026-11-20 사용자 "아군 · 적 구분"): 병사 덩어리를 감싸는 편 색 사각형.
         /// 서로 맞붙어 섞여도 어느 덩어리가 어느 편인지 바닥 선으로 갈린다. 빛 영향 없는 재질 (밤에도 선명).
@@ -1037,13 +1059,16 @@ namespace Game.Unity.Battle3D
                     var center = _disp.TryGetValue(u, out var dp) ? dp.pos : Vector3.Lerp(prev, cur, alpha); // 화면용 위치 (부드럽게 · 밀어냄)
                     bool walking = (cur - prev).sqrMagnitude > 1e-5f;
                     // 근접 공격: 대상 쪽으로 찌르기 (병사마다 박자를 어긋나게). 앞줄일수록 크게
-                    Vector3 lunge = Vector3.zero;
-                    bool melee = u.AttackTarget != null && u.Troop.HasTag("melee") && _unitPos.TryGetValue(u.AttackTarget, out var tp) && (lunge = tp.cur - cur) != Vector3.zero;
-                    if (melee)
-                    {
-                        lunge.y = 0f;
-                        lunge = lunge.sqrMagnitude > 1e-6f ? lunge.normalized * 0.07f : Vector3.zero; // PR C: 폭 절반
-                    }
+                    // 공격 방향 (맞붙은 적 쪽, 원거리는 군단 앞) · 병종별 동작 (H3)
+                    var style = StyleOf(u);
+                    Vector3 toward = Vector3.zero;
+                    bool melee = u.AttackTarget != null && style != AttackStyle.Ranged && style != AttackStyle.None
+                        && _disp.TryGetValue(u.AttackTarget, out var tdisp) && (toward = tdisp.pos - center) != Vector3.zero;
+                    if (melee) { toward.y = 0f; toward = toward.sqrMagnitude > 1e-6f ? toward.normalized : Vector3.zero; }
+                    if (melee) { if (!_meleeSince.ContainsKey(u)) _meleeSince[u] = clock; } else _meleeSince.Remove(u);
+                    float chargeAge = melee && _meleeSince.TryGetValue(u, out var since) ? clock - since : -1f;
+                    float shotAge = style == AttackStyle.Ranged && u.AttackTarget != null ? clock - Effects.LastShot(u) : -1f;
+                    var forward = rot * Vector3.forward;
                     // 병력이 줄어 화면 병사가 빠지면 앞줄 자리에서 쓰러진다 (쓰러지는 동작 → 시체). 뒷줄은 앞으로 메운다
                     if (_shownSoldiers.TryGetValue(u, out var before) && before > n)
                     {
@@ -1074,8 +1099,33 @@ namespace Game.Unity.Battle3D
                         var local = new Vector3(col * SoldierSpacing - halfW + rowOffset, 0f, frontZ - row * SoldierSpacing) + Jitter(seedBase + i);
                         var p = center + rot * local;
                         float phase = i * 1.7f + seedBase % 7;
-                        float frontWeight = row == 0 ? 1f : row == 1 ? 0.5f : 0.15f; // 찌르기는 앞줄 위주
-                        p += lunge * frontWeight * Mathf.Max(0f, Mathf.Sin(clock * 5.5f + phase)); // PR C: 빠르기 절반
+                        float frontWeight = row == 0 ? 1f : row == 1 ? 0.5f : 0.15f; // 공격 동작은 앞줄 위주
+                        float swingYaw = 0f;
+                        switch (style)
+                        {
+                            case AttackStyle.Spear when melee: // 앞으로 길게 찌르기, 느린 박자 (부드럽게: 0~1 사이 반파 제곱)
+                                {
+                                    float s = Mathf.Max(0f, Mathf.Sin(clock * SpearBeat + phase));
+                                    p += toward * (SpearReach * frontWeight * s * s);
+                                    break;
+                                }
+                            case AttackStyle.Sword when melee: // 제자리에서 좌우로 휘두르듯 몸 돌리기
+                                swingYaw = SwordSwingDeg * frontWeight * Mathf.Sin(clock * SwordBeat + phase);
+                                p += toward * (SwordStep * frontWeight * Mathf.Max(0f, Mathf.Sin(clock * SwordBeat * 2f + phase)));
+                                break;
+                            case AttackStyle.Horse when melee && chargeAge >= 0f && chargeAge < HorseChargeTime: // 맞붙는 순간 짧게 돌진 → 돌아옴
+                                {
+                                    float t = chargeAge / HorseChargeTime + (phase % 1f) * 0.08f;
+                                    if (t < 1f) p += toward * (HorseCharge * (row <= 1 ? 1f : 0.6f) * Mathf.Sin(Mathf.PI * t));
+                                    break;
+                                }
+                            case AttackStyle.Ranged when shotAge >= 0f: // 쏘는 순간 뒤로 살짝, 병사마다 조금 늦게
+                                {
+                                    float a = shotAge - (phase % 1f) * 0.06f;
+                                    if (a >= 0f && a < RangedRecoilTime) { float k = 1f - a / RangedRecoilTime; p -= forward * (RangedRecoil * k * k); }
+                                    break;
+                                }
+                        }
                         // 2026-11-20 사용자 (참고 영상): 통통 튀지 말고 미끄러지듯 — 위아래 튀기 없이 걸을 때 몸만 앞으로 살짝 기울인다
                         if (hidden && i % 2 == 1) continue; // 숨은 군단: 반만 그려 흐릿하게
                         if (u.Confused) p += new Vector3(Mathf.Sin(clock * 23f + phase) * 0.07f, 0f, Mathf.Cos(clock * 19f + phase * 1.3f) * 0.07f); // 혼란: 갈팡질팡
@@ -1083,7 +1133,8 @@ namespace Game.Unity.Battle3D
                         // 맞으면 앞줄이 뒤로 살짝 밀린다 (H3 #254). 번갈아 깜빡이던 것은 없앰 — 죽는 병사(PR D)가 대신
                         if (c.LostThisTick > 0 && row <= 1 && !isCube) p -= rot * new Vector3(0f, 0f, 0.04f);
                         p.y = GroundHeight(p.x, p.z);
-                        batch.Add(p, walking ? rot * WalkLean : rot);
+                        var look = swingYaw != 0f ? rot * Quaternion.Euler(0f, swingYaw, 0f) : rot;
+                        batch.Add(p, walking ? look * WalkLean : look);
                     }
                 }
                 // 장수: 군단 한가운데 조금 뒤, 부대원보다 크게 (총대장은 군기)

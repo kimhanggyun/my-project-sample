@@ -32,6 +32,10 @@ namespace Game.Unity.Battle3D
         private readonly List<Matrix4x4> _heads = new List<Matrix4x4>(), _fletches = new List<Matrix4x4>();
         private readonly List<Arrow> _arrows = new List<Arrow>();
         private readonly Dictionary<SubUnitState, float> _nextArrow = new Dictionary<SubUnitState, float>();
+        private readonly Dictionary<SubUnitState, float> _lastShot = new Dictionary<SubUnitState, float>();
+
+        /// <summary>그 소부대가 마지막으로 화살을 쏜 연출 시각 (쏜 적 없으면 아주 옛날) — 병사가 쏘는 순간 뒤로 움찔하는 박자 (H3).</summary>
+        public float LastShot(SubUnitState u) => _lastShot.TryGetValue(u, out var t) ? t : float.NegativeInfinity;
         private readonly List<Ring> _rings = new List<Ring>();
         // 날씨·바람·전조 (D19)
         private readonly Material _rainMat, _dustMat, _snowMat;
@@ -76,6 +80,7 @@ namespace Game.Unity.Battle3D
                     if (u.AttackTarget == null || !u.Troop.HasTag("ranged")) continue;
                     if (_nextArrow.TryGetValue(u, out var next) && next > Clock) continue;
                     _nextArrow[u] = Clock + ArrowEvery;
+                    _lastShot[u] = Clock;
                     var target = Owner(ctx, u.AttackTarget);
                     if (!_ctl.Sees(c) && (target == null || !_ctl.Sees(target))) continue;
                     var from = _field.ToWorld(u.Position) + Vector3.up * 0.4f;
