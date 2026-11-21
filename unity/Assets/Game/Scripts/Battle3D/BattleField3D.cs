@@ -19,6 +19,18 @@ namespace Game.Unity.Battle3D
     {
         /// <summary>소부대 하나의 화면 병사 최대 수 (7×7, 덩어리가 진형 자리 2칸 안에 들어가게 — 2026-11-21).</summary>
         private const long MaxSoldiersPerUnit = 49;
+
+        /// <summary>
+        /// 소부대의 화면 병사 수 (2026-11-21): 덩어리를 진형 자리(2칸) 안에 두려고 출진 때 병사를 MaxSoldiersPerUnit까지로 줄이고,
+        /// 병력이 줄면 그 비율대로 준다. 처음 캡처에서 가장 큰 소부대 기준으로 전체 비율을 바꿨더니 작은 쪽(우리)이 몇 명만 남아 휑해서 소부대마다 따로.
+        /// </summary>
+        private long Shown(long troops, long startTroops)
+        {
+            if (troops <= 0) return 0;
+            long start = System.Math.Min(MaxSoldiersPerUnit, SoldierRatio.VisibleSoldiers(System.Math.Max(1, startTroops), _troopsPerSoldier));
+            if (troops >= startTroops) return start;
+            return System.Math.Max(1, (start * troops + startTroops - 1) / startTroops);
+        }
         private const float SoldierSpacing = 0.24f; // 2026-11-13: 병사 예산 900 → 2000에 맞춰 촘촘히 (대군 느낌, 부대 덩어리 크기는 비슷)
         /// <summary>지형 높이 1단계의 월드 높이.</summary>
         private const float HeightScale = 0.8f;
@@ -181,11 +193,7 @@ namespace Game.Unity.Battle3D
             long total = 0;
             foreach (var c in ctx.Corps) total += c.StartTroops;
             _troopsPerSoldier = SoldierRatio.TroopsPerSoldier(System.Math.Max(1, total), ctx.Balance.SoldierBudget);
-            // 소부대 덩어리 크기를 규칙의 자리에 맞춘다 (2026-11-21 사용자 폰: 적 덩어리가 우리 군단을 덮음).
-            // 진형 자리는 2칸 간격 · 근접은 1~2칸에서 닿으니, 가장 큰 소부대도 MaxSoldiersPerUnit(7×7 ≈ 1.5칸) 안으로
-            long biggest = 1;
-            foreach (var c in ctx.Corps) foreach (var u in c.Units) biggest = System.Math.Max(biggest, u.StartTroops);
-            _troopsPerSoldier = System.Math.Max(_troopsPerSoldier, (biggest + MaxSoldiersPerUnit - 1) / MaxSoldiersPerUnit);
+            // 소부대 덩어리 크기는 소부대마다 MaxSoldiersPerUnit 안으로 (Shown 참고)
 
             // 카메라·빛
             var camGo = new GameObject("BattleCamera");
@@ -943,7 +951,7 @@ namespace Game.Unity.Battle3D
                 foreach (var u in c.Units)
                 {
                     // 대열 (2026-11-14): 폭은 출진 때 병사 수로 고정, 앞줄 = 적 쪽. 병력이 줄면 앞줄에서 쓰러지고 뒷줄이 메워 깊이가 준다
-                    long n0 = System.Math.Max(1, SoldierRatio.VisibleSoldiers(u.StartTroops, _troopsPerSoldier));
+                    long n0 = System.Math.Max(1, Shown(u.StartTroops, u.StartTroops));
                     int side = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(n0)));
                     int rows0 = (int)((n0 + side - 1) / side);
                     float halfW = (side - 1) * SoldierSpacing / 2f;
@@ -962,7 +970,7 @@ namespace Game.Unity.Battle3D
                     // 맞을 때: 상자는 밝은 색으로, 모델은 (색을 밝힐 수 없어) 살짝 튀어 오른다
                     bool isCube = batch.Mesh == _cube;
                     var hitBatch = isCube ? CubeBatch(Hit) : batch;
-                    long n = SoldierRatio.VisibleSoldiers(u.Troops, _troopsPerSoldier);
+                    long n = Shown(u.Troops, u.StartTroops);
                     var (prev, cur) = _unitPos.TryGetValue(u, out var pc) ? pc : (ToWorld(u.Position), ToWorld(u.Position));
                     var center = Vector3.Lerp(prev, cur, alpha);
                     bool walking = (cur - prev).sqrMagnitude > 1e-5f;
