@@ -31,7 +31,10 @@ namespace Game.Battle.Model.Crowd
         public int ImpactTick = -1;
         /// <summary>쓰러진 틱 (살아 있으면 -1).</summary>
         public int DiedTick = -1;
-        public bool Alive => DiedTick < 0;
+        /// <summary>무너져 도망치다 전장 밖으로 나간 틱 (R-128, 아니면 -1). 쓰러진 것은 아니지만 더는 싸우지 않는다.</summary>
+        public int FledTick = -1;
+        /// <summary>전장에서 싸울 수 있음 (쓰러지지도 나가지도 않음).</summary>
+        public bool Alive => DiedTick < 0 && FledTick < 0;
     }
 
     /// <summary>날아가는 화살 (R-127): 쏜 자리 → 쏠 때 대상 자리, 닿는 틱에 대상이 살아 있으면 맞을 수 있다.</summary>
@@ -75,6 +78,20 @@ namespace Game.Battle.Model.Crowd
         public Fix HalfWidth, HalfDepth;
         /// <summary>병종 빠르기 배수 (speed ÷ 기준 빠르기).</summary>
         public Fix SpeedFactor = Fix.OneValue;
+        /// <summary>사기 (R-128, 0 ~ moraleStart).</summary>
+        public Fix Morale;
+        /// <summary>흔들림 (사기 waverAt 이하): 느려지고 덜 친다.</summary>
+        public bool Wavering;
+        /// <summary>무너짐 (사기 routAt 이하, 되돌아오지 않음): 도망치고 명령을 못 받는다.</summary>
+        public bool Routed;
+        public int RoutedTick = -1;
+        /// <summary>포위됨 (최근 앞이 아닌 두 방향 이상에서 맞음) — 사기가 계속 깎인다.</summary>
+        public bool Encircled;
+        /// <summary>방향마다 마지막으로 맞은 틱 (0 앞 · 1 왼쪽 · 2 오른쪽 · 3 뒤).</summary>
+        public readonly int[] SideHitTick = { -9999, -9999, -9999, -9999 };
+        /// <summary>이번 틱 시작 때 살아 있는 병사 가운데 (옆 · 뒤 판정의 기준).</summary>
+        public Vec TickCentroid;
+        public int LastHitTick = -9999;
 
         public int AliveCount
         {
@@ -82,7 +99,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>장수가 살아 있으면 명령을 받는다 (장수를 잃은 부대는 제자리에서 싸움만).</summary>
-        public bool Leading => General.Alive;
+        public bool Leading => General.Alive && !Routed;
 
         public Vec Right => new Vec(Facing.Y, -Facing.X); // 앞이 +y일 때 오른쪽 +x
 
@@ -141,7 +158,7 @@ namespace Game.Battle.Model.Crowd
         public readonly List<CrowdArrow> Arrows = new List<CrowdArrow>();
         /// <summary>끝났으면 이긴 편 (Ally · Enemy), 비기면 -2, 진행 중이면 -1.</summary>
         public int Winner { get; private set; } = -1;
-        /// <summary>끝난 까닭: general (총대장 사로잡음) · wiped (전멸) · time.</summary>
+        /// <summary>끝난 까닭: general (총대장 사로잡음) · wiped (전멸) · routed (모든 부대가 무너짐) · time.</summary>
         public string EndReason { get; private set; }
         public bool IsOver => Winner != -1;
         /// <summary>이번 틱 부딪침 수 (화면 흔들림).</summary>
@@ -157,6 +174,7 @@ namespace Game.Battle.Model.Crowd
         private Vec[] _knock = new Vec[0];
         private int[] _damage = new int[0];
         private Fix _maxRadius;
+        private readonly int[] _allRoutedSince = { -1, -1 };
 
         /// <param name="troops">병종 데이터 (없으면 모두 보병 기본값).</param>
         /// <param name="counters">병종 상성 (없으면 상성 없음).</param>
@@ -226,6 +244,7 @@ namespace Game.Battle.Model.Crowd
         {
             var a = new CrowdArmy { Id = Armies.Count, Team = team, Place = place, IsCommander = commander, Formation = formation, Facing = facing, StartCount = count, Troop = troop };
             a.SpeedFactor = troop.Speed / Rules.BaseSpeedStat;
+            a.Morale = Rules.MoraleStart;
             var slots = CrowdFormations.Slots(formation, count, SpacingOf(troop));
             Fix radius = troop.Mounted ? Rules.MountedRadius : Rules.SoldierRadius;
             foreach (var slot in slots)
@@ -324,12 +343,38 @@ namespace Game.Battle.Model.Crowd
         // ---- 피해 ----
 
         /// <summary>
+        /// 맞는 부대 기준 어느 쪽에서 맞았나 (R-128): 0 앞 · 1 왼쪽 · 2 오른쪽 · 3 뒤.
+        /// 부대 가운데(병사 평균)에서 때린 자리 방향과 부대 앞 방향의 내적이 frontDot 이상이면 앞, rearDot 이하면 뒤, 아니면 옆.
+        /// (병사 자리 기준이면 V자 팔 병사가 안쪽 적에게 맞는 것도 옆이 되어, 감싼 쪽이 오히려 포위당한 셈이 됨)
+        /// </summary>
+        public int SideOf(CrowdArmy defender, Vec defenderPos, Vec attackerPos)
+        {
+            var d = (attackerPos - defenderPos).Normalized();
+            Fix dot = d.Dot(defender.Facing);
+            if (dot >= Rules.FrontDot) return 0;
+            if (dot <= Rules.RearDot) return 3;
+            return d.Dot(defender.Right) < Fix.Zero ? 1 : 2;
+        }
+
+        private Fix SidePp(int side) => side == 3 ? Rules.RearPp : side == 0 ? Fix.Zero : Rules.FlankPp;
+
+        /// <summary>맞은 쪽을 적어 둔다 (사기: 옆 · 뒤에서 맞는 동안 깎임 · 포위 판정).</summary>
+        private void NoteHit(CrowdArmy defender, int side)
+        {
+            defender.SideHitTick[side] = Tick;
+            defender.LastHitTick = Tick;
+        }
+
+        /// <summary>
         /// 한 번 친(쏜) 피해: hitDamage × (1 + (공격 − 방어) × statPpPerPoint% + 상성%), 1 이상.
         /// 상성 = troopCounters.json에서 공격 쪽 태그 → 방어 쪽 태그 규칙의 합.
         /// </summary>
-        public int HitDamage(CrowdTroop atk, CrowdTroop def)
+        public int HitDamage(CrowdTroop atk, CrowdTroop def) => HitDamage(atk, def, Fix.Zero);
+
+        /// <param name="extraPp">옆 · 뒤에서 친 피해 더 (R-128).</param>
+        public int HitDamage(CrowdTroop atk, CrowdTroop def, Fix extraPp)
         {
-            Fix pp = (atk.Attack - def.Defense) * Rules.StatPpPerPoint;
+            Fix pp = (atk.Attack - def.Defense) * Rules.StatPpPerPoint + extraPp;
             foreach (var c in _counters)
                 if (atk.Has(c.AttackerTag) && def.Has(c.DefenderTag)) pp += c.Pp;
             Fix mult = Fix.OneValue + pp / 100;
@@ -354,6 +399,7 @@ namespace Game.Battle.Model.Crowd
             ImpactsThisTick = 0;
 
             // 1) 부대: 적 AI 명령, 맞붙은 비율, 돌격 여부, 가운데 옮기기
+            foreach (var a in Armies) a.TickCentroid = a.Centroid();
             if (_enemyAdvance && Tick % 10 == 1) EnemyThink();
             var engaged = new int[Armies.Count];
             for (int i = 0; i < n; i++)
@@ -374,6 +420,16 @@ namespace Game.Battle.Model.Crowd
                 var troop = army.Troop;
                 Fix walkStep = r.MoveSpeed * army.SpeedFactor * dt;
                 Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * dt : walkStep;
+                if (army.Wavering) { walkStep = walkStep * r.WaverSpeed; stepLen = stepLen * r.WaverSpeed; }
+                if (army.Routed)
+                {
+                    // 무너짐: 자기 쪽 가장자리로 도망 (가까운 적에게서 멀어지는 쪽으로 조금 비켜), 치지 않는다
+                    var away = new Vec(Fix.Zero, s.Team == Ally ? -Fix.OneValue : Fix.OneValue);
+                    int near = NearestEnemy(s, engage2, r.EngageRange);
+                    if (near >= 0) away = (away + (s.Pos - Soldiers[near].Pos).Normalized()).Normalized();
+                    _next[i] = s.Pos + away * (r.FleeSpeed * army.SpeedFactor * dt) + Separation(s);
+                    continue;
+                }
                 Vec want;
                 int foe = s.IsGeneral ? -1 : NearestEnemy(s, engage2, r.EngageRange);
                 // 궁병: 맞붙을 만큼 가깝지 않으면 사거리 안의 적에게 쏜다 (자리를 지킨 채)
@@ -420,7 +476,14 @@ namespace Game.Battle.Model.Crowd
                 var ar = Arrows[k];
                 if (ar.ArriveTick > Tick) continue;
                 var t = Soldiers[ar.TargetId];
-                if (t.Alive && _rng.Chance(r.ArrowHitChance)) { _damage[t.Id] += ar.Damage; ArrowHits++; }
+                if (t.Alive && _rng.Chance(r.ArrowHitChance))
+                {
+                    var ta = Armies[t.Army];
+                    int side = SideOf(ta, ta.TickCentroid, ar.From);
+                    _damage[t.Id] += side == 0 ? ar.Damage : ar.Damage + System.Math.Max(0, (int)(Fix.FromInt(ar.Damage) * SidePp(side) / 100).RoundToLong());
+                    NoteHit(ta, side);
+                    ArrowHits++;
+                }
                 Arrows.RemoveAt(k);
                 k--;
             }
@@ -438,26 +501,78 @@ namespace Game.Battle.Model.Crowd
                 if (_damage[i] > 0)
                 {
                     s.Hp -= _damage[i];
-                    if (s.Hp <= 0) { s.Hp = 0; s.DiedTick = Tick; s.Moved = Vec.Zero; }
+                    if (s.Hp <= 0)
+                    {
+                        s.Hp = 0; s.DiedTick = Tick; s.Moved = Vec.Zero;
+                        var da = Armies[s.Army];
+                        if (s.IsGeneral) da.Morale -= r.GeneralLostMorale;
+                        else da.Morale -= r.MoraleDeathTotal / System.Math.Max(1, da.StartCount);
+                        continue;
+                    }
                 }
+                // 무너진 병사가 자기 쪽 가장자리에 닿으면 전장 밖으로 (빠짐)
+                if (Armies[s.Army].Routed && (s.Team == Ally ? p.Y <= Fix.FromRatio(1, 2) : p.Y >= maxY - Fix.FromRatio(1, 2))) { s.FledTick = Tick; s.Moved = Vec.Zero; }
             }
+            UpdateMorale();
             foreach (var a in Armies)
                 if (!a.General.Alive && a.Order != CrowdOrders.Hold) { a.Order = CrowdOrders.Hold; a.Charging = false; } // 장수를 잃으면 제자리
 
             // 4) 끝: 총대장을 사로잡거나 (체력 0) 병사가 다 쓰러지면, 시간이 다 되면 남은 병사 많은 쪽
-            bool allyOut = !Commander(Ally).General.Alive || AliveCount(Ally) == 0;
-            bool enemyOut = !Commander(Enemy).General.Alive || AliveCount(Enemy) == 0;
+            // 모두 무너지면 RoutEndTicks 동안 도망치는 모습을 보인 뒤 끝 (바로 끝내면 무너진 줄 모름)
+            for (int t = 0; t < 2; t++) { if (!AllRouted(t)) _allRoutedSince[t] = -1; else if (_allRoutedSince[t] < 0) _allRoutedSince[t] = Tick; }
+            bool allyOut = !Commander(Ally).General.Alive || AliveCount(Ally) == 0 || (_allRoutedSince[Ally] >= 0 && Tick - _allRoutedSince[Ally] >= r.RoutEndTicks);
+            bool enemyOut = !Commander(Enemy).General.Alive || AliveCount(Enemy) == 0 || (_allRoutedSince[Enemy] >= 0 && Tick - _allRoutedSince[Enemy] >= r.RoutEndTicks);
             if (allyOut || enemyOut)
             {
                 Winner = allyOut && enemyOut ? -2 : allyOut ? Enemy : Ally;
-                var loser = Commander(allyOut ? Ally : Enemy);
-                EndReason = !loser.General.Alive ? "general" : "wiped";
+                int lt = allyOut ? Ally : Enemy;
+                EndReason = !Commander(lt).General.Alive ? "general" : AliveCount(lt) == 0 ? "wiped" : "routed";
             }
             else if (Tick >= r.MaxTicks)
             {
                 int a = AliveCount(Ally), e = AliveCount(Enemy);
                 Winner = a == e ? -2 : a > e ? Ally : Enemy;
                 EndReason = "time";
+            }
+        }
+
+        /// <summary>그 편 부대가 모두 무너졌거나 싸울 수 없음.</summary>
+        public bool AllRouted(int team)
+        {
+            foreach (var a in Armies) if (a.Team == team && !a.Routed && Standing(a)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 사기 (R-128): 포위면 초당 encircleDrain 깎임, 맞지 않은 지 calmSeconds면 초당 moraleRegen 오름.
+        /// waverAt 이하 = 흔들림, routAt 이하 = 무너짐 (되돌아오지 않음, 같은 편 부대 사기 allyRoutedMorale 깎임).
+        /// </summary>
+        private void UpdateMorale()
+        {
+            var r = Rules;
+            Fix dt = r.TickSeconds;
+            foreach (var a in Armies)
+            {
+                if (a.Routed || !Standing(a)) continue;
+                int sides = 0;
+                for (int k = 1; k < 4; k++) if (a.SideHitTick[k] >= Tick - r.EncircleTicks) sides++;
+                a.Encircled = sides >= 2;
+                // 이번 틱 옆 · 뒤에서 맞고 있으면 초당 flankDrain · rearDrain (여러 번 맞아도 한 번)
+                if (a.SideHitTick[3] == Tick) a.Morale -= r.RearDrain * dt;
+                else if (a.SideHitTick[1] == Tick || a.SideHitTick[2] == Tick) a.Morale -= r.FlankDrain * dt;
+                if (a.Encircled) a.Morale -= r.EncircleDrain * dt;
+                else if (a.LastHitTick < Tick - r.CalmTicks) a.Morale = Fix.Min(r.MoraleStart, a.Morale + r.MoraleRegen * dt);
+                if (a.Morale < Fix.Zero) a.Morale = Fix.Zero;
+                a.Wavering = a.Morale <= r.WaverAt;
+            }
+            foreach (var a in Armies)
+            {
+                if (a.Routed || !Standing(a) || a.Morale > r.RoutAt) continue;
+                a.Routed = true;
+                a.RoutedTick = Tick;
+                a.Order = CrowdOrders.Hold;
+                a.Charging = false;
+                foreach (var o in Armies) if (o.Team == a.Team && o != a && !o.Routed) o.Morale -= r.AllyRoutedMorale;
             }
         }
 
@@ -476,9 +591,12 @@ namespace Game.Battle.Model.Crowd
         {
             var r = Rules;
             var troop = army.Troop;
-            var foeTroop = Armies[e.Army].Troop;
-            int dmg = HitDamage(troop, foeTroop);
+            var foeArmy = Armies[e.Army];
+            var foeTroop = foeArmy.Troop;
+            int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
+            int dmg = HitDamage(troop, foeTroop, SidePp(side));
             _damage[e.Id] += dmg;
+            NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
             bool rushed = s.Moved.LengthSquared > fast * fast && s.LastAttackTick < Tick - r.AttackTicks * 3;
             if (rushed)
@@ -506,6 +624,7 @@ namespace Game.Battle.Model.Crowd
             s.LastAttackTick = Tick;
             s.LastTargetId = e.Id;
             s.Cooldown = r.AttackTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks + 1) : 0);
+            if (army.Wavering) s.Cooldown = (int)(Fix.FromInt(s.Cooldown) * r.WaverAttack).RoundToLong(); // 흔들리면 덜 친다
         }
 
         /// <summary>화살 한 대: 쏜 틱 + 거리 ÷ 화살 빠르기 뒤에 닿는다.</summary>
@@ -546,7 +665,7 @@ namespace Game.Battle.Model.Crowd
         {
             var r = Rules;
             Fix dt = r.TickSeconds;
-            if (a.Order == CrowdOrders.Hold) { a.Charging = false; return; }
+            if (a.Order == CrowdOrders.Hold || a.Routed) { a.Charging = false; return; }
             Vec goal;
             if (a.Order == CrowdOrders.Move) goal = a.OrderPoint;
             else

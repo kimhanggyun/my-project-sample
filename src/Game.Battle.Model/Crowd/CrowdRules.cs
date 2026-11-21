@@ -58,6 +58,32 @@ namespace Game.Battle.Model.Crowd
         public int MountedImpact { get; private set; }
         public int BraceDamage { get; private set; }
         public int ShootTicks => System.Math.Max(1, (int)(ShootSeconds / TickSeconds).RoundToLong());
+        // 사기 · 퇴각 (R-128)
+        public Fix MoraleStart { get; private set; }
+        public Fix MoraleDeathTotal { get; private set; }
+        /// <summary>옆 · 뒤에서 맞는 동안 초당 사기 깎임 (맞은 횟수가 아니라 맞고 있는 시간).</summary>
+        public Fix FlankDrain { get; private set; }
+        public Fix RearDrain { get; private set; }
+        public Fix GeneralLostMorale { get; private set; }
+        public Fix AllyRoutedMorale { get; private set; }
+        public Fix EncircleSeconds { get; private set; }
+        public Fix EncircleDrain { get; private set; }
+        public Fix CalmSeconds { get; private set; }
+        public Fix MoraleRegen { get; private set; }
+        public Fix WaverAt { get; private set; }
+        public Fix RoutAt { get; private set; }
+        public Fix WaverSpeed { get; private set; }
+        public Fix WaverAttack { get; private set; }
+        public Fix FleeSpeed { get; private set; }
+        public Fix FlankPp { get; private set; }
+        public Fix RearPp { get; private set; }
+        public Fix FrontDot { get; private set; }
+        public Fix RearDot { get; private set; }
+        /// <summary>한 편이 모두 무너진 뒤 도망치는 모습을 보이고 끝나기까지 (초).</summary>
+        public Fix RoutEndSeconds { get; private set; }
+        public int RoutEndTicks => System.Math.Max(1, (int)(RoutEndSeconds / TickSeconds).RoundToLong());
+        public int EncircleTicks => System.Math.Max(1, (int)(EncircleSeconds / TickSeconds).RoundToLong());
+        public int CalmTicks => System.Math.Max(1, (int)(CalmSeconds / TickSeconds).RoundToLong());
 
         public int AttackTicks => System.Math.Max(1, (int)(AttackSeconds / TickSeconds).RoundToLong());
         public int MaxTicks => (int)(MaxSeconds / TickSeconds).FloorToLong();
@@ -100,6 +126,26 @@ namespace Game.Battle.Model.Crowd
                 MountedRadius = JsonUtil.RequireFix(o, "mountedRadius", c),
                 MountedImpact = (int)JsonUtil.RequireLong(o, "mountedImpact", c),
                 BraceDamage = (int)JsonUtil.RequireLong(o, "braceDamage", c),
+                MoraleStart = JsonUtil.RequireFix(o, "moraleStart", c),
+                MoraleDeathTotal = JsonUtil.RequireFix(o, "moraleDeathTotal", c),
+                FlankDrain = JsonUtil.RequireFix(o, "flankDrain", c),
+                RearDrain = JsonUtil.RequireFix(o, "rearDrain", c),
+                GeneralLostMorale = JsonUtil.RequireFix(o, "generalLostMorale", c),
+                AllyRoutedMorale = JsonUtil.RequireFix(o, "allyRoutedMorale", c),
+                EncircleSeconds = JsonUtil.RequireFix(o, "encircleSeconds", c),
+                EncircleDrain = JsonUtil.RequireFix(o, "encircleDrain", c),
+                CalmSeconds = JsonUtil.RequireFix(o, "calmSeconds", c),
+                MoraleRegen = JsonUtil.RequireFix(o, "moraleRegen", c),
+                WaverAt = JsonUtil.RequireFix(o, "waverAt", c),
+                RoutAt = JsonUtil.RequireFix(o, "routAt", c),
+                WaverSpeed = JsonUtil.RequireFix(o, "waverSpeed", c),
+                WaverAttack = JsonUtil.RequireFix(o, "waverAttack", c),
+                FleeSpeed = JsonUtil.RequireFix(o, "fleeSpeed", c),
+                FlankPp = JsonUtil.RequireFix(o, "flankPp", c),
+                RearPp = JsonUtil.RequireFix(o, "rearPp", c),
+                FrontDot = JsonUtil.RequireFix(o, "frontDot", c),
+                RearDot = JsonUtil.RequireFix(o, "rearDot", c),
+                RoutEndSeconds = JsonUtil.RequireFix(o, "routEndSeconds", c),
             };
         }
 

@@ -219,6 +219,18 @@ namespace Game.Unity.Boot
             s6.StepForTour(60);
             s6.FocusFightForTour(18f);
             yield return Shot("34d_sample2_troops_fight", null, 0.2f);
+            // 사기 · 퇴각 (R-128): V자로 두툼을 감싸 무너뜨리고, 무너진 적이 도망치는 모습
+            var s7 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+            {
+                AllyFormation = Game.Battle.Model.Crowd.CrowdFormations.Vee, EnemyFormation = Game.Battle.Model.Crowd.CrowdFormations.Thick, Seed = 1,
+            });
+            yield return Shot("35_sample2_rout_setup", () => s7, 0.2f);
+            guard = 0;
+            while (guard++ < 600 && !s7.EnemyRoutedForTour) s7.StepForTour(1);
+            s7.FocusFightForTour(24f);
+            yield return Shot("35b_sample2_rout_start", null, 0.2f);
+            s7.StepForTour(25);
+            yield return Shot("35c_sample2_rout_flee", null, 0.2f);
 
             _app.ShowMain("story");
             Done = true;
