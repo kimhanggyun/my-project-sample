@@ -86,7 +86,11 @@ namespace Game.Unity.Screens
             foreach (var e in codex) if (e.Found) found++;
             foreach (var g in gens) if (g.Owned) owned++;
 
-            var top = Ui.TitleBar(header, T("ui.codex.head"), () => { if (_detail != null) Replace(new CodexScreen()); else App.ShowMain("general"); });
+            // [‹]: 숨은 보상 자세히를 볼 때만 (목록으로). 아래 탭 [도감]으로 열린 목록은 뒤로 없음 (2026-11-20 사용자, 탭이라).
+            // 탭 밖에서 따로 연 목록(캡처 등)은 예전처럼 장수 탭으로.
+            System.Action back = _detail != null ? () => Replace(new CodexScreen())
+                : HostTab == null ? () => App.ShowMain("general") : (System.Action)null;
+            var top = Ui.TitleBar(header, T("ui.codex.head"), back);
             bool sec = _tab == "secrets";
             Ring(top, sec ? found : owned, sec ? codex.Count : gens.Count);
             InfoButton.Add(Root, T(sec ? "ui.codex.note" : "ui.codex.noteGenerals"));
