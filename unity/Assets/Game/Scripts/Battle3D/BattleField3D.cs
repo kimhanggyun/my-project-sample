@@ -142,6 +142,8 @@ namespace Game.Unity.Battle3D
         private readonly LineRenderer _ringLine;
         private const int RingSegments = 40;
         private const float RingRadius = 1.8f;
+        /// <summary>고른 군단 링: 소부대 가운데에서 이만큼 바깥 (덩어리 반 폭 ≈ 0.75 + 여유), 너무 커지지 않게 최대.</summary>
+        private const float RingClear = 1.1f, RingRadiusMax = 4.5f;
         // 바닥 링 게이지 (18·19 시안): 고른 군단 = 바깥 병력(초록 남음 · 붉은 잃음) + 안 사기(주황), 다른 우리 군단 = 가는 병력 고리
         private static readonly Color GaugeTroops = new Color(0.3f, 0.78f, 0.36f);
         private static readonly Color GaugeLost = new Color(0.78f, 0.27f, 0.2f);
@@ -247,10 +249,10 @@ namespace Game.Unity.Battle3D
             _ringLine = Line("SelectRing", SelectedColor, 0.12f, true);
             _ringLine.positionCount = RingSegments;
             _ringLine.gameObject.SetActive(false); // 바닥 링 게이지로 바꿈
-            _gaugeLost = Line("GaugeLost", GaugeLost, 0.2f, false, true);
-            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.2f, false, true);
-            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.14f, false, true);
-            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.14f, false, true);
+            _gaugeLost = Line("GaugeLost", GaugeLost, 0.12f, false, true);
+            _gaugeTroops = Line("GaugeTroops", GaugeTroops, 0.12f, false, true);
+            _gaugeMoraleBack = Line("GaugeMoraleBack", GaugeBack, 0.08f, false, true);
+            _gaugeMorale = Line("GaugeMorale", GaugeMorale, 0.08f, false, true);
             _cylinder = cylinder;
             _waypointMat = Own(NewMaterial(new Color(0.75f, 0.85f, 1f)));
             _objAlly = Own(NewMaterial(AllyColor));
@@ -655,10 +657,20 @@ namespace Game.Unity.Battle3D
                 var center = ToWorld(sel.Anchor) + new Vector3(0f, 0.08f, 0f);
                 float troops = sel.StartTroops > 0 ? Mathf.Clamp01((float)sel.Troops / sel.StartTroops) : 0f;
                 float morale = Mathf.Clamp01((float)sel.Morale.ToDisplayDouble() / 100f);
-                Arc(_gaugeLost, center, RingRadius, 0f, 1f);
-                Arc(_gaugeTroops, center + Vector3.up * 0.01f, RingRadius, 0f, troops);
-                Arc(_gaugeMoraleBack, center, RingRadius - 0.32f, 0f, 1f);
-                Arc(_gaugeMorale, center + Vector3.up * 0.01f, RingRadius - 0.32f, 0f, morale);
+                // 2026-11-21 캡처: 고정 반지름 링이 소부대 덩어리 위를 지나가 병사를 가림 → 살아 있는 소부대 바깥을 두른다
+                float radius = RingRadius;
+                foreach (var u in sel.Units)
+                    if (u.Alive && _unitPos.TryGetValue(u, out var up))
+                    {
+                        var dv = up.cur - center;
+                        dv.y = 0f;
+                        radius = Mathf.Max(radius, dv.magnitude + RingClear);
+                    }
+                radius = Mathf.Min(radius, RingRadiusMax);
+                Arc(_gaugeLost, center, radius, 0f, 1f);
+                Arc(_gaugeTroops, center + Vector3.up * 0.01f, radius, 0f, troops);
+                Arc(_gaugeMoraleBack, center, radius - 0.2f, 0f, 1f);
+                Arc(_gaugeMorale, center + Vector3.up * 0.01f, radius - 0.2f, 0f, morale);
             }
             // 다른 우리 군단: 가는 병력 고리 (남음 초록 · 잃음 붉은)
             foreach (var c in ctx.Corps)
