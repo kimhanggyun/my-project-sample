@@ -188,6 +188,7 @@ namespace Game.Unity.Battle3D
                 bool ally = s.Team == CrowdBattle.Ally;
                 if (!s.Alive)
                 {
+                    if (s.DiedTick < 0) continue; // 도망쳐 전장 밖으로 나감 (R-128) — 그리지 않음
                     float age = now - s.DiedTick * tickSec;
                     if (age > FallSeconds + SinkSeconds) continue;
                     float fall = Mathf.Clamp01(age / FallSeconds);

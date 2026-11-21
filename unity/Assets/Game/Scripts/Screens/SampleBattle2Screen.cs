@@ -133,11 +133,11 @@ namespace Game.Unity.Screens
                 return;
             }
             // 싸우는 중: 부대 고르기 · 진형 · 정지 · 전체 돌격 · 다시
-            var pick = Ui.Row(_panel, "Pick", 72, 6);
+            var pick = Ui.Row(_panel, "Pick", 84, 6);
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
             {
                 int id = a.Id;
-                var b = Ui.Button(pick, CorpsName(a), () => Select(id), 72, Palette.Button, 24);
+                var b = Ui.Button(pick, CorpsName(a), () => Select(id), 84, Palette.Button, 22);
                 Ui.Size(b, flexibleWidth: 1);
                 _corpsButtons[id] = b;
             }
@@ -165,7 +165,18 @@ namespace Game.Unity.Screens
         private void Choice(RectTransform row, string text, bool on, System.Action act) =>
             Ui.Size(Ui.Button(row, text, act, 68, on ? Palette.ButtonActive : Palette.Button, 22), flexibleWidth: 1);
 
-        private string CorpsName(CrowdArmy a) => T("ui.sample2.place." + a.Place) + (a.IsCommander ? "★" : "") + "\n" + T("troop." + a.Troop.Id);
+        private string CorpsName(CrowdArmy a) => T("ui.sample2.place." + a.Place) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id) + "\n" + MoraleText(a);
+
+        /// <summary>사기 (R-128): 숫자, 흔들림 · 포위 · 무너짐 표시.</summary>
+        private string MoraleText(CrowdArmy a)
+        {
+            if (a.Routed) return Ui.Colored(T("ui.sample2.routed"), Palette.Bad);
+            if (!a.General.Alive) return Ui.Colored(T("ui.sample2.noGeneral"), Palette.Bad);
+            string m = T("ui.sample2.morale", (int)a.Morale.FloorToLong());
+            if (a.Encircled) m += " " + T("ui.sample2.encircled");
+            else if (a.Wavering) m += " " + T("ui.sample2.wavering");
+            return a.Wavering || a.Encircled ? Ui.Colored(m, Palette.Bad) : m;
+        }
 
         private void FormationRow(string label, string current, System.Action<string> pick)
         {
@@ -290,7 +301,9 @@ namespace Game.Unity.Screens
             if (_battle.IsOver)
                 head = T(_battle.Winner == CrowdBattle.Ally ? "ui.sample2.win" : _battle.Winner == CrowdBattle.Enemy ? "ui.sample2.lose" : "ui.sample2.draw")
                     + " · " + T("ui.sample2.end." + _battle.EndReason) + "  " + head;
-            _status.text = head;
+            _status.text = head + "  " + T("ui.sample2.enemyMorale", (int)_battle.Commander(CrowdBattle.Enemy).Morale.FloorToLong());
+            foreach (var kv in _corpsButtons)
+                if (kv.Key >= 0) kv.Value.GetComponentInChildren<Text>().text = CorpsName(_battle.Armies[kv.Key]);
             _speedButton.GetComponentInChildren<Text>().text = "×" + Speeds[_speed];
         }
 
@@ -368,6 +381,9 @@ namespace Game.Unity.Screens
         {
             get { foreach (var s in _battle.Soldiers) if (s.LastAttackTick >= 0) return true; return false; }
         }
+
+        /// <summary>캡처 투어: 적 총대장 부대가 무너짐.</summary>
+        public bool EnemyRoutedForTour => _battle.Commander(CrowdBattle.Enemy).Routed;
 
         /// <summary>캡처 투어: 이번 틱에 부딪침이 있음.</summary>
         public bool ImpactForTour => _battle.ImpactsThisTick > 0;

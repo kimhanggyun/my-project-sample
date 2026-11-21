@@ -205,6 +205,70 @@ namespace Game.Tests.Battle
             Assert.True(cav.Mounted && spear.Polearm && archer.Ranged);
         }
 
+        // ---- 사기 · 퇴각 (R-128) ----
+
+        /// <summary>적 부대가 처음 무너진 틱 (안 무너지면 큰 값) · 그때까지 적이 잃은 병사.</summary>
+        private (int tick, int lost, int fled) FirstEnemyRout(string ally, ulong seed)
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyFormation = ally, EnemyFormation = CrowdFormations.Thick, Seed = seed });
+            for (int t = 0; t < 2400 && !b.IsOver; t++)
+            {
+                b.Step();
+                if (b.Commander(CrowdBattle.Enemy).Routed)
+                {
+                    int fled = 0;
+                    for (int k = 0; k < 400 && !b.IsOver; k++) b.Step();
+                    foreach (var s in b.Soldiers) if (s.FledTick >= 0) fled++;
+                    return (b.Commander(CrowdBattle.Enemy).RoutedTick, 200 - b.AliveCount(CrowdBattle.Enemy), fled);
+                }
+            }
+            _out.WriteLine($"  no enemy rout: tick {b.Tick} winner {b.Winner} {b.EndReason}, morale ally {b.Commander(0).Morale} enemy {b.Commander(1).Morale}, ally routed {b.Commander(0).Routed}");
+            return (99999, 200 - b.AliveCount(CrowdBattle.Enemy), 0);
+        }
+
+        [Fact]
+        public void EncircledBlockBreaksSooner()
+        {
+            // V자로 감싸면 (옆 · 뒤에서 맞음 → 포위 사기 깎임) 일자로 정면에서 미는 것보다 빨리 무너진다
+            int vee = 0, line = 0;
+            for (ulong seed = 1; seed <= 2; seed++)
+            {
+                var v = FirstEnemyRout(CrowdFormations.Vee, seed);
+                var l = FirstEnemyRout(CrowdFormations.Line, seed);
+                _out.WriteLine($"seed {seed}: vee rout at {v.tick} (lost {v.lost}, fled {v.fled}), line rout at {l.tick} (lost {l.lost}, fled {l.fled})");
+                vee += v.tick; line += l.tick;
+            }
+            Assert.True(vee < line, $"vee {vee} line {line}");
+        }
+
+        [Fact]
+        public void RoutedArmyRunsToItsOwnEdge()
+        {
+            // 무너진 적은 싸우지 않고 자기 쪽 가장자리(위 = 큰 y)로 도망친다 — 끝나기 전 routEndSeconds 동안 보인다
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyFormation = CrowdFormations.Vee, EnemyFormation = CrowdFormations.Thick, Seed = 1 });
+            var e = b.Commander(CrowdBattle.Enemy);
+            for (int t = 0; t < 2400 && !b.IsOver && !e.Routed; t++) b.Step();
+            Assert.True(e.Routed, "never routed");
+            Fix y0 = e.Centroid().Y;
+            for (int t = 0; t < 30 && !b.IsOver; t++) b.Step();
+            Fix y1 = e.Centroid().Y;
+            _out.WriteLine($"routed at {e.RoutedTick}, centroid y {y0} → {y1}, over {b.IsOver} {b.EndReason}");
+            Assert.True(y1 - y0 >= Fix.FromInt(2), $"moved {y1 - y0}");
+        }
+
+        [Fact]
+        public void FlankAndRearHitsAreStronger()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup());
+            var a = b.Armies[0]; // 앞 = +y
+            var at = a.Center;
+            Assert.Equal(0, b.SideOf(a, at, at + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.OneValue)));
+            Assert.Equal(3, b.SideOf(a, at, at - new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.OneValue)));
+            Assert.NotEqual(0, b.SideOf(a, at, at + new Game.Battle.Model.Geometry.Vec(Fix.OneValue, Fix.Zero)));
+            var inf = new CrowdTroop();
+            Assert.True(b.HitDamage(inf, inf, b.Rules.RearPp) > b.HitDamage(inf, inf));
+        }
+
         /// <summary>앞 시간 동안 적이 잃은 병사.</summary>
         private static int EnemyLosses(string ally, string enemy, ulong seed, int ticks)
         {
