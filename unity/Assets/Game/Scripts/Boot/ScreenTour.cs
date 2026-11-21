@@ -99,6 +99,17 @@ namespace Game.Unity.Boot
                 battle.OpenMenuForTour("root");
                 battle.BeginBattleForTour();
                 yield return Shot("19_battle_3s", null, 3f); // 같은 전투를 3초 더 (진행 중)
+                // 움직임 확인 (2026-11-21): 0.1초 간격 연속 프레임 — 행군 (고른 군단 가까이) · 맞붙음 (근접이 닿은 곳)
+                battle.RunForTour(0);
+                battle.FocusSelectedForTour();
+                for (int i = 0; i < 10; i++) yield return Frame($"19w_walk_{i:00}", battle);
+                battle.RunForTour(2);
+                float waited = 0f;
+                while (!battle.FocusMeleeForTour() && waited < 60f) { battle.RunForTour(2); waited += Time.unscaledDeltaTime; yield return null; }
+                battle.RunForTour(0);
+                yield return Shot("19m_fight_wide", null, 0.5f);
+                battle.FocusMeleeForTour();
+                for (int i = 0; i < 12; i++) yield return Frame($"19m_fight_{i:00}", battle);
                 Game.Unity.UI.GuideOverlay.Suppressed = false;
                 Ctx.ClearSuspendedBattle();
 
@@ -136,6 +147,17 @@ namespace Game.Unity.Boot
             foreach (var id in Ctx.Defs.StepIndex.Order)
                 if (Ctx.Flow.IsUnlocked(Ctx.State, id)) last = id;
             return last;
+        }
+
+        /// <summary>연속 프레임 한 장: 0.1초 뒤 찍는다 (멈춤이 걸려도 풀고, 카메라는 그대로).</summary>
+        private IEnumerator Frame(string name, Game.Unity.Screens.BattleScreen battle)
+        {
+            float t = 0f;
+            while (t < 0.1f) { battle.RunForTour(0); t += Time.unscaledDeltaTime; yield return null; }
+            yield return new WaitForEndOfFrame();
+            string path = Path.Combine(_folder, name + ".png");
+            UnityEngine.ScreenCapture.CaptureScreenshot(path);
+            Saved.Add(path);
         }
 
         private IEnumerator Shot(string name, Func<GameScreen> make, float waitSeconds)
