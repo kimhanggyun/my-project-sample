@@ -202,6 +202,23 @@ namespace Game.Unity.Boot
             yield return Shot("33b_sample2_all_move", null, 0.2f);
             // 말 탄 총대장이 달리는 모습 (말 다리 넷, 2026-11-21 사용자) — 1틱 간격, 카메라가 따라감
             for (int i = 0; i < 6; i++) { s5.StepForTour(1); s5.FocusGeneralForTour(5f); yield return Shot($"33h_sample2_horse_{i:00}", null, 0f); }
+            // 병종 · 상성 (R-127): 기병 돌격 → 창병 (받아치기), 궁병 화살, 기병 말 다리
+            var s6 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+            {
+                AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, EnemyAdvance = true, Seed = 12,
+                AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = new[] { "spearman", "infantry", "archer" },
+                AllyFormation = Game.Battle.Model.Crowd.CrowdFormations.Thick, EnemyFormation = Game.Battle.Model.Crowd.CrowdFormations.Line,
+            });
+            yield return Shot("34_sample2_troops_setup", () => s6, 0.2f);
+            s6.StepForTour(1);
+            s6.AttackForTour("left", "left");
+            s6.StepForTour(50);
+            s6.FocusArmyForTour(0, 30f);
+            yield return Shot("34b_sample2_troops_arrows", null, 0.2f);
+            for (int i = 0; i < 6; i++) { s6.StepForTour(1); yield return Shot($"34c_sample2_cavalry_{i:00}", null, 0f); }
+            s6.StepForTour(60);
+            s6.FocusFightForTour(18f);
+            yield return Shot("34d_sample2_troops_fight", null, 0.2f);
 
             _app.ShowMain("story");
             Done = true;

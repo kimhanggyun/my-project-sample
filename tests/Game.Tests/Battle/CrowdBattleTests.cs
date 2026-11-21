@@ -132,6 +132,79 @@ namespace Game.Tests.Battle
                 Assert.False(a.Commander(a.Winner == CrowdBattle.Ally ? CrowdBattle.Enemy : CrowdBattle.Ally).General.Alive);
         }
 
+        // ---- 병종 · 상성 (R-127) ----
+
+        private static readonly Game.Data.Defs.DefinitionSet Defs = TestData.Real();
+
+        private static CrowdBattle RunTroops(string ally, string enemy, bool allyAdvance, bool enemyAdvance, ulong seed, int ticks)
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup
+            {
+                AllyTroops = new[] { ally }, EnemyTroops = new[] { enemy }, AllyAdvance = allyAdvance, EnemyAdvance = enemyAdvance,
+                AllyFormation = CrowdFormations.Line, EnemyFormation = CrowdFormations.Thick, Seed = seed,
+            }, Defs.TroopTypes, Defs.TroopCounters);
+            for (int t = 0; t < ticks && !b.IsOver; t++) b.Step();
+            return b;
+        }
+
+        [Fact]
+        public void CavalryCrushesArchersButBouncesOffSpears()
+        {
+            // 기병 돌격: 궁병은 쓸어버리고, 창병에게는 받아치기를 당해 더 많이 잃는다 (창 > 기병 > 궁)
+            int archersLost = 0, spearsLost = 0, cavLostVsArchers = 0, cavLostVsSpears = 0;
+            for (ulong seed = 1; seed <= 2; seed++)
+            {
+                var a = RunTroops("cavalry", "archer", true, false, seed, 600);
+                archersLost += 200 - a.AliveCount(CrowdBattle.Enemy);
+                cavLostVsArchers += 200 - a.AliveCount(CrowdBattle.Ally);
+                var s = RunTroops("cavalry", "spearman", true, false, seed, 600);
+                spearsLost += 200 - s.AliveCount(CrowdBattle.Enemy);
+                cavLostVsSpears += 200 - s.AliveCount(CrowdBattle.Ally);
+            }
+            _out.WriteLine($"cav→archer: archers lost {archersLost}, cav lost {cavLostVsArchers}; cav→spear: spears lost {spearsLost}, cav lost {cavLostVsSpears}");
+            Assert.True(archersLost > spearsLost, $"archers {archersLost} spears {spearsLost}");
+            Assert.True(cavLostVsSpears > cavLostVsArchers, $"vs spears {cavLostVsSpears} vs archers {cavLostVsArchers}");
+        }
+
+        [Fact]
+        public void ArchersHitBeforeMeleeContact()
+        {
+            // 궁병(제자리)은 다가오는 보병이 닿기 전에 화살로 깎는다
+            var b = new CrowdBattle(Rules(), new CrowdSetup
+            {
+                AllyTroops = new[] { "archer" }, EnemyTroops = new[] { "infantry" }, AllyAdvance = false, EnemyAdvance = true, Seed = 3,
+            }, Defs.TroopTypes, Defs.TroopCounters);
+            int lostBeforeContact = -1, hpBeforeContact = -1, arrows = 0;
+            for (int t = 0; t < 1200 && !b.IsOver; t++)
+            {
+                b.Step();
+                arrows = System.Math.Max(arrows, b.Arrows.Count);
+                bool melee = false;
+                foreach (var s in b.Soldiers)
+                    if (s.Team == CrowdBattle.Enemy && s.LastAttackTick == b.Tick) { melee = true; break; }
+                if (melee) { lostBeforeContact = 200 - b.AliveCount(CrowdBattle.Enemy); hpBeforeContact = 200 * 10 - EnemyHp(b); _out.WriteLine("contact tick " + b.Tick + " arrow hits " + b.ArrowHits); break; }
+            }
+            _out.WriteLine($"enemy lost before contact {lostBeforeContact} soldiers, {hpBeforeContact} hp, most arrows in air {arrows}");
+            Assert.True(arrows > 0);
+            // 화살은 앞줄 여럿에게 고루 박혀 (상처) 다가오는 동안 체력을 10% 넘게 깎는다 — 맞붙으면 다친 병사가 먼저 쓰러진다
+            Assert.True(hpBeforeContact >= 200, "hp lost before contact " + hpBeforeContact);
+        }
+
+        private static int EnemyHp(CrowdBattle b) { int h = 0; foreach (var s in b.Soldiers) if (s.Team == CrowdBattle.Enemy && !s.IsGeneral) h += s.Hp; return h; }
+
+        [Fact]
+        public void CounterDamageFollowsData()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup(), Defs.TroopTypes, Defs.TroopCounters);
+            var spear = CrowdTroop.Of("spearman", Defs.TroopTypes);
+            var cav = CrowdTroop.Of("cavalry", Defs.TroopTypes);
+            var archer = CrowdTroop.Of("archer", Defs.TroopTypes);
+            Assert.True(b.HitDamage(spear, cav) > b.HitDamage(spear, archer)); // 창 → 기병 +25%p
+            Assert.True(b.HitDamage(cav, archer) > b.HitDamage(cav, spear));   // 기병 → 궁 +20%p, → 창 −15%p
+            Assert.Equal("cavalry", cav.BaseId);
+            Assert.True(cav.Mounted && spear.Polearm && archer.Ranged);
+        }
+
         /// <summary>앞 시간 동안 적이 잃은 병사.</summary>
         private static int EnemyLosses(string ally, string enemy, ulong seed, int ticks)
         {
