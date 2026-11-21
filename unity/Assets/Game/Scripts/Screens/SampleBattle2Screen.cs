@@ -199,6 +199,17 @@ namespace Game.Unity.Screens
 
         public bool RunningForTour => _running;
 
+        /// <summary>캡처 투어: 그 편 병사들 가운데 앞쪽으로 카메라.</summary>
+        public void FocusArmyForTour(int team, float distance)
+        {
+            Vector3 sum = Vector3.zero;
+            int n = 0;
+            foreach (var s in _battle.Soldiers)
+                if (s.Alive && s.Team == team && !s.IsGeneral) { sum += _field.ToWorld(s.Pos); n++; }
+            if (n > 0) _field.Rig.LookAt(sum / n);
+            _field.Rig.SetDistance(distance);
+        }
+
         /// <summary>캡처 투어: 누군가 친 적이 있음 (맞붙음).</summary>
         public bool FightingForTour
         {
