@@ -34,6 +34,15 @@ namespace Game.Battle.Model.Crowd
         /// <summary>장수는 대열 맨 뒤에서 이만큼 더 뒤.</summary>
         public Fix GeneralBack { get; private set; }
         public Fix MaxSeconds { get; private set; }
+        /// <summary>돌격 (R-126): 공격 명령으로 두 대열 가장자리 사이가 이 거리 안이면 맞붙기 전까지 빨라진다.</summary>
+        public Fix ChargeRange { get; private set; }
+        public Fix ChargeSpeed { get; private set; }
+        public Fix ChargeAdvanceSpeed { get; private set; }
+        /// <summary>부딪침: 달려와 처음 친 한 방의 피해 더 · 상대를 밀치는 거리.</summary>
+        public int ImpactDamage { get; private set; }
+        public Fix ImpactPush { get; private set; }
+        /// <summary>부대 셋일 때 부대 사이 간격.</summary>
+        public Fix CorpsGap { get; private set; }
 
         public int AttackTicks => System.Math.Max(1, (int)(AttackSeconds / TickSeconds).RoundToLong());
         public int MaxTicks => (int)(MaxSeconds / TickSeconds).FloorToLong();
@@ -58,6 +67,12 @@ namespace Game.Battle.Model.Crowd
                 GeneralHp = (int)JsonUtil.RequireLong(o, "generalHp", c),
                 GeneralBack = JsonUtil.RequireFix(o, "generalBack", c),
                 MaxSeconds = JsonUtil.RequireFix(o, "maxSeconds", c),
+                ChargeRange = JsonUtil.RequireFix(o, "chargeRange", c),
+                ChargeSpeed = JsonUtil.RequireFix(o, "chargeSpeed", c),
+                ChargeAdvanceSpeed = JsonUtil.RequireFix(o, "chargeAdvanceSpeed", c),
+                ImpactDamage = (int)JsonUtil.RequireLong(o, "impactDamage", c),
+                ImpactPush = JsonUtil.RequireFix(o, "impactPush", c),
+                CorpsGap = JsonUtil.RequireFix(o, "corpsGap", c),
             };
         }
 
