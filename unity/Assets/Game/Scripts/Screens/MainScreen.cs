@@ -361,7 +361,7 @@ namespace Game.Unity.Screens
             });
             if (ctx.Defs.Gacha.Banners.Count > 0)
                 Ui.Size(Ui.SecondaryButton(head, ctx.T("ui.generals.recruitShort"), () => app.ShowMain("gacha"), 70, 26), 70, 130).flexibleWidth = 0; // [모집] 탭으로
-            Ui.Size(Ui.SecondaryButton(head, ctx.T("ui.generals.codex"), () => app.Show(new CodexScreen()), 70, 26), 70, 130).flexibleWidth = 0; // 도감 (장수 탭으로 열림)
+            Ui.Size(Ui.SecondaryButton(head, ctx.T("ui.generals.codex"), () => app.ShowMain("codex"), 70, 26), 70, 130).flexibleWidth = 0; // 도감 (장수 탭으로 열림)
             Ui.Size(Ui.Rect(head, "InfoGap"), 70, 66).flexibleWidth = 0; // 오른쪽 끝 ⓘ 자리
             var info = InfoButton.Add(root, ctx.T("ui.tab.generalNote"));
             ((RectTransform)info.transform).anchoredPosition = new Vector2(-25f, -(25f + 50f - InfoButton.Size / 2f));

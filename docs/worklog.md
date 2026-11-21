@@ -143,3 +143,4 @@
 - 2026-11-20 [데스크탑] desktop/battle-3 — 전투: 링 · 점선 빛 영향 없는 재질(GameUnlit), 경로 끝 꼬리표(명령 · 도착 약 m:ss), 많이 축소하면 링 대신 깃발 병력 막대
 - 2026-11-20 [데스크탑] desktop/tab-frame — 탭 안 화면(모집 · 연합 · 녹화 · 도감 · 우편 · 설정)이 다시 그릴 때 새 페이지로 가던 것 → GameScreen.Replace(탭 틀 유지), 녹화 재생 빈 값 오류(위 막대 전투명), 장수 좌우 = 목록 정렬 순서
 - 2026-11-20 [원격] claude/receipt-override — R-124 관리자 결제 검증 덮어쓰기 (null · off · fake, 저장소 게임별), Game:AllowAdminReceiptOverride (배포 변수 ALLOW_ADMIN_RECEIPT 기본 true, 출시 전 false — backlog F), 관리자만 바꿈, [상점 상품] 탭 결제 검증 칸 · 가짜 허용 빨간 띠
+- 2026-11-20 [원격] claude/codex-tab — PR B 장수 화면 · 스토리의 [도감]은 아래 도감 탭으로 (ShowMain("codex")), 탭으로 연 도감 목록은 [‹] 없음 (숨은 보상 자세히만 [‹] → 목록)
