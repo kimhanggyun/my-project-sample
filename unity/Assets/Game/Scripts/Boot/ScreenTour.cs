@@ -338,17 +338,17 @@ namespace Game.Unity.Boot
                 yield return Shot(tag + "_4close", null, 0.3f);
                 if (maps[mi] == "crowd_gorge" || maps[mi] == "crowd_forest")
                 {
-                    // 행군 대열 (R-136): 협곡 · 숲길을 줄지어 지나가는지 — 적 쪽 끝으로 이동
+                    // 진형 그대로 이동 (막힌 병사는 지름길로, R-137) · 뒤 궁병은 [행군 이동] (R-136)
                     sm.MoveForTour("middle_center", 30f, 86f);
                     sm.MoveForTour("front_left", 30f, 86f);
                     sm.MoveForTour("front_right", 30f, 86f);
-                    sm.MoveForTour("back_center", 30f, 86f);
+                    sm.MoveForTour("back_center", 30f, 86f, march: true);
                     sm.StepForTour(120);
                     sm.FocusArmyForTour(0, 30f);
-                    yield return Shot(tag + "_5march", null, 0.3f);
+                    yield return Shot(tag + "_5move", null, 0.3f);
                     sm.StepForTour(200);
                     sm.FocusArmyForTour(0, 30f);
-                    yield return Shot(tag + "_6march_later", null, 0.3f);
+                    yield return Shot(tag + "_6move_later", null, 0.3f);
                 }
             }
 

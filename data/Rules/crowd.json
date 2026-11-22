@@ -79,6 +79,8 @@
   "marchOffTicks": 15,
   "marchReformRange": 4,
   "marchTerrains": ["forest", "marsh", "pass", "burnt"],
+  "_flow": "막힌 병사의 지름길 (R-137): 부대 가운데 칸까지의 거리 지도를 따라 돌아온다. 지도는 부대 칸이 바뀌거나 flowRefreshTicks마다 새로 (막힌 병사가 있는 부대만). 행군은 [행군 이동]으로 고를 때만 (자동 행군 기본 끔)",
+  "flowRefreshTicks": 10,
   "_obstacles": "막는 소품 (R-134): 지형마다 2.5 × 2.5 넓이에 perCell개 (촘촘한 맵은 칸 넓이에 맞춰 줄임), 병사가 못 들어가는 반지름 radius칸 (크기 × 0.75 ~ 1.25). 나무는 기둥만 막고 잎은 통과, 풀 · 갈대 · 덤불은 막지 않음",
   "obstacles": {
     "forest": { "perCell": 2.2, "radius": 0.28 },

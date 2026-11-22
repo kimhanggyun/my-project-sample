@@ -97,6 +97,8 @@ namespace Game.Battle.Model.Crowd
         public int MarchOffTicks { get; private set; }
         public Fix MarchReformRange { get; private set; }
         public System.Collections.Generic.IReadOnlyList<string> MarchTerrains { get; private set; } = new string[0];
+        /// <summary>지름길 지도를 새로 만드는 간격 (틱, R-137).</summary>
+        public int FlowRefreshTicks { get; private set; }
         /// <summary>지형 맵의 전장 폭 (R-135): 맵 1칸 = mapFieldWidth ÷ 맵 폭 (24칸 맵 = 2.5, 48칸 맵 = 1.25).</summary>
         public Fix MapFieldWidth { get; private set; }
 
@@ -194,6 +196,7 @@ namespace Game.Battle.Model.Crowd
                 MarchOffTicks = (int)JsonUtil.RequireLong(o, "marchOffTicks", c),
                 MarchReformRange = JsonUtil.RequireFix(o, "marchReformRange", c),
                 MarchTerrains = JsonUtil.StringList(o, "marchTerrains"),
+                FlowRefreshTicks = (int)JsonUtil.RequireLong(o, "flowRefreshTicks", c),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),
