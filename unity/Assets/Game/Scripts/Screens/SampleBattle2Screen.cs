@@ -304,7 +304,7 @@ namespace Game.Unity.Screens
             if (_pickMode != null)
             {
                 string hint = _pickMode == "attack" ? "ui.sample2.pickAttack" : _pickMode == "queue" ? "ui.sample2.queueHint"
-                    : _pickMode == "path" ? "ui.sample2.pathHint" : _pickMode.StartsWith("skill:") ? "ui.sample2.skillHint" : "ui.sample2.moveHint";
+                    : _pickMode == "path" ? "ui.sample2.pathHint" : _pickMode == "march" ? "ui.sample2.marchHint" : _pickMode.StartsWith("skill:") ? "ui.sample2.skillHint" : "ui.sample2.moveHint";
                 Ui.Size(Ui.Label(_detailRow, T(hint), 22, TextAnchor.MiddleCenter, Palette.Text), flexibleWidth: 3);
                 Ui.Size(Ui.Button(_detailRow, T(_pickMode == "queue" ? "ui.sample2.queueDone" : "ui.sample2.cancel"), () => EndPick(), RowHeight,
                     _pickMode == "queue" ? Palette.ButtonActive : Palette.Button, 24), width: 200);
@@ -321,6 +321,7 @@ namespace Game.Unity.Screens
                 Detail(T("ui.sample2.move.move"), () => BeginPick("move"));
                 Detail(T("ui.sample2.queue"), () => BeginPick("queue"));
                 Detail(T("ui.sample2.move.path"), () => BeginPick("path"));
+                Detail(T("ui.sample2.move.march"), () => BeginPick("march")); // 행군 이동 (R-137): 이번 이동만 줄지어 (좁은 길 · 숲)
                 return;
             }
             if (one != null && _cmd == "skill")
@@ -349,15 +350,6 @@ namespace Game.Unity.Screens
                     _formationButtons[id] = b;
                 }
                 RecolorFormations();
-                // 자동 행군 (R-136): 숲 · 좁은 길에서 저절로 행군 대열 — 끄면 진형을 고집
-                bool march = one.AutoMarch;
-                var mb = Detail(T("ui.sample2.march") + "\n" + T(march ? "ui.sample2.on" : "ui.sample2.off"), () =>
-                {
-                    bool on = !_battle.Armies[_selected].AutoMarch;
-                    foreach (var a in Chosen()) _battle.SetAutoMarch(a.Id, on);
-                    BuildDetail();
-                }, 20);
-                Ui.Recolor(mb, march ? Palette.ButtonActive : Palette.Button);
                 return;
             }
             _infoText = Ui.Label(_detailRow, "", 22, TextAnchor.MiddleCenter, Palette.Text);
@@ -556,15 +548,16 @@ namespace Game.Unity.Screens
             if (_pickMode == "attack" && (hit == null || hit.Team == CrowdBattle.Ally)) { Toast.Show(T("ui.sample2.pickAttack")); return; }
             if (hit != null && hit.Team != CrowdBattle.Ally) { int t = hit.Id; Order(a => _battle.OrderAttack(a.Id, t)); return; }
             bool queue = _pickMode == "queue";
+            bool march = _pickMode == "march";
             foreach (var a in chosen) _battle.SetDelegated(a.Id, false);
-            if (chosen.Count == 1) _battle.OrderMove(chosen[0].Id, point, queue);
+            if (chosen.Count == 1) _battle.OrderMove(chosen[0].Id, point, queue, march);
             else
             {
                 // 전체 이동: 총대장 부대(없으면 첫 부대)를 그 자리로, 나머지는 지금 떨어진 만큼 그대로
                 var lead = chosen[0];
                 foreach (var a in chosen) if (a.IsCommander) lead = a;
                 var from = lead.Center;
-                foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from), queue);
+                foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from), queue, march);
             }
             if (!queue) { _pickMode = null; _cmd = null; }
             RecolorCommands();
@@ -906,10 +899,10 @@ namespace Game.Unity.Screens
             CommandAt(new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y)));
         }
 
-        public void MoveForTour(string place, float x, float y)
+        public void MoveForTour(string place, float x, float y, bool march = false)
         {
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
-                if (a.Place == place) _battle.OrderMove(a.Id, new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y)));
+                if (a.Place == place) _battle.OrderMove(a.Id, new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y)), march: march);
         }
     }
 }

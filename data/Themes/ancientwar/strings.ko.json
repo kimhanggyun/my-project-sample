@@ -857,6 +857,8 @@
   "map.crowd_pass": "산길",
   "ui.sample2.march": "행군 자동",
   "ui.sample2.marching": "행군",
+  "ui.sample2.move.march": "행군 이동",
+  "ui.sample2.marchHint": "행군으로 갈 곳을 누르세요 (줄지어 가고, 도착하면 진형으로)",
   "ui.settings.header": "설정",
   "ui.settings.version": "버전 {0} / Unity {1}",
   "ui.settings.services": "외부 서비스 설정",

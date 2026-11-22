@@ -216,18 +216,60 @@ namespace Game.Battle.Model.Crowd
         /// </summary>
         public List<Vec> FindPath(CrowdTroop troop, Vec from, Vec to)
         {
-            int w = Map.Width, h = Map.Height, n = w * h;
+            int w = Map.Width;
             CellOf(from, out int sc, out int sr);
             CellOf(to, out int gc, out int gr);
             int start = sr * w + sc, goal = gr * w + gc;
             var path = new List<Vec>();
             if (start == goal) { path.Add(to); return path; }
+            var dist = Dijkstra(troop, start, goal, out var prev);
+            if (dist[goal] == long.MaxValue) return path;
+            var cells = new List<int>();
+            for (int c = goal; c != start && c >= 0; c = prev[c]) cells.Add(c);
+            cells.Reverse();
+            for (int k = 0; k < cells.Count - 1; k++) path.Add(CellCenter(cells[k] % w, cells[k] / w));
+            path.Add(to);
+            return path;
+        }
+
+        /// <summary>
+        /// 지름길 지도 (R-137): 맵 칸마다 goal 칸까지 남은 거리 (못 가면 long.MaxValue). 막힌 병사가 이 값이 줄어드는 이웃 칸으로 가면 가장 짧은 길로 돌아온다.
+        /// </summary>
+        public long[] DistanceField(CrowdTroop troop, Vec goal)
+        {
+            CellOf(goal, out int gc, out int gr);
+            return Dijkstra(troop, gr * Map.Width + gc, -1, out _);
+        }
+
+        /// <summary>그 칸에서 지름길 지도를 따라 한 칸 (모서리 끼기 금지, 같으면 칸 번호 작은 것). 더 줄어드는 이웃이 없으면 -1.</summary>
+        public int NextCell(CrowdTroop troop, long[] field, int cell)
+        {
+            int w = Map.Width, h = Map.Height;
+            int cc = cell % w, cr = cell / w;
+            int best = -1;
+            long bestD = field[cell];
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nc = cc + dx, nr = cr + dy;
+                    if (nc < 0 || nr < 0 || nc >= w || nr >= h || Blocks(troop, nc, nr)) continue;
+                    if (dx != 0 && dy != 0 && (Blocks(troop, cc + dx, cr) || Blocks(troop, cc, cr + dy))) continue;
+                    int ni = nr * w + nc;
+                    if (field[ni] < bestD) { bestD = field[ni]; best = ni; }
+                }
+            return best;
+        }
+
+        /// <summary>다익스트라 + 이진 힙 (거리, 같으면 칸 번호 작은 것 — 결정적). stop ≥ 0이면 그 칸에서 멈춤.</summary>
+        private long[] Dijkstra(CrowdTroop troop, int start, int stop, out int[] prev)
+        {
+            int w = Map.Width, h = Map.Height, n = w * h;
             var dist = new long[n];
-            var prev = new int[n];
+            prev = new int[n];
             var done = new bool[n];
             for (int i = 0; i < n; i++) { dist[i] = long.MaxValue; prev[i] = -1; }
             dist[start] = 0;
-            // 다익스트라 + 이진 힙 (거리, 같으면 칸 번호 작은 것 — 결정적)
             var heap = new List<(long d, int i)> { (0, start) };
             bool Less((long d, int i) a, (long d, int i) b) => a.d < b.d || (a.d == b.d && a.i < b.i);
             void Push((long d, int i) x)
@@ -261,7 +303,7 @@ namespace Game.Battle.Model.Crowd
                 var (cd, cur) = Pop();
                 if (done[cur] || cd != dist[cur]) continue;
                 done[cur] = true;
-                if (cur == goal) break;
+                if (cur == stop) break;
                 int cc = cur % w, cr = cur / w;
                 for (int dy = -1; dy <= 1; dy++)
                     for (int dx = -1; dx <= 1; dx++)
@@ -277,13 +319,7 @@ namespace Game.Battle.Model.Crowd
                         if (nd < dist[ni]) { dist[ni] = nd; prev[ni] = cur; Push((nd, ni)); }
                     }
             }
-            if (!done[goal]) return path;
-            var cells = new List<int>();
-            for (int c = goal; c != start && c >= 0; c = prev[c]) cells.Add(c);
-            cells.Reverse();
-            for (int k = 0; k < cells.Count - 1; k++) path.Add(CellCenter(cells[k] % w, cells[k] / w));
-            path.Add(to);
-            return path;
+            return dist;
         }
     }
 }

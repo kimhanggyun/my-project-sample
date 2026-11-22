@@ -482,15 +482,14 @@ namespace Game.Tests.Battle
         // ---- 행군 대열 (R-136) ----
 
         /// <summary>협곡 끝까지 이동: (행군했는지, 도착 뒤 부대 가운데 15칸 안 병사 비율 %, 걸린 틱).</summary>
-        private (bool marched, int together, int ticks) ThroughGorge(bool autoMarch)
+        private (bool marched, int together, int ticks) ThroughGorge(bool march)
         {
             var setup = One("infantry", "crowd_gorge");
             setup.AllyUnits[0].Count = 150;
             setup.AllyUnits[0].Formation = CrowdFormations.Thick;
             var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
             var a = b.Commander(CrowdBattle.Ally);
-            b.SetAutoMarch(a.Id, autoMarch);
-            b.OrderMove(a.Id, new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(84)));
+            b.OrderMove(a.Id, new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(84)), march: march); // [행군 이동] (R-137)
             bool marched = false;
             int t = 0;
             for (; t < 4000 && a.Order == CrowdOrders.Move; t++) { b.Step(); if (a.Marching) marched = true; }
@@ -512,9 +511,32 @@ namespace Game.Tests.Battle
             var off = ThroughGorge(false);
             _out.WriteLine($"gorge: march {on.together}% together in {on.ticks} ticks, no march {off.together}% in {off.ticks} ticks");
             Assert.True(on.marched);
-            Assert.False(off.marched);
-            Assert.True(on.together >= 90, "together " + on.together); // 절벽에 붙어 길을 잃은 병사 없이
-            Assert.True(on.together >= off.together);
+            Assert.False(off.marched); // 기본은 진형 유지 (R-137)
+            Assert.True(on.together >= 90, "march together " + on.together); // 절벽에 붙어 길을 잃은 병사 없이
+            Assert.True(off.together >= 90, "formation together " + off.together); // 진형으로 가도 막힌 병사는 지름길 지도로 돌아온다
+        }
+
+        [Fact]
+        public void MarchBackDoesNotRetraceOldTrail()
+        {
+            var b = new CrowdBattle(Rules(), One("infantry", "crowd_plain"), Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            var start = a.Center;
+            b.OrderMove(a.Id, start + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(25)), march: true);
+            for (int t = 0; t < 600 && a.Order == CrowdOrders.Move; t++) b.Step();
+            for (int t = 0; t < 100; t++) b.Step();
+            Fix top = Fix.Zero;
+            foreach (var s in a.Soldiers) if (s.Alive && s.Pos.Y > top) top = s.Pos.Y;
+            // 되돌아 내려가기: 아무도 더 위로 올라갔다 오지 않는다 (예전 자취를 되밟지 않음, 2026-11-22 사용자 영상)
+            b.OrderMove(a.Id, start, march: true);
+            Fix worst = Fix.Zero;
+            for (int t = 0; t < 600 && a.Order == CrowdOrders.Move; t++)
+            {
+                b.Step();
+                foreach (var s in a.Soldiers) if (s.Alive && s.Pos.Y - top > worst) worst = s.Pos.Y - top;
+            }
+            _out.WriteLine($"march back: went above the old top by {worst}");
+            Assert.True(worst < Fix.OneValue, "retraced " + worst);
         }
 
         [Fact]
