@@ -81,6 +81,10 @@ namespace Game.Battle.Model.Crowd
         public bool Melee;
         /// <summary>경로 끝에 닿으면 공격할 적 부대 (R-132 경로 그리기, 없으면 -1).</summary>
         public int PathThenAttack = -1;
+        /// <summary>지형 길 (R-133): 못 가는 땅을 돌아가는 맵 칸 길 (목표 칸 · 찾은 틱), 이번 틱 향하는 곳 (병사가 막히면 여기로).</summary>
+        public readonly List<Vec> Route = new List<Vec>();
+        public int RouteGoal = -1, RouteTick = -9999;
+        public Vec Aim;
         /// <summary>돌격 중 (공격 명령으로 적에게 ChargeRange 안까지 다가옴, 맞붙기 전까지) — 병사 · 부대가 빨라진다. 궁병은 돌격하지 않음.</summary>
         public bool Charging;
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
@@ -175,6 +179,8 @@ namespace Game.Battle.Model.Crowd
         /// <summary>true면 적 부대가 가장 가까운 우리 부대를 공격, false면 제자리.</summary>
         public bool EnemyAdvance;
         public ulong Seed = 1;
+        /// <summary>지형 맵 (R-133). 없으면 평지 (fieldWidth × fieldDepth), 있으면 전장 크기 = 맵 크기 × mapCellSize, 배치는 맵의 시작 자리 기준.</summary>
+        public CrowdTerrain Terrain;
     }
 
     /// <summary>
@@ -191,6 +197,8 @@ namespace Game.Battle.Model.Crowd
         public static readonly string[] Places3 = { "left", "center", "right" };
 
         public CrowdRules Rules { get; }
+        /// <summary>지형 (R-133, 없으면 평지).</summary>
+        public CrowdTerrain Terrain { get; }
         public int Tick { get; private set; }
         public readonly List<CrowdArmy> Armies = new List<CrowdArmy>();
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
@@ -220,15 +228,32 @@ namespace Game.Battle.Model.Crowd
         /// <param name="counters">병종 상성 (없으면 상성 없음).</param>
         public CrowdBattle(CrowdRules rules, CrowdSetup setup, IReadOnlyDictionary<string, TroopTypeDef> troops = null, IReadOnlyList<TroopCounterRule> counters = null)
         {
-            Rules = rules;
+            Terrain = setup.Terrain;
+            Rules = Terrain != null ? rules.WithField(Terrain.Width, Terrain.Depth) : rules;
+            rules = Rules;
             _counters = counters ?? new TroopCounterRule[0];
             _rng = new SeededRandom(setup.Seed == 0 ? 1 : setup.Seed);
             _enemyAdvance = setup.EnemyAdvance;
             _maxRadius = Fix.Max(rules.SoldierRadius, rules.MountedRadius);
-            if (setup.AllyUnits != null && setup.AllyUnits.Count > 0) MakeGrid(Ally, setup.AllyUnits, troops, rules.FieldDepth * Fix.FromRatio(3, 10), new Vec(Fix.Zero, Fix.OneValue));
-            else MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, setup.AllyTroops, troops, rules.FieldDepth * Fix.FromRatio(3, 10), new Vec(Fix.Zero, Fix.OneValue));
-            if (setup.EnemyUnits != null && setup.EnemyUnits.Count > 0) MakeGrid(Enemy, setup.EnemyUnits, troops, rules.FieldDepth * Fix.FromRatio(7, 10), new Vec(Fix.Zero, -Fix.OneValue));
-            else MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, setup.EnemyTroops, troops, rules.FieldDepth * Fix.FromRatio(7, 10), new Vec(Fix.Zero, -Fix.OneValue));
+            // 편의 앞줄 자리: 평지면 전장 30% · 70%, 지형 맵이면 맵 시작 자리(teamA 아래 · teamB 위)가 가운데 줄 (R-133)
+            Vec allyAt = new Vec(rules.FieldWidth / 2, rules.FieldDepth * Fix.FromRatio(3, 10)), enemyAt = new Vec(rules.FieldWidth / 2, rules.FieldDepth * Fix.FromRatio(7, 10));
+            if (Terrain != null)
+            {
+                if (Terrain.Map.Spawns.TryGetValue("teamA", out var sa)) allyAt = SpawnPoint(sa) + new Vec(Fix.Zero, rules.GridRowPitch);
+                if (Terrain.Map.Spawns.TryGetValue("teamB", out var sb)) enemyAt = SpawnPoint(sb) - new Vec(Fix.Zero, rules.GridRowPitch);
+            }
+            if (setup.AllyUnits != null && setup.AllyUnits.Count > 0) MakeGrid(Ally, setup.AllyUnits, troops, allyAt, new Vec(Fix.Zero, Fix.OneValue));
+            else MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, setup.AllyTroops, troops, allyAt.Y, new Vec(Fix.Zero, Fix.OneValue));
+            if (setup.EnemyUnits != null && setup.EnemyUnits.Count > 0) MakeGrid(Enemy, setup.EnemyUnits, troops, enemyAt, new Vec(Fix.Zero, -Fix.OneValue));
+            else MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, setup.EnemyTroops, troops, enemyAt.Y, new Vec(Fix.Zero, -Fix.OneValue));
+            if (Terrain != null)
+                foreach (var a in Armies)
+                {
+                    // 못 가는 땅에 놓였으면 가까운 땅으로 (부대 가운데 기준)
+                    var at = Terrain.Snap(a.Troop, a.Center);
+                    if (!at.Equals(a.Center)) { a.Center = at; foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot); }
+                }
+            foreach (var a in Armies) a.Aim = a.Center;
             if (setup.AllyAdvance)
                 foreach (var a in Armies) if (a.Team == Ally) OrderAttack(a.Id, Commander(Enemy).Id);
         }
@@ -256,13 +281,17 @@ namespace Game.Battle.Model.Crowd
         /// 줄(앞 · 가운데 · 뒤) → 앞줄이 frontY, 뒤로 갈수록 자기 쪽으로 gridRowPitch씩. 총대장은 하나 (없으면 첫 부대, 여럿이면 첫 것만).
         /// 병사 수는 1 ~ gridMaxCount.
         /// </summary>
-        private void MakeGrid(int team, List<CrowdUnitSpec> units, IReadOnlyDictionary<string, TroopTypeDef> troops, Fix frontY, Vec facing)
+        /// <summary>맵 시작 자리 (맵 칸) → 전장 자리 (칸 가운데).</summary>
+        private Vec SpawnPoint(SpawnDef sp) => new Vec(Terrain.CellSize * sp.X + Terrain.CellSize / 2, Terrain.CellSize * (Fix.FromInt(Terrain.Map.Height) - sp.Y) - Terrain.CellSize / 2);
+
+        private void MakeGrid(int team, List<CrowdUnitSpec> units, IReadOnlyDictionary<string, TroopTypeDef> troops, Vec front, Vec facing)
         {
+            Fix frontY = front.Y;
             var sorted = new List<CrowdUnitSpec>(units);
             sorted.Sort((a, b) => a.Row != b.Row ? a.Row.CompareTo(b.Row) : a.Col.CompareTo(b.Col));
             int cmd = sorted.FindIndex(u => u.Commander);
             if (cmd < 0) cmd = 0;
-            var mid = Rules.FieldWidth / 2;
+            var mid = front.X;
             for (int k = 0; k < sorted.Count; k++)
             {
                 var u = sorted[k];
@@ -384,6 +413,37 @@ namespace Game.Battle.Model.Crowd
 
         private Vec InField(Vec p) => new Vec(Fix.Clamp(p.X, Fix.Zero, Rules.FieldWidth), Fix.Clamp(p.Y, Fix.Zero, Rules.FieldDepth));
 
+        /// <summary>그 부대가 못 가는 땅이면 가장 가까운 갈 수 있는 땅 (R-133).</summary>
+        private Vec Open(CrowdArmy a, Vec p) => Terrain != null ? Terrain.Snap(a.Troop, p) : p;
+
+        /// <summary>그 자리 지형의 걸음 배수 (평지 · 지형 없음 = 1).</summary>
+        private Fix TerrainSpeed(CrowdTroop t, Vec p) => Terrain != null ? Terrain.SpeedFactor(t, p) : Fix.OneValue;
+
+        /// <summary>치는 병사가 선 지형의 병종 보정 %p (R-133, 기존 전투 R-17과 같음).</summary>
+        private Fix TerrainPp(CrowdTroop t, Vec p) => Terrain != null ? Terrain.CombatPp(t, p) : Fix.Zero;
+
+        /// <summary>
+        /// 부대가 이번 틱 향할 곳 (R-133): 목표까지 곧은 길에 못 가는 땅이 없으면 목표, 있으면 맵 칸 길을 찾아 곧게 보이는 가장 먼 길 점.
+        /// 길은 목표 칸이 바뀌거나 40틱마다 다시 찾는다. 길이 없으면 목표 (막혀 멈춘다).
+        /// </summary>
+        private Vec Steer(CrowdArmy a, Vec goal)
+        {
+            if (Terrain == null || Terrain.Clear(a.Troop, a.Center, goal)) { a.Route.Clear(); return goal; }
+            int gc = Terrain.CellIndex(goal);
+            if (a.Route.Count == 0 || a.RouteGoal != gc || Tick - a.RouteTick >= 40)
+            {
+                a.Route.Clear();
+                a.Route.AddRange(Terrain.FindPath(a.Troop, a.Center, goal));
+                a.RouteGoal = gc;
+                a.RouteTick = Tick;
+            }
+            if (a.Route.Count == 0) return goal;
+            for (int k = a.Route.Count - 1; k > 0; k--)
+                if (Terrain.Clear(a.Troop, a.Center, a.Route[k])) { a.Route.RemoveRange(0, k); break; }
+            if (a.Route.Count > 1 && Vec.DistanceSquared(a.Center, a.Route[0]) <= Fix.OneValue) a.Route.RemoveAt(0);
+            return a.Route[0];
+        }
+
         /// <summary>
         /// 땅 한 곳으로 이동 (가면서 만나는 적과는 싸운다, 도착하면 제자리).
         /// append = true면 예약 (R-129): 지금 이동 중이면 그 뒤 경유 지점으로 붙이고, 아니면 바로 간다.
@@ -392,9 +452,10 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
-            if (append && a.Order == CrowdOrders.Move) { if (a.Waypoints.Count < MaxWaypoints) a.Waypoints.Add(InField(point)); return; }
+            point = Open(a, InField(point));
+            if (append && a.Order == CrowdOrders.Move) { if (a.Waypoints.Count < MaxWaypoints) a.Waypoints.Add(point); return; }
             a.Order = CrowdOrders.Move;
-            a.OrderPoint = InField(point);
+            a.OrderPoint = point;
             a.Waypoints.Clear();
             a.OrderTarget = -1;
             a.Charging = false;
@@ -412,7 +473,7 @@ namespace Game.Battle.Model.Crowd
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading || points == null || points.Count == 0) return;
             var a = Armies[army];
             OrderMove(army, points[0]);
-            for (int k = 1; k < points.Count && k < MaxPathPoints; k++) a.Waypoints.Add(InField(points[k]));
+            for (int k = 1; k < points.Count && k < MaxPathPoints; k++) a.Waypoints.Add(Open(a, InField(points[k])));
             if (thenAttack >= 0 && thenAttack < Armies.Count && Armies[thenAttack].Team != a.Team) a.PathThenAttack = thenAttack;
         }
 
@@ -575,8 +636,9 @@ namespace Game.Battle.Model.Crowd
                 if (s.Cooldown > 0) s.Cooldown--;
                 var army = Armies[s.Army];
                 var troop = army.Troop;
-                Fix walkStep = r.MoveSpeed * army.SpeedFactor * MoveMult(army) * dt;
-                Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * MoveMult(army) * dt : walkStep;
+                Fix ground = TerrainSpeed(troop, s.Pos); // 지형 걸음 (R-133): 숲에 든 기병은 느려 대열이 흐트러진다
+                Fix walkStep = r.MoveSpeed * army.SpeedFactor * MoveMult(army) * ground * dt;
+                Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * MoveMult(army) * ground * dt : walkStep;
                 if (army.Wavering) { walkStep = walkStep * r.WaverSpeed; stepLen = stepLen * r.WaverSpeed; }
                 if (army.Routed)
                 {
@@ -584,7 +646,7 @@ namespace Game.Battle.Model.Crowd
                     var away = new Vec(Fix.Zero, s.Team == Ally ? -Fix.OneValue : Fix.OneValue);
                     int near = NearestEnemy(s, engage2, r.EngageRange);
                     if (near >= 0) away = (away + (s.Pos - Soldiers[near].Pos).Normalized()).Normalized();
-                    _next[i] = s.Pos + away * (r.FleeSpeed * army.SpeedFactor * dt) + Separation(s);
+                    _next[i] = s.Pos + away * (r.FleeSpeed * army.SpeedFactor * ground * dt) + Separation(s);
                     continue;
                 }
                 Vec want;
@@ -659,6 +721,17 @@ namespace Game.Battle.Model.Crowd
                 if (!s.Alive) continue;
                 var p = _next[i];
                 p = new Vec(Fix.Clamp(p.X, Fix.Zero, maxX), Fix.Clamp(p.Y, Fix.Zero, maxY));
+                if (Terrain != null)
+                {
+                    // 못 가는 땅(강 · 절벽 …)에는 들어가지 않는다: 한 축으로만 미끄러지거나 제자리 (이미 그 안이면 나오는 것은 됨)
+                    var t = Armies[s.Army].Troop;
+                    if (Terrain.Blocks(t, p) && !Terrain.Blocks(t, s.Pos))
+                    {
+                        var px = new Vec(p.X, s.Pos.Y);
+                        var py = new Vec(s.Pos.X, p.Y);
+                        p = !Terrain.Blocks(t, px) ? px : !Terrain.Blocks(t, py) ? py : s.Pos;
+                    }
+                }
                 s.Moved = p - s.Pos;
                 s.Pos = p;
                 if (_damage[i] > 0)
@@ -741,7 +814,10 @@ namespace Game.Battle.Model.Crowd
 
         private Vec ToSlot(CrowdArmy army, CrowdSoldier s, Fix stepLen)
         {
-            var d = army.SlotWorld(s.Slot) - s.Pos;
+            var target = army.SlotWorld(s.Slot);
+            if (Terrain != null && !Terrain.Clear(army.Troop, s.Pos, target))
+                target = Terrain.Clear(army.Troop, s.Pos, army.Center) ? army.Center : army.Aim; // 자리까지 막혔으면 부대 가운데 · 부대가 향하는 곳으로 (여울 · 다리로 모임)
+            var d = target - s.Pos;
             Fix len = d.Length;
             return len <= stepLen ? d : d * (stepLen / len);
         }
@@ -757,7 +833,7 @@ namespace Game.Battle.Model.Crowd
             var foeArmy = Armies[e.Army];
             var foeTroop = foeArmy.Troop;
             int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
-            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy));
+            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos));
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
@@ -768,7 +844,7 @@ namespace Game.Battle.Model.Crowd
                 if (troop.Mounted && foeTroop.Polearm && !e.IsGeneral)
                 {
                     // 받아치기: 창끝에 걸린 기병이 피해를 입고 튕겨 나간다
-                    _damage[s.Id] += HitDamage(foeTroop, troop, BuffPp(foeArmy, army)) * r.BraceDamage;
+                    _damage[s.Id] += HitDamage(foeTroop, troop, BuffPp(foeArmy, army) + TerrainPp(foeTroop, e.Pos)) * r.BraceDamage;
                     if (len > Fix.Zero) _knock[s.Id] = _knock[s.Id] - d * (r.ImpactPush / len);
                     s.ImpactTick = Tick;
                     e.ImpactTick = Tick;
@@ -797,7 +873,7 @@ namespace Game.Battle.Model.Crowd
             var e = Soldiers[target];
             Fix dist = (e.Pos - s.Pos).Length;
             int flight = System.Math.Max(1, (int)(dist / (r.ArrowSpeed * r.TickSeconds)).RoundToLong());
-            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()) });
+            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos))) * r.ArrowDamageScale).RoundToLong()) });
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
             s.Cooldown = r.ShootTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0);
@@ -828,23 +904,24 @@ namespace Game.Battle.Model.Crowd
             {
                 a.Charging = false;
                 Fix edge = r.RetreatMargin + a.HalfDepth;
-                goal = new Vec(a.Center.X, a.Team == Ally ? edge : r.FieldDepth - edge);
-                var dr = goal - a.Center;
-                Fix step = r.AdvanceSpeed * r.RetreatSpeed * a.SpeedFactor * MoveMult(a) * dt;
-                if (dr.Length <= step)
+                goal = Open(a, new Vec(a.Center.X, a.Team == Ally ? edge : r.FieldDepth - edge));
+                Fix step = r.AdvanceSpeed * r.RetreatSpeed * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center) * dt;
+                if ((goal - a.Center).Length <= step)
                 {
                     a.Center = goal;
                     a.Order = CrowdOrders.Hold;
                     return;
                 }
                 // 대열은 그대로 (앞 방향을 뒤집으면 병사들이 서로 자리를 바꾸며 엉킴, 캡처 39h) 뒤로 물러난다 — 맞는 쪽은 등으로 친다 (SideOf)
-                a.Center = a.Center + dr.Normalized() * step;
+                a.Aim = Steer(a, goal);
+                var dr = a.Aim - a.Center;
+                if (dr.Length > Fix.Zero) a.Center = a.Center + dr.Normalized() * Fix.Min(step, dr.Length);
                 return;
             }
             else if (a.Order == CrowdOrders.Advance)
             {
                 Fix edge = a.HalfDepth + Fix.FromInt(2);
-                goal = new Vec(a.Center.X, a.Team == Ally ? r.FieldDepth - edge : edge);
+                goal = Open(a, new Vec(a.Center.X, a.Team == Ally ? r.FieldDepth - edge : edge));
                 int near = NearestEnemyArmy(a.Id);
                 if (near >= 0)
                 {
@@ -892,7 +969,7 @@ namespace Game.Battle.Model.Crowd
             }
             var d = goal - a.Center;
             Fix dist = d.Length;
-            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a);
+            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center);
             if (a.Order == CrowdOrders.Move && dist <= baseSpeed * dt)
             {
                 a.Center = goal;
@@ -903,11 +980,17 @@ namespace Game.Battle.Model.Crowd
                 return;
             }
             if (a.Order == CrowdOrders.Attack && dist <= Fix.OneValue) return;
-            if (a.Order == CrowdOrders.Advance) a.Facing = new Vec(Fix.Zero, ahead); // 진군: 곧게 앞으로
-            else if (dist > Fix.OneValue) a.Facing = d.Normalized(); // 도착 직전에는 방향을 그대로 (뒤집히지 않게)
+            // 지형 (R-133): 못 가는 땅이 가로막으면 돌아가는 길의 다음 점으로
+            a.Aim = Steer(a, goal);
+            bool detour = !a.Aim.Equals(goal);
+            var dv = a.Aim - a.Center;
+            Fix dl = dv.Length;
+            if (a.Order == CrowdOrders.Advance && !detour) a.Facing = new Vec(Fix.Zero, ahead); // 진군: 곧게 앞으로
+            else if (dl > Fix.OneValue) a.Facing = dv.Normalized(); // 도착 직전에는 방향을 그대로 (뒤집히지 않게)
             int alive = System.Math.Max(1, a.AliveCount);
             Fix slow = Fix.OneValue - Fix.Min(Fix.OneValue, Fix.FromRatio(engagedSoldiers * 2, alive));
-            a.Center = a.Center + a.Facing * Fix.Min(dist, baseSpeed * dt * slow);
+            var dir = a.Order == CrowdOrders.Advance && !detour ? a.Facing : dl > Fix.Zero ? dv * (Fix.OneValue / dl) : Vec.Zero;
+            a.Center = a.Center + dir * Fix.Min(detour ? dl : dist, baseSpeed * dt * slow);
         }
 
         private const int RelaxPasses = 2;

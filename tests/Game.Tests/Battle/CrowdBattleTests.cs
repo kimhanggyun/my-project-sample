@@ -328,6 +328,109 @@ namespace Game.Tests.Battle
             for (int t = 0; t < 50; t++) b.Step();
         }
 
+        // ---- 지형 (R-133) ----
+
+        private static CrowdTerrain Terrain(string mapId) =>
+            new CrowdTerrain(Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), mapId), Defs.TerrainRules, Defs.TerrainCombat, Rules().MapCellSize);
+
+        private static CrowdSetup One(string troop, string mapId) => new CrowdSetup
+        {
+            AllyUnits = new System.Collections.Generic.List<CrowdUnitSpec> { new CrowdUnitSpec { Row = 1, Col = 1, Troop = troop, Commander = true } },
+            EnemyUnits = new System.Collections.Generic.List<CrowdUnitSpec> { new CrowdUnitSpec { Row = 1, Col = 1, Troop = "infantry", Commander = true } },
+            AllyAdvance = false, Seed = 3, Terrain = mapId == null ? null : Terrain(mapId),
+        };
+
+        [Fact]
+        public void MapSetsFieldSizeAndDeploysAtSpawns()
+        {
+            var b = new CrowdBattle(Rules(), One("infantry", "river_ford"), Defs.TroopTypes, Defs.TroopCounters);
+            Assert.Equal(Fix.FromInt(60), b.Rules.FieldWidth); // 24칸 × 2.5
+            Assert.Equal(Fix.FromInt(100), b.Rules.FieldDepth); // 40칸 × 2.5
+            var me = b.Commander(CrowdBattle.Ally).Center;
+            var foe = b.Commander(CrowdBattle.Enemy).Center;
+            Assert.True(me.Y < Fix.FromInt(30) && foe.Y > Fix.FromInt(70), $"ally {me} enemy {foe}"); // 강(가운데)을 사이에 두고
+            Assert.Equal("river", b.Terrain.TerrainAt(new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(50))));
+        }
+
+        [Fact]
+        public void TerrainCombatAndCostComeFromData()
+        {
+            var forest = Terrain("test_forest");
+            var p = new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(50));
+            var inf = CrowdTroop.Of("infantry", Defs.TroopTypes);
+            var cav = CrowdTroop.Of("cavalry", Defs.TroopTypes);
+            Assert.Equal(Fix.FromInt(10), forest.CombatPp(inf, p)); // 숲 보병 +10
+            Assert.True(forest.CombatPp(cav, p) < Fix.Zero); // 숲 기병 −
+            Assert.True(forest.SpeedFactor(cav, p) < forest.SpeedFactor(inf, p)); // 숲에서 기병이 더 느림
+            Assert.True(Terrain("test_plain").CombatPp(cav, new Game.Battle.Model.Geometry.Vec(Fix.FromInt(2), Fix.FromInt(2))) >= Fix.Zero);
+        }
+
+        [Fact]
+        public void ForestSlowsCavalryMoreThanPlain()
+        {
+            Fix Gone(string map)
+            {
+                var b = new CrowdBattle(Rules(), One("cavalry", map), Defs.TroopTypes, Defs.TroopCounters);
+                var a = b.Commander(CrowdBattle.Ally);
+                var y0 = a.Center.Y;
+                b.OrderMove(a.Id, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(-8)));
+                for (int t = 0; t < 40; t++) b.Step();
+                return y0 - a.Center.Y;
+            }
+            Fix plain = Gone(null), forest = Gone("test_forest");
+            _out.WriteLine($"cavalry 40 ticks: plain {plain} forest {forest}");
+            Assert.True(forest * 2 < plain, $"plain {plain} forest {forest}");
+        }
+
+        [Fact]
+        public void RiverIsCrossedOnlyAtFordOrBridge()
+        {
+            var b = new CrowdBattle(Rules(), One("infantry", "river_ford"), Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            var goal = new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(66));
+            b.OrderMove(a.Id, goal);
+            int wet = 0, t = 0;
+            for (; t < 1500 && a.Order == CrowdOrders.Move; t++)
+            {
+                b.Step();
+                foreach (var s in a.Soldiers) if (s.Alive && b.Terrain.Blocks(a.Troop, s.Pos)) wet++;
+            }
+            int across = 0;
+            foreach (var s in a.Soldiers) if (s.Alive && s.Pos.Y > Fix.FromInt(56)) across++;
+            _out.WriteLine($"ticks {t}, center {a.Center}, across {across}/{a.Soldiers.Count}, wet {wet}");
+            Assert.Equal(0, wet); // 강에 선 병사 없음
+            Assert.True(a.Center.Y > Fix.FromInt(60), "center " + a.Center);
+            Assert.True(across * 10 >= a.Soldiers.Count * 8, $"across {across}"); // 대부분 건넘
+        }
+
+        [Fact]
+        public void PathGoesThroughFordOrBridge()
+        {
+            var tr = Terrain("river_ford");
+            var inf = CrowdTroop.Of("infantry", Defs.TroopTypes);
+            var path = tr.FindPath(inf, new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(30)), new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(70)));
+            Assert.NotEmpty(path);
+            bool crossed = false;
+            foreach (var p in path)
+            {
+                Assert.False(tr.Blocks(inf, p));
+                var id = tr.TerrainAt(p);
+                if (id == "ford" || id == "bridge") crossed = true;
+            }
+            Assert.True(crossed);
+        }
+
+        [Fact]
+        public void SameInputSameResultWithTerrain()
+        {
+            var x = new CrowdBattle(Rules(), One("cavalry", "hills_valley"), Defs.TroopTypes, Defs.TroopCounters);
+            var y = new CrowdBattle(Rules(), One("cavalry", "hills_valley"), Defs.TroopTypes, Defs.TroopCounters);
+            x.OrderAttackNearest(x.Commander(CrowdBattle.Ally).Id);
+            y.OrderAttackNearest(y.Commander(CrowdBattle.Ally).Id);
+            for (int t = 0; t < 300; t++) { x.Step(); y.Step(); }
+            Assert.Equal(x.Fingerprint(), y.Fingerprint());
+        }
+
         // ---- 조작 명령 (R-132): 진군 · 후퇴 · 근접 공격 · 위임 · 경로 ----
 
         [Fact]

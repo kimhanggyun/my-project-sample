@@ -88,6 +88,17 @@ namespace Game.Battle.Model.Crowd
         public Fix ArrowRainChance { get; private set; }
         /// <summary>병종(뿌리 병종 id)마다 추천 진형 (R-132, 진형 고르기에 "추천" 표시). 없으면 표시 없음.</summary>
         public System.Collections.Generic.IReadOnlyDictionary<string, string> RecommendedFormation { get; private set; } = new System.Collections.Generic.Dictionary<string, string>();
+        /// <summary>지형 맵 1칸 = 전장 몇 칸 (R-133).</summary>
+        public Fix MapCellSize { get; private set; }
+
+        /// <summary>전장 크기만 바꾼 사본 (지형 맵 크기에 맞춤, R-133).</summary>
+        public CrowdRules WithField(Fix width, Fix depth)
+        {
+            var c = (CrowdRules)MemberwiseClone();
+            c.FieldWidth = width;
+            c.FieldDepth = depth;
+            return c;
+        }
         // 후퇴 (R-132)
         public Fix RetreatSpeed { get; private set; }
         public Fix RetreatMargin { get; private set; }
@@ -167,6 +178,7 @@ namespace Game.Battle.Model.Crowd
                 ArrowRainVolleys = (int)JsonUtil.RequireLong(o, "arrowRainVolleys", c),
                 ArrowRainChance = JsonUtil.RequireFix(o, "arrowRainChance", c),
                 RetreatSpeed = JsonUtil.RequireFix(o, "retreatSpeed", c),
+                MapCellSize = JsonUtil.RequireFix(o, "mapCellSize", c),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),

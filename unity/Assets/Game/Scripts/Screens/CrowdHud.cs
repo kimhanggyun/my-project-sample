@@ -28,7 +28,9 @@ namespace Game.Unity.Screens
         private const int MapPixels = 64;
         private const float MapSize = 200f;
         private readonly Texture2D _map;
-        private readonly Color32[] _pixels = new Color32[MapPixels * MapPixels];
+        /// <summary>미니맵 픽셀 크기 (지형 맵이면 전장 1칸 = 1픽셀, 60 × 100 — R-133) · 바탕 (지형 색).</summary>
+        private readonly int _mw, _mh;
+        private readonly Color32[] _pixels, _base;
         private float _mapTimer;
         private static readonly Color32 Grass = new Color32(96, 128, 72, 230);
         private static readonly Color32 AllyDot = new Color32(70, 120, 235, 255);
@@ -50,14 +52,18 @@ namespace Game.Unity.Screens
             holder.anchorMin = holder.anchorMax = new Vector2(1f, 1f);
             holder.pivot = new Vector2(1f, 1f);
             holder.anchoredPosition = new Vector2(-12f, -12f);
-            holder.sizeDelta = new Vector2(MapSize, MapSize);
+            _base = field.Ground.MiniColors;
+            _mw = _base != null ? field.Ground.MiniW : MapPixels;
+            _mh = _base != null ? field.Ground.MiniH : MapPixels;
+            _pixels = new Color32[_mw * _mh];
+            holder.sizeDelta = _mh > _mw ? new Vector2(MapSize * _mw / _mh, MapSize) : new Vector2(MapSize, MapSize * _mh / _mw);
             var frame = Ui.Background(holder, new Color(0.1f, 0.09f, 0.08f, 0.8f));
             frame.raycastTarget = true;
             var img = Ui.Rect(holder, "Picture");
             Ui.Fill(img);
             img.offsetMin = new Vector2(4f, 4f);
             img.offsetMax = new Vector2(-4f, -4f);
-            _map = new Texture2D(MapPixels, MapPixels, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            _map = new Texture2D(_mw, _mh, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             var raw = img.gameObject.AddComponent<RawImage>();
             raw.texture = _map;
             raw.raycastTarget = false;
@@ -139,18 +145,18 @@ namespace Game.Unity.Screens
 
         private void DrawMap()
         {
-            for (int i = 0; i < _pixels.Length; i++) _pixels[i] = Grass;
+            for (int i = 0; i < _pixels.Length; i++) _pixels[i] = _base != null ? _base[i] : Grass;
             float w = (float)_battle.Rules.FieldWidth.ToDisplayDouble(), d = (float)_battle.Rules.FieldDepth.ToDisplayDouble();
             foreach (var s in _battle.Soldiers)
             {
                 if (!s.Alive) continue;
-                int x = Mathf.Clamp((int)((float)s.Pos.X.ToDisplayDouble() / w * MapPixels), 0, MapPixels - 1);
-                int y = Mathf.Clamp((int)((float)s.Pos.Y.ToDisplayDouble() / d * MapPixels), 0, MapPixels - 1);
-                _pixels[y * MapPixels + x] = s.Team == CrowdBattle.Ally ? AllyDot : EnemyDot;
+                int x = Mathf.Clamp((int)((float)s.Pos.X.ToDisplayDouble() / w * _mw), 0, _mw - 1);
+                int y = Mathf.Clamp((int)((float)s.Pos.Y.ToDisplayDouble() / d * _mh), 0, _mh - 1);
+                _pixels[y * _mw + x] = s.Team == CrowdBattle.Ally ? AllyDot : EnemyDot;
             }
             // 카메라가 보는 곳: 흰 네모
             var f = _field.Rig.Focus;
-            int fx = Mathf.Clamp((int)(f.x / w * MapPixels), 1, MapPixels - 2), fy = Mathf.Clamp((int)(f.z / d * MapPixels), 1, MapPixels - 2);
+            int fx = Mathf.Clamp((int)(f.x / w * _mw), 1, _mw - 2), fy = Mathf.Clamp((int)(f.z / d * _mh), 1, _mh - 2);
             for (int k = -2; k <= 2; k++)
             {
                 SetPx(fx + k, fy - 2); SetPx(fx + k, fy + 2); SetPx(fx - 2, fy + k); SetPx(fx + 2, fy + k);
@@ -161,8 +167,8 @@ namespace Game.Unity.Screens
 
         private void SetPx(int x, int y)
         {
-            if (x < 0 || y < 0 || x >= MapPixels || y >= MapPixels) return;
-            _pixels[y * MapPixels + x] = ViewDot;
+            if (x < 0 || y < 0 || x >= _mw || y >= _mh) return;
+            _pixels[y * _mw + x] = ViewDot;
         }
     }
 

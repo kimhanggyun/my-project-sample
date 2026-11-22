@@ -90,7 +90,10 @@ namespace Game.Unity.Screens
         private GameApp _app;
         private RectTransform _root;
         private static readonly string[] Troops = { "infantry", "spearman", "archer", "cavalry" };
-        private static readonly string[] Maps = { "plain" };
+        /// <summary>맵 카드 (R-133): 평지(맵 없음) + 기존 전장 맵 (수상전 맵은 뺌).</summary>
+        public static readonly string[] Maps = { "plain", "hills_valley", "river_ford", "marsh_lake", "test_forest", "test_ambush", "test_mountain_pass", "test_plain" };
+
+        private static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
 
         public void Build(GameApp app, RectTransform root)
         {
@@ -121,13 +124,33 @@ namespace Game.Unity.Screens
                 TestBattleSetup.EnemyAdvance ? Palette.ButtonActive : Palette.Button, 24), flexibleWidth: 1);
             // 맵: 좌우로 넘기는 카드 (지금은 평지 하나)
             Ui.Label(list, T("ui.test.map"), Ui.FontBody);
-            var maps = Ui.HScrollRow(list, "Maps", 110);
+            // 맵 카드 (R-133): 위 = 적 쪽 미리보기 + 이름
+            var maps = Ui.HScrollRow(list, "Maps", 196);
             foreach (var m in Maps)
             {
                 string id = m;
-                var b = Ui.Button(maps, T("ui.test.map." + id), () => { TestBattleSetup.Map = id; TestBattleSetup.Save(); Redraw(); }, 100,
-                    TestBattleSetup.Map == id ? Palette.ButtonActive : Palette.Button, 26);
-                Ui.Size(b, 100, 220);
+                var b = Ui.Button(maps, MapName(_app.Context, id), () => { TestBattleSetup.Map = id; TestBattleSetup.Save(); Redraw(); }, 180,
+                    TestBattleSetup.Map == id ? Palette.ButtonActive : Palette.Button, 22);
+                Ui.Size(b, 180, 150);
+                var label = b.GetComponentInChildren<Text>();
+                label.alignment = TextAnchor.LowerCenter;
+                var lr = label.rectTransform;
+                lr.anchorMin = Vector2.zero; lr.anchorMax = new Vector2(1f, 0f); lr.pivot = new Vector2(0.5f, 0f);
+                lr.offsetMin = new Vector2(4f, 6f); lr.offsetMax = new Vector2(-4f, 40f);
+                var pic = Ui.Rect(b.transform, "Preview");
+                pic.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                pic.anchorMin = pic.anchorMax = new Vector2(0.5f, 1f);
+                pic.pivot = new Vector2(0.5f, 1f);
+                pic.anchoredPosition = new Vector2(0f, -8f);
+                pic.sizeDelta = new Vector2(76f, 124f);
+                var raw = pic.gameObject.AddComponent<RawImage>();
+                raw.raycastTarget = false;
+                if (id == "plain") raw.color = new Color(0.45f, 0.58f, 0.3f);
+                else
+                {
+                    try { raw.texture = Game.Unity.Battle3D.FieldTexture.Preview(Game.Data.Defs.MapDef.Load(_app.Context.Data, id)); }
+                    catch (System.Exception) { raw.color = Color.gray; }
+                }
             }
             Grid(list, true);
 
@@ -242,11 +265,11 @@ namespace Game.Unity.Screens
         private void Start()
         {
             if (TestBattleSetup.Ally.Count == 0 || TestBattleSetup.Enemy.Count == 0) return;
-            _app.Show(new SampleBattle2Screen(Setup(), startNow: true, returnTab: "test"));
+            _app.Show(new SampleBattle2Screen(Setup(_app.Context), startNow: true, returnTab: "test"));
         }
 
         /// <summary>지금 칸 설정으로 전투 설정 (사본 — 전투 중 설정 화면을 바꿔도 영향 없음).</summary>
-        public static CrowdSetup Setup()
+        public static CrowdSetup Setup(Game.Unity.Boot.GameContext ctx)
         {
             List<CrowdUnitSpec> Copy(List<CrowdUnitSpec> l)
             {
@@ -254,7 +277,20 @@ namespace Game.Unity.Screens
                 foreach (var u in l) r.Add(new CrowdUnitSpec { Row = u.Row, Col = u.Col, Troop = u.Troop, Formation = u.Formation, Count = u.Count, Commander = u.Commander });
                 return r;
             }
-            return new CrowdSetup { AllyUnits = Copy(TestBattleSetup.Ally), EnemyUnits = Copy(TestBattleSetup.Enemy), AllyAdvance = false, EnemyAdvance = TestBattleSetup.EnemyAdvance };
+            return new CrowdSetup { AllyUnits = Copy(TestBattleSetup.Ally), EnemyUnits = Copy(TestBattleSetup.Enemy), AllyAdvance = false, EnemyAdvance = TestBattleSetup.EnemyAdvance,
+                Terrain = TerrainOf(ctx, TestBattleSetup.Map) };
+        }
+
+        /// <summary>맵 id → 지형 (R-133, 평지 · 없는 맵이면 null = 평지 60 × 60).</summary>
+        public static CrowdTerrain TerrainOf(Game.Unity.Boot.GameContext ctx, string mapId)
+        {
+            if (ctx == null || string.IsNullOrEmpty(mapId) || mapId == "plain") return null;
+            try
+            {
+                var map = Game.Data.Defs.MapDef.Load(ctx.Data, mapId);
+                return new CrowdTerrain(map, ctx.Defs.TerrainRules, ctx.Defs.TerrainCombat, CrowdRules.Load(ctx.Data).MapCellSize);
+            }
+            catch (System.Exception) { return null; }
         }
     }
 }
