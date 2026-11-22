@@ -900,6 +900,19 @@ namespace Game.Unity.Screens
             return Vector2.zero;
         }
 
+        /// <summary>캡처 투어: 성문을 누가 쳤음.</summary>
+        public bool GateHitForTour { get { foreach (var g in _battle.Gates) if (g.LastHitTick >= 0) return true; return false; } }
+
+        /// <summary>캡처 투어: 가장 최근에 맞은 성문(없으면 첫 성문)으로 카메라.</summary>
+        public void FocusGateForTour(float distance)
+        {
+            Game.Battle.Model.Crowd.CrowdGate best = null;
+            foreach (var g in _battle.Gates) if (best == null || g.LastHitTick > best.LastHitTick) best = g;
+            if (best == null) return;
+            _field.Rig.LookAt(_field.ToWorld(best.Center));
+            _field.Rig.SetDistance(distance);
+        }
+
         /// <summary>캡처 투어: 성문이 (하나라도) 열림.</summary>
         public bool GateOpenForTour { get { foreach (var g in _battle.Gates) if (g.Open) return true; return false; } }
 

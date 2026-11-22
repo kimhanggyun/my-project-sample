@@ -88,15 +88,34 @@ namespace Game.Unity.Battle3D
         private static bool IsStructure(string t) => t == "wall" || t == "wallTop" || t == "stairs";
 
         /// <summary>그 칸 구조물 윗면 높이 (구조물이 아니면 -1).</summary>
+        /// <remarks>
+        /// 땅 높이 + 구조물 높이 (산성처럼 높은 곳에 지은 성도 성벽이 묻히지 않게 — PR #282 검토).
+        /// 계단은 성벽 위와 맞닿으면 위 단, 아니면 아래 단.
+        /// </remarks>
         private float StructureTop(int col, int row)
         {
-            switch (_t.Map.TerrainAt(col, row))
+            string t = _t.Map.TerrainAt(col, row);
+            float rel;
+            switch (t)
             {
-                case "wall": return WallH;
-                case "wallTop": return WalkH;
-                case "stairs": return _t.Map.HeightAt(col, row) >= 3 ? StairHighH : StairLowH; // 높이 층 값으로 아래 · 위 단
+                case "wall": rel = WallH; break;
+                case "wallTop": rel = WalkH; break;
+                case "stairs": rel = NextTo(col, row, "wallTop") ? StairHighH : StairLowH; break;
                 default: return -1f;
             }
+            var c = _t.CellCenter(col, row);
+            float x = (float)c.X.ToDisplayDouble(), z = (float)c.Y.ToDisplayDouble();
+            return GroundHeight(x, z) + rel;
+        }
+
+        private bool NextTo(int col, int row, string terrain)
+        {
+            foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+            {
+                int x = col + dx, y = row + dy;
+                if (x >= 0 && y >= 0 && x < _t.Map.Width && y < _t.Map.Height && _t.Map.TerrainAt(x, y) == terrain) return true;
+            }
+            return false;
         }
 
         private float BedAt(float x, float z)
