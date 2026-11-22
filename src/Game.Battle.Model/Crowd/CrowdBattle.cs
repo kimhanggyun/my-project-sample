@@ -91,6 +91,15 @@ namespace Game.Battle.Model.Crowd
         public readonly List<Vec> Route = new List<Vec>();
         public int RouteGoal = -1, RouteTick = -9999;
         public Vec Aim;
+        /// <summary>
+        /// 행군 대열 (R-136): 돌아가는 길 · 좁은 땅(숲 · 늪 · 고갯길)을 지날 때 자동으로, 앞장선 부대 가운데가 걸은 자취(Trail)를 병사들이 줄줄이 밟는다.
+        /// 목적지에 닿거나 적이 가까우면 고른 진형으로 다시 펼친다. AutoMarch = false면 행군하지 않는다 (진형 고집).
+        /// </summary>
+        public bool Marching;
+        public bool AutoMarch = true;
+        public int MarchOffTicks;
+        /// <summary>부대 가운데가 걸어온 자취 (맨 앞 = 가장 최근, marchTrailStep칸마다 한 점).</summary>
+        public readonly List<Vec> Trail = new List<Vec>();
         /// <summary>돌격 중 (공격 명령으로 적에게 ChargeRange 안까지 다가옴, 맞붙기 전까지) — 병사 · 부대가 빨라진다. 궁병은 돌격하지 않음.</summary>
         public bool Charging;
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
@@ -398,6 +407,14 @@ namespace Game.Battle.Model.Crowd
 
         // ---- 명령 ----
 
+        /// <summary>자동 행군 켜기 · 끄기 (R-136). 끄면 숲 · 좁은 길에서도 진형을 지킨다.</summary>
+        public void SetAutoMarch(int army, bool on)
+        {
+            if (army < 0 || army >= Armies.Count) return;
+            Armies[army].AutoMarch = on;
+            if (!on && Armies[army].Marching) { Armies[army].Marching = false; if (Armies[army].Leading) SetFormation(army, Armies[army].Formation); }
+        }
+
         /// <summary>
         /// 대열 바꾸기: 새 모양 자리를 병사들에게 다시 나눠 준다 (지금 위치의 좌우 순서를 지켜 서로 덜 엇갈리게).
         /// 병사는 다음 틱부터 새 자리로 걸어간다 (맞붙은 병사는 싸움을 계속).
@@ -650,6 +667,7 @@ namespace Game.Battle.Model.Crowd
                 if (s.Alive && s.LastAttackTick >= Tick - r.AttackTicks * 2 && !Shooting(Armies[s.Army])) engaged[s.Army]++;
             }
             foreach (var a in Armies) MoveArmy(a, engaged[a.Id]);
+            foreach (var a in Armies) UpdateMarch(a);
 
             // 2) 병사마다 갈 곳 · 칠 대상 (id 순서로 계산, 반영은 한꺼번에)
             for (int i = 0; i < n; i++) { _next[i] = Soldiers[i].Pos; _damage[i] = 0; _knock[i] = Vec.Zero; _goal[i] = Soldiers[i].Pos; }
@@ -847,9 +865,16 @@ namespace Game.Battle.Model.Crowd
 
         private Vec ToSlot(CrowdArmy army, CrowdSoldier s, Fix stepLen)
         {
-            var target = army.SlotWorld(s.Slot);
+            var target = army.Marching ? ColumnPoint(army, s) : army.SlotWorld(s.Slot);
+            bool detour = false;
             if (Terrain != null && !Terrain.Clear(army.Troop, s.Pos, target))
-                target = Terrain.Clear(army.Troop, s.Pos, army.Center) ? army.Center : army.Aim; // 자리까지 막혔으면 부대 가운데 · 부대가 향하는 곳으로 (여울 · 다리로 모임)
+            {
+                detour = true;
+                // 자리까지 곧은 길이 막혔으면: 부대 가운데가 걸어온 자취를 따라간다 (협곡에서 길을 잃지 않게, 2026-11-22 사용자 영상),
+                // 자취가 없으면 부대 가운데 · 부대가 향하는 곳으로
+                var onTrail = FollowTrail(army, s);
+                target = onTrail ?? (Terrain.Clear(army.Troop, s.Pos, army.Center) ? army.Center : army.Aim);
+            }
             if (Obstacles.Count > 0) target = FreeSpot(s, target); // 자리가 나무 · 바위 안이면 테두리 바로 밖 (갈 수 있는 데까지, 2026-11-22 사용자 영상)
             _goal[s.Id] = target;
             var d = target - s.Pos;
@@ -857,7 +882,8 @@ namespace Game.Battle.Model.Crowd
             // 제자리(대기)인 부대: 자리에 거의 왔으면 멈추고, 멈춘 뒤엔 이웃에게 조금 밀려나도(UnsettleDistance 안) 다시 당기지 않는다
             // (나무 · 이웃과 밀고 당기는 잔떨림 없앰, 2026-11-22 사용자 영상). 부대가 움직이면 풀림.
             // 자리로 못 가면 (StuckTicks 동안 가까워지지 못함) 갈 수 있는 데까지 간 그 자리에서 멈춘다 (2026-11-22 사용자 "못 가면 갈 때까지만 가고 멈춤")
-            if (army.Order != CrowdOrders.Hold) { s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0; }
+            // 자취를 따라 돌아오는 중(detour)이면 멈추지 않는다 (가까워지는지는 돌아가는 길에선 알 수 없음 — 협곡에서 멈춰 버림, R-136)
+            if (army.Order != CrowdOrders.Hold || detour) { s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0; }
             else
             {
                 if (s.Settled && (s.Pos - s.SettleAt).Length <= UnsettleDistance) return Vec.Zero;
@@ -1047,6 +1073,111 @@ namespace Game.Battle.Model.Crowd
         /// 다음 위치(_next)가 막는 소품(나무 기둥 · 바위) 안이면 테두리 밖으로 (R-134).
         /// 가던 방향이 소품 가운데를 곧게 향하면 (밀어내기만 하면 그 자리에 멈춤) 소품 옆쪽으로 비켜 간다 — 소품이 가는 길 왼쪽이면 오른쪽으로, 아니면 왼쪽으로.
         /// </summary>
+        // ---- 행군 대열 (R-136) ----
+
+        /// <summary>
+        /// 행군할지: 자동 행군이 켜져 있고, 움직이는 명령이며, (못 가는 땅을 돌아가는 중이거나 부대 가운데가 marchTerrains 위) · 적이 가깝지 않을 때.
+        /// 켜는 건 바로, 끄는 건 marchOffTicks 동안 조건이 아닐 때 (들락날락 막음). 끌 때 지금 자리 순서대로 진형 자리를 다시 나눈다.
+        /// 자취: 부대 가운데가 marchTrailStep칸 움직일 때마다 한 점 (최대 marchTrailMax점).
+        /// </summary>
+        private void UpdateMarch(CrowdArmy a)
+        {
+            var r = Rules;
+            if (a.Trail.Count == 0 || (a.Center - a.Trail[0]).Length >= r.MarchTrailStep)
+            {
+                a.Trail.Insert(0, a.Center);
+                if (a.Trail.Count > r.MarchTrailMax) a.Trail.RemoveAt(a.Trail.Count - 1);
+            }
+            bool moving = a.Order == CrowdOrders.Move || a.Order == CrowdOrders.Advance || a.Order == CrowdOrders.Attack || a.Order == CrowdOrders.Retreat;
+            bool want = a.AutoMarch && a.Leading && moving && Terrain != null && (a.Route.Count > 0 || MarchGround(a.Center)) && !EnemyNear(a, r.ChargeRange + r.MarchReformRange);
+            if (want) { a.Marching = true; a.MarchOffTicks = 0; return; }
+            if (!a.Marching) return;
+            bool stop = !moving || !a.Leading || EnemyNear(a, r.ChargeRange + r.MarchReformRange);
+            if (stop || ++a.MarchOffTicks >= r.MarchOffTicks)
+            {
+                a.Marching = false;
+                a.MarchOffTicks = 0;
+                if (a.Leading) SetFormation(a.Id, a.Formation); // 지금 자리 순서대로 진형 자리를 다시 나눔 (멀리 엇갈려 가지 않게)
+            }
+        }
+
+        private bool MarchGround(Vec p)
+        {
+            if (Terrain == null) return false;
+            string t = Terrain.TerrainAt(p);
+            foreach (var id in Rules.MarchTerrains) if (id == t) return true;
+            return false;
+        }
+
+        private bool EnemyNear(CrowdArmy a, Fix range)
+        {
+            var c = a.Center;
+            Fix r2 = range * range;
+            foreach (var o in Armies)
+                if (o.Team != a.Team && Standing(o) && Vec.DistanceSquared(o.TickCentroid, c) <= r2) return true;
+            return false;
+        }
+
+        /// <summary>자취 위 dist칸 뒤의 점 (부대 가운데에서 시작). 자취가 짧으면 끝 점.</summary>
+        private Vec TrailPoint(CrowdArmy a, Fix dist, out Vec dir)
+        {
+            var prev = a.Center;
+            dir = a.Facing;
+            Fix left = dist;
+            foreach (var p in a.Trail)
+            {
+                var seg = p - prev;
+                Fix len = seg.Length;
+                if (len > Fix.Zero)
+                {
+                    dir = seg * (-Fix.OneValue / len); // 앞(머리) 쪽
+                    if (len >= left) return prev + seg * (left / len);
+                    left -= len;
+                }
+                prev = p;
+            }
+            return prev;
+        }
+
+        /// <summary>
+        /// 행군 대열에서 그 병사의 자리: 살아 있는 병사 id 순으로 marchWidth명씩 줄, 줄마다 자취 위 (줄 + 1) × 간격 뒤, 줄 안에서는 자취와 직각으로 벌림.
+        /// 장수는 대열 가운데 (나중에 성향으로 앞 · 뒤). 벌린 자리가 못 가는 땅이면 자취 위.
+        /// </summary>
+        private Vec ColumnPoint(CrowdArmy a, CrowdSoldier s)
+        {
+            int width = System.Math.Max(1, Rules.MarchWidth);
+            Fix sp = SpacingOf(a.Troop) * Fix.FromRatio(13, 10);
+            int alive = a.AliveCount;
+            if (s.IsGeneral)
+                return TrailPoint(a, sp * (alive / width / 2 + 1), out _);
+            int k = 0;
+            foreach (var o in a.Soldiers) { if (o == s) break; if (o.Alive && !o.IsGeneral) k++; }
+            int row = k / width, col = k % width;
+            var p = TrailPoint(a, sp * (row + 1), out var dir);
+            var side = new Vec(dir.Y, -dir.X);
+            var q = p + side * (sp * (2 * col - (width - 1)) / 2);
+            return Terrain != null && Terrain.Blocks(a.Troop, q) ? p : q;
+        }
+
+        /// <summary>
+        /// 자리까지 막힌 병사: 자취에서 가장 가까운 점을 찾아 그보다 조금 앞(머리 쪽) 점으로 (곧게 갈 수 있을 때). 없으면 null.
+        /// </summary>
+        private Vec? FollowTrail(CrowdArmy a, CrowdSoldier s)
+        {
+            if (a.Trail.Count == 0) return null;
+            int best = -1;
+            Fix bestD = Fix.Zero;
+            for (int k = 0; k < a.Trail.Count; k++)
+            {
+                Fix d = Vec.DistanceSquared(a.Trail[k], s.Pos);
+                if (best < 0 || d < bestD) { best = k; bestD = d; }
+            }
+            // 가까운 점에서 머리 쪽으로 몇 점 앞, 곧게 갈 수 있는 가장 앞 점
+            for (int k = System.Math.Max(0, best - 6); k <= best; k++)
+                if (Terrain.Clear(a.Troop, s.Pos, a.Trail[k])) return a.Trail[k];
+            return null;
+        }
+
         /// <summary>제자리 부대 병사가 자리에 이만큼 가까우면 멈춘다 (칸).</summary>
         private static readonly Fix SettleDistance = Fix.FromRatio(20, 100);
         /// <summary>제자리 부대 병사가 이만큼 틱 동안 자리에 가까워지지 못하면 그 자리에서 멈춘다.</summary>
@@ -1068,7 +1199,7 @@ namespace Game.Battle.Model.Crowd
                         foreach (int k in list)
                         {
                             var o = Obstacles[k];
-                            Fix min = o.Radius + s.Radius + Fix.FromRatio(2, 100);
+                            Fix min = o.Radius + ObstacleBody(s) + Fix.FromRatio(2, 100);
                             var d = p - o.Pos;
                             Fix d2 = d.LengthSquared;
                             if (d2 >= min * min) continue;
@@ -1079,6 +1210,9 @@ namespace Game.Battle.Model.Crowd
             }
             return p;
         }
+
+        /// <summary>나무 · 바위에 부딪치는 몸집: 장수(말)도 병사만큼 (바위 틈에 갇히지 않게, 2026-11-22 사용자 영상 — 말은 비집고 지나간다).</summary>
+        private Fix ObstacleBody(CrowdSoldier s) => s.IsGeneral ? Rules.SoldierRadius : s.Radius;
 
         /// <summary>그 자리면 병사가 막는 소품 안에 들어감 (반올림 여유 0.01칸).</summary>
         private bool InsideObstacle(CrowdSoldier s, Vec p)
@@ -1092,7 +1226,7 @@ namespace Game.Battle.Model.Crowd
                     foreach (int k in list)
                     {
                         var o = Obstacles[k];
-                        Fix min = o.Radius + s.Radius - Fix.FromRatio(1, 100);
+                        Fix min = o.Radius + ObstacleBody(s) - Fix.FromRatio(1, 100);
                         if (Vec.DistanceSquared(p, o.Pos) < min * min) return true;
                     }
                 }
@@ -1115,7 +1249,7 @@ namespace Game.Battle.Model.Crowd
                         foreach (int k in list)
                         {
                             var o = Obstacles[k];
-                            Fix min = o.Radius + s.Radius;
+                            Fix min = o.Radius + ObstacleBody(s);
                             var d = p - o.Pos;
                             Fix d2 = d.LengthSquared;
                             if (d2 >= min * min) continue;

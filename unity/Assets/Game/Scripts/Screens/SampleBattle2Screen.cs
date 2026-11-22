@@ -220,6 +220,7 @@ namespace Game.Unity.Screens
         {
             string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id);
             if (a.Team == CrowdBattle.Ally && a.Delegated) s += " · " + T("ui.sample2.auto");
+            if (a.Marching) s += " · " + T("ui.sample2.marching");
             // 켜져 있는 스킬 (R-130)
             int tick = _battle.Tick;
             if (a.AttackBuffUntil > tick) s += " · " + T("skill.warCry");
@@ -348,6 +349,15 @@ namespace Game.Unity.Screens
                     _formationButtons[id] = b;
                 }
                 RecolorFormations();
+                // 자동 행군 (R-136): 숲 · 좁은 길에서 저절로 행군 대열 — 끄면 진형을 고집
+                bool march = one.AutoMarch;
+                var mb = Detail(T("ui.sample2.march") + "\n" + T(march ? "ui.sample2.on" : "ui.sample2.off"), () =>
+                {
+                    bool on = !_battle.Armies[_selected].AutoMarch;
+                    foreach (var a in Chosen()) _battle.SetAutoMarch(a.Id, on);
+                    BuildDetail();
+                }, 20);
+                Ui.Recolor(mb, march ? Palette.ButtonActive : Palette.Button);
                 return;
             }
             _infoText = Ui.Label(_detailRow, "", 22, TextAnchor.MiddleCenter, Palette.Text);
@@ -446,7 +456,7 @@ namespace Game.Unity.Screens
         }
 
         private string CorpsName(CrowdArmy a) => PlaceName(a) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id)
-            + (a.Delegated ? " · " + T("ui.sample2.auto") : "") + "\n" + MoraleText(a);
+            + (a.Delegated ? " · " + T("ui.sample2.auto") : "") + (a.Marching ? " · " + T("ui.sample2.marching") : "") + "\n" + MoraleText(a);
 
         /// <summary>부대 자리 이름: 좌군 · 중군 · 우군, 3×3 칸이면 "앞 좌" 등 (R-131).</summary>
         private string PlaceName(CrowdArmy a)

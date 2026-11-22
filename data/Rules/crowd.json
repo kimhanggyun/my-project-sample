@@ -72,6 +72,13 @@
   "retreatMargin": 4,
   "_map": "지형 맵 (R-133 · R-135): 전장 폭 = mapFieldWidth, 맵 1칸 = mapFieldWidth ÷ 맵 폭 (24 × 40칸 → 2.5칸, 샘플전투2 맵 48 × 80칸 → 1.25칸, 둘 다 60 × 100). 지형 규칙은 terrainRules.json · terrainCombat.json 그대로",
   "mapFieldWidth": 60,
+  "_march": "행군 대열 (R-136): 돌아가는 길 · marchTerrains 위를 움직일 때 자동으로 폭 marchWidth명 줄, 부대 가운데 자취(marchTrailStep칸마다 한 점, 최대 marchTrailMax점)를 밟는다. 적이 돌격 거리 + marchReformRange 안이거나 조건이 marchOffTicks 동안 아니면 진형으로 다시 펼침",
+  "marchWidth": 3,
+  "marchTrailStep": 0.3,
+  "marchTrailMax": 700,
+  "marchOffTicks": 15,
+  "marchReformRange": 4,
+  "marchTerrains": ["forest", "marsh", "pass", "burnt"],
   "_obstacles": "막는 소품 (R-134): 지형마다 2.5 × 2.5 넓이에 perCell개 (촘촘한 맵은 칸 넓이에 맞춰 줄임), 병사가 못 들어가는 반지름 radius칸 (크기 × 0.75 ~ 1.25). 나무는 기둥만 막고 잎은 통과, 풀 · 갈대 · 덤불은 막지 않음",
   "obstacles": {
     "forest": { "perCell": 2.2, "radius": 0.28 },

@@ -855,6 +855,8 @@
   "map.crowd_marsh": "늪지",
   "map.crowd_forest": "숲길",
   "map.crowd_pass": "산길",
+  "ui.sample2.march": "행군 자동",
+  "ui.sample2.marching": "행군",
   "ui.settings.header": "설정",
   "ui.settings.version": "버전 {0} / Unity {1}",
   "ui.settings.services": "외부 서비스 설정",
