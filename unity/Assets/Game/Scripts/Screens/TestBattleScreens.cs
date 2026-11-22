@@ -99,7 +99,7 @@ namespace Game.Unity.Screens
         private static readonly string[] Troops = { "infantry", "spearman", "archer", "cavalry" };
         /// <summary>맵 카드 (R-133): 평지(맵 없음) + 기존 전장 맵 (수상전 맵은 뺌).</summary>
         /// <summary>샘플전투2 맵 (R-135, 48 × 80 — tools/crowd_maps.js로 만듦). 옛 전투 맵은 옛 전투 · 시험이 그대로 씀.</summary>
-        public static readonly string[] Maps = { "crowd_plain", "crowd_highland", "crowd_gorge", "crowd_river", "crowd_marsh", "crowd_forest", "crowd_pass", "crowd_siege" };
+        public static readonly string[] Maps = { "crowd_plain", "crowd_highland", "crowd_gorge", "crowd_river", "crowd_marsh", "crowd_forest", "crowd_pass", "crowd_siege", "crowd_siege_plain", "crowd_siege_river", "crowd_siege_mountain" };
 
         public static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
 
