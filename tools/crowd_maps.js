@@ -227,3 +227,87 @@ function write(id, comment, m, spawns) {
   write("crowd_siege", "샘플전투2 공성 시험 (R-140): 평지 위 네모 성, 앞 성벽 가운데 성문 하나 · 성벽 위 걷는 길 · 계단 둘. 지키는 편(teamB)은 성 안", m,
     { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 14, facing: "S" } });
 }
+
+// ==== 공성전 맵 세트 (원격 2026-11-22, R-140 기호): 평지 성곽 · 강가 성채 · 산성 ====
+// 성 짓기: 테두리 = 성벽 W, 안쪽 둘레 = 성벽 위 T (앞 2줄 · 옆 2칸 · 뒤 1줄), 나머지 = 마당. 높이는 본보기와 같게 (base 위로 성벽 +7 · 성벽 위 +6 · 계단 아래 +2 · 위 +4).
+// gates: { side: "S" | "W" | "E", from, to } — 성벽 칸을 성문 G로, 그 안쪽 성벽 위 두 줄은 마당으로 틔워 문 안 통로. stairs: 앞 성벽 안쪽 계단 x (2칸 폭).
+function castle(m, o) {
+  const { x0, x1, y0, y1 } = o, b = o.base || 0;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const edge = y === y0 || y === y1 || x === x0 || x === x1;
+    const top = !edge && (y >= y1 - 2 || y <= y0 + 1 || x <= x0 + 2 || x >= x1 - 2);
+    if (edge) set(m, x, y, "W", 7 + b);
+    else if (top) set(m, x, y, "T", 6 + b);
+    else set(m, x, y, ".", b);
+  }
+  for (const g of o.gates) for (let k = g.from; k <= g.to; k++) {
+    if (g.side === "S") { set(m, k, y1, "G", b); set(m, k, y1 - 1, ".", b); set(m, k, y1 - 2, ".", b); }
+    if (g.side === "W") { set(m, x0, k, "G", b); set(m, x0 + 1, k, ".", b); set(m, x0 + 2, k, ".", b); }
+    if (g.side === "E") { set(m, x1, k, "G", b); set(m, x1 - 1, k, ".", b); set(m, x1 - 2, k, ".", b); }
+  }
+  for (const sx of o.stairs) for (let x = sx; x <= sx + 1; x++) { set(m, x, y1 - 3, "S", 4 + b); set(m, x, y1 - 4, "S", 2 + b); }
+}
+/** 치는 편 배치 자리 (아래 rows줄)만 트인 땅으로 (위는 성이라 그대로). */
+function clearBottom(m, rows = 15, ch = ".") {
+  for (let y = H - rows; y < H; y++) for (let x = 0; x < W; x++) { m.t[y][x] = ch; m.h[y][x] = 0; }
+}
+
+// ---- 공성 1. 평지 성곽: 넓은 평지 위 큰 성, 앞 성문 + 왼쪽 옆 성문 (어디를 칠지 고르기), 성 앞 풀숲 · 작은 숲 조각 (궁병 엄폐) ----
+{
+  const m = blank(".");
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (noise(x, y, 91, 5) > 0.62) m.t[y][x] = "g";
+  // 성 앞 작은 숲 조각 (궁병이 숨어 쏘기) · 풀숲 띠
+  for (const [cx, cy, r] of [[11, 43, 2.6], [36, 46, 2.8], [24, 54, 2.2], [5, 56, 2], [43, 58, 2]]) disc(m, cx, cy, r, (x, y) => set(m, x, y, "f"));
+  for (let x = 0; x < W; x++) for (let y = 37; y <= 39; y++) if (noise(x, y, 93, 3) > 0.45) set(m, x, y, "g");
+  castle(m, { x0: 5, x1: 42, y0: 3, y1: 32, gates: [{ side: "S", from: 22, to: 25 }, { side: "W", from: 15, to: 18 }], stairs: [12, 34] });
+  // 성문 앞길 (앞 성문 · 옆 성문)
+  stroke([[23.5, 34], [23.5, 64]], 3, (x, y) => { if (y > 32 && m.t[y][x] !== "f") set(m, x, y, "r"); });
+  stroke([[4, 16.5], [1.5, 22], [3, 40], [14, 64]], 2, (x, y) => { if (m.t[y][x] !== "W" && m.t[y][x] !== "f") set(m, x, y, "r"); });
+  clearBottom(m, 15, ".");
+  write("crowd_siege_plain", "샘플전투2 공성 평지 성곽 (원격): 넓은 평지 위 큰 성, 앞 성문 + 왼쪽 옆 성문 (어디를 칠지 고르기), 성 앞 풀숲 · 작은 숲 조각 (궁병 엄폐). 지키는 편(teamB)은 성 안", m,
+    { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 14, facing: "S" } });
+}
+
+// ---- 공성 2. 강가 성채: 성 앞을 강이 가로막고 다리 하나가 성문으로 바로 (다리 위 병목), 왼쪽 여울로 돌아가면 성벽만 (성문은 다리 쪽뿐) ----
+{
+  const m = blank(".");
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (noise(x, y, 101, 5) > 0.64) m.t[y][x] = "g";
+  const yc = x => 38 + 2 * Math.sin(x / 6) + Math.sin(x / 2.5) * 0.6; // 강 가운데 줄
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (Math.abs(y - yc(x)) <= 2.6) set(m, x, y, x <= 5 ? "w" : "~", 0); // 왼쪽 끝 = 여울
+  // 강둑 따라 풀숲 · 강 남쪽 작은 숲
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) { const d = Math.abs(y - yc(x)); if (d > 2.6 && d <= 3.6 && m.t[y][x] === "." && noise(x, y, 103, 2) > 0.4) set(m, x, y, "g"); }
+  for (const [cx, cy, r] of [[38, 50, 2.6], [10, 52, 2.2]]) disc(m, cx, cy, r, (x, y) => set(m, x, y, "f"));
+  castle(m, { x0: 8, x1: 39, y0: 3, y1: 26, gates: [{ side: "S", from: 22, to: 25 }], stairs: [13, 33] });
+  // 성문 → 다리 → 강 남쪽 길 (다리는 성문 폭 그대로 = 병목)
+  for (let y = 27; y < 60; y++) for (let x = 22; x <= 25; x++) {
+    if (m.t[y][x] === "~") set(m, x, y, "b", 0);
+    else if (m.t[y][x] !== "b") set(m, x, y, "r", 0);
+  }
+  clearBottom(m, 15, ".");
+  write("crowd_siege_river", "샘플전투2 공성 강가 성채 (원격): 성 앞을 강이 가로막고 다리 하나가 성문으로 바로 (다리 위 병목), 왼쪽 여울로 돌아가면 성벽만 있는 쪽 (성문은 다리 쪽뿐). 지키는 편(teamB)은 성 안", m,
+    { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 13, facing: "S" } });
+}
+
+// ---- 공성 3. 산성: 산 · 절벽 사이 고지 위의 성 (성 전체가 높이 +2), 구불구불한 고갯길 하나로만 성문에 닿음, 길 옆 언덕 · 성벽 위 궁병이 내려다봄 ----
+{
+  const m = blank("m");
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) m.h[y][x] = 6 + noise(x, y, 111, 6) * 3.5;
+  const x0 = 10, x1 = 37, y0 = 2, y1 = 24, base = 2;
+  // 고지 (성 둘레 두 칸 빈터) → 그 바깥 절벽 띠
+  for (let y = 0; y <= y1 + 4; y++) for (let x = x0 - 3; x <= x1 + 3; x++) {
+    if (!inMap(x, y)) continue;
+    const ring = x < x0 - 1 || x > x1 + 1 || y > y1 + 2;
+    set(m, x, y, ring ? "c" : ".", ring ? 5 : base);
+  }
+  castle(m, { x0, x1, y0, y1, base, gates: [{ side: "S", from: 22, to: 25 }], stairs: [15, 31] });
+  // 구불구불한 고갯길: 아래(치는 편)에서 성문 앞까지, 높이 0 → 2로 오름
+  const xc = y => 23.5 + 9 * Math.sin((y - (y1 + 1)) / 7) * Math.min(1, (y - (y1 + 1)) / 10);
+  const pass = [];
+  for (let y = H - 1; y >= y1 + 1; y--) pass.push([xc(y), y]);
+  stroke(pass, 4.5, (x, y) => y > y1 && set(m, x, y, "p", base * (1 - (y - (y1 + 1)) / (H - 1 - (y1 + 1)))));
+  // 길 옆 언덕 (길을 내려다보는 둔덕) — 굽이 바깥쪽
+  for (const cy of [36, 50, 62]) { const side = Math.cos((cy - (y1 + 1)) / 7) >= 0 ? 1 : -1; disc(m, xc(cy) + side * 5, cy, 2.2, (x, y) => { if (m.t[y][x] === "m") set(m, x, y, "h", 3); }); }
+  clearBottom(m, 15, ".");
+  write("crowd_siege_mountain", "샘플전투2 공성 산성 (원격): 산 · 절벽 사이 고지 위의 성 (성 높이 +2), 구불구불한 고갯길 하나로만 성문에 닿음, 길 옆 언덕 · 성벽 위 궁병이 내려다봄. 지키는 편(teamB)은 성 안", m,
+    { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 12, facing: "S" } });
+}

@@ -445,6 +445,9 @@ namespace Game.Tests.Battle
         [InlineData("crowd_forest")]
         [InlineData("crowd_pass")]
         [InlineData("crowd_siege")]
+        [InlineData("crowd_siege_plain")]
+        [InlineData("crowd_siege_river")]
+        [InlineData("crowd_siege_mountain")]
         public void CrowdMapsAreValidAndBothSidesCanReachEachOther(string id)
         {
             var map = Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), id);
@@ -513,6 +516,50 @@ namespace Game.Tests.Battle
             Assert.Equal(0, insideBefore); // 부서지기 전엔 아무도 못 들어감
             Assert.True(openTick > 0, "gate never broke");
             Assert.True(inside > 0 || b.IsOver, "nobody went in"); // 부서지면 들어감
+        }
+
+        /// <summary>공성전 맵 세트 (평지 성곽 · 강가 성채 · 산성): 성문이 부서지기 전엔 아무도 성 안(성벽 x0..x1 · y0..y1 안쪽 칸)에 못 들어가고, 부서지면 들어간다.</summary>
+        [Theory]
+        [InlineData("crowd_siege_plain", 2, 5, 42, 3, 32)]
+        [InlineData("crowd_siege_river", 1, 8, 39, 3, 26)]
+        [InlineData("crowd_siege_mountain", 1, 10, 37, 2, 24)]
+        public void SiegeMapsHoldGatesUntilBroken(string id, int gates, int x0, int x1, int y0, int y1)
+        {
+            var setup = One("infantry", id);
+            setup.AllyUnits[0].Count = 120;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            Assert.Equal(gates, b.Gates.Count);
+            foreach (var g in b.Gates) Assert.Equal(CrowdBattle.Enemy, g.Defender);
+            Assert.Equal(CrowdBattle.Enemy, b.SiegeDefender);
+            var a = b.Commander(CrowdBattle.Ally);
+            b.OrderAttack(a.Id, b.Commander(CrowdBattle.Enemy).Id);
+            int Inside()
+            {
+                int n = 0;
+                foreach (var s in a.Soldiers)
+                {
+                    if (!s.Alive) continue;
+                    b.Terrain.CellOf(s.Pos, out int c, out int r);
+                    if (c > x0 && c < x1 && r > y0 && r < y1) n++;
+                }
+                return n;
+            }
+            int openTick = -1, insideBefore = 0;
+            for (int t = 0; t < 6000 && !b.IsOver; t++)
+            {
+                b.Step();
+                if (openTick < 0)
+                {
+                    insideBefore += Inside();
+                    foreach (var g in b.Gates) if (g.Open) openTick = b.Tick;
+                }
+                else if (b.Tick > openTick + 300) break;
+            }
+            int inside = Inside();
+            _out.WriteLine($"{id}: gate opened at {openTick}, inside before {insideBefore}, inside after {inside}, end {b.EndReason}");
+            Assert.Equal(0, insideBefore);
+            Assert.True(openTick > 0, $"{id} gate never broke");
+            Assert.True(inside > 0 || b.IsOver, $"{id} nobody went in");
         }
 
         // ---- 장수 성향 (R-138) ----
