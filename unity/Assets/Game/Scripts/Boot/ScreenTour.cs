@@ -431,6 +431,32 @@ namespace Game.Unity.Boot
                 ss.FocusPointForTour(30f, 66f, 26f);
                 yield return Shot("44d_siege_inside", null, 0.3f);
             }
+            // 공성전 맵 3개 (원격 PR #282): 맵 보기 (성 전체) · 성문 앞 · 부서진 뒤
+            foreach (var sm in new[] { "crowd_siege_plain", "crowd_siege_river", "crowd_siege_mountain" })
+            {
+                yield return Shot("45_" + sm + "_view", () => new MapViewScreen(sm), 0.6f);
+                var su2 = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Commander = true, General = "warrior" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" },
+                };
+                var se2 = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "spearman", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 2, Col = 0, Troop = "archer" },
+                };
+                var sb2 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = su2, EnemyUnits = se2, AllyAdvance = true, Seed = 19,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, sm) }, startNow: true);
+                yield return Shot("45_" + sm + "_0open", () => sb2, 0.5f);
+                for (int w = 0; w < 120 && !sb2.GateHitForTour; w++) sb2.StepForTour(10);
+                sb2.StepForTour(30);
+                sb2.FocusGateForTour(22f);
+                yield return Shot("45_" + sm + "_1gate", null, 0.3f);
+                for (int w = 0; w < 200 && !sb2.GateOpenForTour; w++) sb2.StepForTour(10);
+                sb2.StepForTour(80);
+                sb2.FocusGateForTour(28f);
+                yield return Shot("45_" + sm + "_2inside", null, 0.3f);
+            }
             // 부대 하나면 [전체] 없음 (R-139)
             {
                 var one = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
