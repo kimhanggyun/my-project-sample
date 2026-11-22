@@ -218,7 +218,9 @@ namespace Game.Unity.Screens
         /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병", 위임이면 "· 자동".</summary>
         private string TagName(CrowdArmy a)
         {
-            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id);
+            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id)
+                + " · " + T("ui.crowd.general." + a.GeneralInfo.Preset); // 장수 성향 (R-138)
+            if (a.GeneralEscaping && a.General.Alive) s += " · " + T("ui.crowd.generalEscaping");
             if (a.Team == CrowdBattle.Ally && a.Delegated) s += " · " + T("ui.sample2.auto");
             if (a.Marching) s += " · " + T("ui.sample2.marching");
             // 켜져 있는 스킬 (R-130)
@@ -772,6 +774,13 @@ namespace Game.Unity.Screens
                 if (s.Alive && s.Team == team && !s.IsGeneral) { sum += _field.ToWorld(s.Pos); n++; }
             if (n > 0) _field.Rig.LookAt(sum / n);
             _field.Rig.SetDistance(distance);
+        }
+
+        /// <summary>캡처 투어: 그 자리 우리 부대 장수 가까이로 카메라.</summary>
+        public void FocusPlaceGeneralForTour(string place, float distance)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+                if (a.Place == place) { _field.Rig.LookAt(_field.ToWorld(a.General.Pos)); _field.Rig.SetDistance(distance); }
         }
 
         /// <summary>캡처 투어: 우리 총대장(말 탄 장수) 가까이로 카메라.</summary>

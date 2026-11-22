@@ -352,6 +352,33 @@ namespace Game.Unity.Boot
                 }
             }
 
+            // 장수 성향 (R-138): 왼쪽 맹장(선봉) · 가운데 장수 · 오른쪽 책사(멀리 뒤)
+            {
+                var gu = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", General = "warrior" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", General = "standard", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "infantry", General = "strategist" },
+                };
+                var ge = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>();
+                foreach (var u in gu) ge.Add(new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = u.Row, Col = u.Col, Troop = u.Troop, Commander = u.Commander });
+                var sgn = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = gu, EnemyUnits = ge, AllyAdvance = false, EnemyAdvance = true, Seed = 9,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain") }, startNow: true);
+                yield return Shot("42_generals_open", () => sgn, 0.4f);
+                sgn.StepForTour(1);
+                sgn.FocusArmyForTour(0, 52f); // 세 부대 모두: 맹장은 대열 앞, 책사는 멀리 뒤
+                yield return Shot("42b_generals_roles", null, 0.3f);
+                sgn.FocusPlaceGeneralForTour("front_left", 14f);
+                yield return Shot("42b_generals_warrior", null, 0.3f);
+                sgn.FocusPlaceGeneralForTour("front_right", 14f);
+                yield return Shot("42b_generals_strategist", null, 0.3f);
+                sgn.PressForTour(null, "advance");
+                for (int w = 0; w < 400 && !sgn.FightingForTour; w++) sgn.StepForTour(2);
+                sgn.StepForTour(15);
+                sgn.FocusPlaceGeneralForTour("front_left", 16f);
+                yield return Shot("42c_generals_fight", null, 0.3f);
+            }
+
             _app.ShowMain("story");
             Done = true;
             Debug.Log($"화면 캡처 {Saved.Count}장: {_folder}");

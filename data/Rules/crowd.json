@@ -81,6 +81,23 @@
   "marchTerrains": ["forest", "marsh", "pass", "burnt"],
   "_flow": "막힌 병사의 지름길 (R-137): 부대 가운데 칸까지의 거리 지도를 따라 돌아온다. 지도는 부대 칸이 바뀌거나 flowRefreshTicks마다 새로 (막힌 병사가 있는 부대만). 행군은 [행군 이동]으로 고를 때만 (자동 행군 기본 끔)",
   "flowRefreshTicks": 10,
+  "_generals": "장수 성향 (R-138): generalPresets = 무력 · 지력 · 자리(front 선봉 · back 대열 뒤 · rear 멀리 뒤) · 병종 적성(aptitude: 뿌리 병종 또는 * → S · A · B · C, 없으면 B). 장수 체력 = generalHp × 무력 ÷ generalHpMight. 무력 generalFightMight 이상이면 장수가 직접 싸움 (한 방 + (무력 − 50) × generalMightPp %p). 체력 generalEscapeHpPct% 이하면 물러남 (도망 걸음 × generalEscapeSpeed × (1 + 무력 ÷ 200)). 적성 %p는 치는 쪽 + · 맞는 쪽 −. 나중에 캠페인 장수의 능력치 · 적성으로 바꿈",
+  "generalPresets": {
+    "warrior": { "might": 92, "intellect": 40, "role": "front" },
+    "standard": { "might": 70, "intellect": 65, "role": "back" },
+    "strategist": { "might": 38, "intellect": 92, "role": "rear" }
+  },
+  "aptitudePp": { "S": 15, "A": 8, "B": 0, "C": -10 },
+  "generalHpMight": 70,
+  "generalFightMight": 60,
+  "generalMightPp": 2,
+  "generalFront": 1.2,
+  "generalRear": 4,
+  "generalEscapeHpPct": 30,
+  "generalEscapeSpeed": 1.5,
+  "_generalGuard": "장수 받는 피해 % = 100 − (무력 − 30) × generalGuardPerMight ÷ 100, 최소 generalGuardMinPct (무력 92 → 약 38%, 38 → 92%)",
+  "generalGuardPerMight": 100,
+  "generalGuardMinPct": 25,
   "_obstacles": "막는 소품 (R-134): 지형마다 2.5 × 2.5 넓이에 perCell개 (촘촘한 맵은 칸 넓이에 맞춰 줄임), 병사가 못 들어가는 반지름 radius칸 (크기 × 0.75 ~ 1.25). 나무는 기둥만 막고 잎은 통과, 풀 · 갈대 · 덤불은 막지 않음",
   "obstacles": {
     "forest": { "perCell": 2.2, "radius": 0.28 },

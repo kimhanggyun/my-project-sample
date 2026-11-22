@@ -90,6 +90,25 @@ namespace Game.Battle.Model.Crowd
         public System.Collections.Generic.IReadOnlyDictionary<string, string> RecommendedFormation { get; private set; } = new System.Collections.Generic.Dictionary<string, string>();
         /// <summary>지형마다 막는 소품 (R-134, 나무 기둥 · 바위): 맵 칸 하나에 몇 개 · 반지름.</summary>
         public System.Collections.Generic.IReadOnlyDictionary<string, CrowdObstacleSpec> Obstacles { get; private set; } = new System.Collections.Generic.Dictionary<string, CrowdObstacleSpec>();
+        // 장수 성향 (R-138)
+        public sealed class GeneralPreset
+        {
+            public int Might, Intellect;
+            public string Role;
+            public System.Collections.Generic.IReadOnlyDictionary<string, string> Aptitude = new System.Collections.Generic.Dictionary<string, string>();
+        }
+        public System.Collections.Generic.IReadOnlyDictionary<string, GeneralPreset> GeneralPresets { get; private set; } = new System.Collections.Generic.Dictionary<string, GeneralPreset>();
+        public System.Collections.Generic.IReadOnlyDictionary<string, Fix> AptitudePp { get; private set; } = new System.Collections.Generic.Dictionary<string, Fix>();
+        public Fix GeneralHpMight { get; private set; }
+        public int GeneralFightMight { get; private set; }
+        public Fix GeneralMightPp { get; private set; }
+        public Fix GeneralFront { get; private set; }
+        public Fix GeneralRear { get; private set; }
+        public int GeneralEscapeHpPct { get; private set; }
+        public Fix GeneralEscapeSpeed { get; private set; }
+        /// <summary>장수 받는 피해 줄이기: 무력 1당 % (× 100 — 100 = 1%p).</summary>
+        public int GeneralGuardPerMight { get; private set; }
+        public int GeneralGuardMinPct { get; private set; }
         // 행군 대열 (R-136)
         public int MarchWidth { get; private set; }
         public Fix MarchTrailStep { get; private set; }
@@ -197,6 +216,15 @@ namespace Game.Battle.Model.Crowd
                 MarchReformRange = JsonUtil.RequireFix(o, "marchReformRange", c),
                 MarchTerrains = JsonUtil.StringList(o, "marchTerrains"),
                 FlowRefreshTicks = (int)JsonUtil.RequireLong(o, "flowRefreshTicks", c),
+                GeneralHpMight = JsonUtil.RequireFix(o, "generalHpMight", c),
+                GeneralFightMight = (int)JsonUtil.RequireLong(o, "generalFightMight", c),
+                GeneralMightPp = JsonUtil.RequireFix(o, "generalMightPp", c),
+                GeneralFront = JsonUtil.RequireFix(o, "generalFront", c),
+                GeneralRear = JsonUtil.RequireFix(o, "generalRear", c),
+                GeneralEscapeHpPct = (int)JsonUtil.RequireLong(o, "generalEscapeHpPct", c),
+                GeneralEscapeSpeed = JsonUtil.RequireFix(o, "generalEscapeSpeed", c),
+                GeneralGuardPerMight = (int)JsonUtil.RequireLong(o, "generalGuardPerMight", c),
+                GeneralGuardMinPct = (int)JsonUtil.RequireLong(o, "generalGuardMinPct", c),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),
@@ -218,6 +246,25 @@ namespace Game.Battle.Model.Crowd
                 obs[p.Name] = new CrowdObstacleSpec { PerCell = JsonUtil.RequireFix(v, "perCell", c + ".obstacles." + p.Name), Radius = JsonUtil.RequireFix(v, "radius", c + ".obstacles." + p.Name) };
             }
             rules.Obstacles = obs;
+            var presets = new System.Collections.Generic.Dictionary<string, GeneralPreset>();
+            foreach (var p in JsonUtil.RequireObject(o, "generalPresets", c).Properties())
+            {
+                var v = (JObject)p.Value;
+                string pc = c + ".generalPresets." + p.Name;
+                var apt = new System.Collections.Generic.Dictionary<string, string>();
+                if (v["aptitude"] is JObject ao) foreach (var ap in ao.Properties()) apt[ap.Name] = (string)ap.Value;
+                presets[p.Name] = new GeneralPreset
+                {
+                    Might = (int)JsonUtil.RequireLong(v, "might", pc),
+                    Intellect = (int)JsonUtil.RequireLong(v, "intellect", pc),
+                    Role = JsonUtil.RequireString(v, "role", pc),
+                    Aptitude = apt,
+                };
+            }
+            rules.GeneralPresets = presets;
+            var aptPp = new System.Collections.Generic.Dictionary<string, Fix>();
+            foreach (var p in JsonUtil.RequireObject(o, "aptitudePp", c).Properties()) aptPp[p.Name] = JsonUtil.ToFix(p.Value, c + ".aptitudePp." + p.Name);
+            rules.AptitudePp = aptPp;
             return rules;
         }
 

@@ -479,6 +479,80 @@ namespace Game.Tests.Battle
             Assert.Equal(Fix.FromInt(3), top); // 꼭대기 = 9 ÷ 3
         }
 
+        // ---- 장수 성향 (R-138) ----
+
+        private static CrowdBattle WithGeneral(string ally, string enemy = "standard", string map = "crowd_plain")
+        {
+            var setup = One("infantry", map);
+            setup.AllyUnits[0].General = ally;
+            setup.EnemyUnits[0].General = enemy;
+            return new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+        }
+
+        [Fact]
+        public void GeneralStandsByRoleAndToughnessFollowsMight()
+        {
+            var w = WithGeneral("warrior").Commander(CrowdBattle.Ally);
+            var st = WithGeneral("standard").Commander(CrowdBattle.Ally);
+            var sg = WithGeneral("strategist").Commander(CrowdBattle.Ally);
+            Fix front = Fix.FromInt(-99), back = Fix.FromInt(99);
+            foreach (var s in w.Soldiers) if (!s.IsGeneral) { if (s.Slot.Y > front) front = s.Slot.Y; if (s.Slot.Y < back) back = s.Slot.Y; }
+            Assert.True(w.General.Slot.Y > front); // 맹장 = 대열 맨 앞 (선봉)
+            Assert.True(st.General.Slot.Y < back); // 장수 = 대열 뒤
+            Assert.True(sg.General.Slot.Y < st.General.Slot.Y); // 책사 = 더 뒤
+            Assert.True(w.General.MaxHp > st.General.MaxHp && st.General.MaxHp > sg.General.MaxHp); // 무력만큼 버팀
+            Assert.Equal(b0().Rules.GeneralHp, st.General.MaxHp); // 장수(무력 70) = 지금까지와 같음
+            CrowdBattle b0() => WithGeneral("standard");
+        }
+
+        [Fact]
+        public void WarriorFightsStrategistDoesNot()
+        {
+            int Swings(string preset)
+            {
+                var b = WithGeneral(preset);
+                b.UseSkillData(Defs.Skills);
+                var a = b.Commander(CrowdBattle.Ally);
+                b.OrderAttack(a.Id, b.Commander(CrowdBattle.Enemy).Id);
+                int hits = 0;
+                for (int t = 0; t < 1500 && !b.IsOver; t++) { b.Step(); if (a.General.LastAttackTick == b.Tick) hits++; }
+                _out.WriteLine($"{preset}: end {b.Tick} {b.EndReason} hp {a.General.Hp}/{a.General.MaxHp} esc {a.GeneralEscaping} fled {a.General.FledTick} died {a.General.DiedTick}");
+                return hits;
+            }
+            int warrior = Swings("warrior"), strategist = Swings("strategist");
+            _out.WriteLine($"general swings: warrior {warrior}, strategist {strategist}");
+            Assert.True(warrior > 0);
+            Assert.Equal(0, strategist);
+        }
+
+        [Fact]
+        public void WoundedGeneralRidesAwayAndBattleSaysSo()
+        {
+            var b = WithGeneral("warrior");
+            var a = b.Commander(CrowdBattle.Ally);
+            var y0 = a.General.Pos.Y;
+            a.General.Hp = 3; // 크게 다침
+            for (int t = 0; t < 600 && !b.IsOver; t++) b.Step();
+            Assert.True(a.GeneralEscaping);
+            Assert.True(a.General.FledTick >= 0, "general fled");
+            Assert.True(a.General.DiedTick < 0); // 쓰러진 게 아니라 빠져나감
+            Assert.Equal(CrowdBattle.Enemy, b.Winner);
+            Assert.Equal("generalFled", b.EndReason); // 총대장이 달아남 (사로잡음과 다름)
+        }
+
+        [Fact]
+        public void TroopAptitudeChangesDamage()
+        {
+            var b = WithGeneral("standard");
+            var me = b.Commander(CrowdBattle.Ally);
+            Assert.Equal(Fix.Zero, b.AptitudePp(me)); // 기본 B
+            me.GeneralInfo.Aptitude["infantry"] = "S";
+            Assert.Equal(Fix.FromInt(15), b.AptitudePp(me));
+            me.GeneralInfo.Aptitude.Clear();
+            me.GeneralInfo.Aptitude["*"] = "C"; // 모든 병종 C
+            Assert.Equal(Fix.FromInt(-10), b.AptitudePp(me));
+        }
+
         // ---- 행군 대열 (R-136) ----
 
         /// <summary>협곡 끝까지 이동: (행군했는지, 도착 뒤 부대 가운데 15칸 안 병사 비율 %, 걸린 틱).</summary>
