@@ -126,8 +126,7 @@ namespace Game.Unity.Screens
                 Vector3 sp = Vector3.zero;
                 if (show)
                 {
-                    var anchor = a.General.Alive ? a.General.Pos : a.Centroid();
-                    sp = cam.WorldToScreenPoint(_field.ToWorld(anchor) + Vector3.up * 1.4f);
+                    sp = cam.WorldToScreenPoint(_field.TagAnchor(a) + Vector3.up * 1.4f);
                     show = sp.z > 0 && cam.pixelRect.Contains(sp);
                 }
                 if (t.root.gameObject.activeSelf != show) t.root.gameObject.SetActive(show);
