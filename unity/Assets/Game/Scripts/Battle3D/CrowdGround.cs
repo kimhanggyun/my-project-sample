@@ -23,6 +23,7 @@ namespace Game.Unity.Battle3D
         private const int TexPerUnit = 4;
 
         private readonly CrowdTerrain _t;
+        private readonly CrowdBattle _battle;
         private readonly float _w, _d;
         private readonly int _vx, _vz;          // 꼭짓점 수
         private readonly float[] _h;            // 꼭짓점 높이 (x = -Margin + i, z = -Margin + j)
@@ -39,6 +40,7 @@ namespace Game.Unity.Battle3D
         public CrowdGround(Transform parent, CrowdBattle battle, System.Func<Color, Material> newMaterial)
         {
             _t = battle.Terrain;
+            _battle = battle;
             _w = (float)battle.Rules.FieldWidth.ToDisplayDouble();
             _d = (float)battle.Rules.FieldDepth.ToDisplayDouble();
             _root = new GameObject("CrowdGround");
@@ -357,6 +359,7 @@ namespace Game.Unity.Battle3D
                         kinds[id] = kind = (list, p?.perCell ?? 0f, p?.scale ?? 1f);
                     }
                     if (kind.batches.Count == 0) continue;
+                    if (_battle.Rules.Obstacles.ContainsKey(id)) continue; // 막는 소품(나무 · 바위)은 규칙이 정한 자리에 (아래, R-134)
                     int i = r * mw + c;
                     int count = (int)kind.perCell + (Rand(i, 99) < kind.perCell - (int)kind.perCell ? 1 : 0);
                     for (int k = 0; k < count; k++)
@@ -368,6 +371,19 @@ namespace Game.Unity.Battle3D
                         batch.Add(new Vector3(x, GroundHeight(x, z) - 0.05f, z), Quaternion.Euler(0f, Rand(i, k * 4 + 5) * 360f, 0f), s);
                     }
                 }
+            PlaceObstacles(kinds);
+        }
+
+        /// <summary>막는 소품 (R-134): 규칙의 나무 기둥 · 바위 자리 그대로 그린다 (병사가 비켜 가는 자리와 그림이 같음).</summary>
+        private void PlaceObstacles(Dictionary<string, (List<InstanceBatch> batches, float perCell, float scale)> kinds)
+        {
+            foreach (var o in _battle.Obstacles)
+            {
+                if (!kinds.TryGetValue(o.Terrain, out var kind) || kind.batches.Count == 0) continue;
+                float x = (float)o.Pos.X.ToDisplayDouble(), z = (float)o.Pos.Y.ToDisplayDouble();
+                var batch = kind.batches[o.Variant % kind.batches.Count];
+                batch.Add(new Vector3(x, GroundHeight(x, z) - 0.05f, z), Quaternion.Euler(0f, o.YawDeg, 0f), kind.scale * (float)o.Size.ToDisplayDouble());
+            }
         }
 
         private static float Rand(int cell, int salt)

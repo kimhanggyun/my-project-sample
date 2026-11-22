@@ -15,7 +15,9 @@ namespace Game.Unity.Screens
         public static readonly List<CrowdUnitSpec> Ally = new List<CrowdUnitSpec>();
         public static readonly List<CrowdUnitSpec> Enemy = new List<CrowdUnitSpec>();
         public static bool EnemyAdvance;
-        public static string Map = "plain";
+        /// <summary>처음 고른 맵 = 평원 (모두 평지, 60 × 100 — 2026-11-22 사용자: 60 × 60 평지 카드 뺌).</summary>
+        public const string DefaultMap = "test_plain";
+        public static string Map = DefaultMap;
         private static bool _loaded;
 
         public static List<CrowdUnitSpec> Of(bool ally) => ally ? Ally : Enemy;
@@ -49,7 +51,7 @@ namespace Game.Unity.Screens
             {
                 var parts = s.Split('|');
                 EnemyAdvance = parts[0] == "1";
-                Map = parts[1];
+                Map = System.Array.IndexOf(TestBattleTabView.Maps, parts[1]) >= 0 ? parts[1] : DefaultMap; // 예전 "plain"(60 × 60)은 평원으로
                 Ally.Clear(); Enemy.Clear();
                 for (int i = 2; i < parts.Length; i++)
                 {
@@ -91,7 +93,7 @@ namespace Game.Unity.Screens
         private RectTransform _root;
         private static readonly string[] Troops = { "infantry", "spearman", "archer", "cavalry" };
         /// <summary>맵 카드 (R-133): 평지(맵 없음) + 기존 전장 맵 (수상전 맵은 뺌).</summary>
-        public static readonly string[] Maps = { "plain", "hills_valley", "river_ford", "marsh_lake", "test_forest", "test_ambush", "test_mountain_pass", "test_plain" };
+        public static readonly string[] Maps = { "test_plain", "hills_valley", "river_ford", "marsh_lake", "test_forest", "test_ambush", "test_mountain_pass" };
 
         private static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
 
