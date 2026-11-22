@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Game.Data.Json;
 using Game.Foundation.Math;
 using Newtonsoft.Json.Linq;
@@ -109,6 +110,11 @@ namespace Game.Battle.Model.Crowd
         /// <summary>장수 받는 피해 줄이기: 무력 1당 % (× 100 — 100 = 1%p).</summary>
         public int GeneralGuardPerMight { get; private set; }
         public int GeneralGuardMinPct { get; private set; }
+        // 진형 특성 · 상성 (R-141)
+        public IReadOnlyDictionary<string, Fix> FormationArrowHitPct { get; private set; } = new Dictionary<string, Fix>();
+        public IReadOnlyDictionary<string, Fix> FormationEncircleDrainPct { get; private set; } = new Dictionary<string, Fix>();
+        public IReadOnlyDictionary<string, Fix> FormationSpeedPct { get; private set; } = new Dictionary<string, Fix>();
+        public IReadOnlyDictionary<string, Fix> FormationCounterPp { get; private set; } = new Dictionary<string, Fix>();
         // 공성 (R-140)
         public int GateHp { get; private set; }
         public int GateHitDamage { get; private set; }
@@ -285,6 +291,16 @@ namespace Game.Battle.Model.Crowd
             var aptPp = new System.Collections.Generic.Dictionary<string, Fix>();
             foreach (var p in JsonUtil.RequireObject(o, "aptitudePp", c).Properties()) aptPp[p.Name] = JsonUtil.ToFix(p.Value, c + ".aptitudePp." + p.Name);
             rules.AptitudePp = aptPp;
+            Dictionary<string, Fix> FixMap(string key)
+            {
+                var d = new Dictionary<string, Fix>();
+                foreach (var p in JsonUtil.RequireObject(o, key, c).Properties()) d[p.Name] = JsonUtil.ToFix(p.Value, c + "." + key + "." + p.Name);
+                return d;
+            }
+            rules.FormationArrowHitPct = FixMap("formationArrowHitPct");
+            rules.FormationEncircleDrainPct = FixMap("formationEncircleDrainPct");
+            rules.FormationSpeedPct = FixMap("formationSpeedPct");
+            rules.FormationCounterPp = FixMap("formationCounterPp");
             return rules;
         }
 

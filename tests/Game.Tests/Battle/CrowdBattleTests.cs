@@ -483,6 +483,68 @@ namespace Game.Tests.Battle
             Assert.Equal(Fix.FromInt(3), top); // 꼭대기 = 9 ÷ 3
         }
 
+        // ---- 진형 11개 (R-141) ----
+
+        [Fact]
+        public void EveryFormationPlacesEveryoneWithoutOverlap()
+        {
+            foreach (var id in CrowdFormations.All)
+                foreach (int n in new[] { 1, 7, 60, 150 })
+                {
+                    var slots = CrowdFormations.Slots(id, n, Fix.FromRatio(45, 100));
+                    Assert.Equal(n, slots.Count);
+                    Fix sx = Fix.Zero, sy = Fix.Zero;
+                    foreach (var s in slots) { sx += s.X; sy += s.Y; }
+                    Assert.True(Fix.Max(sx / n, -(sx / n)) < Fix.FromRatio(1, 100) && Fix.Max(sy / n, -(sy / n)) < Fix.FromRatio(1, 100), $"{id} {n} centered");
+                    for (int i = 0; i < slots.Count; i++)
+                        for (int j = i + 1; j < slots.Count; j++)
+                            Assert.True((slots[i] - slots[j]).Length >= Fix.FromRatio(30, 100), $"{id} {n} overlap {i} {j}");
+                }
+        }
+
+        [Fact]
+        public void FormationShapesMatchTheirIcons()
+        {
+            Fix sp = Fix.OneValue;
+            Fix Width(System.Collections.Generic.List<Game.Battle.Model.Geometry.Vec> s) { Fix a = Fix.FromInt(999), b = Fix.FromInt(-999); foreach (var p in s) { if (p.X < a) a = p.X; if (p.X > b) b = p.X; } return b - a; }
+            Fix Depth(System.Collections.Generic.List<Game.Battle.Model.Geometry.Vec> s) { Fix a = Fix.FromInt(999), b = Fix.FromInt(-999); foreach (var p in s) { if (p.Y < a) a = p.Y; if (p.Y > b) b = p.Y; } return b - a; }
+            var single = CrowdFormations.Slots(CrowdFormations.Single, 60, sp);
+            var line = CrowdFormations.Slots(CrowdFormations.Line, 60, sp);
+            var column = CrowdFormations.Slots(CrowdFormations.Column, 60, sp);
+            Assert.Equal(Fix.Zero, Depth(single)); // 1줄
+            Assert.True(Width(single) > Width(line)); // 가장 넓음
+            Assert.True(Depth(column) > Width(column) * 3); // 종대 = 좁고 김 (폭 4명)
+            Assert.True(Width(CrowdFormations.Slots(CrowdFormations.Loose, 60, sp)) > Width(CrowdFormations.Slots(CrowdFormations.Thick, 60, sp))); // 산개 = 간격 넓음
+            // 좌 사선: 오른쪽이 앞 (왼쪽을 물려 뺌), 우 사선은 반대
+            Fix Slope(string f) { Fix s = Fix.Zero; foreach (var p in CrowdFormations.Slots(f, 60, sp)) s += p.X * p.Y; return s; }
+            Assert.True(Slope(CrowdFormations.EchelonL) > Fix.Zero);
+            Assert.True(Slope(CrowdFormations.EchelonR) < Fix.Zero);
+            // 분진: 가운데가 빔
+            foreach (var p in CrowdFormations.Slots(CrowdFormations.Split, 60, sp)) Assert.True(Fix.Max(p.X, -p.X) > Fix.OneValue, "split gap");
+            // 원진: 사람이 적으면 가운데가 빈 둘레
+            var ring = CrowdFormations.Slots(CrowdFormations.Circle, 20, sp);
+            foreach (var p in ring) Assert.True(p.Length > Fix.OneValue, "circle hollow");
+        }
+
+        [Fact]
+        public void LooseTakesFewerArrows()
+        {
+            int Hits(string formation)
+            {
+                var setup = One("archer", "crowd_plain");
+                setup.EnemyUnits[0].Formation = formation;
+                setup.EnemyUnits[0].Count = 100;
+                var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+                var a = b.Commander(CrowdBattle.Ally);
+                b.OrderAttack(a.Id, b.Commander(CrowdBattle.Enemy).Id);
+                for (int t = 0; t < 900 && !b.IsOver; t++) b.Step();
+                return b.ArrowHits;
+            }
+            int line = Hits(CrowdFormations.Line), loose = Hits(CrowdFormations.Loose);
+            _out.WriteLine($"arrow hits: line {line}, loose {loose}");
+            Assert.True(loose < line, $"loose {loose} line {line}");
+        }
+
         // ---- 공성 (R-140) ----
 
         [Fact]
