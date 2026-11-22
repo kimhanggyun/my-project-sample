@@ -563,6 +563,14 @@ namespace Game.Battle.Model.Crowd
             }
         }
 
+        /// <summary>진형 특성 배수 % (표에 없으면 100).</summary>
+        private static Fix FormationPct(IReadOnlyDictionary<string, Fix> table, string formation) =>
+            table.TryGetValue(formation, out var v) ? v : Fix.FromInt(100);
+
+        /// <summary>진형 상성 %p (R-141, crowd.json formationCounterPp "공격진형>맞는진형" — 실제 시험하며 채움, 지금은 비어 있음).</summary>
+        public Fix FormationCounterPp(CrowdArmy atk, CrowdArmy def) =>
+            Rules.FormationCounterPp.TryGetValue(atk.Formation + ">" + def.Formation, out var pp) ? pp : Fix.Zero;
+
         /// <summary>병종 적성 %p (R-138): 장수의 그 병종 적성 등급 → aptitudePp (S · A · B · C).</summary>
         public Fix AptitudePp(CrowdArmy a) =>
             Rules.AptitudePp.TryGetValue(a.GeneralInfo.AptitudeOf(a.Troop.BaseId), out var pp) ? pp : Fix.Zero;
@@ -976,7 +984,7 @@ namespace Game.Battle.Model.Crowd
                 if (ar.ArriveTick > Tick) continue;
                 if (ar.TargetId < 0) { Arrows.RemoveAt(k); k--; continue; } // 화살비 화살 (보이기만, 피해는 StepSkills)
                 var t = Soldiers[ar.TargetId];
-                if (t.Alive && _rng.Chance(r.ArrowHitChance))
+                if (t.Alive && _rng.Chance(r.ArrowHitChance * FormationPct(r.FormationArrowHitPct, Armies[t.Army].Formation) / 100)) // 산개는 덜 맞음 (R-141)
                 {
                     var ta = Armies[t.Army];
                     int side = SideOf(ta, ta.TickCentroid, ar.From);
@@ -1101,7 +1109,7 @@ namespace Game.Battle.Model.Crowd
                 // 이번 틱 옆 · 뒤에서 맞고 있으면 초당 flankDrain · rearDrain (여러 번 맞아도 한 번)
                 if (a.SideHitTick[3] == Tick) LoseMorale(a, r.RearDrain * dt);
                 else if (a.SideHitTick[1] == Tick || a.SideHitTick[2] == Tick) LoseMorale(a, r.FlankDrain * dt);
-                if (a.Encircled) LoseMorale(a, r.EncircleDrain * dt);
+                if (a.Encircled) LoseMorale(a, r.EncircleDrain * dt * FormationPct(r.FormationEncircleDrainPct, a.Formation) / 100); // 원진은 포위에 덜 흔들림 (R-141)
                 else if (a.LastHitTick < Tick - r.CalmTicks) a.Morale = Fix.Min(r.MoraleStart, a.Morale + r.MoraleRegen * dt);
                 if (a.Morale < Fix.Zero) a.Morale = Fix.Zero;
                 a.Wavering = a.Morale <= r.WaverAt;
@@ -1163,7 +1171,7 @@ namespace Game.Battle.Model.Crowd
             var foeTroop = foeArmy.Troop;
             int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
             Fix mightPp = s.IsGeneral ? Fix.FromInt(army.GeneralInfo.Might - 50) * Rules.GeneralMightPp : Fix.Zero; // 장수가 직접 친 한 방 (R-138)
-            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy));
+            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy) + FormationCounterPp(army, foeArmy));
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
@@ -1301,7 +1309,7 @@ namespace Game.Battle.Model.Crowd
             }
             var d = goal - a.Center;
             Fix dist = d.Length;
-            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center);
+            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center) * FormationPct(r.FormationSpeedPct, a.Formation) / 100;
             if (a.Order == CrowdOrders.Move && dist <= baseSpeed * dt)
             {
                 a.Center = goal;
