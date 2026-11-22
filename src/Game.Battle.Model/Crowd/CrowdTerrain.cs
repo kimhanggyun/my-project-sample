@@ -10,6 +10,28 @@ namespace Game.Battle.Model.Crowd
     /// 지형 규칙은 기존 데이터 그대로 — 이동 비용 · 못 가는 지형 · 높이 (terrainRules.json), 병종 전투 보정 %p (terrainCombat.json, 치는 병사가 선 지형).
     /// 전장 좌표 (x 오른쪽, y 적 쪽) ↔ 맵 칸 (열 = x / 칸, 행 = 맵 높이 − 1 − y / 칸).
     /// </summary>
+    /// <summary>
+    /// 막는 소품 하나 (R-134): 나무 기둥 · 바위. 병사는 들어가지 못하고 비켜 간다. 자리는 맵 칸 번호로 정해 늘 같다 (화면도 이 자리에 그림).
+    /// </summary>
+    public sealed class CrowdObstacle
+    {
+        public string Terrain;
+        public Vec Pos;
+        public Fix Radius;
+        /// <summary>크기 배수 (반지름 · 그림 크기에 같이 곱함).</summary>
+        public Fix Size;
+        /// <summary>그림 고르기 · 방향 (보이기만).</summary>
+        public int Variant;
+        public int YawDeg;
+    }
+
+    /// <summary>지형마다 막는 소품 설정 (crowd.json obstacles): 맵 칸 하나에 몇 개 · 기본 반지름.</summary>
+    public sealed class CrowdObstacleSpec
+    {
+        public Fix PerCell;
+        public Fix Radius;
+    }
+
     public sealed class CrowdTerrain
     {
         public MapDef Map { get; }
@@ -89,6 +111,55 @@ namespace Game.Battle.Model.Crowd
         }
 
         public int HeightAt(Vec p) { var r = RuleAt(p); return r != null ? r.Height : 0; }
+
+        // ---- 막는 소품 (R-134) ----
+
+        /// <summary>정수 해시 → 0 ~ 1 (고정소수점, 결정적).</summary>
+        private static Fix Hash01(int cell, int salt)
+        {
+            unchecked
+            {
+                uint v = (uint)cell * 2654435761u ^ (uint)(salt + 1) * 40503u;
+                v ^= v >> 13; v *= 0x5bd1e995u; v ^= v >> 15;
+                return Fix.FromRaw((long)((v & 0xFFFFFF) % 10000));
+            }
+        }
+
+        /// <summary>
+        /// 지형마다 막는 소품을 깐다: 칸마다 perCell개 (소수 부분은 그 확률로 하나 더), 칸 안 흩뿌림 (칸 경계를 조금 넘음),
+        /// 크기 × 0.75 ~ 1.25. 같은 맵이면 늘 같다.
+        /// </summary>
+        public List<CrowdObstacle> MakeObstacles(IReadOnlyDictionary<string, CrowdObstacleSpec> specs)
+        {
+            var list = new List<CrowdObstacle>();
+            if (specs == null) return list;
+            int mw = Map.Width, mh = Map.Height;
+            for (int r = 0; r < mh; r++)
+                for (int c = 0; c < mw; c++)
+                {
+                    string id = Map.TerrainAt(c, r);
+                    if (!specs.TryGetValue(id, out var sp)) continue;
+                    int i = r * mw + c;
+                    int whole = (int)sp.PerCell.FloorToLong();
+                    int count = whole + (Hash01(i, 99) < sp.PerCell - Fix.FromInt(whole) ? 1 : 0);
+                    for (int k = 0; k < count; k++)
+                    {
+                        Fix fx = Fix.FromRatio(-15, 100) + Fix.FromRatio(130, 100) * Hash01(i, k * 4);
+                        Fix fz = Fix.FromRatio(-15, 100) + Fix.FromRatio(130, 100) * Hash01(i, k * 4 + 1);
+                        Fix size = Fix.FromRatio(75, 100) + Fix.FromRatio(50, 100) * Hash01(i, k * 4 + 3);
+                        list.Add(new CrowdObstacle
+                        {
+                            Terrain = id,
+                            Pos = new Vec(CellSize * (Fix.FromInt(c) + fx), CellSize * (Fix.FromInt(mh - 1 - r) + fz)),
+                            Radius = sp.Radius * size,
+                            Size = size,
+                            Variant = (int)(Hash01(i, k * 4 + 2) * 1000).FloorToLong(),
+                            YawDeg = (int)(Hash01(i, k * 4 + 5) * 360).FloorToLong(),
+                        });
+                    }
+                }
+            return list;
+        }
 
         // ---- 길 ----
 

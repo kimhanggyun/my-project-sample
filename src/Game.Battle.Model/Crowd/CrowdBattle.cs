@@ -199,6 +199,10 @@ namespace Game.Battle.Model.Crowd
         public CrowdRules Rules { get; }
         /// <summary>지형 (R-133, 없으면 평지).</summary>
         public CrowdTerrain Terrain { get; }
+        /// <summary>막는 소품 (R-134): 나무 기둥 · 바위. 병사는 들어가지 못한다 (화면도 이 자리에 그림).</summary>
+        public readonly List<CrowdObstacle> Obstacles = new List<CrowdObstacle>();
+        private readonly Dictionary<long, List<int>> _obstacleGrid = new Dictionary<long, List<int>>();
+        private Fix _maxObstacleRadius;
         public int Tick { get; private set; }
         public readonly List<CrowdArmy> Armies = new List<CrowdArmy>();
         public readonly List<CrowdSoldier> Soldiers = new List<CrowdSoldier>();
@@ -232,6 +236,18 @@ namespace Game.Battle.Model.Crowd
             Rules = Terrain != null ? rules.WithField(Terrain.Width, Terrain.Depth) : rules;
             rules = Rules;
             _counters = counters ?? new TroopCounterRule[0];
+            if (Terrain != null)
+            {
+                Obstacles.AddRange(Terrain.MakeObstacles(rules.Obstacles));
+                for (int k = 0; k < Obstacles.Count; k++)
+                {
+                    var o = Obstacles[k];
+                    long key = Key(o.Pos.X.FloorToLong(), o.Pos.Y.FloorToLong());
+                    if (!_obstacleGrid.TryGetValue(key, out var l)) _obstacleGrid[key] = l = new List<int>();
+                    l.Add(k);
+                    if (o.Radius > _maxObstacleRadius) _maxObstacleRadius = o.Radius;
+                }
+            }
             _rng = new SeededRandom(setup.Seed == 0 ? 1 : setup.Seed);
             _enemyAdvance = setup.EnemyAdvance;
             _maxRadius = Fix.Max(rules.SoldierRadius, rules.MountedRadius);
@@ -693,6 +709,14 @@ namespace Game.Battle.Model.Crowd
 
             // 2.5) 다음 위치끼리 겹친 것을 두 번 풀어 준다 (뒤에서 미는 병사가 앞 병사 속으로 파고들지 않게)
             for (int pass = 0; pass < RelaxPasses; pass++) Relax();
+            if (Obstacles.Count > 0)
+            {
+                // 나무 기둥 · 바위 (R-134): 들어간 만큼 밖으로, 막혀 멈추지 않게 옆으로 비켜. 두 그루 사이에 끼어 그래도 안이면 이번 틱은 제자리
+                PushOutOfObstacles();
+                PushOutOfObstacles();
+                for (int i = 0; i < n; i++)
+                    if (Soldiers[i].Alive && InsideObstacle(Soldiers[i], _next[i]) && !InsideObstacle(Soldiers[i], Soldiers[i].Pos)) _next[i] = Soldiers[i].Pos;
+            }
 
             // 2.7) 화살: 닿는 틱이면 대상이 살아 있을 때 맞을 수 있다 (시드 난수)
             for (int k = 0; k < Arrows.Count; k++)
@@ -994,6 +1018,68 @@ namespace Game.Battle.Model.Crowd
         }
 
         private const int RelaxPasses = 2;
+
+        /// <summary>
+        /// 다음 위치(_next)가 막는 소품(나무 기둥 · 바위) 안이면 테두리 밖으로 (R-134).
+        /// 가던 방향이 소품 가운데를 곧게 향하면 (밀어내기만 하면 그 자리에 멈춤) 소품 옆쪽으로 비켜 간다 — 소품이 가는 길 왼쪽이면 오른쪽으로, 아니면 왼쪽으로.
+        /// </summary>
+        /// <summary>그 자리면 병사가 막는 소품 안에 들어감 (반올림 여유 0.01칸).</summary>
+        private bool InsideObstacle(CrowdSoldier s, Vec p)
+        {
+            int reach = (int)(_maxObstacleRadius + _maxRadius).FloorToLong() + 1;
+            long cx = p.X.FloorToLong(), cy = p.Y.FloorToLong();
+            for (long x = cx - reach; x <= cx + reach; x++)
+                for (long y = cy - reach; y <= cy + reach; y++)
+                {
+                    if (!_obstacleGrid.TryGetValue(Key(x, y), out var list)) continue;
+                    foreach (int k in list)
+                    {
+                        var o = Obstacles[k];
+                        Fix min = o.Radius + s.Radius - Fix.FromRatio(1, 100);
+                        if (Vec.DistanceSquared(p, o.Pos) < min * min) return true;
+                    }
+                }
+            return false;
+        }
+
+        private void PushOutOfObstacles()
+        {
+            int reach = (int)(_maxObstacleRadius + _maxRadius).FloorToLong() + 1;
+            for (int i = 0; i < Soldiers.Count; i++)
+            {
+                var s = Soldiers[i];
+                if (!s.Alive) continue;
+                var p = _next[i];
+                long cx = p.X.FloorToLong(), cy = p.Y.FloorToLong();
+                for (long x = cx - reach; x <= cx + reach; x++)
+                    for (long y = cy - reach; y <= cy + reach; y++)
+                    {
+                        if (!_obstacleGrid.TryGetValue(Key(x, y), out var list)) continue;
+                        foreach (int k in list)
+                        {
+                            var o = Obstacles[k];
+                            Fix min = o.Radius + s.Radius;
+                            var d = p - o.Pos;
+                            Fix d2 = d.LengthSquared;
+                            if (d2 >= min * min) continue;
+                            Fix len = Fix.Sqrt(d2);
+                            Vec outDir = len > Fix.Zero ? d * (Fix.OneValue / len) : new Vec(s.Id % 2 == 0 ? Fix.OneValue : -Fix.OneValue, Fix.Zero);
+                            var move = p - s.Pos;
+                            if (move.LengthSquared > Fix.Zero && outDir.Dot(move) < Fix.Zero)
+                            {
+                                // 정면으로 부딪힘: 옆으로 (소품이 가는 길의 어느 쪽인지로 비킬 쪽을 정함)
+                                var side = new Vec(-move.Y, move.X); // 왼쪽
+                                var toObs = o.Pos - s.Pos;
+                                Fix cross = move.X * toObs.Y - move.Y * toObs.X; // > 0 = 소품이 왼쪽
+                                if (cross > Fix.Zero || (cross == Fix.Zero && s.Id % 2 == 1)) side = new Vec(move.Y, -move.X);
+                                outDir = (outDir + side.Normalized()).Normalized();
+                            }
+                            p = o.Pos + outDir * min;
+                        }
+                    }
+                _next[i] = p;
+            }
+        }
 
         /// <summary>다음 위치(_next) 기준으로 겹친 두 병사를 반씩 떼어 놓는다 (id 순서, 이웃은 지금 칸 격자로).</summary>
         private void Relax()

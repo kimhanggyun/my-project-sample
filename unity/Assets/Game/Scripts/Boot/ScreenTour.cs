@@ -332,6 +332,8 @@ namespace Game.Unity.Boot
                 sm.StepForTour(260);
                 sm.FocusArmyForTour(0, 34f);
                 yield return Shot(tag + "_3advance", null, 0.3f);
+                sm.FocusArmyForTour(0, 14f); // 가까이: 나무 · 바위 사이로 비켜 가는지 (R-134)
+                yield return Shot(tag + "_4close", null, 0.3f);
             }
 
             _app.ShowMain("story");

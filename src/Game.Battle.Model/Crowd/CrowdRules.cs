@@ -88,6 +88,8 @@ namespace Game.Battle.Model.Crowd
         public Fix ArrowRainChance { get; private set; }
         /// <summary>병종(뿌리 병종 id)마다 추천 진형 (R-132, 진형 고르기에 "추천" 표시). 없으면 표시 없음.</summary>
         public System.Collections.Generic.IReadOnlyDictionary<string, string> RecommendedFormation { get; private set; } = new System.Collections.Generic.Dictionary<string, string>();
+        /// <summary>지형마다 막는 소품 (R-134, 나무 기둥 · 바위): 맵 칸 하나에 몇 개 · 반지름.</summary>
+        public System.Collections.Generic.IReadOnlyDictionary<string, CrowdObstacleSpec> Obstacles { get; private set; } = new System.Collections.Generic.Dictionary<string, CrowdObstacleSpec>();
         /// <summary>지형 맵 1칸 = 전장 몇 칸 (R-133).</summary>
         public Fix MapCellSize { get; private set; }
 
@@ -193,6 +195,13 @@ namespace Game.Battle.Model.Crowd
                 rec[p.Name] = f;
             }
             rules.RecommendedFormation = rec;
+            var obs = new System.Collections.Generic.Dictionary<string, CrowdObstacleSpec>();
+            foreach (var p in JsonUtil.RequireObject(o, "obstacles", c).Properties())
+            {
+                var v = (JObject)p.Value;
+                obs[p.Name] = new CrowdObstacleSpec { PerCell = JsonUtil.RequireFix(v, "perCell", c + ".obstacles." + p.Name), Radius = JsonUtil.RequireFix(v, "radius", c + ".obstacles." + p.Name) };
+            }
+            rules.Obstacles = obs;
             return rules;
         }
 

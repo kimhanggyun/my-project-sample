@@ -431,6 +431,53 @@ namespace Game.Tests.Battle
             Assert.Equal(x.Fingerprint(), y.Fingerprint());
         }
 
+        // ---- 막는 소품 (R-134): 나무 기둥 · 바위 ----
+
+        [Fact]
+        public void ObstaclesComeFromTerrainAndAreTheSameEachTime()
+        {
+            var a = new CrowdBattle(Rules(), One("infantry", "test_forest"), Defs.TroopTypes, Defs.TroopCounters);
+            var b = new CrowdBattle(Rules(), One("infantry", "test_forest"), Defs.TroopTypes, Defs.TroopCounters);
+            Assert.True(a.Obstacles.Count > 24 * 40 * 2, "trees " + a.Obstacles.Count); // 칸마다 2.2그루
+            Assert.Equal(a.Obstacles.Count, b.Obstacles.Count);
+            for (int k = 0; k < a.Obstacles.Count; k++) Assert.True(a.Obstacles[k].Pos.Equals(b.Obstacles[k].Pos));
+            var plain = new CrowdBattle(Rules(), One("infantry", "test_plain"), Defs.TroopTypes, Defs.TroopCounters);
+            Assert.Empty(plain.Obstacles); // 평지엔 없음
+            var pass = new CrowdBattle(Rules(), One("infantry", "test_mountain_pass"), Defs.TroopTypes, Defs.TroopCounters);
+            Assert.NotEmpty(pass.Obstacles);
+            Assert.All(pass.Obstacles, o => Assert.Equal("mountain", o.Terrain)); // 산에만 바위
+        }
+
+        [Fact]
+        public void SoldiersGoAroundTreesNotThrough()
+        {
+            var b = new CrowdBattle(Rules(), One("infantry", "test_forest"), Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            Fix y0 = Fix.Zero;
+            foreach (var s in a.Soldiers) y0 += s.Pos.Y;
+            b.OrderMove(a.Id, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(-14)));
+            Fix worst = Fix.FromInt(9);
+            for (int t = 0; t < 400; t++)
+            {
+                b.Step();
+                foreach (var s in a.Soldiers)
+                {
+                    if (!s.Alive) continue;
+                    foreach (var o in b.Obstacles)
+                    {
+                        var gap = (s.Pos - o.Pos).Length - o.Radius - s.Radius;
+                        if (gap < worst) worst = gap;
+                    }
+                }
+            }
+            Fix y1 = Fix.Zero;
+            foreach (var s in a.Soldiers) y1 += s.Pos.Y;
+            Fix moved = (y0 - y1) / a.Soldiers.Count;
+            _out.WriteLine($"deepest into a tree {worst}, mean moved {moved}");
+            Assert.True(worst > Fix.FromRatio(-5, 100), "into a tree " + worst); // 기둥 안으로 들어간 병사 없음 (반올림 여유)
+            Assert.True(moved > Fix.FromInt(11), "moved " + moved); // 나무 사이로 빠져 거의 다 감 (끼어 멈추지 않음)
+        }
+
         // ---- 조작 명령 (R-132): 진군 · 후퇴 · 근접 공격 · 위임 · 경로 ----
 
         [Fact]
