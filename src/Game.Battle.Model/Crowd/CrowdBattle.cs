@@ -33,6 +33,12 @@ namespace Game.Battle.Model.Crowd
         public int DiedTick = -1;
         /// <summary>무너져 도망치다 전장 밖으로 나간 틱 (R-128, 아니면 -1). 쓰러진 것은 아니지만 더는 싸우지 않는다.</summary>
         public int FledTick = -1;
+        /// <summary>제자리 부대에서 자리에 와 멈춘 병사 (조금 밀려나도 다시 당기지 않음 — 잔떨림 없앰). 부대가 움직이면 풀림.</summary>
+        public bool Settled;
+        /// <summary>멈춘 자리 · 자리까지 가장 가까웠던 거리 · 가까워지지 못한 틱 수 (못 가면 그 자리에서 멈춤).</summary>
+        public Vec SettleAt;
+        public Fix BestDist = Fix.FromInt(9999);
+        public int StuckTicks;
         /// <summary>전장에서 싸울 수 있음 (쓰러지지도 나가지도 않음).</summary>
         public bool Alive => DiedTick < 0 && FledTick < 0;
     }
@@ -224,6 +230,8 @@ namespace Game.Battle.Model.Crowd
         private readonly Dictionary<long, List<int>> _grid = new Dictionary<long, List<int>>();
         private Vec[] _next = new Vec[0];
         private Vec[] _knock = new Vec[0];
+        /// <summary>이번 틱 병사가 가려는 곳 (자리 · 쫓는 적, R-134 비켜 가기 판단).</summary>
+        private Vec[] _goal = new Vec[0];
         private int[] _damage = new int[0];
         private Fix _maxRadius;
         private readonly int[] _allRoutedSince = { -1, -1 };
@@ -628,7 +636,7 @@ namespace Game.Battle.Model.Crowd
             Fix engage2 = r.EngageRange * r.EngageRange;
 
             int n = Soldiers.Count;
-            if (_next.Length < n) { _next = new Vec[n]; _damage = new int[n]; _knock = new Vec[n]; }
+            if (_next.Length < n) { _next = new Vec[n]; _damage = new int[n]; _knock = new Vec[n]; _goal = new Vec[n]; }
             BuildGrid();
             ImpactsThisTick = 0;
 
@@ -644,7 +652,7 @@ namespace Game.Battle.Model.Crowd
             foreach (var a in Armies) MoveArmy(a, engaged[a.Id]);
 
             // 2) 병사마다 갈 곳 · 칠 대상 (id 순서로 계산, 반영은 한꺼번에)
-            for (int i = 0; i < n; i++) { _next[i] = Soldiers[i].Pos; _damage[i] = 0; _knock[i] = Vec.Zero; }
+            for (int i = 0; i < n; i++) { _next[i] = Soldiers[i].Pos; _damage[i] = 0; _knock[i] = Vec.Zero; _goal[i] = Soldiers[i].Pos; }
             for (int i = 0; i < n; i++)
             {
                 var s = Soldiers[i];
@@ -682,6 +690,7 @@ namespace Game.Battle.Model.Crowd
                 if (foe >= 0)
                 {
                     var e = Soldiers[foe];
+                    _goal[i] = e.Pos;
                     var d = e.Pos - s.Pos;
                     Fix d2 = d.LengthSquared;
                     Fix reach = s.Radius + e.Radius + r.AttackReach + (troop.AttackRange > Fix.OneValue && !troop.Ranged ? (troop.AttackRange - Fix.OneValue) * r.PolearmReach : Fix.Zero);
@@ -841,8 +850,23 @@ namespace Game.Battle.Model.Crowd
             var target = army.SlotWorld(s.Slot);
             if (Terrain != null && !Terrain.Clear(army.Troop, s.Pos, target))
                 target = Terrain.Clear(army.Troop, s.Pos, army.Center) ? army.Center : army.Aim; // 자리까지 막혔으면 부대 가운데 · 부대가 향하는 곳으로 (여울 · 다리로 모임)
+            if (Obstacles.Count > 0) target = FreeSpot(s, target); // 자리가 나무 · 바위 안이면 테두리 바로 밖 (갈 수 있는 데까지, 2026-11-22 사용자 영상)
+            _goal[s.Id] = target;
             var d = target - s.Pos;
             Fix len = d.Length;
+            // 제자리(대기)인 부대: 자리에 거의 왔으면 멈추고, 멈춘 뒤엔 이웃에게 조금 밀려나도(UnsettleDistance 안) 다시 당기지 않는다
+            // (나무 · 이웃과 밀고 당기는 잔떨림 없앰, 2026-11-22 사용자 영상). 부대가 움직이면 풀림.
+            // 자리로 못 가면 (StuckTicks 동안 가까워지지 못함) 갈 수 있는 데까지 간 그 자리에서 멈춘다 (2026-11-22 사용자 "못 가면 갈 때까지만 가고 멈춤")
+            if (army.Order != CrowdOrders.Hold) { s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0; }
+            else
+            {
+                if (s.Settled && (s.Pos - s.SettleAt).Length <= UnsettleDistance) return Vec.Zero;
+                s.Settled = false;
+                bool stuck = false;
+                if (len < s.BestDist - Fix.FromRatio(2, 100)) { s.BestDist = len; s.StuckTicks = 0; }
+                else stuck = ++s.StuckTicks >= StuckLimitTicks;
+                if (len <= SettleDistance || stuck) { s.Settled = true; s.SettleAt = s.Pos; s.StuckTicks = 0; return Vec.Zero; }
+            }
             return len <= stepLen ? d : d * (stepLen / len);
         }
 
@@ -1023,6 +1047,39 @@ namespace Game.Battle.Model.Crowd
         /// 다음 위치(_next)가 막는 소품(나무 기둥 · 바위) 안이면 테두리 밖으로 (R-134).
         /// 가던 방향이 소품 가운데를 곧게 향하면 (밀어내기만 하면 그 자리에 멈춤) 소품 옆쪽으로 비켜 간다 — 소품이 가는 길 왼쪽이면 오른쪽으로, 아니면 왼쪽으로.
         /// </summary>
+        /// <summary>제자리 부대 병사가 자리에 이만큼 가까우면 멈춘다 (칸).</summary>
+        private static readonly Fix SettleDistance = Fix.FromRatio(20, 100);
+        /// <summary>제자리 부대 병사가 이만큼 틱 동안 자리에 가까워지지 못하면 그 자리에서 멈춘다.</summary>
+        private const int StuckLimitTicks = 15;
+        /// <summary>멈춘 병사가 멈춘 곳에서 이만큼 넘게 밀려나면 다시 자리로 (칸).</summary>
+        private static readonly Fix UnsettleDistance = Fix.FromRatio(80, 100);
+
+        /// <summary>그 자리가 막는 소품 안이면 가장 가까운 테두리 바로 밖 (두 번 — 두 그루 사이도), 아니면 그대로.</summary>
+        private Vec FreeSpot(CrowdSoldier s, Vec p)
+        {
+            int reach = (int)(_maxObstacleRadius + _maxRadius).FloorToLong() + 1;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                long cx = p.X.FloorToLong(), cy = p.Y.FloorToLong();
+                for (long x = cx - reach; x <= cx + reach; x++)
+                    for (long y = cy - reach; y <= cy + reach; y++)
+                    {
+                        if (!_obstacleGrid.TryGetValue(Key(x, y), out var list)) continue;
+                        foreach (int k in list)
+                        {
+                            var o = Obstacles[k];
+                            Fix min = o.Radius + s.Radius + Fix.FromRatio(2, 100);
+                            var d = p - o.Pos;
+                            Fix d2 = d.LengthSquared;
+                            if (d2 >= min * min) continue;
+                            Fix len = Fix.Sqrt(d2);
+                            p = o.Pos + (len > Fix.Zero ? d * (min / len) : new Vec(min, Fix.Zero));
+                        }
+                    }
+            }
+            return p;
+        }
+
         /// <summary>그 자리면 병사가 막는 소품 안에 들어감 (반올림 여유 0.01칸).</summary>
         private bool InsideObstacle(CrowdSoldier s, Vec p)
         {
@@ -1065,7 +1122,9 @@ namespace Game.Battle.Model.Crowd
                             Fix len = Fix.Sqrt(d2);
                             Vec outDir = len > Fix.Zero ? d * (Fix.OneValue / len) : new Vec(s.Id % 2 == 0 ? Fix.OneValue : -Fix.OneValue, Fix.Zero);
                             var move = p - s.Pos;
-                            if (move.LengthSquared > Fix.Zero && outDir.Dot(move) < Fix.Zero)
+                            Fix beyond = o.Radius + s.Radius + Fix.FromRatio(3, 10);
+                            bool passing = Vec.DistanceSquared(_goal[i], o.Pos) > beyond * beyond && Vec.DistanceSquared(_goal[i], s.Pos) > Vec.DistanceSquared(o.Pos, s.Pos);
+                            if (passing && move.LengthSquared > Fix.Zero && outDir.Dot(move) < Fix.Zero)
                             {
                                 // 정면으로 부딪힘: 옆으로 (소품이 가는 길의 어느 쪽인지로 비킬 쪽을 정함)
                                 var side = new Vec(-move.Y, move.X); // 왼쪽

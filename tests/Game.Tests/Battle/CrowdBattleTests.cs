@@ -478,6 +478,33 @@ namespace Game.Tests.Battle
             Assert.True(moved > Fix.FromInt(11), "moved " + moved); // 나무 사이로 빠져 거의 다 감 (끼어 멈추지 않음)
         }
 
+        [Fact]
+        public void HoldingArmyInForestSettlesInsteadOfJittering()
+        {
+            var setup = One("infantry", "test_forest");
+            setup.AllyUnits[0].Count = 150;
+            setup.AllyUnits[0].Formation = CrowdFormations.Thick;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            b.OrderMove(a.Id, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.FromInt(3), Fix.FromInt(-6)));
+            for (int t = 0; t < 200; t++) b.Step(); // 도착해 대기
+            Assert.Equal(CrowdOrders.Hold, a.Order);
+            Fix moved = Fix.Zero;
+            int jitter = 0;
+            for (int t = 0; t < 60; t++)
+            {
+                b.Step();
+                foreach (var s in a.Soldiers)
+                {
+                    if (!s.Alive) continue;
+                    moved += s.Moved.Length;
+                    if (s.Moved.Length > Fix.FromRatio(3, 100)) jitter++;
+                }
+            }
+            _out.WriteLine($"holding in forest: total moved {moved}, moving soldier-ticks {jitter}");
+            Assert.True(jitter < 200, "jitter " + jitter); // 나무에 걸린 병사가 계속 왔다 갔다 하지 않음 (60틱 × 151명 중, 고치기 전 4298)
+        }
+
         // ---- 조작 명령 (R-132): 진군 · 후퇴 · 근접 공격 · 위임 · 경로 ----
 
         [Fact]

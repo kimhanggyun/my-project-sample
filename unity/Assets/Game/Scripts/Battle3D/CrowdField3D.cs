@@ -191,6 +191,7 @@ namespace Game.Unity.Battle3D
         public void Draw(float alpha, float dt)
         {
             SyncTick();
+            _lastAlpha = alpha;
             float tickSec = (float)_battle.Rules.TickSeconds.ToDisplayDouble();
             float now = (_battle.Tick + alpha) * tickSec;
             foreach (var b in _allBatches) b.Matrices.Clear();
@@ -416,6 +417,10 @@ namespace Game.Unity.Battle3D
             if (n > 0) return sum / n;
             return GeneralShown(a, alpha);
         }
+
+        /// <summary>이름표 자리: 화면에 그린 장수 (틱 사이를 이은 곳 — 틱 위치를 따르면 1초 10번 툭툭 끊겨 덜렁거림, 2026-11-22 사용자 영상), 장수가 없으면 병사 가운데.</summary>
+        public Vector3 TagAnchor(CrowdArmy a) => a.General.Alive ? GeneralShown(a, _lastAlpha) : ShownCenter(a, _lastAlpha);
+        private float _lastAlpha = 1f;
 
         private Vector3 GeneralShown(CrowdArmy a, float alpha) =>
             a.General.Id < _cur.Length ? Vector3.Lerp(_prev[a.General.Id], _cur[a.General.Id], alpha) : ToWorld(a.Centroid());
