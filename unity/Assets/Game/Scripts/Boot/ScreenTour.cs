@@ -336,6 +336,20 @@ namespace Game.Unity.Boot
                 yield return Shot(tag + "_3advance", null, 0.3f);
                 sm.FocusArmyForTour(0, 14f); // 가까이: 나무 · 바위 사이로 비켜 가는지 (R-134)
                 yield return Shot(tag + "_4close", null, 0.3f);
+                if (maps[mi] == "crowd_gorge" || maps[mi] == "crowd_forest")
+                {
+                    // 행군 대열 (R-136): 협곡 · 숲길을 줄지어 지나가는지 — 적 쪽 끝으로 이동
+                    sm.MoveForTour("middle_center", 30f, 86f);
+                    sm.MoveForTour("front_left", 30f, 86f);
+                    sm.MoveForTour("front_right", 30f, 86f);
+                    sm.MoveForTour("back_center", 30f, 86f);
+                    sm.StepForTour(120);
+                    sm.FocusArmyForTour(0, 30f);
+                    yield return Shot(tag + "_5march", null, 0.3f);
+                    sm.StepForTour(200);
+                    sm.FocusArmyForTour(0, 30f);
+                    yield return Shot(tag + "_6march_later", null, 0.3f);
+                }
             }
 
             _app.ShowMain("story");

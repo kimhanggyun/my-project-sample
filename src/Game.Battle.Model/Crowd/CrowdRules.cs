@@ -90,6 +90,13 @@ namespace Game.Battle.Model.Crowd
         public System.Collections.Generic.IReadOnlyDictionary<string, string> RecommendedFormation { get; private set; } = new System.Collections.Generic.Dictionary<string, string>();
         /// <summary>지형마다 막는 소품 (R-134, 나무 기둥 · 바위): 맵 칸 하나에 몇 개 · 반지름.</summary>
         public System.Collections.Generic.IReadOnlyDictionary<string, CrowdObstacleSpec> Obstacles { get; private set; } = new System.Collections.Generic.Dictionary<string, CrowdObstacleSpec>();
+        // 행군 대열 (R-136)
+        public int MarchWidth { get; private set; }
+        public Fix MarchTrailStep { get; private set; }
+        public int MarchTrailMax { get; private set; }
+        public int MarchOffTicks { get; private set; }
+        public Fix MarchReformRange { get; private set; }
+        public System.Collections.Generic.IReadOnlyList<string> MarchTerrains { get; private set; } = new string[0];
         /// <summary>지형 맵의 전장 폭 (R-135): 맵 1칸 = mapFieldWidth ÷ 맵 폭 (24칸 맵 = 2.5, 48칸 맵 = 1.25).</summary>
         public Fix MapFieldWidth { get; private set; }
 
@@ -181,6 +188,12 @@ namespace Game.Battle.Model.Crowd
                 ArrowRainChance = JsonUtil.RequireFix(o, "arrowRainChance", c),
                 RetreatSpeed = JsonUtil.RequireFix(o, "retreatSpeed", c),
                 MapFieldWidth = JsonUtil.RequireFix(o, "mapFieldWidth", c),
+                MarchWidth = (int)JsonUtil.RequireLong(o, "marchWidth", c),
+                MarchTrailStep = JsonUtil.RequireFix(o, "marchTrailStep", c),
+                MarchTrailMax = (int)JsonUtil.RequireLong(o, "marchTrailMax", c),
+                MarchOffTicks = (int)JsonUtil.RequireLong(o, "marchOffTicks", c),
+                MarchReformRange = JsonUtil.RequireFix(o, "marchReformRange", c),
+                MarchTerrains = JsonUtil.StringList(o, "marchTerrains"),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),

@@ -479,7 +479,54 @@ namespace Game.Tests.Battle
             Assert.Equal(Fix.FromInt(3), top); // 꼭대기 = 9 ÷ 3
         }
 
-        // ---- 막는 소품 (R-134): 나무 기둥 · 바위 ----
+        // ---- 행군 대열 (R-136) ----
+
+        /// <summary>협곡 끝까지 이동: (행군했는지, 도착 뒤 부대 가운데 15칸 안 병사 비율 %, 걸린 틱).</summary>
+        private (bool marched, int together, int ticks) ThroughGorge(bool autoMarch)
+        {
+            var setup = One("infantry", "crowd_gorge");
+            setup.AllyUnits[0].Count = 150;
+            setup.AllyUnits[0].Formation = CrowdFormations.Thick;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            b.SetAutoMarch(a.Id, autoMarch);
+            b.OrderMove(a.Id, new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(84)));
+            bool marched = false;
+            int t = 0;
+            for (; t < 4000 && a.Order == CrowdOrders.Move; t++) { b.Step(); if (a.Marching) marched = true; }
+            for (int k = 0; k < 400; k++) b.Step(); // 다 모이게
+            int near = 0, alive = 0;
+            foreach (var s in a.Soldiers)
+            {
+                if (!s.Alive || s.IsGeneral) continue;
+                alive++;
+                if ((s.Pos - a.Center).Length <= Fix.FromInt(15)) near++;
+            }
+            return (marched, near * 100 / System.Math.Max(1, alive), t);
+        }
+
+        [Fact]
+        public void MarchColumnGetsEveryoneThroughTheGorge()
+        {
+            var on = ThroughGorge(true);
+            var off = ThroughGorge(false);
+            _out.WriteLine($"gorge: march {on.together}% together in {on.ticks} ticks, no march {off.together}% in {off.ticks} ticks");
+            Assert.True(on.marched);
+            Assert.False(off.marched);
+            Assert.True(on.together >= 90, "together " + on.together); // 절벽에 붙어 길을 잃은 병사 없이
+            Assert.True(on.together >= off.together);
+        }
+
+        [Fact]
+        public void PlainNeverMarches()
+        {
+            var b = new CrowdBattle(Rules(), One("infantry", "crowd_plain"), Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            b.OrderMove(a.Id, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.Zero, Fix.FromInt(20)));
+            for (int t = 0; t < 200; t++) { b.Step(); Assert.False(a.Marching); }
+        }
+
+        // ---- 막는 소품 (R-134): 나무 · 바위 ----
 
         [Fact]
         public void ObstaclesComeFromTerrainAndAreTheSameEachTime()
@@ -513,7 +560,7 @@ namespace Game.Tests.Battle
                     if (!s.Alive) continue;
                     foreach (var o in b.Obstacles)
                     {
-                        var gap = (s.Pos - o.Pos).Length - o.Radius - s.Radius;
+                        var gap = (s.Pos - o.Pos).Length - o.Radius - (s.IsGeneral ? b.Rules.SoldierRadius : s.Radius); // 장수(말)는 나무에 병사만 한 몸집 (R-136)
                         if (gap < worst) worst = gap;
                     }
                 }
@@ -534,6 +581,7 @@ namespace Game.Tests.Battle
             setup.AllyUnits[0].Formation = CrowdFormations.Thick;
             var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
             var a = b.Commander(CrowdBattle.Ally);
+            b.SetAutoMarch(a.Id, false); // 대기 떨림만 본다 (행군 뒤 다시 펼치는 중이 아니게)
             b.OrderMove(a.Id, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.FromInt(3), Fix.FromInt(-6)));
             for (int t = 0; t < 200; t++) b.Step(); // 도착해 대기
             Assert.Equal(CrowdOrders.Hold, a.Order);

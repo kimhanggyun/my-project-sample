@@ -134,7 +134,7 @@ function write(id, comment, m) {
     if (noise(x, y, 43, 5) > 0.8) m.t[y][x] = "f"; // 강가 숲 (엄폐)
   }
   // 강 (폭 7칸 ≈ 9 전장 칸)
-  const half = (x, y) => 3.5 + 1.6 * (noise(x, y, 45, 5) - 0.5); // 강폭이 고르지 않게 (곧은 둑이 네모로 보임, 캡처 41c)
+  const half = (x, y) => 3.5 + 1.6 * (noise(x, y, 45, 5) - 0.5) + 4.5 * Math.min(1, Math.max(0, (22 - x) / 12)); // 왼쪽은 두 배 넓게 (건너기 위험 vs 오른쪽 다리로 멀리 돌기, 2026-11-22 사용자) // 강폭이 고르지 않게 (곧은 둑이 네모로 보임, 캡처 41c)
   for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (Math.abs(y - yr(x)) <= half(x, y)) set(m, x, y, "~");
   // 지류: 강(가로 30쯤)에서 오른쪽 위로 맵 오른쪽 끝까지
   const trib = [];
