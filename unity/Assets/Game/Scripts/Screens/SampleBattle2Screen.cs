@@ -516,7 +516,7 @@ namespace Game.Unity.Screens
         private void OnFieldTap(Vector2 screen)
         {
             if (!Started || _battle.IsOver) return;
-            if (!_field.Rig.Ground(screen, 0f, out var world)) return;
+            if (!_field.ScreenToGround(screen, out var world)) return;
             CommandAt(ToField(world));
         }
 
@@ -567,8 +567,8 @@ namespace Game.Unity.Screens
         private void OnFieldDrag(Vector2 a, Vector2 b)
         {
             if (_pickMode != "path") { _field.Rig.Pan(a, b); return; }
-            if (_trail.Count == 0 && _field.Rig.Ground(a, 0f, out var w0)) AddTrail(ToField(w0));
-            if (_field.Rig.Ground(b, 0f, out var w)) AddTrail(ToField(w));
+            if (_trail.Count == 0 && _field.ScreenToGround(a, out var w0)) AddTrail(ToField(w0));
+            if (_field.ScreenToGround(b, out var w)) AddTrail(ToField(w));
         }
 
         private void AddTrail(Vec p)

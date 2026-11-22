@@ -263,7 +263,7 @@ namespace Game.Unity.Boot
             yield return Shot("37c_sample2_skill_landed", null, 0.2f);
             // 테스트 탭 (R-131): 3×3 칸 설정 화면, 그 설정으로 전투
             yield return Shot("38_test_tab", () => new MainScreen("test"), 0.3f);
-            var s10 = new SampleBattle2Screen(TestBattleTabView.Setup(), startNow: true, returnTab: "test");
+            var s10 = new SampleBattle2Screen(TestBattleTabView.Setup(_app.Context), startNow: true, returnTab: "test");
             yield return Shot("38b_test_battle", () => s10, 0.3f);
             s10.StepForTour(60);
             s10.FocusArmyForTour(0, 36f);
@@ -305,6 +305,34 @@ namespace Game.Unity.Boot
             s11.PressForTour(null, "delegate");
             for (int w = 0; w < 40 && !s11.OverForTour; w++) s11.StepForTour(100);
             yield return Shot("39j_ctl_result", null, 0.4f);
+            // 지형 (R-133): 맵마다 전체 · 가까이 · 진군 뒤
+            yield return Shot("40_test_tab_maps", () => new MainScreen("test"), 0.3f);
+            string[] maps = { "hills_valley", "river_ford", "test_forest", "marsh_lake", "test_mountain_pass", "test_ambush" };
+            for (int mi = 0; mi < maps.Length; mi++)
+            {
+                var units = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "cavalry", Formation = "wedge" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "spearman", Formation = "thick" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 2, Col = 1, Troop = "archer" },
+                };
+                var foes = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>();
+                foreach (var u in units) foes.Add(new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = u.Row, Col = u.Col, Troop = u.Troop, Formation = u.Formation, Commander = u.Commander });
+                var sm = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = units, EnemyUnits = foes, AllyAdvance = false, EnemyAdvance = true, Seed = 5,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, maps[mi]) }, startNow: true);
+                string tag = $"41{(char)('a' + mi)}_map_{maps[mi]}";
+                yield return Shot(tag + "_0open", () => sm, 0.5f);
+                sm.StepForTour(1);
+                sm.FocusPointForTour(30f, 50f, 70f);
+                yield return Shot(tag + "_1whole", null, 0.3f);
+                sm.FocusArmyForTour(0, 22f);
+                yield return Shot(tag + "_2near", null, 0.3f);
+                sm.PressForTour(null, "advance");
+                sm.StepForTour(260);
+                sm.FocusArmyForTour(0, 34f);
+                yield return Shot(tag + "_3advance", null, 0.3f);
+            }
 
             _app.ShowMain("story");
             Done = true;

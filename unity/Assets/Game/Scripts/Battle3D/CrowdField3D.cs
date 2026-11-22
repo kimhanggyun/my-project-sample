@@ -90,6 +90,7 @@ namespace Game.Unity.Battle3D
             Rig = new BattleCameraRig(cam, _width, _depth);
             Rig.SetDistance(36f); // 처음엔 양쪽 군이 다 보이게 (캡처 2026-11-21: 우리 쐐기가 아래로 잘림)
             Rig.LookAt(new Vector3(_width / 2f, 0f, _depth * 0.45f));
+            if (battle.Terrain != null) Rig.LookAt(new Vector3(_width / 2f, 0f, (float)battle.Commander(CrowdBattle.Ally).Center.Y.ToDisplayDouble() + 12f)); // 지형 맵 (R-133): 우리 쪽부터
 
             var lightGo = new GameObject("Sun");
             lightGo.transform.SetParent(_root.transform, false);
@@ -98,18 +99,10 @@ namespace Game.Unity.Battle3D
             light.type = LightType.Directional;
             light.intensity = 1.1f;
 
-            // 바닥: 풀색 판 하나 (가장자리 조금 넘게)
+            // 바닥 (R-133): 지형 맵이면 높낮이 · 물 · 다리 · 나무, 아니면 풀색 판 (CrowdGround)
             // (기본 도형 Quad는 물리 충돌 부품이 딸려 와, 물리를 뺀 폰 빌드에서 "Can't add component … MeshCollider" 오류 — 2026-11-21 사용자 폰)
-            var ground = new GameObject("Ground");
-            ground.transform.SetParent(_root.transform, false);
-            var gmesh = Own(new Mesh { name = "crowd_ground" });
-            float m = 20f;
-            gmesh.vertices = new[] { new Vector3(-m, 0f, -m), new Vector3(-m, 0f, _depth + m), new Vector3(_width + m, 0f, _depth + m), new Vector3(_width + m, 0f, -m) };
-            gmesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
-            gmesh.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
-            gmesh.RecalculateBounds();
-            ground.AddComponent<MeshFilter>().sharedMesh = gmesh;
-            ground.AddComponent<MeshRenderer>().sharedMaterial = Own(NewMaterial(new Color(0.50f, 0.64f, 0.38f)));
+            Ground = new CrowdGround(_root.transform, battle, NewMaterial);
+            if (battle.Terrain != null) cam.backgroundColor = new Color(0.66f, 0.74f, 0.80f); // 하늘빛 (먼 가장자리)
 
             // 살아 있는 병사 = 다리 없는 몸 + 따로 흔드는 다리 두 짝, 쓰러지는 병사 = 다리 붙은 통째
             // 병종 모형은 처음 쓸 때 만든다 (TroopBatch)
@@ -136,7 +129,23 @@ namespace Game.Unity.Battle3D
         }
 
         /// <summary>규칙 (x, y) → 월드 (x, 0, y): 우리 편(작은 y)이 화면 아래, 적이 위.</summary>
-        public Vector3 ToWorld(Vec p) => new Vector3((float)p.X.ToDisplayDouble(), 0f, (float)p.Y.ToDisplayDouble());
+        public Vector3 ToWorld(Vec p)
+        {
+            float x = (float)p.X.ToDisplayDouble(), z = (float)p.Y.ToDisplayDouble();
+            return new Vector3(x, Ground.StandHeight(x, z), z);
+        }
+
+        /// <summary>땅 (높낮이 · 물 · 다리 · 소품, R-133).</summary>
+        public CrowdGround Ground { get; }
+
+        /// <summary>화면 위치 → 땅 위 월드 자리 (높은 땅은 그 높이 평면과 다시 만나 보며 맞춘다).</summary>
+        public bool ScreenToGround(Vector2 screen, out Vector3 world)
+        {
+            if (!Rig.Ground(screen, 0f, out world)) return false;
+            for (int k = 0; k < 4; k++)
+                if (!Rig.Ground(screen, Ground.StandHeight(world.x, world.z), out world)) return false;
+            return true;
+        }
 
         public void SetViewport(Rect pixels)
         {
@@ -200,7 +209,7 @@ namespace Game.Unity.Battle3D
                     float sink = Mathf.Clamp01((age - FallSeconds) / SinkSeconds);
                     var back = Quaternion.Euler(0f, _yaw[i], 0f);
                     p += back * Vector3.back * (0.18f * (1f - (1f - fall) * (1f - fall)));
-                    p.y = 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
+                    p.y = Ground.StandHeight(p.x, p.z) + 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
                     var rot = back * Quaternion.Euler(-80f * fall * fall, 0f, 0f);
                     (s.IsGeneral ? (age < FlashSeconds ? TroopBatch("infantry", 2, 2) : ally ? _allyGeneral : _enemyGeneral)
                         : TroopBatch(TroopOf(s), age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
@@ -256,7 +265,7 @@ namespace Game.Unity.Battle3D
                     float hit = now - s.ImpactTick * tickSec;
                     if (hit >= 0f && hit < 0.4f) bodyRot = bodyRot * Quaternion.Euler(-22f * Mathf.Sin(hit / 0.4f * Mathf.PI), 0f, 0f);
                 }
-                p.y = 0f;
+                p.y = Ground.StandHeight(p.x, p.z);
                 if (s.IsGeneral)
                 {
                     // 말: 다리 넷을 따로 — 앞 둘 · 뒤 둘이 번갈아 (달리는 말), 몸은 걸음에 맞춰 앞뒤로 살짝 출렁 (위아래로 튀지 않음)
@@ -312,11 +321,13 @@ namespace Game.Unity.Battle3D
             }
             var cam = Rig.Camera;
             _dustBatch.Draw(cam);
+            Ground.Draw(cam);
             foreach (var b in _allBatches) b.Draw(cam);
         }
 
         public void Destroy()
         {
+            Ground?.Destroy();
             Object.Destroy(_root);
             foreach (var o in _owned) if (o != null) Object.Destroy(o);
         }
@@ -490,12 +501,13 @@ namespace Game.Unity.Battle3D
             for (int i = 0; i < pts.Count; i++) line.SetPosition(i, pts[i] + new Vector3(0f, 0.07f, 0f));
         }
 
-        private static void Circle(LineRenderer line, Vector3 c, float radius)
+        private void Circle(LineRenderer line, Vector3 c, float radius)
         {
             for (int i = 0; i < RingSegments; i++)
             {
                 float t = i / (float)RingSegments * Mathf.PI * 2f;
-                line.SetPosition(i, c + new Vector3(Mathf.Cos(t) * radius, 0.06f, Mathf.Sin(t) * radius));
+                float px = c.x + Mathf.Cos(t) * radius, pz = c.z + Mathf.Sin(t) * radius;
+                line.SetPosition(i, new Vector3(px, Ground.StandHeight(px, pz) + 0.1f, pz)); // 땅 높낮이를 따라 (R-133)
             }
         }
 

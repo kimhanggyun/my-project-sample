@@ -70,6 +70,8 @@
   "_retreat": "후퇴 (R-132): 걸음 = 전진 걸음 × retreatSpeed, 자기 쪽 끝에서 retreatMargin칸 안쪽까지 물러난다 (가는 쪽을 보므로 쫓는 적에게는 등)",
   "retreatSpeed": 0.8,
   "retreatMargin": 4,
+  "_map": "지형 맵 (R-133): 기존 전장 맵(Maps/*.json) 1칸 = mapCellSize 전장 칸 (24 × 40칸 맵 → 60 × 100). 지형 규칙은 terrainRules.json · terrainCombat.json 그대로",
+  "mapCellSize": 2.5,
   "_recommendedFormation": "진형 고르기에서 병종(뿌리 병종)마다 '추천' 표시 (R-132): 기병 쐐기(뚫기) · 창병 두툼(버티기) · 궁병 일자(모두 쏘기) · 보병 V자(감싸기) · 정찰 쐐기",
   "recommendedFormation": { "infantry": "vee", "spearman": "thick", "archer": "line", "cavalry": "wedge", "scout": "wedge" }
 }
