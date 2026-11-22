@@ -42,9 +42,13 @@ namespace Game.Battle.Model.Crowd
         private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, Fix>> _combat;
         private readonly Dictionary<string, Vec> _snapCache = new Dictionary<string, Vec>();
 
-        public CrowdTerrain(MapDef map, IReadOnlyDictionary<string, TerrainRuleDef> rules, IReadOnlyDictionary<string, IReadOnlyDictionary<string, Fix>> combat, Fix cellSize)
+        /// <summary>위아래 뒤집기 (R-139 수비): 맵 위 줄(적 쪽 · 지키는 쪽)이 우리 쪽(아래)에 온다.</summary>
+        public bool Flipped { get; }
+
+        public CrowdTerrain(MapDef map, IReadOnlyDictionary<string, TerrainRuleDef> rules, IReadOnlyDictionary<string, IReadOnlyDictionary<string, Fix>> combat, Fix cellSize, bool flipped = false)
         {
             Map = map;
+            Flipped = flipped;
             _rules = rules ?? new Dictionary<string, TerrainRuleDef>();
             _combat = combat ?? new Dictionary<string, IReadOnlyDictionary<string, Fix>>();
             CellSize = cellSize;
@@ -59,13 +63,17 @@ namespace Game.Battle.Model.Crowd
             int up = (int)(p.Y / CellSize).FloorToLong();
             if (col < 0) col = 0; else if (col >= Map.Width) col = Map.Width - 1;
             if (up < 0) up = 0; else if (up >= Map.Height) up = Map.Height - 1;
-            row = Map.Height - 1 - up;
+            row = RowOf(up);
         }
 
         public int CellIndex(Vec p) { CellOf(p, out int c, out int r); return r * Map.Width + c; }
 
         /// <summary>맵 칸 가운데의 전장 자리.</summary>
-        public Vec CellCenter(int col, int row) => new Vec(CellSize * col + CellSize / 2, CellSize * (Map.Height - 1 - row) + CellSize / 2);
+        public Vec CellCenter(int col, int row) => new Vec(CellSize * col + CellSize / 2, CellSize * UpOf(row) + CellSize / 2);
+
+        /// <summary>맵 행 ↔ 아래에서 몇 번째 줄 (뒤집으면 행 = 줄).</summary>
+        public int UpOf(int row) => Flipped ? row : Map.Height - 1 - row;
+        public int RowOf(int up) => Flipped ? up : Map.Height - 1 - up;
 
         public string TerrainAt(Vec p) { CellOf(p, out int c, out int r); return Map.TerrainAt(c, r); }
 
@@ -164,7 +172,7 @@ namespace Game.Battle.Model.Crowd
                         list.Add(new CrowdObstacle
                         {
                             Terrain = id,
-                            Pos = new Vec(CellSize * (Fix.FromInt(c) + fx), CellSize * (Fix.FromInt(mh - 1 - r) + fz)),
+                            Pos = new Vec(CellSize * (Fix.FromInt(c) + fx), CellSize * (Fix.FromInt(UpOf(r)) + fz)),
                             Radius = sp.Radius * size,
                             Size = size,
                             Variant = (int)(Hash01(i, k * 4 + 2) * 1000).FloorToLong(),

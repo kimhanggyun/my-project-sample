@@ -19,11 +19,13 @@ namespace Game.Unity.Screens
         private RectTransform _fieldArea;
         private readonly Vector3[] _corners = new Vector3[4];
 
-        public MapViewScreen(string mapId) { _mapId = mapId; }
+        private readonly bool _flipped;
+
+        public MapViewScreen(string mapId, bool flipped = false) { _mapId = mapId; _flipped = flipped; }
 
         public override void Build()
         {
-            var terrain = TestBattleTabView.TerrainOf(Ctx, _mapId);
+            var terrain = TestBattleTabView.TerrainOf(Ctx, _mapId, _flipped); // 수비면 뒤집힌 맵 (우리가 지키는 쪽)
             var rules = CrowdRules.Load(Ctx.Data);
 
             Ui.Column(Root, 6, 8);

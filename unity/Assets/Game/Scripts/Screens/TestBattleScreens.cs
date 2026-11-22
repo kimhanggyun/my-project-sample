@@ -14,7 +14,12 @@ namespace Game.Unity.Screens
         private const string Key = "testBattle.setup.v1";
         public static readonly List<CrowdUnitSpec> Ally = new List<CrowdUnitSpec>();
         public static readonly List<CrowdUnitSpec> Enemy = new List<CrowdUnitSpec>();
-        public static bool EnemyAdvance;
+        /// <summary>
+        /// 우리가 수비 (R-139 공수 교대, 2026-11-22 사용자): 맵을 위아래로 뒤집어 우리가 지키는 쪽(고지 · 강 건너편)에 서고, 적이 전진해 온다.
+        /// 공격이면 맵 그대로 · 적은 제자리. (예전 "적 명령 [제자리][전진]"을 합침 — 저장 값도 같은 자리)
+        /// </summary>
+        public static bool AllyDefends;
+        public static bool EnemyAdvance => AllyDefends;
         /// <summary>처음 고른 맵 = 평원 (모두 평지, 60 × 100 — 2026-11-22 사용자: 60 × 60 평지 카드 뺌).</summary>
         public const string DefaultMap = "crowd_plain";
         public static string Map = DefaultMap;
@@ -37,7 +42,7 @@ namespace Game.Unity.Screens
         public static void Save()
         {
             var sb = new StringBuilder();
-            sb.Append(EnemyAdvance ? "1" : "0").Append('|').Append(Map);
+            sb.Append(AllyDefends ? "1" : "0").Append('|').Append(Map);
             foreach (var (team, list) in new[] { ("a", Ally), ("e", Enemy) })
                 foreach (var u in list)
                     sb.Append('|').Append(team).Append(',').Append(u.Row).Append(',').Append(u.Col).Append(',').Append(u.Troop).Append(',')
@@ -50,7 +55,7 @@ namespace Game.Unity.Screens
             try
             {
                 var parts = s.Split('|');
-                EnemyAdvance = parts[0] == "1";
+                AllyDefends = parts[0] == "1";
                 Map = System.Array.IndexOf(TestBattleTabView.Maps, parts[1]) >= 0 ? parts[1] : DefaultMap; // 예전 "plain"(60 × 60)은 평원으로
                 Ally.Clear(); Enemy.Clear();
                 for (int i = 2; i < parts.Length; i++)
@@ -118,18 +123,18 @@ namespace Game.Unity.Screens
             InfoButton.Add(_root, T("ui.test.note"));
 
             Grid(list, false);
-            // 적 명령: 적 칸과 맵 사이 (2026-11-21 사용자)
-            var order = Ui.Row(list, "EnemyOrder", 72, 8);
-            Ui.Size(Ui.Label(order, T("ui.sample2.enemyOrder"), 24), width: 160);
-            Ui.Size(Ui.Button(order, T("ui.sample2.hold"), () => { TestBattleSetup.EnemyAdvance = false; TestBattleSetup.Save(); Redraw(); }, 72,
-                TestBattleSetup.EnemyAdvance ? Palette.Button : Palette.ButtonActive, 24), flexibleWidth: 1);
-            Ui.Size(Ui.Button(order, T("ui.sample2.advance"), () => { TestBattleSetup.EnemyAdvance = true; TestBattleSetup.Save(); Redraw(); }, 72,
-                TestBattleSetup.EnemyAdvance ? Palette.ButtonActive : Palette.Button, 24), flexibleWidth: 1);
+            // 공수 (R-139): 우리 [공격][수비] — 수비면 맵을 뒤집어 우리가 지키는 쪽, 적이 전진해 옴 (적 칸과 맵 사이)
+            var order = Ui.Row(list, "AttackDefend", 72, 8);
+            Ui.Size(Ui.Label(order, T("ui.test.side"), 24), width: 160);
+            Ui.Size(Ui.Button(order, T("ui.test.attack"), () => { TestBattleSetup.AllyDefends = false; TestBattleSetup.Save(); Redraw(); }, 72,
+                TestBattleSetup.AllyDefends ? Palette.Button : Palette.ButtonActive, 24), flexibleWidth: 1);
+            Ui.Size(Ui.Button(order, T("ui.test.defend"), () => { TestBattleSetup.AllyDefends = true; TestBattleSetup.Save(); Redraw(); }, 72,
+                TestBattleSetup.AllyDefends ? Palette.ButtonActive : Palette.Button, 24), flexibleWidth: 1);
             // 맵: 좌우로 넘기는 카드 (지금은 평지 하나)
             // 맵 제목 + [보기]: 고른 맵을 부대 없이 둘러보기 (2026-11-22 사용자)
             var mapHead = Ui.Row(list, "MapHead", 64, 12);
             Ui.Size(Ui.Label(mapHead, T("ui.test.map"), Ui.FontBody), flexibleWidth: 1);
-            Ui.Size(Ui.Button(mapHead, T("ui.test.view"), () => _app.Show(new MapViewScreen(TestBattleSetup.Map)), 64, Palette.Button, 24), width: 160);
+            Ui.Size(Ui.Button(mapHead, T("ui.test.view"), () => _app.Show(new MapViewScreen(TestBattleSetup.Map, TestBattleSetup.AllyDefends)), 64, Palette.Button, 24), width: 160);
             // 맵 카드 (R-133): 위 = 적 쪽 미리보기 + 이름
             var maps = Ui.HScrollRow(list, "Maps", 196);
             foreach (var m in Maps)
@@ -295,17 +300,17 @@ namespace Game.Unity.Screens
                 return r;
             }
             return new CrowdSetup { AllyUnits = Copy(TestBattleSetup.Ally), EnemyUnits = Copy(TestBattleSetup.Enemy), AllyAdvance = false, EnemyAdvance = TestBattleSetup.EnemyAdvance,
-                Terrain = TerrainOf(ctx, TestBattleSetup.Map) };
+                Terrain = TerrainOf(ctx, TestBattleSetup.Map, TestBattleSetup.AllyDefends) };
         }
 
         /// <summary>맵 id → 지형 (R-133, 평지 · 없는 맵이면 null = 평지 60 × 60).</summary>
-        public static CrowdTerrain TerrainOf(Game.Unity.Boot.GameContext ctx, string mapId)
+        public static CrowdTerrain TerrainOf(Game.Unity.Boot.GameContext ctx, string mapId, bool flipped = false)
         {
             if (ctx == null || string.IsNullOrEmpty(mapId) || mapId == "plain") return null;
             try
             {
                 var map = Game.Data.Defs.MapDef.Load(ctx.Data, mapId);
-                return new CrowdTerrain(map, ctx.Defs.TerrainRules, ctx.Defs.TerrainCombat, CrowdTerrain.CellSizeFor(map, CrowdRules.Load(ctx.Data).MapFieldWidth));
+                return new CrowdTerrain(map, ctx.Defs.TerrainRules, ctx.Defs.TerrainCombat, CrowdTerrain.CellSizeFor(map, CrowdRules.Load(ctx.Data).MapFieldWidth), flipped);
             }
             catch (System.Exception) { return null; }
         }

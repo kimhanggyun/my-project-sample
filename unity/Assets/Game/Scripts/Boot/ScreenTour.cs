@@ -379,6 +379,40 @@ namespace Game.Unity.Boot
                 yield return Shot("42c_generals_fight", null, 0.3f);
             }
 
+            // 공수 교대 (R-139): 고지전 수비 = 맵을 뒤집어 우리가 꼭대기, 적이 올라온다
+            {
+                var du = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "spearman", Formation = "thick", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer", General = "strategist" },
+                };
+                var de = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", General = "warrior" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "infantry" },
+                };
+                var sd = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = du, EnemyUnits = de, AllyAdvance = false, EnemyAdvance = true, Seed = 13,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_highland", true) }, startNow: true);
+                yield return Shot("43_defend_open", () => sd, 0.4f);
+                sd.StepForTour(1);
+                sd.FocusArmyForTour(0, 40f);
+                yield return Shot("43b_defend_heights", null, 0.3f);
+                sd.StepForTour(450);
+                sd.FocusArmyForTour(0, 34f);
+                yield return Shot("43c_defend_enemy_climbing", null, 0.3f);
+            }
+            // 부대 하나면 [전체] 없음 (R-139)
+            {
+                var one = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+                {
+                    AllyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Commander = true } },
+                    EnemyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Commander = true } },
+                    AllyAdvance = false, Seed = 3, Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain"),
+                }, startNow: true);
+                yield return Shot("43d_single_corps", () => one, 0.4f);
+            }
+
             _app.ShowMain("story");
             Done = true;
             Debug.Log($"화면 캡처 {Saved.Count}장: {_folder}");
