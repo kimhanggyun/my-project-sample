@@ -208,6 +208,7 @@ namespace Game.Data.Defs
                     CostByTag = byTag,
                     Impassable = JsonUtil.StringList(t, "impassable"),
                     Height = (int)(t.Value<long?>("height") ?? 0),
+                    Connects = JsonUtil.StringList(t, "connects"),
                     Conceals = t.Value<bool?>("conceals") ?? false,
                     Flammable = t.Value<bool?>("flammable") ?? false,
                     Water = t.Value<bool?>("water") ?? false,

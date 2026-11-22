@@ -394,6 +394,8 @@ namespace Game.Data.Defs
         /// <summary>진입 불가 태그. "*"는 모든 병종.</summary>
         public IReadOnlyList<string> Impassable { get; internal set; }
         public int Height { get; internal set; }
+        /// <summary>이 지형과 바로 오갈 수 있는 이웃 지형 id (R-142, 비면 모두 — 예: 성벽 위는 계단 · 성벽 위에서만 오르내림).</summary>
+        public IReadOnlyList<string> Connects { get; internal set; } = new List<string>();
         /// <summary>숨는 지형 (안의 부대는 가까이 가야 보이고, 복병을 칠 수 있다).</summary>
         public bool Conceals { get; internal set; }
         /// <summary>불이 붙는 지형 (화계).</summary>

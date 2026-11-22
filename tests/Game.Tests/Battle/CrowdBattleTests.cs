@@ -1,5 +1,6 @@
 using System;
 using Game.Battle.Model.Crowd;
+using Game.Battle.Model.Geometry;
 using Game.Data.Json;
 using Game.Foundation.Math;
 using Xunit;
@@ -548,6 +549,43 @@ namespace Game.Tests.Battle
         // ---- 공성 (R-140) ----
 
         [Fact]
+        public void WallTopOnlyFromStairs()
+        {
+            // R-142 (2026-11-22 사용자 영상 "진형 맞춘다고 성벽 위로 올라감"): 성벽 위 ↔ 땅은 바로 못 오감, 계단으로만
+            var setup = One("infantry", "crowd_siege");
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var t = b.Terrain;
+            int w = t.Map.Width, h = t.Map.Height, top = -1, ground = -1, stairs = -1;
+            for (int r = 0; r < h && (top < 0 || stairs < 0); r++)
+                for (int c = 0; c < w; c++)
+                {
+                    if (t.Map.TerrainAt(c, r) == "stairs" && stairs < 0) stairs = r * w + c;
+                    if (t.Map.TerrainAt(c, r) != "wallTop" || top >= 0) continue;
+                    foreach (var (dc, dr) in new[] { (0, 1), (0, -1), (1, 0), (-1, 0) })
+                    {
+                        int nc = c + dc, nr = r + dr;
+                        if (nc < 0 || nr < 0 || nc >= w || nr >= h) continue;
+                        string nt = t.Map.TerrainAt(nc, nr);
+                        if (nt != "wallTop" && nt != "stairs" && nt != "wall" && !t.Blocks(b.Commander(0).Troop, nc, nr)) { top = r * w + c; ground = nr * w + nc; break; }
+                    }
+                }
+            Assert.True(top >= 0 && ground >= 0 && stairs >= 0, "map has wallTop next to ground and stairs");
+            Assert.False(t.Links(ground, top));
+            Assert.False(t.Links(top, ground));
+            var troop = b.Commander(CrowdBattle.Ally).Troop;
+            Vec G = t.CellCenter(ground % w, ground / w), Top = t.CellCenter(top % w, top / w);
+            Assert.False(t.Clear(troop, G, Top));
+            // 땅에 선 병사에게 성벽 위 자리는 가까운 땅으로
+            Assert.NotEqual("wallTop", t.TerrainAt(t.SnapLinked(troop, G, Top)));
+            // 길 찾기는 계단을 지난다
+            var path = t.FindPath(troop, G, Top);
+            Assert.NotEmpty(path);
+            bool viaStairs = false;
+            foreach (var p in path) if (t.TerrainAt(p) == "stairs") viaStairs = true;
+            Assert.True(viaStairs, "path climbs by stairs");
+        }
+
+        [Fact]
         public void GateHoldsUntilBrokenThenAttackersPourIn()
         {
             var setup = One("infantry", "crowd_siege");
@@ -575,6 +613,9 @@ namespace Game.Tests.Battle
             int inside = 0;
             foreach (var s in a.Soldiers) if (s.Alive && s.Pos.Y > wallY) inside++;
             _out.WriteLine($"siege: gate opened at {openTick}, hp {gate.Hp}/{gate.MaxHp}, inside before {insideBefore}, inside after {inside}, end {b.EndReason}");
+            int onTop = 0;
+            foreach (var s in a.Soldiers) if (s.Alive && b.Terrain.TerrainAt(s.Pos) == "wallTop") onTop++;
+            Assert.Equal(0, onTop); // 성문으로 들어가도 성벽 위로 올라서지 않음 (R-142)
             Assert.Equal(0, insideBefore); // 부서지기 전엔 아무도 못 들어감
             Assert.True(openTick > 0, "gate never broke");
             Assert.True(inside > 0 || b.IsOver, "nobody went in"); // 부서지면 들어감
@@ -642,9 +683,15 @@ namespace Game.Tests.Battle
             var sg = WithGeneral("strategist").Commander(CrowdBattle.Ally);
             Fix front = Fix.FromInt(-99), back = Fix.FromInt(99);
             foreach (var s in w.Soldiers) if (!s.IsGeneral) { if (s.Slot.Y > front) front = s.Slot.Y; if (s.Slot.Y < back) back = s.Slot.Y; }
-            Assert.True(w.General.Slot.Y > front); // 맹장 = 대열 맨 앞 (선봉)
-            Assert.True(st.General.Slot.Y < back); // 장수 = 대열 뒤
-            Assert.True(sg.General.Slot.Y < st.General.Slot.Y); // 책사 = 더 뒤
+            // 적과 만나기 전 (R-142): 성향과 관계없이 모두 장수 자리 (대열 뒤)
+            Assert.False(w.GeneralEngaged);
+            Assert.Equal(st.General.Slot, w.General.Slot);
+            Assert.Equal(st.General.Slot, sg.General.Slot);
+            Assert.True(st.General.Slot.Y < back);
+            // 만나면 성향 자리
+            Assert.True(w.GeneralRoleSlot.Y > front); // 맹장 = 대열 맨 앞 (선봉)
+            Assert.Equal(st.GeneralBaseSlot, st.GeneralRoleSlot); // 장수 = 대열 뒤
+            Assert.True(sg.GeneralRoleSlot.Y < st.GeneralRoleSlot.Y); // 책사 = 더 뒤
             Assert.True(w.General.MaxHp > st.General.MaxHp && st.General.MaxHp > sg.General.MaxHp); // 무력만큼 버팀
             Assert.Equal(b0().Rules.GeneralHp, st.General.MaxHp); // 장수(무력 70) = 지금까지와 같음
             CrowdBattle b0() => WithGeneral("standard");
@@ -677,6 +724,7 @@ namespace Game.Tests.Battle
             var a = b.Commander(CrowdBattle.Ally);
             var y0 = a.General.Pos.Y;
             a.General.Hp = 3; // 크게 다침
+            a.Morale = Fix.FromInt(20); // 부대도 흔들림 (R-142: 부대가 버티면 도망 대신 부상 — 아래 시험)
             for (int t = 0; t < 600 && !b.IsOver; t++) b.Step();
             Assert.True(a.GeneralEscaping);
             Assert.True(a.General.FledTick >= 0, "general fled");
@@ -686,13 +734,95 @@ namespace Game.Tests.Battle
         }
 
         [Fact]
+        public void WoundedGeneralStaysBehindWhileArmyHolds()
+        {
+            // R-142 (2026-11-22 사용자 영상 "병사는 이기는데 장수만 맵 끝까지"): 부대가 버티면 크게 다쳐도 대열 바로 뒤에서 지휘
+            var b = WithGeneral("warrior");
+            var a = b.Commander(CrowdBattle.Ally);
+            a.General.Hp = 3;
+            for (int t = 0; t < 600 && !b.IsOver; t++) b.Step();
+            Assert.True(a.GeneralWounded);
+            Assert.False(a.GeneralEscaping);
+            Assert.True(a.General.FledTick < 0, "stayed");
+            Fix back = Fix.FromInt(99);
+            foreach (var s in a.Soldiers) if (s.Alive && !s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
+            Assert.True(a.General.Slot.Y < back); // 대열 바로 뒤
+            Assert.True((a.General.Pos - a.SlotWorld(a.General.Slot)).Length < Fix.FromInt(3), "general near his spot");
+            // 부대가 흔들리면 그때 퇴로로
+            a.Morale = Fix.FromInt(20);
+            b.Step();
+            Assert.True(a.GeneralEscaping);
+        }
+
+        [Fact]
+        public void PulledBackGeneralCommandsInsteadOfFighting()
+        {
+            // R-142 (2026-11-22 사용자 영상): 물러나 지휘인 맹장이 앞줄에서 계속 싸우다 체력이 떨어져 도망가던 것 — 물러나면 먼저 덤비지 않는다
+            var setup = One("infantry", "crowd_plain");
+            setup.AllyUnits[0].General = "warrior";
+            setup.AllyUnits[0].Count = 150;
+            setup.EnemyUnits[0].Count = 60; // 부대가 버티는 싸움 (무너지면 장수도 함께 달아남)
+            setup.EnemyAdvance = true;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            int t = 0;
+            for (; t < 3000 && !b.IsOver && a.General.LastAttackTick < 0; t++) b.Step(); // 선봉에서 싸우기 시작
+            Assert.True(a.General.LastAttackTick >= 0, "warrior fought");
+            a.General.Hp = a.General.MaxHp * 55 / 100;
+            b.Step();
+            Assert.True(a.GeneralPulledBack);
+            int swings = 0;
+            for (int k = 0; k < 60 && !b.IsOver; k++) { b.Step(); if (a.General.LastAttackTick == b.Tick) swings++; }
+            Fix off = (a.General.Pos - a.SlotWorld(a.General.Slot)).Length;
+            _out.WriteLine($"pulled back warrior: swings after {swings}, off spot {off}, hp {a.General.Hp}/{a.General.MaxHp}, escaping {a.GeneralEscaping}");
+            Assert.True(off < Fix.FromInt(2), $"went to command spot ({off})"); // 적을 쫓지 않고 지휘 자리로
+            Assert.False(a.GeneralEscaping);
+        }
+
+        [Fact]
+        public void CircleKeepsGeneralInTheMiddle()
+        {
+            // R-142: 원진은 성향과 관계없이 장수가 원 가운데 (맹장이 원 밖 앞에 혼자 튀어나오지 않게)
+            foreach (var preset in new[] { "warrior", "standard", "strategist" })
+            {
+                var setup = One("infantry", "crowd_plain");
+                setup.AllyUnits[0].General = preset;
+                setup.AllyUnits[0].Formation = CrowdFormations.Circle;
+                var a = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters).Commander(CrowdBattle.Ally);
+                Assert.Equal(Vec.Zero, a.GeneralBaseSlot);
+                Assert.Equal(Vec.Zero, a.GeneralRoleSlot);
+                Assert.Equal(Vec.Zero, a.GeneralCommandSlot);
+                Assert.Equal(Vec.Zero, a.GeneralWoundedSlot);
+            }
+        }
+
+        [Fact]
+        public void FormationChangeAppliesWhileHolding()
+        {
+            // R-142 (2026-11-22 사용자 영상 "진형 눌렀는데 이동 누르기 전까지 안 바뀜"): 대기 중 멈춘 병사도 바로 새 자리로
+            var setup = One("infantry", "crowd_plain");
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            for (int t = 0; t < 200; t++) b.Step();
+            Assert.Equal(CrowdOrders.Hold, a.Order);
+            Fix Off() { Fix sum = Fix.Zero; foreach (var s in a.Soldiers) if (s.Alive) sum += (s.Pos - a.SlotWorld(s.Slot)).Length; return sum; }
+            b.SetFormation(a.Id, CrowdFormations.Column);
+            Fix before = Off();
+            for (int t = 0; t < 150; t++) b.Step();
+            Fix after = Off();
+            _out.WriteLine($"formation change while holding: off {before} -> {after}");
+            Assert.True(after * 4 < before, $"{before} -> {after}");
+            Assert.Equal(CrowdOrders.Hold, a.Order); // 이동 명령 없이
+        }
+
+        [Fact]
         public void WoundedVanguardStepsBackBehindTheLine()
         {
             var b = WithGeneral("warrior");
             var a = b.Commander(CrowdBattle.Ally);
             Fix back = Fix.FromInt(99);
             foreach (var s in a.Soldiers) if (!s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
-            Assert.True(a.General.Slot.Y > Fix.Zero); // 처음엔 선봉
+            Assert.True(a.GeneralRoleSlot.Y > Fix.Zero); // 만나면 선봉
             a.General.Hp = a.General.MaxHp * 55 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);

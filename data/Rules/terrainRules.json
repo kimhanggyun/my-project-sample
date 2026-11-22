@@ -1,5 +1,5 @@
 {
-  "_comment": "지형 이동 규칙 (예시). 공성 (샘플전투2 R-140): wall 성벽(못 지나감) · wallTop 성벽 위(수비 병사가 서는 높은 곳) · stairs 오르는 계단 · gate 성문(부서지기 전엔 닫혀 못 지나감 — 닫힘은 전투 규칙이 정함). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이, conceals = 숨는 지형 (안의 부대는 가까이 가야 보임, 복병 가능), flammable/burnsTo/burnSec = 불이 붙는 지형과 타고 나서 바뀌는 지형",
+  "_comment": "지형 이동 규칙 (예시). 공성 (샘플전투2 R-140): wall 성벽(못 지나감) · wallTop 성벽 위(수비 병사가 서는 높은 곳, connects = 바로 오갈 수 있는 이웃 지형 — 계단으로만 오르내림, R-142) · stairs 오르는 계단 · gate 성문(부서지기 전엔 닫혀 못 지나감 — 닫힘은 전투 규칙이 정함). cost = 이동 비용 배율, impassable = 진입 불가 태그('*'는 전부), height = 높이, conceals = 숨는 지형 (안의 부대는 가까이 가야 보임, 복병 가능), flammable/burnsTo/burnSec = 불이 붙는 지형과 타고 나서 바뀌는 지형",
   "terrain": {
     "plain": {
       "cost": 1
@@ -117,7 +117,10 @@
     },
     "wallTop": {
       "cost": 1.2,
-      "height": 2
+      "height": 2,
+      "connects": [
+        "stairs"
+      ]
     },
     "stairs": {
       "cost": 1.5,

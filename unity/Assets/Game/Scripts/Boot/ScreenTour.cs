@@ -430,6 +430,10 @@ namespace Game.Unity.Boot
                 ss.StepForTour(80);
                 ss.FocusPointForTour(30f, 66f, 26f);
                 yield return Shot("44d_siege_inside", null, 0.3f);
+                // R-142: 성문으로 들어가도 성벽 위로 올라서지 않음 (성벽 위는 계단으로만)
+                ss.StepForTour(150);
+                ss.FocusPointForTour(30f, 63f, 18f);
+                yield return Shot("44e_siege_wall_after", null, 0.3f);
             }
             // 공성전 맵 3개 (원격 PR #282): 맵 보기 (성 전체) · 성문 앞 · 부서진 뒤
             foreach (var sm in new[] { "crowd_siege_plain", "crowd_siege_river", "crowd_siege_mountain" })
@@ -456,6 +460,46 @@ namespace Game.Unity.Boot
                 sb2.StepForTour(80);
                 sb2.FocusGateForTour(28f);
                 yield return Shot("45_" + sm + "_2inside", null, 0.3f);
+            }
+            // R-142: 원진 맹장 = 원 가운데, 크게 다쳐도 부대가 버티면 "장수 부상" (맵 끝까지 안 감), 대기 중 진형 바꾸면 바로 바뀜
+            {
+                var cu = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 150, Formation = "circle", General = "warrior", Commander = true },
+                };
+                var ce = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 150, Commander = true },
+                };
+                var sc = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = cu, EnemyUnits = ce, AllyAdvance = false, EnemyAdvance = true, Seed = 23,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain") }, startNow: true);
+                yield return Shot("46_circle_open", () => sc, 0.4f);
+                sc.StepForTour(1);
+                sc.FocusPlaceGeneralForTour("front_center", 22f);
+                yield return Shot("46a_circle_general_middle", null, 0.3f);
+                for (int w = 0; w < 400 && !sc.FightingForTour; w++) sc.StepForTour(2);
+                sc.StepForTour(20);
+                sc.FocusPlaceGeneralForTour("front_center", 22f);
+                yield return Shot("46b_circle_fight", null, 0.3f);
+                sc.WoundGeneralForTour("front_center", 15);
+                for (int k = 0; k < 3; k++) { sc.StepForTour(30); sc.FocusPlaceGeneralForTour("front_center", 22f); yield return Shot($"46c_general_wounded_{k}", null, 0.1f); }
+
+                var fu = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Formation = "line", Commander = true },
+                };
+                var fe = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                };
+                var sf = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = fu, EnemyUnits = fe, AllyAdvance = false, EnemyAdvance = false, Seed = 29,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain") }, startNow: true);
+                yield return Shot("46d_formation_hold", () => sf, 0.4f);
+                sf.StepForTour(150);
+                sf.FocusArmyForTour(0, 30f);
+                yield return Shot("46d_formation_hold_line", null, 0.3f);
+                sf.FormationForTour("front_center", "circle");
+                for (int k = 0; k < 3; k++) { sf.StepForTour(20); sf.FocusArmyForTour(0, 30f); yield return Shot($"46e_formation_now_{k}", null, 0.1f); }
             }
             // 부대 하나면 [전체] 없음 (R-139)
             {

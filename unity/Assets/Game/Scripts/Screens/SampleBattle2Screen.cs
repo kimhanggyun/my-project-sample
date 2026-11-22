@@ -223,6 +223,7 @@ namespace Game.Unity.Screens
             string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id)
                 + " · " + T("ui.crowd.general." + a.GeneralInfo.Preset); // 장수 성향 (R-138)
             if (a.GeneralEscaping && a.General.Alive) s += " · " + T("ui.crowd.generalEscaping");
+            else if (a.GeneralWounded && a.General.Alive && !a.Routed) s += " · " + T("ui.crowd.generalWounded"); // 부상: 대열 뒤에서 지휘 (R-142)
             else if (a.GeneralPulledBack && a.General.Alive && !a.Routed) s += " · " + T("ui.crowd.generalCommanding");
             if (a.Team == CrowdBattle.Ally && a.Delegated) s += " · " + T("ui.sample2.auto");
             if (a.Marching) s += " · " + T("ui.sample2.marching");
@@ -483,7 +484,8 @@ namespace Game.Unity.Screens
             if (a.GeneralEscaping && a.General.Alive) return Ui.Colored(T("ui.crowd.generalEscaping"), Palette.Bad); // 장수 혼자 빠지는 중 (부대는 남음)
             if (!a.General.Alive) return Ui.Colored(T("ui.sample2.noGeneral"), Palette.Bad);
             string m = T("ui.sample2.morale", System.Math.Max(0, (int)a.Morale.FloorToLong()));
-            if (a.GeneralPulledBack) m += " " + T("ui.crowd.generalCommanding");
+            if (a.GeneralWounded) m += " " + T("ui.crowd.generalWounded");
+            else if (a.GeneralPulledBack) m += " " + T("ui.crowd.generalCommanding");
             if (a.Encircled) m += " " + T("ui.sample2.encircled");
             else if (a.Wavering) m += " " + T("ui.sample2.wavering");
             return a.Wavering || a.Encircled ? Ui.Colored(m, Palette.Bad) : m;
@@ -806,6 +808,14 @@ namespace Game.Unity.Screens
         {
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
                 if (a.Place == place && a.General.Alive) a.General.Hp = System.Math.Max(1, a.General.MaxHp * pct / 100);
+        }
+
+        /// <summary>캡처 투어: 그 자리 우리 부대 진형 바꾸기 (진형 버튼과 같음).</summary>
+        public void FormationForTour(string place, string formation)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+                if (a.Place == place) _battle.SetFormation(a.Id, formation);
+            RecolorFormations();
         }
 
         /// <summary>캡처 투어: 우리 총대장(말 탄 장수) 가까이로 카메라.</summary>
