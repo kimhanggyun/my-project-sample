@@ -377,6 +377,9 @@ namespace Game.Unity.Boot
                 sgn.StepForTour(15);
                 sgn.FocusPlaceGeneralForTour("front_left", 16f);
                 yield return Shot("42c_generals_fight", null, 0.3f);
+                // 물러나 지휘: 맹장 체력 55% → 앞줄 바로 뒤로 (적 쪽을 본 채), "지휘"
+                sgn.WoundGeneralForTour("front_left", 55);
+                for (int k = 0; k < 4; k++) { sgn.StepForTour(5); sgn.FocusPlaceGeneralForTour("front_left", 14f); yield return Shot($"42d_generals_commanding_{k}", null, 0.1f); }
             }
 
             // 공수 교대 (R-139): 고지전 수비 = 맵을 뒤집어 우리가 꼭대기, 적이 올라온다
@@ -401,6 +404,32 @@ namespace Game.Unity.Boot
                 sd.StepForTour(450);
                 sd.FocusArmyForTour(0, 34f);
                 yield return Shot("43c_defend_enemy_climbing", null, 0.3f);
+            }
+            // 공성 (R-140): 성문 앞에 모여 치고, 부서지면 들어간다
+            {
+                var su = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Commander = true, General = "warrior" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" },
+                };
+                var se = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "spearman", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 2, Col = 0, Troop = "archer" },
+                };
+                var ss = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = su, EnemyUnits = se, AllyAdvance = true, Seed = 17,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_siege") }, startNow: true);
+                yield return Shot("44_siege_open", () => ss, 0.5f);
+                ss.StepForTour(1);
+                ss.FocusPointForTour(30f, 62f, 50f);
+                yield return Shot("44b_siege_castle", null, 0.3f);
+                ss.StepForTour(420);
+                ss.FocusPointForTour(30f, 60f, 22f);
+                yield return Shot("44c_siege_at_gate", null, 0.3f);
+                for (int w = 0; w < 100 && !ss.GateOpenForTour; w++) ss.StepForTour(10);
+                ss.StepForTour(80);
+                ss.FocusPointForTour(30f, 66f, 26f);
+                yield return Shot("44d_siege_inside", null, 0.3f);
             }
             // 부대 하나면 [전체] 없음 (R-139)
             {

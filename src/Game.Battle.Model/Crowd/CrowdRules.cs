@@ -109,8 +109,13 @@ namespace Game.Battle.Model.Crowd
         /// <summary>장수 받는 피해 줄이기: 무력 1당 % (× 100 — 100 = 1%p).</summary>
         public int GeneralGuardPerMight { get; private set; }
         public int GeneralGuardMinPct { get; private set; }
+        // 공성 (R-140)
+        public int GateHp { get; private set; }
+        public int GateHitDamage { get; private set; }
+        public long GatePlanCost { get; private set; }
         // 호위 · 물러남 (R-139)
         public int GeneralPullBackHpPct { get; private set; }
+        public Fix GeneralPullBackRows { get; private set; }
         public int GeneralEscapeWaverHpPct { get; private set; }
         public Fix GeneralGuardRange { get; private set; }
         public int GeneralGuardMin { get; private set; }
@@ -232,6 +237,10 @@ namespace Game.Battle.Model.Crowd
                 GeneralGuardPerMight = (int)JsonUtil.RequireLong(o, "generalGuardPerMight", c),
                 GeneralGuardMinPct = (int)JsonUtil.RequireLong(o, "generalGuardMinPct", c),
                 GeneralPullBackHpPct = (int)JsonUtil.RequireLong(o, "generalPullBackHpPct", c),
+                GeneralPullBackRows = JsonUtil.RequireFix(o, "generalPullBackRows", c),
+                GateHp = (int)JsonUtil.RequireLong(o, "gateHp", c),
+                GateHitDamage = (int)JsonUtil.RequireLong(o, "gateHitDamage", c),
+                GatePlanCost = JsonUtil.RequireLong(o, "gatePlanCost", c),
                 GeneralEscapeWaverHpPct = (int)JsonUtil.RequireLong(o, "generalEscapeWaverHpPct", c),
                 GeneralGuardRange = JsonUtil.RequireFix(o, "generalGuardRange", c),
                 GeneralGuardMin = (int)JsonUtil.RequireLong(o, "generalGuardMin", c),

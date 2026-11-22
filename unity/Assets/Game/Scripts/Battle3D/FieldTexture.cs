@@ -31,6 +31,10 @@ namespace Game.Unity.Battle3D
             { "flood", new Color32(70, 120, 190, 255) },   // 수공으로 잠김 (R-84)
             { "water", new Color32(45, 85, 150, 255) },    // 호수·바다 (수상전, R-85)
             { "mud", new Color32(105, 90, 60, 255) },      // 물이 빠진 진흙
+            { "wall", new Color32(110, 104, 96, 255) },    // 공성 (R-140)
+            { "wallTop", new Color32(150, 142, 128, 255) },
+            { "stairs", new Color32(130, 122, 110, 255) },
+            { "gate", new Color32(120, 80, 45, 255) },
         };
         /// <summary>수묵 스타일 지형 색 (art-direction.md 2장: 부드러운 먹빛 담채). 한지 스타일(UiStyle.Paper)일 때.</summary>
         private static readonly Dictionary<string, Color32> InkColors = new Dictionary<string, Color32>
@@ -53,6 +57,10 @@ namespace Game.Unity.Battle3D
             { "flood", new Color32(104, 164, 214, 255) },
             { "mud", new Color32(138, 108, 76, 255) },
             { "water", new Color32(84, 146, 200, 255) },
+            { "wall", new Color32(120, 114, 106, 255) },
+            { "wallTop", new Color32(170, 160, 144, 255) },
+            { "stairs", new Color32(146, 138, 124, 255) },
+            { "gate", new Color32(140, 96, 56, 255) },
         };
         /// <summary>지형 색 (지금 화면 스타일 기준, 맵 미리보기·범례용).</summary>
         public static Color32 ColorOf(string terrain) =>
