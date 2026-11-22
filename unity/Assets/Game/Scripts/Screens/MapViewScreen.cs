@@ -68,8 +68,10 @@ namespace Game.Unity.Screens
             _ground = new CrowdGround(_root.transform, terrain, width, depth, rules.Obstacles, obstacles, CrowdField3D.NewMaterial);
             float w = (float)width.ToDisplayDouble(), d = (float)depth.ToDisplayDouble();
             _rig = new BattleCameraRig(cam, w, d);
-            _rig.SetDistance(BattleCameraRig.MaxDistance); // 처음엔 맵 전체가 보이게
-            _rig.LookAt(new Vector3(w / 2f, 0f, d / 2f));
+            // 처음엔 실제 전투와 같은 거리 (우리 쪽), 손가락으로 줄이면 맵 전체가 한눈에 (2026-11-22 사용자)
+            _rig.MaxZoomOut = 175f;
+            _rig.SetDistance(36f);
+            _rig.LookAt(new Vector3(w / 2f, 0f, d * 0.2f));
         }
 
         private void Back() => App.ShowMain("test");

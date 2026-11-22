@@ -307,9 +307,9 @@ namespace Game.Unity.Boot
             yield return Shot("39j_ctl_result", null, 0.4f);
             // 지형 (R-133): 맵마다 전체 · 가까이 · 진군 뒤
             yield return Shot("40_test_tab_maps", () => new MainScreen("test"), 0.3f);
-            yield return Shot("40b_map_view_river", () => new MapViewScreen("river_ford"), 0.6f); // 맵 보기 (부대 없이)
-            yield return Shot("40c_map_view_hills", () => new MapViewScreen("hills_valley"), 0.6f);
-            string[] maps = { "hills_valley", "river_ford", "test_forest", "marsh_lake", "test_mountain_pass", "test_ambush" };
+            yield return Shot("40b_map_view_river", () => new MapViewScreen("crowd_river"), 0.6f); // 맵 보기 (부대 없이)
+            yield return Shot("40c_map_view_hills", () => new MapViewScreen("crowd_highland"), 0.6f);
+            string[] maps = { "crowd_highland", "crowd_gorge", "crowd_river", "crowd_marsh", "crowd_forest", "crowd_pass" };
             for (int mi = 0; mi < maps.Length; mi++)
             {
                 var units = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>

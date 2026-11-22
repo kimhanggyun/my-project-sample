@@ -18,6 +18,8 @@ namespace Game.Unity.Battle3D
         public Camera Camera { get; }
         public Vector3 Focus { get; private set; }
         public float Distance { get; private set; } = 26f;
+        /// <summary>가장 멀리 (기본 MaxDistance, 맵 보기는 맵 전체가 보이게 더 멀리).</summary>
+        public float MaxZoomOut { get; set; } = MaxDistance;
 
         /// <summary>맵 밖을 보여 줄 수 있는 너비 (칸, B8).</summary>
         public const float EdgeMargin = 4f;
@@ -49,7 +51,7 @@ namespace Game.Unity.Battle3D
         /// <summary>거리를 정해서 (최소~최대 안으로).</summary>
         public void SetDistance(float distance)
         {
-            Distance = Mathf.Clamp(distance, MinDistance, MaxDistance);
+            Distance = Mathf.Clamp(distance, MinDistance, MaxZoomOut);
             Apply();
         }
 
@@ -57,7 +59,7 @@ namespace Game.Unity.Battle3D
         public void Zoom(float factor)
         {
             if (factor <= 0f) return;
-            Distance = Mathf.Clamp(Distance / factor, MinDistance, MaxDistance);
+            Distance = Mathf.Clamp(Distance / factor, MinDistance, MaxZoomOut);
             Apply();
         }
 

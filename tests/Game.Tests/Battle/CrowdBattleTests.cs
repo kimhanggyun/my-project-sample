@@ -330,8 +330,11 @@ namespace Game.Tests.Battle
 
         // ---- 지형 (R-133) ----
 
-        private static CrowdTerrain Terrain(string mapId) =>
-            new CrowdTerrain(Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), mapId), Defs.TerrainRules, Defs.TerrainCombat, Rules().MapCellSize);
+        private static CrowdTerrain Terrain(string mapId)
+        {
+            var map = Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), mapId);
+            return new CrowdTerrain(map, Defs.TerrainRules, Defs.TerrainCombat, CrowdTerrain.CellSizeFor(map, Rules().MapFieldWidth));
+        }
 
         private static CrowdSetup One(string troop, string mapId) => new CrowdSetup
         {
@@ -429,6 +432,51 @@ namespace Game.Tests.Battle
             y.OrderAttackNearest(y.Commander(CrowdBattle.Ally).Id);
             for (int t = 0; t < 300; t++) { x.Step(); y.Step(); }
             Assert.Equal(x.Fingerprint(), y.Fingerprint());
+        }
+
+        // ---- 샘플전투2 맵 (R-135) ----
+
+        [Theory]
+        [InlineData("crowd_plain")]
+        [InlineData("crowd_highland")]
+        [InlineData("crowd_gorge")]
+        [InlineData("crowd_river")]
+        [InlineData("crowd_marsh")]
+        [InlineData("crowd_forest")]
+        [InlineData("crowd_pass")]
+        public void CrowdMapsAreValidAndBothSidesCanReachEachOther(string id)
+        {
+            var map = Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), id);
+            Assert.Empty(Game.Data.Validation.DataValidator.ValidateMap(Defs, map));
+            Assert.Equal(48, map.Width);
+            Assert.Equal(80, map.Height);
+            Assert.True(map.HasHeights);
+            var tr = Terrain(id);
+            Assert.Equal(Fix.FromInt(60), tr.Width);
+            Assert.Equal(Fix.FromInt(100), tr.Depth);
+            // 우리 시작 자리 → 적 시작 자리: 보병 · 기병 모두 길이 있어야 (막힌 맵이면 싸울 수 없음)
+            var b = new CrowdBattle(Rules(), One("infantry", id), Defs.TroopTypes, Defs.TroopCounters);
+            var from = b.Commander(CrowdBattle.Ally).Center;
+            var to = b.Commander(CrowdBattle.Enemy).Center;
+            foreach (var troop in new[] { "infantry", "cavalry", "archer" })
+            {
+                var t = CrowdTroop.Of(troop, Defs.TroopTypes);
+                Assert.False(tr.Blocks(t, from), $"{id} {troop} start blocked");
+                Assert.False(tr.Blocks(t, to), $"{id} {troop} enemy start blocked");
+                Assert.NotEmpty(tr.FindPath(t, from, to));
+            }
+        }
+
+        [Fact]
+        public void HeightLayerGivesGradualSlope()
+        {
+            var tr = Terrain("crowd_highland");
+            Fix low = tr.LevelAt(new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(10)));
+            Fix mid = tr.LevelAt(new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(50)));
+            Fix top = tr.LevelAt(new Game.Battle.Model.Geometry.Vec(Fix.FromInt(30), Fix.FromInt(90)));
+            _out.WriteLine($"highland levels: ally side {low}, middle {mid}, enemy side {top}");
+            Assert.True(low < mid && mid < top); // 우리 쪽에서 적 쪽으로 계속 오른다
+            Assert.Equal(Fix.FromInt(3), top); // 꼭대기 = 9 ÷ 3
         }
 
         // ---- 막는 소품 (R-134): 나무 기둥 · 바위 ----
