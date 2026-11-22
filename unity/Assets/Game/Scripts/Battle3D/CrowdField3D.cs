@@ -546,7 +546,7 @@ namespace Game.Unity.Battle3D
 
         private static Material _template;
 
-        private static Material NewMaterial(Color color)
+        public static Material NewMaterial(Color color)
         {
             if (_template == null) _template = Resources.Load<Material>("Materials/GameLit");
             if (_template == null && GraphicsSettings.defaultRenderPipeline != null) _template = GraphicsSettings.defaultRenderPipeline.defaultMaterial;
