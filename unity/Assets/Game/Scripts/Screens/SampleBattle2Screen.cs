@@ -347,11 +347,13 @@ namespace Game.Unity.Screens
             if (one != null && _cmd == "formation")
             {
                 _battle.Rules.RecommendedFormation.TryGetValue(one.Troop.BaseId, out var rec);
+                // 진형 아이콘 11개 (R-141, 이름 없이 모양) — 병종 추천 진형엔 ★
                 foreach (var id in CrowdFormations.All)
                 {
                     string f = id;
-                    string text = T("ui.sample2.f." + id) + (id == rec ? "\n" + T("ui.sample2.recommended") : "");
-                    var b = Detail(text, () => { foreach (var a in Chosen()) _battle.SetFormation(a.Id, f); RecolorFormations(); }, id == rec ? 20 : 24);
+                    var b = Detail("", () => { foreach (var a in Chosen()) _battle.SetFormation(a.Id, f); RecolorFormations(); }, 20);
+                    FormationIcon.Add(b.transform, id, new Color(0.85f, 0.18f, 0.16f), 54f, 5f);
+                    if (id == rec) Star(b.transform);
                     _formationButtons[id] = b;
                 }
                 RecolorFormations();
@@ -360,6 +362,17 @@ namespace Game.Unity.Screens
             _infoText = Ui.Label(_detailRow, "", 22, TextAnchor.MiddleCenter, Palette.Text);
             Ui.Size(_infoText, flexibleWidth: 1);
             RefreshInfo();
+        }
+
+        /// <summary>추천 표시 ★ (버튼 오른쪽 위).</summary>
+        private static void Star(Transform button)
+        {
+            var star = Ui.Label(button, "★", 18, TextAnchor.UpperRight, new Color(0.95f, 0.72f, 0.15f));
+            star.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            var r = star.rectTransform;
+            r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(2f, 2f); r.offsetMax = new Vector2(-4f, -2f);
+            star.raycastTarget = false;
         }
 
         private Button Detail(string text, System.Action act, int font = 24)

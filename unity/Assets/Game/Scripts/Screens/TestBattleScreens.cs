@@ -198,9 +198,17 @@ namespace Game.Unity.Screens
                     int c = col;
                     var u = TestBattleSetup.At(ally, row, c);
                     string text = u == null ? "+"
-                        : (u.Commander ? "★ " : "") + T("troop." + u.Troop) + " · " + T("ui.crowd.general." + u.General) + "\n" + T("ui.sample2.f." + u.Formation) + " · " + u.Count;
+                        : (u.Commander ? "★ " : "") + T("troop." + u.Troop) + " · " + T("ui.crowd.general." + u.General) + "\n" + u.Count; // 진형은 아이콘 (R-141)
                     var b = Ui.Button(line, text, () => OnCell(ally, row, c), 116, u == null ? Palette.Card : (ally ? new Color(0.24f, 0.36f, 0.6f) : new Color(0.58f, 0.24f, 0.2f)), u == null ? 40 : 24);
                     Ui.Size(b, flexibleWidth: 1);
+                    if (u != null)
+                    {
+                        // 칸 오른쪽에 진형 아이콘 (R-141)
+                        var ic = FormationIcon.Add(b.transform, u.Formation, new Color(1f, 0.92f, 0.86f), 44f, 4f);
+                        ic.anchorMin = ic.anchorMax = new Vector2(1f, 0.5f);
+                        ic.pivot = new Vector2(1f, 0.5f);
+                        ic.anchoredPosition = new Vector2(-8f, 0f);
+                    }
                 }
             }
             Ui.Label(card, T(ally ? "ui.test.allyHint" : "ui.test.enemyHint"), 20, TextAnchor.MiddleCenter, Palette.TextDim);
@@ -246,7 +254,9 @@ namespace Game.Unity.Screens
             foreach (var id in CrowdFormations.All)
             {
                 string f = id;
-                Ui.Size(Ui.Button(fr, T("ui.sample2.f." + id), () => { u.Formation = f; Changed(); }, 84, u.Formation == id ? Palette.ButtonActive : Palette.Button, 26), flexibleWidth: 1);
+                var fb = Ui.Button(fr, "", () => { u.Formation = f; Changed(); }, 84, u.Formation == id ? Palette.ButtonActive : Palette.Button, 26);
+                Ui.Size(fb, flexibleWidth: 1);
+                FormationIcon.Add(fb.transform, id, new Color(0.85f, 0.18f, 0.16f), 56f, 5f); // 진형 아이콘 (R-141)
             }
             // 장수 성향 (R-138): 맹장 = 선봉에서 직접 싸움 · 장수 = 대열 뒤 · 책사 = 멀리 뒤 (나중에 캠페인 장수 · 병종 적성)
             var gr = Ui.Row(content, "General", 84, 8);
