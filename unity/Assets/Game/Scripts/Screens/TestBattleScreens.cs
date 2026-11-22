@@ -16,7 +16,7 @@ namespace Game.Unity.Screens
         public static readonly List<CrowdUnitSpec> Enemy = new List<CrowdUnitSpec>();
         public static bool EnemyAdvance;
         /// <summary>처음 고른 맵 = 평원 (모두 평지, 60 × 100 — 2026-11-22 사용자: 60 × 60 평지 카드 뺌).</summary>
-        public const string DefaultMap = "test_plain";
+        public const string DefaultMap = "crowd_plain";
         public static string Map = DefaultMap;
         private static bool _loaded;
 
@@ -93,7 +93,8 @@ namespace Game.Unity.Screens
         private RectTransform _root;
         private static readonly string[] Troops = { "infantry", "spearman", "archer", "cavalry" };
         /// <summary>맵 카드 (R-133): 평지(맵 없음) + 기존 전장 맵 (수상전 맵은 뺌).</summary>
-        public static readonly string[] Maps = { "test_plain", "hills_valley", "river_ford", "marsh_lake", "test_forest", "test_ambush", "test_mountain_pass" };
+        /// <summary>샘플전투2 맵 (R-135, 48 × 80 — tools/crowd_maps.js로 만듦). 옛 전투 맵은 옛 전투 · 시험이 그대로 씀.</summary>
+        public static readonly string[] Maps = { "crowd_plain", "crowd_highland", "crowd_gorge", "crowd_river", "crowd_marsh", "crowd_forest", "crowd_pass" };
 
         public static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
 
@@ -293,7 +294,7 @@ namespace Game.Unity.Screens
             try
             {
                 var map = Game.Data.Defs.MapDef.Load(ctx.Data, mapId);
-                return new CrowdTerrain(map, ctx.Defs.TerrainRules, ctx.Defs.TerrainCombat, CrowdRules.Load(ctx.Data).MapCellSize);
+                return new CrowdTerrain(map, ctx.Defs.TerrainRules, ctx.Defs.TerrainCombat, CrowdTerrain.CellSizeFor(map, CrowdRules.Load(ctx.Data).MapFieldWidth));
             }
             catch (System.Exception) { return null; }
         }

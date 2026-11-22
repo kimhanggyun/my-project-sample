@@ -80,7 +80,7 @@ namespace Game.Unity.Battle3D
         private static readonly Color PlainColor = new Color(0.45f, 0.58f, 0.3f);
 
         /// <summary>칸 높이 (언덕 · 산), 물 바닥 깊이.</summary>
-        private float LevelAt(float x, float z) => _t.HeightAt(Field(x, z)) * LevelHeight;
+        private float LevelAt(float x, float z) => (float)_t.LevelAt(Field(x, z)).ToDisplayDouble() * LevelHeight;
 
         private float BedAt(float x, float z)
         {
@@ -113,7 +113,7 @@ namespace Game.Unity.Battle3D
                             float r = Mathf.Sqrt(dx * dx + dz * dz);
                             float sx = x + dx * 0.9f, sz = z + dz * 0.9f;
                             if (r <= 4f) { float k = Mathf.Cos(r / 4f * Mathf.PI * 0.5f); k *= k; hs += LevelAt(sx, sz) * k; hw += k; }
-                            if (r <= 1.5f) { float k = 1.6f - r; bs += BedAt(sx, sz) * k; bw += k; }
+                            if (r <= 2.8f) { float k = 3f - r; bs += BedAt(sx, sz) * k; bw += k; } // 물 바닥 반경 약 2.5칸 (여울 · 강 경계가 네모로 안 보이게, 캡처 41c)
                         }
                     float h = hs / hw + bs / bw;
                     // 땅 결: 언덕 · 산일수록 더 울퉁불퉁 (물 위로 솟지 않게 평지는 0 이상)
@@ -369,7 +369,8 @@ namespace Game.Unity.Battle3D
                     if (kind.batches.Count == 0) continue;
                     if (_obstacleSpecs.ContainsKey(id)) continue; // 막는 소품(나무 · 바위)은 규칙이 정한 자리에 (아래, R-134)
                     int i = r * mw + c;
-                    int count = (int)kind.perCell + (Rand(i, 99) < kind.perCell - (int)kind.perCell ? 1 : 0);
+                    float per = kind.perCell * cell * cell / 6.25f; // perCell = 2.5 × 2.5 넓이마다 (촘촘한 맵도 같은 빽빽함)
+                    int count = (int)per + (Rand(i, 99) < per - (int)per ? 1 : 0);
                     for (int k = 0; k < count; k++)
                     {
                         // 칸 안 흩뿌림 (칸 경계를 조금 넘어 섞이게), 같은 칸은 늘 같은 자리

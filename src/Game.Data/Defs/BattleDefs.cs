@@ -530,6 +530,14 @@ namespace Game.Data.Defs
         public IReadOnlyDictionary<string, string> RetreatEdges { get; internal set; }
 
         public string TerrainAt(int x, int y) => _cells[y * Width + x];
+
+        /// <summary>
+        /// 높이 층 (선택, 샘플전투2 맵): 칸마다 0~9 (3 = 언덕 한 단). 없으면 null — 지형 규칙의 height를 쓴다.
+        /// 계속 오르는 비탈 · 둔덕처럼 지형 종류와 따로 높이를 정할 때.
+        /// </summary>
+        private int[] _heights;
+        public bool HasHeights => _heights != null;
+        public int HeightAt(int x, int y) => _heights != null ? _heights[y * Width + x] : 0;
         public bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Height;
 
         public IEnumerable<string> TerrainIds
@@ -568,6 +576,23 @@ namespace Game.Data.Defs
                     cells[y * w + x] = terrain;
                 }
             }
+            int[] heights = null;
+            if (doc["heights"] != null)
+            {
+                var hr = JsonUtil.StringList(doc, "heights");
+                if (hr.Count != rows.Count) throw new DataException($"{c}.heights: 행 수가 rows와 다릅니다.");
+                heights = new int[w * rows.Count];
+                for (int y = 0; y < hr.Count; y++)
+                {
+                    if (hr[y].Length != w) throw new DataException($"{c}.heights[{y}]: 폭이 {w}가 아닙니다.");
+                    for (int x = 0; x < w; x++)
+                    {
+                        char ch = hr[y][x];
+                        if (ch < '0' || ch > '9') throw new DataException($"{c}.heights[{y}][{x}]: 0~9가 아닙니다 ('{ch}').");
+                        heights[y * w + x] = ch - '0';
+                    }
+                }
+            }
             var spawns = new Dictionary<string, SpawnDef>();
             foreach (var p in JsonUtil.RequireObject(doc, "spawns", c).Properties())
             {
@@ -589,6 +614,7 @@ namespace Game.Data.Defs
                 Width = w,
                 Height = rows.Count,
                 _cells = cells,
+                _heights = heights,
                 Spawns = spawns,
                 RetreatEdges = edges,
             };

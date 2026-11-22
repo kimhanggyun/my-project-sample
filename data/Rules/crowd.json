@@ -70,9 +70,9 @@
   "_retreat": "후퇴 (R-132): 걸음 = 전진 걸음 × retreatSpeed, 자기 쪽 끝에서 retreatMargin칸 안쪽까지 물러난다 (가는 쪽을 보므로 쫓는 적에게는 등)",
   "retreatSpeed": 0.8,
   "retreatMargin": 4,
-  "_map": "지형 맵 (R-133): 기존 전장 맵(Maps/*.json) 1칸 = mapCellSize 전장 칸 (24 × 40칸 맵 → 60 × 100). 지형 규칙은 terrainRules.json · terrainCombat.json 그대로",
-  "mapCellSize": 2.5,
-  "_obstacles": "막는 소품 (R-134): 지형마다 맵 칸 하나에 perCell개, 병사가 못 들어가는 반지름 radius칸 (크기 × 0.75 ~ 1.25). 나무는 기둥만 막고 잎은 통과, 풀 · 갈대 · 덤불은 막지 않음",
+  "_map": "지형 맵 (R-133 · R-135): 전장 폭 = mapFieldWidth, 맵 1칸 = mapFieldWidth ÷ 맵 폭 (24 × 40칸 → 2.5칸, 샘플전투2 맵 48 × 80칸 → 1.25칸, 둘 다 60 × 100). 지형 규칙은 terrainRules.json · terrainCombat.json 그대로",
+  "mapFieldWidth": 60,
+  "_obstacles": "막는 소품 (R-134): 지형마다 2.5 × 2.5 넓이에 perCell개 (촘촘한 맵은 칸 넓이에 맞춰 줄임), 병사가 못 들어가는 반지름 radius칸 (크기 × 0.75 ~ 1.25). 나무는 기둥만 막고 잎은 통과, 풀 · 갈대 · 덤불은 막지 않음",
   "obstacles": {
     "forest": { "perCell": 2.2, "radius": 0.28 },
     "burnt": { "perCell": 1.5, "radius": 0.22 },

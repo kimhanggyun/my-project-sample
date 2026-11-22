@@ -112,6 +112,19 @@ namespace Game.Battle.Model.Crowd
 
         public int HeightAt(Vec p) { var r = RuleAt(p); return r != null ? r.Height : 0; }
 
+        /// <summary>
+        /// 높이 (언덕 한 단 = 1): 맵에 높이 층이 있으면 그 값 ÷ 3 (0 ~ 3, 1/3 단씩 — 계속 오르는 비탈), 없으면 지형 규칙 height.
+        /// </summary>
+        public Fix LevelAt(Vec p)
+        {
+            if (!Map.HasHeights) return Fix.FromInt(HeightAt(p));
+            CellOf(p, out int c, out int r);
+            return Fix.FromRatio(Map.HeightAt(c, r), 3);
+        }
+
+        /// <summary>맵 1칸 크기 = 전장 폭 ÷ 맵 폭 (24칸 맵 → 2.5, 48칸 맵 → 1.25, R-135).</summary>
+        public static Fix CellSizeFor(MapDef map, Fix fieldWidth) => fieldWidth / map.Width;
+
         // ---- 막는 소품 (R-134) ----
 
         /// <summary>정수 해시 → 0 ~ 1 (고정소수점, 결정적).</summary>
@@ -140,8 +153,9 @@ namespace Game.Battle.Model.Crowd
                     string id = Map.TerrainAt(c, r);
                     if (!specs.TryGetValue(id, out var sp)) continue;
                     int i = r * mw + c;
-                    int whole = (int)sp.PerCell.FloorToLong();
-                    int count = whole + (Hash01(i, 99) < sp.PerCell - Fix.FromInt(whole) ? 1 : 0);
+                    Fix per = sp.PerCell * CellSize * CellSize / Fix.FromRatio(625, 100); // perCell = 2.5 × 2.5 넓이마다 (촘촘한 맵도 같은 빽빽함)
+                    int whole = (int)per.FloorToLong();
+                    int count = whole + (Hash01(i, 99) < per - Fix.FromInt(whole) ? 1 : 0);
                     for (int k = 0; k < count; k++)
                     {
                         Fix fx = Fix.FromRatio(-15, 100) + Fix.FromRatio(130, 100) * Hash01(i, k * 4);
@@ -213,19 +227,39 @@ namespace Game.Battle.Model.Crowd
             var done = new bool[n];
             for (int i = 0; i < n; i++) { dist[i] = long.MaxValue; prev[i] = -1; }
             dist[start] = 0;
-            // 맵이 작아(최대 수천 칸) 단순 다익스트라 (가장 작은 것을 훑어 고름)
-            var open = new List<int> { start };
-            while (open.Count > 0)
+            // 다익스트라 + 이진 힙 (거리, 같으면 칸 번호 작은 것 — 결정적)
+            var heap = new List<(long d, int i)> { (0, start) };
+            bool Less((long d, int i) a, (long d, int i) b) => a.d < b.d || (a.d == b.d && a.i < b.i);
+            void Push((long d, int i) x)
             {
-                int bi = 0;
-                for (int k = 1; k < open.Count; k++)
+                heap.Add(x);
+                int k = heap.Count - 1;
+                while (k > 0) { int p = (k - 1) / 2; if (!Less(heap[k], heap[p])) break; var t = heap[k]; heap[k] = heap[p]; heap[p] = t; k = p; }
+            }
+            (long d, int i) Pop()
+            {
+                var top = heap[0];
+                var last = heap[heap.Count - 1];
+                heap.RemoveAt(heap.Count - 1);
+                if (heap.Count > 0)
                 {
-                    int a = open[k], b = open[bi];
-                    if (dist[a] < dist[b] || (dist[a] == dist[b] && a < b)) bi = k;
+                    heap[0] = last;
+                    int k = 0;
+                    while (true)
+                    {
+                        int l = k * 2 + 1, r2 = l + 1, m = k;
+                        if (l < heap.Count && Less(heap[l], heap[m])) m = l;
+                        if (r2 < heap.Count && Less(heap[r2], heap[m])) m = r2;
+                        if (m == k) break;
+                        var t = heap[k]; heap[k] = heap[m]; heap[m] = t; k = m;
+                    }
                 }
-                int cur = open[bi];
-                open.RemoveAt(bi);
-                if (done[cur]) continue;
+                return top;
+            }
+            while (heap.Count > 0)
+            {
+                var (cd, cur) = Pop();
+                if (done[cur] || cd != dist[cur]) continue;
                 done[cur] = true;
                 if (cur == goal) break;
                 int cc = cur % w, cr = cur / w;
@@ -240,7 +274,7 @@ namespace Game.Battle.Model.Crowd
                         if (done[ni]) continue;
                         long step = Cost(troop, nc, nr).Raw * (dx != 0 && dy != 0 ? 14 : 10) / 10;
                         long nd = dist[cur] + step;
-                        if (nd < dist[ni]) { dist[ni] = nd; prev[ni] = cur; open.Add(ni); }
+                        if (nd < dist[ni]) { dist[ni] = nd; prev[ni] = cur; Push((nd, ni)); }
                     }
             }
             if (!done[goal]) return path;

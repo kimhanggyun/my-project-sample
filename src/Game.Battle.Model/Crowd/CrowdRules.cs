@@ -90,8 +90,8 @@ namespace Game.Battle.Model.Crowd
         public System.Collections.Generic.IReadOnlyDictionary<string, string> RecommendedFormation { get; private set; } = new System.Collections.Generic.Dictionary<string, string>();
         /// <summary>지형마다 막는 소품 (R-134, 나무 기둥 · 바위): 맵 칸 하나에 몇 개 · 반지름.</summary>
         public System.Collections.Generic.IReadOnlyDictionary<string, CrowdObstacleSpec> Obstacles { get; private set; } = new System.Collections.Generic.Dictionary<string, CrowdObstacleSpec>();
-        /// <summary>지형 맵 1칸 = 전장 몇 칸 (R-133).</summary>
-        public Fix MapCellSize { get; private set; }
+        /// <summary>지형 맵의 전장 폭 (R-135): 맵 1칸 = mapFieldWidth ÷ 맵 폭 (24칸 맵 = 2.5, 48칸 맵 = 1.25).</summary>
+        public Fix MapFieldWidth { get; private set; }
 
         /// <summary>전장 크기만 바꾼 사본 (지형 맵 크기에 맞춤, R-133).</summary>
         public CrowdRules WithField(Fix width, Fix depth)
@@ -180,7 +180,7 @@ namespace Game.Battle.Model.Crowd
                 ArrowRainVolleys = (int)JsonUtil.RequireLong(o, "arrowRainVolleys", c),
                 ArrowRainChance = JsonUtil.RequireFix(o, "arrowRainChance", c),
                 RetreatSpeed = JsonUtil.RequireFix(o, "retreatSpeed", c),
-                MapCellSize = JsonUtil.RequireFix(o, "mapCellSize", c),
+                MapFieldWidth = JsonUtil.RequireFix(o, "mapFieldWidth", c),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),
