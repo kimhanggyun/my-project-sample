@@ -41,7 +41,7 @@ namespace Game.Unity.Screens
             foreach (var (team, list) in new[] { ("a", Ally), ("e", Enemy) })
                 foreach (var u in list)
                     sb.Append('|').Append(team).Append(',').Append(u.Row).Append(',').Append(u.Col).Append(',').Append(u.Troop).Append(',')
-                      .Append(u.Formation).Append(',').Append(u.Count).Append(',').Append(u.Commander ? 1 : 0);
+                      .Append(u.Formation).Append(',').Append(u.Count).Append(',').Append(u.Commander ? 1 : 0).Append(',').Append(u.General);
             try { PlayerPrefs.SetString(Key, sb.ToString()); PlayerPrefs.Save(); } catch { }
         }
 
@@ -56,7 +56,7 @@ namespace Game.Unity.Screens
                 for (int i = 2; i < parts.Length; i++)
                 {
                     var f = parts[i].Split(',');
-                    var u = new CrowdUnitSpec { Row = int.Parse(f[1]), Col = int.Parse(f[2]), Troop = f[3], Formation = f[4], Count = int.Parse(f[5]), Commander = f[6] == "1" };
+                    var u = new CrowdUnitSpec { Row = int.Parse(f[1]), Col = int.Parse(f[2]), Troop = f[3], Formation = f[4], Count = int.Parse(f[5]), Commander = f[6] == "1", General = f.Length > 7 ? f[7] : "standard" };
                     (f[0] == "a" ? Ally : Enemy).Add(u);
                 }
                 return Ally.Count > 0 && Enemy.Count > 0;
@@ -193,7 +193,7 @@ namespace Game.Unity.Screens
                     int c = col;
                     var u = TestBattleSetup.At(ally, row, c);
                     string text = u == null ? "+"
-                        : (u.Commander ? "★ " : "") + T("troop." + u.Troop) + "\n" + T("ui.sample2.f." + u.Formation) + " · " + u.Count;
+                        : (u.Commander ? "★ " : "") + T("troop." + u.Troop) + " · " + T("ui.crowd.general." + u.General) + "\n" + T("ui.sample2.f." + u.Formation) + " · " + u.Count;
                     var b = Ui.Button(line, text, () => OnCell(ally, row, c), 116, u == null ? Palette.Card : (ally ? new Color(0.24f, 0.36f, 0.6f) : new Color(0.58f, 0.24f, 0.2f)), u == null ? 40 : 24);
                     Ui.Size(b, flexibleWidth: 1);
                 }
@@ -227,7 +227,7 @@ namespace Game.Unity.Screens
         private void OpenSheet(bool ally, CrowdUnitSpec u)
         {
             string title = T(ally ? "ui.test.sheetAlly" : "ui.test.sheetEnemy", CellName(_app.Context, CrowdUnitSpec.RowIds[u.Row], CrowdUnitSpec.ColIds[u.Col]));
-            var (content, close) = Ui.BottomSheet(_root, title, 640);
+            var (content, close) = Ui.BottomSheet(_root, title, 740);
             Ui.Column(content, 12, 0);
             void Changed() { TestBattleSetup.Save(); close(); Redraw(); OpenSheet(ally, u); }
 
@@ -242,6 +242,14 @@ namespace Game.Unity.Screens
             {
                 string f = id;
                 Ui.Size(Ui.Button(fr, T("ui.sample2.f." + id), () => { u.Formation = f; Changed(); }, 84, u.Formation == id ? Palette.ButtonActive : Palette.Button, 26), flexibleWidth: 1);
+            }
+            // 장수 성향 (R-138): 맹장 = 선봉에서 직접 싸움 · 장수 = 대열 뒤 · 책사 = 멀리 뒤 (나중에 캠페인 장수 · 병종 적성)
+            var gr = Ui.Row(content, "General", 84, 8);
+            Ui.Size(Ui.Label(gr, T("ui.test.general"), 26), width: 160);
+            foreach (var id in GeneralPresets)
+            {
+                string g = id;
+                Ui.Size(Ui.Button(gr, T("ui.crowd.general." + id), () => { u.General = g; Changed(); }, 84, u.General == id ? Palette.ButtonActive : Palette.Button, 26), flexibleWidth: 1);
             }
             int max = CrowdRules.Load(_app.Context.Data).GridMaxCount;
             var cr = Ui.Row(content, "Count", 84, 8);
@@ -268,6 +276,9 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(ar, T("ui.radial.close"), close, 84, Palette.Button, 26), flexibleWidth: 1);
         }
 
+        /// <summary>장수 성향 고르기 (crowd.json generalPresets).</summary>
+        private static readonly string[] GeneralPresets = { "warrior", "standard", "strategist" };
+
         private void Start()
         {
             if (TestBattleSetup.Ally.Count == 0 || TestBattleSetup.Enemy.Count == 0) return;
@@ -280,7 +291,7 @@ namespace Game.Unity.Screens
             List<CrowdUnitSpec> Copy(List<CrowdUnitSpec> l)
             {
                 var r = new List<CrowdUnitSpec>();
-                foreach (var u in l) r.Add(new CrowdUnitSpec { Row = u.Row, Col = u.Col, Troop = u.Troop, Formation = u.Formation, Count = u.Count, Commander = u.Commander });
+                foreach (var u in l) r.Add(new CrowdUnitSpec { Row = u.Row, Col = u.Col, Troop = u.Troop, Formation = u.Formation, Count = u.Count, Commander = u.Commander, General = u.General });
                 return r;
             }
             return new CrowdSetup { AllyUnits = Copy(TestBattleSetup.Ally), EnemyUnits = Copy(TestBattleSetup.Enemy), AllyAdvance = false, EnemyAdvance = TestBattleSetup.EnemyAdvance,

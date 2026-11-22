@@ -43,6 +43,19 @@ namespace Game.Battle.Model.Crowd
         public bool Alive => DiedTick < 0 && FledTick < 0;
     }
 
+    /// <summary>
+    /// 부대 장수 (R-138): 무력 · 지력 · 자리(front 선봉 · back 대열 뒤 · rear 멀리 뒤) · 병종 적성(뿌리 병종 → S · A · B · C, 없으면 B).
+    /// 지금은 crowd.json generalPresets (맹장 · 장수 · 책사)에서, 나중에 캠페인 장수(능력치 · 적성)에서 만든다.
+    /// </summary>
+    public sealed class CrowdGeneral
+    {
+        public string Preset = "standard";
+        public int Might = 70, Intellect = 65;
+        public string Role = "back";
+        public readonly Dictionary<string, string> Aptitude = new Dictionary<string, string>();
+        public string AptitudeOf(string baseTroop) => Aptitude.TryGetValue(baseTroop, out var g) ? g : Aptitude.TryGetValue("*", out var all) ? all : "B";
+    }
+
     /// <summary>날아가는 화살 (R-127): 쏜 자리 → 쏠 때 대상 자리, 닿는 틱에 대상이 살아 있으면 맞을 수 있다.</summary>
     public sealed class CrowdArrow
     {
@@ -87,6 +100,10 @@ namespace Game.Battle.Model.Crowd
         public bool Melee;
         /// <summary>경로 끝에 닿으면 공격할 적 부대 (R-132 경로 그리기, 없으면 -1).</summary>
         public int PathThenAttack = -1;
+        /// <summary>장수 (R-138): 능력치 · 자리 · 병종 적성.</summary>
+        public CrowdGeneral GeneralInfo = new CrowdGeneral();
+        /// <summary>장수가 다쳐 물러나는 중 (체력 generalEscapeHpPct% 이하): 싸우지 않고 자기 쪽 끝으로 말을 달린다. 빠져나가면 부대는 장수 없음.</summary>
+        public bool GeneralEscaping;
         /// <summary>지형 길 (R-133): 못 가는 땅을 돌아가는 맵 칸 길 (목표 칸 · 찾은 틱), 이번 틱 향하는 곳 (병사가 막히면 여기로).</summary>
         public readonly List<Vec> Route = new List<Vec>();
         public int RouteGoal = -1, RouteTick = -9999;
@@ -173,6 +190,8 @@ namespace Game.Battle.Model.Crowd
         public string Formation = CrowdFormations.Line;
         public int Count = 60;
         public bool Commander;
+        /// <summary>장수 성향 (R-138): warrior 맹장 · standard 장수 · strategist 책사 (crowd.json generalPresets).</summary>
+        public string General = "standard";
 
         public static readonly string[] RowIds = { "front", "middle", "back" };
         public static readonly string[] ColIds = { "left", "center", "right" };
@@ -339,7 +358,7 @@ namespace Game.Battle.Model.Crowd
                 int row = System.Math.Max(0, System.Math.Min(2, u.Row)), col = System.Math.Max(0, System.Math.Min(2, u.Col));
                 int count = System.Math.Max(1, System.Math.Min(Rules.GridMaxCount, u.Count));
                 var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
-                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops));
+                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops), u.General);
                 Fix back = Rules.GridRowPitch * row;
                 a.Center = new Vec(mid + Rules.GridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
                 foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
@@ -377,9 +396,41 @@ namespace Game.Battle.Model.Crowd
 
         private Fix SpacingOf(CrowdTroop t) => t.Mounted ? Rules.Spacing * Rules.MountedRadius / Rules.SoldierRadius : Rules.Spacing;
 
-        private CrowdArmy MakeArmy(int team, string place, bool commander, string formation, int count, Vec facing, CrowdTroop troop)
+        /// <summary>장수 성향 → 장수 정보 (crowd.json generalPresets, 모르면 standard).</summary>
+        public CrowdGeneral GeneralFrom(string preset)
+        {
+            if (preset == null || !Rules.GeneralPresets.TryGetValue(preset, out var p)) { preset = "standard"; Rules.GeneralPresets.TryGetValue(preset, out p); }
+            var g = new CrowdGeneral { Preset = preset };
+            if (p == null) return g;
+            g.Might = p.Might; g.Intellect = p.Intellect; g.Role = p.Role;
+            foreach (var kv in p.Aptitude) g.Aptitude[kv.Key] = kv.Value;
+            return g;
+        }
+
+        /// <summary>
+        /// 장수 자리 (R-138): front = 대열 맨 앞에서 generalFront칸 앞 (선봉), back = 대열 뒤 generalBack칸 (지금까지와 같음), rear = 대열 뒤 generalRear칸 (멀리 뒤 — 책사).
+        /// </summary>
+        private Vec GeneralSlot(CrowdArmy a, List<Vec> slots)
+        {
+            switch (a.GeneralInfo.Role)
+            {
+                case "front":
+                    Fix max = Fix.Zero;
+                    foreach (var s in slots) if (s.Y > max) max = s.Y;
+                    return new Vec(Fix.Zero, max + Rules.GeneralFront);
+                case "rear": return new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralRear);
+                default: return new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
+            }
+        }
+
+        /// <summary>병종 적성 %p (R-138): 장수의 그 병종 적성 등급 → aptitudePp (S · A · B · C).</summary>
+        public Fix AptitudePp(CrowdArmy a) =>
+            Rules.AptitudePp.TryGetValue(a.GeneralInfo.AptitudeOf(a.Troop.BaseId), out var pp) ? pp : Fix.Zero;
+
+        private CrowdArmy MakeArmy(int team, string place, bool commander, string formation, int count, Vec facing, CrowdTroop troop, string general = "standard")
         {
             var a = new CrowdArmy { Id = Armies.Count, Team = team, Place = place, IsCommander = commander, Formation = formation, Facing = facing, StartCount = count, Troop = troop };
+            a.GeneralInfo = GeneralFrom(general);
             a.SpeedFactor = troop.Speed / Rules.BaseSpeedStat;
             a.Morale = Rules.MoraleStart;
             var slots = CrowdFormations.Slots(formation, count, SpacingOf(troop));
@@ -391,8 +442,10 @@ namespace Game.Battle.Model.Crowd
                 a.Soldiers.Add(s);
                 Soldiers.Add(s);
             }
-            var g = new CrowdSoldier { Id = Soldiers.Count, Team = team, Army = a.Id, IsGeneral = true, Hp = Rules.GeneralHp, MaxHp = Rules.GeneralHp, Radius = Rules.MountedRadius };
-            g.Slot = new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
+            // 장수 체력 = generalHp × 무력 ÷ generalHpMight (무력이 높을수록 둘러싸여도 오래 버팀, R-138)
+            int ghp = System.Math.Max(1, (int)(Fix.FromInt(Rules.GeneralHp) * Fix.FromInt(a.GeneralInfo.Might) / Rules.GeneralHpMight).RoundToLong());
+            var g = new CrowdSoldier { Id = Soldiers.Count, Team = team, Army = a.Id, IsGeneral = true, Hp = ghp, MaxHp = ghp, Radius = Rules.MountedRadius };
+            g.Slot = GeneralSlot(a, slots);
             a.General = g;
             a.Soldiers.Add(g);
             Soldiers.Add(g);
@@ -447,7 +500,7 @@ namespace Game.Battle.Model.Crowd
             });
             slots.Sort((p, q) => { int c = p.X.CompareTo(q.X); return c != 0 ? c : p.Y.CompareTo(q.Y); });
             for (int i = 0; i < alive.Count; i++) alive[i].Slot = slots[i];
-            a.General.Slot = new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
+            a.General.Slot = GeneralSlot(a, slots);
             Measure(a, slots);
         }
 
@@ -700,8 +753,19 @@ namespace Game.Battle.Model.Crowd
                     _next[i] = s.Pos + away * (r.FleeSpeed * army.SpeedFactor * ground * dt) + Separation(s);
                     continue;
                 }
+                if (s.IsGeneral && army.GeneralEscaping)
+                {
+                    // 장수 물러나기 (R-138): 자기 쪽 끝으로 말을 달린다 (무력이 높을수록 빠르게 — 적 사이를 뚫고), 싸우지 않음
+                    var back = new Vec(Fix.Zero, s.Team == Ally ? -Fix.OneValue : Fix.OneValue);
+                    int near = NearestEnemy(s, engage2, r.EngageRange);
+                    if (near >= 0) back = (back + (s.Pos - Soldiers[near].Pos).Normalized()).Normalized();
+                    Fix run = r.FleeSpeed * r.GeneralEscapeSpeed * (Fix.OneValue + Fix.FromInt(army.GeneralInfo.Might) / 200) * ground * dt;
+                    _next[i] = s.Pos + back * run + Separation(s);
+                    continue;
+                }
                 Vec want;
-                int foe = s.IsGeneral ? -1 : NearestEnemy(s, engage2, r.EngageRange);
+                // 장수: 무력이 generalFightMight 이상이면 직접 싸운다 (맹장), 아니면 싸우지 않고 자리만 (책사)
+                int foe = s.IsGeneral && army.GeneralInfo.Might < r.GeneralFightMight ? -1 : NearestEnemy(s, engage2, r.EngageRange);
                 // 궁병: 맞붙을 만큼 가깝지 않으면 사거리 안의 적에게 쏜다 (자리를 지킨 채)
                 if (!s.IsGeneral && Shooting(army) && foe < 0)
                 {
@@ -794,6 +858,13 @@ namespace Game.Battle.Model.Crowd
                 }
                 s.Moved = p - s.Pos;
                 s.Pos = p;
+                if (_damage[i] > 0 && s.IsGeneral)
+                {
+                    // 장수는 맞아도 덜 다친다 (R-138): 받는 피해 % = 100 − (무력 − 30) × generalGuardPerMight (generalGuardMinPct ~ 100)
+                    int pct = 100 - (Armies[s.Army].GeneralInfo.Might - 30) * r.GeneralGuardPerMight / 100;
+                    pct = System.Math.Max(r.GeneralGuardMinPct, System.Math.Min(100, pct));
+                    _damage[i] = System.Math.Max(1, _damage[i] * pct / 100);
+                }
                 if (_damage[i] > 0)
                 {
                     s.Hp -= _damage[i];
@@ -811,7 +882,13 @@ namespace Game.Battle.Model.Crowd
             }
             UpdateMorale();
             foreach (var a in Armies)
+            {
+                var g = a.General;
+                // 장수가 크게 다치면 (체력 generalEscapeHpPct% 이하) 물러난다 (R-138)
+                if (g.Alive && !a.GeneralEscaping && g.Hp * 100 <= g.MaxHp * r.GeneralEscapeHpPct) a.GeneralEscaping = true;
+                if (a.GeneralEscaping && g.Alive && (g.Team == Ally ? g.Pos.Y <= Fix.FromRatio(1, 2) : g.Pos.Y >= maxY - Fix.FromRatio(1, 2))) { g.FledTick = Tick; g.Moved = Vec.Zero; }
                 if (!a.General.Alive && a.Order != CrowdOrders.Hold) { a.Order = CrowdOrders.Hold; a.Charging = false; } // 장수를 잃으면 제자리
+            }
 
             // 4) 끝: 총대장을 사로잡거나 (체력 0) 병사가 다 쓰러지면, 시간이 다 되면 남은 병사 많은 쪽
             // 모두 무너지면 RoutEndTicks 동안 도망치는 모습을 보인 뒤 끝 (바로 끝내면 무너진 줄 모름)
@@ -822,7 +899,8 @@ namespace Game.Battle.Model.Crowd
             {
                 Winner = allyOut && enemyOut ? -2 : allyOut ? Enemy : Ally;
                 int lt = allyOut ? Ally : Enemy;
-                EndReason = !Commander(lt).General.Alive ? "general" : AliveCount(lt) == 0 ? "wiped" : "routed";
+                var lg = Commander(lt).General;
+                EndReason = !lg.Alive ? (lg.FledTick >= 0 ? "generalFled" : "general") : AliveCount(lt) == 0 ? "wiped" : "routed"; // 총대장이 달아남 (R-138) · 사로잡음
             }
             else if (Tick >= r.MaxTicks)
             {
@@ -917,7 +995,8 @@ namespace Game.Battle.Model.Crowd
             var foeArmy = Armies[e.Army];
             var foeTroop = foeArmy.Troop;
             int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
-            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos));
+            Fix mightPp = s.IsGeneral ? Fix.FromInt(army.GeneralInfo.Might - 50) * Rules.GeneralMightPp : Fix.Zero; // 장수가 직접 친 한 방 (R-138)
+            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy));
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
@@ -957,7 +1036,7 @@ namespace Game.Battle.Model.Crowd
             var e = Soldiers[target];
             Fix dist = (e.Pos - s.Pos).Length;
             int flight = System.Math.Max(1, (int)(dist / (r.ArrowSpeed * r.TickSeconds)).RoundToLong());
-            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos))) * r.ArrowDamageScale).RoundToLong()) });
+            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()) });
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
             s.Cooldown = r.ShootTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0);
@@ -1186,7 +1265,11 @@ namespace Game.Battle.Model.Crowd
             Fix sp = SpacingOf(a.Troop) * Fix.FromRatio(13, 10);
             int alive = a.AliveCount;
             if (s.IsGeneral)
-                return TrailPoint(a, sp * (alive / width / 2 + 1), out _);
+            {
+                int rows = alive / width;
+                int at = a.GeneralInfo.Role == "front" ? 0 : a.GeneralInfo.Role == "rear" ? rows + 1 : rows / 2 + 1;
+                return TrailPoint(a, sp * at + sp / 2, out _);
+            }
             int k = 0;
             foreach (var o in a.MarchOrder) { if (o == s) break; if (o.Alive) k++; }
             int row = k / width, col = k % width;
