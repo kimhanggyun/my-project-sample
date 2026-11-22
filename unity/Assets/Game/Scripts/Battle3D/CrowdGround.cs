@@ -23,7 +23,9 @@ namespace Game.Unity.Battle3D
         private const int TexPerUnit = 4;
 
         private readonly CrowdTerrain _t;
-        private readonly CrowdBattle _battle;
+        /// <summary>막는 소품 설정 · 자리 (규칙이 정함, R-134).</summary>
+        private readonly IReadOnlyDictionary<string, CrowdObstacleSpec> _obstacleSpecs;
+        private readonly IReadOnlyList<CrowdObstacle> _obstacles;
         private readonly float _w, _d;
         private readonly int _vx, _vz;          // 꼭짓점 수
         private readonly float[] _h;            // 꼭짓점 높이 (x = -Margin + i, z = -Margin + j)
@@ -38,11 +40,17 @@ namespace Game.Unity.Battle3D
         public int MiniH { get; private set; }
 
         public CrowdGround(Transform parent, CrowdBattle battle, System.Func<Color, Material> newMaterial)
+            : this(parent, battle.Terrain, battle.Rules.FieldWidth, battle.Rules.FieldDepth, battle.Rules.Obstacles, battle.Obstacles, newMaterial) { }
+
+        /// <summary>전투 없이 땅만 (맵 보기, 2026-11-22 사용자): 지형 · 전장 크기 · 막는 소품.</summary>
+        public CrowdGround(Transform parent, CrowdTerrain terrain, Fix width, Fix depth, IReadOnlyDictionary<string, CrowdObstacleSpec> obstacleSpecs,
+            IReadOnlyList<CrowdObstacle> obstacles, System.Func<Color, Material> newMaterial)
         {
-            _t = battle.Terrain;
-            _battle = battle;
-            _w = (float)battle.Rules.FieldWidth.ToDisplayDouble();
-            _d = (float)battle.Rules.FieldDepth.ToDisplayDouble();
+            _t = terrain;
+            _obstacleSpecs = obstacleSpecs ?? new Dictionary<string, CrowdObstacleSpec>();
+            _obstacles = obstacles ?? new List<CrowdObstacle>();
+            _w = (float)width.ToDisplayDouble();
+            _d = (float)depth.ToDisplayDouble();
             _root = new GameObject("CrowdGround");
             _root.transform.SetParent(parent, false);
             _vx = Mathf.CeilToInt(_w + Margin * 2) + 1;
@@ -359,7 +367,7 @@ namespace Game.Unity.Battle3D
                         kinds[id] = kind = (list, p?.perCell ?? 0f, p?.scale ?? 1f);
                     }
                     if (kind.batches.Count == 0) continue;
-                    if (_battle.Rules.Obstacles.ContainsKey(id)) continue; // 막는 소품(나무 · 바위)은 규칙이 정한 자리에 (아래, R-134)
+                    if (_obstacleSpecs.ContainsKey(id)) continue; // 막는 소품(나무 · 바위)은 규칙이 정한 자리에 (아래, R-134)
                     int i = r * mw + c;
                     int count = (int)kind.perCell + (Rand(i, 99) < kind.perCell - (int)kind.perCell ? 1 : 0);
                     for (int k = 0; k < count; k++)
@@ -377,7 +385,7 @@ namespace Game.Unity.Battle3D
         /// <summary>막는 소품 (R-134): 규칙의 나무 기둥 · 바위 자리 그대로 그린다 (병사가 비켜 가는 자리와 그림이 같음).</summary>
         private void PlaceObstacles(Dictionary<string, (List<InstanceBatch> batches, float perCell, float scale)> kinds)
         {
-            foreach (var o in _battle.Obstacles)
+            foreach (var o in _obstacles)
             {
                 if (!kinds.TryGetValue(o.Terrain, out var kind) || kind.batches.Count == 0) continue;
                 float x = (float)o.Pos.X.ToDisplayDouble(), z = (float)o.Pos.Y.ToDisplayDouble();

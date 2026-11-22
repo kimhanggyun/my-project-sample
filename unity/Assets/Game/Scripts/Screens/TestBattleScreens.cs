@@ -95,7 +95,7 @@ namespace Game.Unity.Screens
         /// <summary>맵 카드 (R-133): 평지(맵 없음) + 기존 전장 맵 (수상전 맵은 뺌).</summary>
         public static readonly string[] Maps = { "test_plain", "hills_valley", "river_ford", "marsh_lake", "test_forest", "test_ambush", "test_mountain_pass" };
 
-        private static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
+        public static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
 
         public void Build(GameApp app, RectTransform root)
         {
@@ -125,7 +125,10 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(order, T("ui.sample2.advance"), () => { TestBattleSetup.EnemyAdvance = true; TestBattleSetup.Save(); Redraw(); }, 72,
                 TestBattleSetup.EnemyAdvance ? Palette.ButtonActive : Palette.Button, 24), flexibleWidth: 1);
             // 맵: 좌우로 넘기는 카드 (지금은 평지 하나)
-            Ui.Label(list, T("ui.test.map"), Ui.FontBody);
+            // 맵 제목 + [보기]: 고른 맵을 부대 없이 둘러보기 (2026-11-22 사용자)
+            var mapHead = Ui.Row(list, "MapHead", 64, 12);
+            Ui.Size(Ui.Label(mapHead, T("ui.test.map"), Ui.FontBody), flexibleWidth: 1);
+            Ui.Size(Ui.Button(mapHead, T("ui.test.view"), () => _app.Show(new MapViewScreen(TestBattleSetup.Map)), 64, Palette.Button, 24), width: 160);
             // 맵 카드 (R-133): 위 = 적 쪽 미리보기 + 이름
             var maps = Ui.HScrollRow(list, "Maps", 196);
             foreach (var m in Maps)
