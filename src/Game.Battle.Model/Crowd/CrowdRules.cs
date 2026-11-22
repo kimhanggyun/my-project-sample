@@ -109,6 +109,12 @@ namespace Game.Battle.Model.Crowd
         /// <summary>장수 받는 피해 줄이기: 무력 1당 % (× 100 — 100 = 1%p).</summary>
         public int GeneralGuardPerMight { get; private set; }
         public int GeneralGuardMinPct { get; private set; }
+        // 호위 · 물러남 (R-139)
+        public int GeneralPullBackHpPct { get; private set; }
+        public int GeneralEscapeWaverHpPct { get; private set; }
+        public Fix GeneralGuardRange { get; private set; }
+        public int GeneralGuardMin { get; private set; }
+        public int GeneralGuardSharePct { get; private set; }
         // 행군 대열 (R-136)
         public int MarchWidth { get; private set; }
         public Fix MarchTrailStep { get; private set; }
@@ -225,6 +231,11 @@ namespace Game.Battle.Model.Crowd
                 GeneralEscapeSpeed = JsonUtil.RequireFix(o, "generalEscapeSpeed", c),
                 GeneralGuardPerMight = (int)JsonUtil.RequireLong(o, "generalGuardPerMight", c),
                 GeneralGuardMinPct = (int)JsonUtil.RequireLong(o, "generalGuardMinPct", c),
+                GeneralPullBackHpPct = (int)JsonUtil.RequireLong(o, "generalPullBackHpPct", c),
+                GeneralEscapeWaverHpPct = (int)JsonUtil.RequireLong(o, "generalEscapeWaverHpPct", c),
+                GeneralGuardRange = JsonUtil.RequireFix(o, "generalGuardRange", c),
+                GeneralGuardMin = (int)JsonUtil.RequireLong(o, "generalGuardMin", c),
+                GeneralGuardSharePct = (int)JsonUtil.RequireLong(o, "generalGuardSharePct", c),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),

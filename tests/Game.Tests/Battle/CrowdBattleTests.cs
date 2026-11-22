@@ -541,6 +541,58 @@ namespace Game.Tests.Battle
         }
 
         [Fact]
+        public void WoundedVanguardStepsBackBehindTheLine()
+        {
+            var b = WithGeneral("warrior");
+            var a = b.Commander(CrowdBattle.Ally);
+            Fix back = Fix.FromInt(99);
+            foreach (var s in a.Soldiers) if (!s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
+            Assert.True(a.General.Slot.Y > Fix.Zero); // 처음엔 선봉
+            a.General.Hp = a.General.MaxHp * 55 / 100;
+            b.Step();
+            Assert.True(a.GeneralPulledBack);
+            Assert.True(a.General.Slot.Y < back); // 대열 뒤로
+            Assert.False(a.GeneralEscaping); // 아직 도망은 아님
+        }
+
+        [Fact]
+        public void VanguardHoldsWhileArmyIsStrong()
+        {
+            // 맹장 vs 같은 수 보병: 장수가 물러나(도망) 빠질 때는 부대가 이미 많이 줄었거나 흔들릴 때 (R-139 — 병사가 많은데 먼저 퇴각하지 않음)
+            var setup = One("infantry", "crowd_plain");
+            setup.AllyUnits[0].General = "warrior";
+            setup.AllyUnits[0].Count = 120;
+            setup.EnemyUnits[0].Count = 120;
+            setup.EnemyAdvance = true;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            int escapeTick = -1, aliveAtEscape = -1;
+            bool shakyAtEscape = false;
+            for (int t = 0; t < 3000 && !b.IsOver; t++)
+            {
+                b.Step();
+                if (escapeTick < 0 && a.GeneralEscaping) { escapeTick = b.Tick; aliveAtEscape = a.AliveCount; shakyAtEscape = a.Wavering || a.Routed; }
+            }
+            _out.WriteLine($"vanguard: escape tick {escapeTick}, alive then {aliveAtEscape}/120, shaky {shakyAtEscape}, end {b.EndReason} winner {b.Winner}, general hp {a.General.Hp}/{a.General.MaxHp}");
+            if (escapeTick >= 0) Assert.True(aliveAtEscape * 2 < 120 || shakyAtEscape, $"escaped with {aliveAtEscape} alive");
+        }
+
+        [Fact]
+        public void DefendingFlipsTheMapSoWeHoldTheHeights()
+        {
+            var map = Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), "crowd_highland");
+            var flipped = new CrowdTerrain(map, Defs.TerrainRules, Defs.TerrainCombat, CrowdTerrain.CellSizeFor(map, Rules().MapFieldWidth), flipped: true);
+            var setup = One("infantry", null);
+            setup.Terrain = flipped;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var me = b.Commander(CrowdBattle.Ally).Center;
+            var foe = b.Commander(CrowdBattle.Enemy).Center;
+            Assert.True(me.Y < foe.Y); // 우리는 여전히 아래쪽
+            Assert.True(flipped.LevelAt(me) > flipped.LevelAt(foe)); // 하지만 높은 곳은 우리 쪽
+            Assert.Equal(Fix.FromInt(3), flipped.LevelAt(me));
+        }
+
+        [Fact]
         public void TroopAptitudeChangesDamage()
         {
             var b = WithGeneral("standard");

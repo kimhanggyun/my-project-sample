@@ -212,7 +212,7 @@ namespace Game.Unity.Battle3D
             {
                 c = Mathf.Clamp(c, 0, mw - 1);
                 up = Mathf.Clamp(up, 0, mh - 1);
-                return cellCol[(mh - 1 - up) * mw + c];
+                return cellCol[_t.RowOf(up) * mw + c];
             }
             for (int y = 0; y < th; y++)
                 for (int x = 0; x < tw; x++)
@@ -302,7 +302,7 @@ namespace Game.Unity.Battle3D
                 for (int c = 0; c < mw; c++)
                 {
                     if (!Bridge(c, r)) continue;
-                    float x0 = c * cell, z0 = (mh - 1 - r) * cell;
+                    float x0 = c * cell, z0 = _t.UpOf(r) * cell;
                     var center = new Vector3(x0 + cell / 2f, DeckTop - 0.08f, z0 + cell / 2f);
                     Part(cube, plank, center, new Vector3(cell + 0.02f, 0.16f, cell + 0.4f)); // 판 (강가로 조금 더)
                     // 판 사이 줄눈 (가로 판자 느낌)
@@ -374,7 +374,7 @@ namespace Game.Unity.Battle3D
                     for (int k = 0; k < count; k++)
                     {
                         // 칸 안 흩뿌림 (칸 경계를 조금 넘어 섞이게), 같은 칸은 늘 같은 자리
-                        float x = (c - 0.15f + 1.3f * Rand(i, k * 4)) * cell, z = (mh - 1 - r - 0.15f + 1.3f * Rand(i, k * 4 + 1)) * cell;
+                        float x = (c - 0.15f + 1.3f * Rand(i, k * 4)) * cell, z = (_t.UpOf(r) - 0.15f + 1.3f * Rand(i, k * 4 + 1)) * cell;
                         var batch = kind.batches[(int)(Rand(i, k * 4 + 2) * kind.batches.Count) % kind.batches.Count];
                         float s = kind.scale * (0.75f + 0.5f * Rand(i, k * 4 + 3));
                         batch.Add(new Vector3(x, GroundHeight(x, z) - 0.05f, z), Quaternion.Euler(0f, Rand(i, k * 4 + 5) * 360f, 0f), s);

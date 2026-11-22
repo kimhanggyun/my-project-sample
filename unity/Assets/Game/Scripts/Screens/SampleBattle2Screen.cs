@@ -172,8 +172,10 @@ namespace Game.Unity.Screens
             _detailRow = Ui.Row(_panel, "Detail", RowHeight, 6);
             _commandRow = Ui.Row(_panel, "Commands", RowHeight, 6);
             _corpsRow = Ui.HScrollRow(_panel, "Corps", 112, 8, 4);
-            CorpsButton(AllCorps, null);
-            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) CorpsButton(a.Id, a);
+            var mine = new List<CrowdArmy>(_battle.TeamArmies(CrowdBattle.Ally));
+            if (mine.Count > 1) CorpsButton(AllCorps, null); // 부대가 하나면 [전체]는 필요 없음 (R-139, 2026-11-22 사용자)
+            else if (mine.Count == 1 && _selected == AllCorps) _selected = mine[0].Id;
+            foreach (var a in mine) CorpsButton(a.Id, a);
             Select(_selected);
         }
 

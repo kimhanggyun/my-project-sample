@@ -104,6 +104,8 @@ namespace Game.Battle.Model.Crowd
         public CrowdGeneral GeneralInfo = new CrowdGeneral();
         /// <summary>장수가 다쳐 물러나는 중 (체력 generalEscapeHpPct% 이하): 싸우지 않고 자기 쪽 끝으로 말을 달린다. 빠져나가면 부대는 장수 없음.</summary>
         public bool GeneralEscaping;
+        /// <summary>선봉 장수가 다쳐 대열 뒤로 물러남 (R-139): 체력 generalPullBackHpPct% 이하면 선봉 자리 → 대열 뒤.</summary>
+        public bool GeneralPulledBack;
         /// <summary>지형 길 (R-133): 못 가는 땅을 돌아가는 맵 칸 길 (목표 칸 · 찾은 틱), 이번 틱 향하는 곳 (병사가 막히면 여기로).</summary>
         public readonly List<Vec> Route = new List<Vec>();
         public int RouteGoal = -1, RouteTick = -9999;
@@ -299,8 +301,10 @@ namespace Game.Battle.Model.Crowd
             Vec allyAt = new Vec(rules.FieldWidth / 2, rules.FieldDepth * Fix.FromRatio(3, 10)), enemyAt = new Vec(rules.FieldWidth / 2, rules.FieldDepth * Fix.FromRatio(7, 10));
             if (Terrain != null)
             {
-                if (Terrain.Map.Spawns.TryGetValue("teamA", out var sa)) allyAt = SpawnPoint(sa) + new Vec(Fix.Zero, rules.GridRowPitch);
-                if (Terrain.Map.Spawns.TryGetValue("teamB", out var sb)) enemyAt = SpawnPoint(sb) - new Vec(Fix.Zero, rules.GridRowPitch);
+                // 뒤집힌 맵(수비, R-139)이면 맵의 teamB(지키는 쪽) 자리가 우리 쪽
+                string allyKey = Terrain.Flipped ? "teamB" : "teamA", enemyKey = Terrain.Flipped ? "teamA" : "teamB";
+                if (Terrain.Map.Spawns.TryGetValue(allyKey, out var sa)) allyAt = SpawnPoint(sa) + new Vec(Fix.Zero, rules.GridRowPitch);
+                if (Terrain.Map.Spawns.TryGetValue(enemyKey, out var sb)) enemyAt = SpawnPoint(sb) - new Vec(Fix.Zero, rules.GridRowPitch);
             }
             if (setup.AllyUnits != null && setup.AllyUnits.Count > 0) MakeGrid(Ally, setup.AllyUnits, troops, allyAt, new Vec(Fix.Zero, Fix.OneValue));
             else MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, setup.AllyTroops, troops, allyAt.Y, new Vec(Fix.Zero, Fix.OneValue));
@@ -342,7 +346,8 @@ namespace Game.Battle.Model.Crowd
         /// 병사 수는 1 ~ gridMaxCount.
         /// </summary>
         /// <summary>맵 시작 자리 (맵 칸) → 전장 자리 (칸 가운데).</summary>
-        private Vec SpawnPoint(SpawnDef sp) => new Vec(Terrain.CellSize * sp.X + Terrain.CellSize / 2, Terrain.CellSize * (Fix.FromInt(Terrain.Map.Height) - sp.Y) - Terrain.CellSize / 2);
+        private Vec SpawnPoint(SpawnDef sp) => new Vec(Terrain.CellSize * sp.X + Terrain.CellSize / 2,
+            Terrain.Flipped ? Terrain.CellSize * sp.Y + Terrain.CellSize / 2 : Terrain.CellSize * (Fix.FromInt(Terrain.Map.Height) - sp.Y) - Terrain.CellSize / 2);
 
         private void MakeGrid(int team, List<CrowdUnitSpec> units, IReadOnlyDictionary<string, TroopTypeDef> troops, Vec front, Vec facing)
         {
@@ -420,6 +425,35 @@ namespace Game.Battle.Model.Crowd
                     return new Vec(Fix.Zero, max + Rules.GeneralFront);
                 case "rear": return new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralRear);
                 default: return new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
+            }
+        }
+
+        /// <summary>
+        /// 장수 호위 (R-139): 장수가 이번 틱 맞은 피해의 generalGuardSharePct%를, 장수에게서 generalGuardRange칸 안의 자기 병사가
+        /// generalGuardMin명 이상이면 가장 가까운 병사들(최대 3명, 같으면 id)이 나눠 받는다 — 병사가 많으면 장수가 잘 안 죽고, 부대가 녹으면 위험해짐.
+        /// </summary>
+        private void GuardGenerals()
+        {
+            var r = Rules;
+            Fix range2 = r.GeneralGuardRange * r.GeneralGuardRange;
+            foreach (var a in Armies)
+            {
+                var g = a.General;
+                if (!g.Alive || _damage[g.Id] <= 0 || a.GeneralEscaping) continue;
+                var guards = new List<(Fix d, CrowdSoldier s)>();
+                foreach (var s in a.Soldiers)
+                {
+                    if (!s.Alive || s.IsGeneral) continue;
+                    Fix d2 = Vec.DistanceSquared(s.Pos, g.Pos);
+                    if (d2 <= range2) guards.Add((d2, s));
+                }
+                if (guards.Count < r.GeneralGuardMin) continue;
+                guards.Sort((p, q) => { int c = p.d.CompareTo(q.d); return c != 0 ? c : p.s.Id.CompareTo(q.s.Id); });
+                int share = _damage[g.Id] * r.GeneralGuardSharePct / 100;
+                if (share <= 0) continue;
+                _damage[g.Id] -= share;
+                int n = System.Math.Min(3, guards.Count);
+                for (int k = 0; k < n; k++) _damage[guards[k].s.Id] += share / n + (k < share % n ? 1 : 0);
             }
         }
 
@@ -837,6 +871,9 @@ namespace Game.Battle.Model.Crowd
                 k--;
             }
 
+            // 2.9) 장수 호위 (R-139): 장수가 맞은 피해의 일부를 가까운 자기 병사들이 대신 받는다
+            if (r.GeneralGuardSharePct > 0) GuardGenerals();
+
             // 3) 반영: 위치 · 피해 · 쓰러짐
             Fix maxX = r.FieldWidth, maxY = r.FieldDepth;
             for (int i = 0; i < n; i++)
@@ -885,7 +922,17 @@ namespace Game.Battle.Model.Crowd
             {
                 var g = a.General;
                 // 장수가 크게 다치면 (체력 generalEscapeHpPct% 이하) 물러난다 (R-138)
-                if (g.Alive && !a.GeneralEscaping && g.Hp * 100 <= g.MaxHp * r.GeneralEscapeHpPct) a.GeneralEscaping = true;
+                // 선봉 장수가 다치면 대열 뒤로 (R-139)
+                if (g.Alive && !a.GeneralPulledBack && a.GeneralInfo.Role == "front" && g.Hp * 100 <= g.MaxHp * r.GeneralPullBackHpPct && a.Leading)
+                {
+                    a.GeneralPulledBack = true;
+                    var cur = new List<Vec>();
+                    foreach (var s2 in a.Soldiers) if (s2.Alive && !s2.IsGeneral) cur.Add(s2.Slot);
+                    if (cur.Count > 0) g.Slot = new Vec(Fix.Zero, CrowdFormations.BackOf(cur) - r.GeneralBack);
+                }
+                // 물러나기 (도망): 체력 generalEscapeHpPct% 이하, 또는 부대가 흔들리거나 무너졌을 때 generalEscapeWaverHpPct% 이하 (R-139 — 부대가 버티면 장수도 남음)
+                bool shaky = a.Wavering || a.Routed;
+                if (g.Alive && !a.GeneralEscaping && (g.Hp * 100 <= g.MaxHp * r.GeneralEscapeHpPct || (shaky && g.Hp * 100 <= g.MaxHp * r.GeneralEscapeWaverHpPct))) a.GeneralEscaping = true;
                 if (a.GeneralEscaping && g.Alive && (g.Team == Ally ? g.Pos.Y <= Fix.FromRatio(1, 2) : g.Pos.Y >= maxY - Fix.FromRatio(1, 2))) { g.FledTick = Tick; g.Moved = Vec.Zero; }
                 if (!a.General.Alive && a.Order != CrowdOrders.Hold) { a.Order = CrowdOrders.Hold; a.Charging = false; } // 장수를 잃으면 제자리
             }
