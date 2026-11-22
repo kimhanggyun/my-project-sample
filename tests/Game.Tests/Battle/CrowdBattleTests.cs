@@ -444,6 +444,7 @@ namespace Game.Tests.Battle
         [InlineData("crowd_marsh")]
         [InlineData("crowd_forest")]
         [InlineData("crowd_pass")]
+        [InlineData("crowd_siege")]
         public void CrowdMapsAreValidAndBothSidesCanReachEachOther(string id)
         {
             var map = Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), id);
@@ -477,6 +478,41 @@ namespace Game.Tests.Battle
             _out.WriteLine($"highland levels: ally side {low}, middle {mid}, enemy side {top}");
             Assert.True(low < mid && mid < top); // 우리 쪽에서 적 쪽으로 계속 오른다
             Assert.Equal(Fix.FromInt(3), top); // 꼭대기 = 9 ÷ 3
+        }
+
+        // ---- 공성 (R-140) ----
+
+        [Fact]
+        public void GateHoldsUntilBrokenThenAttackersPourIn()
+        {
+            var setup = One("infantry", "crowd_siege");
+            setup.AllyUnits[0].Count = 120;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            Assert.Single(b.Gates);
+            var gate = b.Gates[0];
+            Assert.Equal(CrowdBattle.Enemy, gate.Defender); // 성 안에 선 편이 지킴
+            Assert.Equal(CrowdBattle.Enemy, b.SiegeDefender);
+            var a = b.Commander(CrowdBattle.Ally);
+            b.OrderAttack(a.Id, b.Commander(CrowdBattle.Enemy).Id);
+            // 앞 성벽(맵 30행) 안쪽 = 전장 y 62.5 넘음
+            Fix wallY = Fix.FromRatio(625, 10);
+            int openTick = -1, insideBefore = 0;
+            for (int t = 0; t < 4000 && !b.IsOver; t++)
+            {
+                b.Step();
+                if (openTick < 0)
+                {
+                    foreach (var s in a.Soldiers) if (s.Alive && s.Pos.Y > wallY) insideBefore++;
+                    if (gate.Open) openTick = b.Tick;
+                }
+                else if (b.Tick > openTick + 300) break;
+            }
+            int inside = 0;
+            foreach (var s in a.Soldiers) if (s.Alive && s.Pos.Y > wallY) inside++;
+            _out.WriteLine($"siege: gate opened at {openTick}, hp {gate.Hp}/{gate.MaxHp}, inside before {insideBefore}, inside after {inside}, end {b.EndReason}");
+            Assert.Equal(0, insideBefore); // 부서지기 전엔 아무도 못 들어감
+            Assert.True(openTick > 0, "gate never broke");
+            Assert.True(inside > 0 || b.IsOver, "nobody went in"); // 부서지면 들어감
         }
 
         // ---- 장수 성향 (R-138) ----
@@ -551,7 +587,10 @@ namespace Game.Tests.Battle
             a.General.Hp = a.General.MaxHp * 55 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);
-            Assert.True(a.General.Slot.Y < back); // 대열 뒤로
+            Fix front = Fix.FromInt(-99);
+            foreach (var s in a.Soldiers) if (!s.IsGeneral && s.Slot.Y > front) front = s.Slot.Y;
+            Assert.True(a.General.Slot.Y < front); // 앞줄 뒤로
+            Assert.True(a.General.Slot.Y >= back - b.Rules.GeneralBack); // 하지만 대열 맨 뒤보다는 앞 (대열 안 — 싸움 가까이서 지휘)
             Assert.False(a.GeneralEscaping); // 아직 도망은 아님
         }
 

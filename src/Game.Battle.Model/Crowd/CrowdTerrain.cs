@@ -41,6 +41,18 @@ namespace Game.Battle.Model.Crowd
         private readonly IReadOnlyDictionary<string, TerrainRuleDef> _rules;
         private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, Fix>> _combat;
         private readonly Dictionary<string, Vec> _snapCache = new Dictionary<string, Vec>();
+        /// <summary>닫힌 칸 (R-140 성문): 모두 못 지나감. 공격 쪽 길 찾기는 열린 것으로 보고 비싸게 (성문까지 가서 부수게).</summary>
+        private readonly HashSet<int> _closed = new HashSet<int>();
+        /// <summary>닫힌 칸을 길 찾기에서 지날 때 칸 비용 배수.</summary>
+        public long GatePlanCost = 6;
+
+        public bool IsClosed(int cell) => _closed.Contains(cell);
+        public void SetClosed(int cell, bool closed)
+        {
+            if (closed) _closed.Add(cell); else _closed.Remove(cell);
+            _snapCache.Clear();
+        }
+        public void ResetClosed() { _closed.Clear(); _snapCache.Clear(); }
 
         /// <summary>위아래 뒤집기 (R-139 수비): 맵 위 줄(적 쪽 · 지키는 쪽)이 우리 쪽(아래)에 온다.</summary>
         public bool Flipped { get; }
@@ -84,6 +96,7 @@ namespace Game.Battle.Model.Crowd
         /// <summary>그 병종이 그 칸에 못 들어감 (강 · 절벽 = 모두, 산 = 기병 …, 물 = 수군 아니면 모두).</summary>
         public bool Blocks(CrowdTroop troop, int col, int row)
         {
+            if (_closed.Count > 0 && _closed.Contains(row * Map.Width + col)) return true; // 닫힌 성문
             if (!_rules.TryGetValue(Map.TerrainAt(col, row), out var rule)) return false;
             if (rule.Water) return !troop.Has(TerrainRuleDef.NavalTag);
             foreach (var t in rule.Impassable)
@@ -222,7 +235,8 @@ namespace Game.Battle.Model.Crowd
         /// 돌려주는 것은 지나갈 칸 가운데들 (시작 칸 빼고), 마지막은 to 그대로. 길이 없으면 빈 목록.
         /// 같은 값이면 칸 번호 작은 것 먼저 (결정성).
         /// </summary>
-        public List<Vec> FindPath(CrowdTroop troop, Vec from, Vec to)
+        /// <param name="openGates">공격 쪽: 닫힌 성문을 지나갈 수 있는 것으로 (비용 × GatePlanCost) — 성문까지 가서 부순다 (R-140).</param>
+        public List<Vec> FindPath(CrowdTroop troop, Vec from, Vec to, bool openGates = false)
         {
             int w = Map.Width;
             CellOf(from, out int sc, out int sr);
@@ -230,7 +244,7 @@ namespace Game.Battle.Model.Crowd
             int start = sr * w + sc, goal = gr * w + gc;
             var path = new List<Vec>();
             if (start == goal) { path.Add(to); return path; }
-            var dist = Dijkstra(troop, start, goal, out var prev);
+            var dist = Dijkstra(troop, start, goal, out var prev, openGates);
             if (dist[goal] == long.MaxValue) return path;
             var cells = new List<int>();
             for (int c = goal; c != start && c >= 0; c = prev[c]) cells.Add(c);
@@ -243,14 +257,27 @@ namespace Game.Battle.Model.Crowd
         /// <summary>
         /// 지름길 지도 (R-137): 맵 칸마다 goal 칸까지 남은 거리 (못 가면 long.MaxValue). 막힌 병사가 이 값이 줄어드는 이웃 칸으로 가면 가장 짧은 길로 돌아온다.
         /// </summary>
-        public long[] DistanceField(CrowdTroop troop, Vec goal)
+        public long[] DistanceField(CrowdTroop troop, Vec goal, bool openGates = false)
         {
             CellOf(goal, out int gc, out int gr);
-            return Dijkstra(troop, gr * Map.Width + gc, -1, out _);
+            return Dijkstra(troop, gr * Map.Width + gc, -1, out _, openGates);
+        }
+
+        /// <summary>길 찾기에서 막힘: 닫힌 성문은 openGates면 지나갈 수 있음.</summary>
+        private bool PlanBlocks(CrowdTroop troop, int c, int r, bool openGates)
+        {
+            if (openGates && _closed.Count > 0 && _closed.Contains(r * Map.Width + c))
+            {
+                // 성문 칸 자체의 지형 규칙만 본다
+                if (!_rules.TryGetValue(Map.TerrainAt(c, r), out var rule)) return false;
+                foreach (var t in rule.Impassable) if (t == TerrainRuleDef.AllTags || troop.Has(t)) return true;
+                return false;
+            }
+            return Blocks(troop, c, r);
         }
 
         /// <summary>그 칸에서 지름길 지도를 따라 한 칸 (모서리 끼기 금지, 같으면 칸 번호 작은 것). 더 줄어드는 이웃이 없으면 -1.</summary>
-        public int NextCell(CrowdTroop troop, long[] field, int cell)
+        public int NextCell(CrowdTroop troop, long[] field, int cell, bool openGates = false)
         {
             int w = Map.Width, h = Map.Height;
             int cc = cell % w, cr = cell / w;
@@ -261,8 +288,8 @@ namespace Game.Battle.Model.Crowd
                 {
                     if (dx == 0 && dy == 0) continue;
                     int nc = cc + dx, nr = cr + dy;
-                    if (nc < 0 || nr < 0 || nc >= w || nr >= h || Blocks(troop, nc, nr)) continue;
-                    if (dx != 0 && dy != 0 && (Blocks(troop, cc + dx, cr) || Blocks(troop, cc, cr + dy))) continue;
+                    if (nc < 0 || nr < 0 || nc >= w || nr >= h || PlanBlocks(troop, nc, nr, openGates)) continue;
+                    if (dx != 0 && dy != 0 && (PlanBlocks(troop, cc + dx, cr, openGates) || PlanBlocks(troop, cc, cr + dy, openGates))) continue;
                     int ni = nr * w + nc;
                     if (field[ni] < bestD) { bestD = field[ni]; best = ni; }
                 }
@@ -270,7 +297,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>다익스트라 + 이진 힙 (거리, 같으면 칸 번호 작은 것 — 결정적). stop ≥ 0이면 그 칸에서 멈춤.</summary>
-        private long[] Dijkstra(CrowdTroop troop, int start, int stop, out int[] prev)
+        private long[] Dijkstra(CrowdTroop troop, int start, int stop, out int[] prev, bool openGates = false)
         {
             int w = Map.Width, h = Map.Height, n = w * h;
             var dist = new long[n];
@@ -318,11 +345,12 @@ namespace Game.Battle.Model.Crowd
                     {
                         if (dx == 0 && dy == 0) continue;
                         int nc = cc + dx, nr = cr + dy;
-                        if (nc < 0 || nr < 0 || nc >= w || nr >= h || Blocks(troop, nc, nr)) continue;
-                        if (dx != 0 && dy != 0 && (Blocks(troop, cc + dx, cr) || Blocks(troop, cc, cr + dy))) continue; // 모서리 끼기 금지
+                        if (nc < 0 || nr < 0 || nc >= w || nr >= h || PlanBlocks(troop, nc, nr, openGates)) continue;
+                        if (dx != 0 && dy != 0 && (PlanBlocks(troop, cc + dx, cr, openGates) || PlanBlocks(troop, cc, cr + dy, openGates))) continue; // 모서리 끼기 금지
                         int ni = nr * w + nc;
                         if (done[ni]) continue;
                         long step = Cost(troop, nc, nr).Raw * (dx != 0 && dy != 0 ? 14 : 10) / 10;
+                        if (openGates && _closed.Count > 0 && _closed.Contains(ni)) step *= GatePlanCost; // 닫힌 성문은 비싸게 (다른 길이 있으면 그리로)
                         long nd = dist[cur] + step;
                         if (nd < dist[ni]) { dist[ni] = nd; prev[ni] = cur; Push((nd, ni)); }
                     }

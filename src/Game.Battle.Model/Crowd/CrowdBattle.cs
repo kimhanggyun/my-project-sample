@@ -39,6 +39,9 @@ namespace Game.Battle.Model.Crowd
         public Vec SettleAt;
         public Fix BestDist = Fix.FromInt(9999);
         public int StuckTicks;
+        /// <summary>성문 · 성벽 같은 구조물을 친 한 방 (R-140, 화면이 그쪽을 보고 휘두름): 친 자리.</summary>
+        public bool HitStructure;
+        public Vec StrikeAt;
         /// <summary>전장에서 싸울 수 있음 (쓰러지지도 나가지도 않음).</summary>
         public bool Alive => DiedTick < 0 && FledTick < 0;
     }
@@ -54,6 +57,20 @@ namespace Game.Battle.Model.Crowd
         public string Role = "back";
         public readonly Dictionary<string, string> Aptitude = new Dictionary<string, string>();
         public string AptitudeOf(string baseTroop) => Aptitude.TryGetValue(baseTroop, out var g) ? g : Aptitude.TryGetValue("*", out var all) ? all : "B";
+    }
+
+    /// <summary>
+    /// 성문 (R-140): 맵의 gate 칸 덩어리 하나. 체력이 남아 있으면 닫혀 모두 못 지나가고, 공격 쪽 병사가 닿아서 치면 체력이 준다. 0이면 열림.
+    /// 지키는 편 = 배치 자리가 성문에 더 가까운 편 (성 안).
+    /// </summary>
+    public sealed class CrowdGate
+    {
+        public readonly List<int> Cells = new List<int>();
+        public Vec Center;
+        public int Hp, MaxHp;
+        public int Defender;
+        public int LastHitTick = -1;
+        public bool Open => Hp <= 0;
     }
 
     /// <summary>날아가는 화살 (R-127): 쏜 자리 → 쏠 때 대상 자리, 닿는 틱에 대상이 살아 있으면 맞을 수 있다.</summary>
@@ -243,6 +260,10 @@ namespace Game.Battle.Model.Crowd
         public CrowdRules Rules { get; }
         /// <summary>지형 (R-133, 없으면 평지).</summary>
         public CrowdTerrain Terrain { get; }
+        /// <summary>성문 (R-140). 없으면 빈 목록.</summary>
+        public readonly List<CrowdGate> Gates = new List<CrowdGate>();
+        /// <summary>성을 지키는 편 (성문이 있으면, 없으면 -1).</summary>
+        public int SiegeDefender { get; private set; } = -1;
         /// <summary>막는 소품 (R-134): 나무 기둥 · 바위. 병사는 들어가지 못한다 (화면도 이 자리에 그림).</summary>
         public readonly List<CrowdObstacle> Obstacles = new List<CrowdObstacle>();
         private readonly Dictionary<long, List<int>> _obstacleGrid = new Dictionary<long, List<int>>();
@@ -310,6 +331,7 @@ namespace Game.Battle.Model.Crowd
             else MakeTeam(Ally, setup.AllyCorps, setup.AllyCount, setup.AllyFormation, setup.AllyTroops, troops, allyAt.Y, new Vec(Fix.Zero, Fix.OneValue));
             if (setup.EnemyUnits != null && setup.EnemyUnits.Count > 0) MakeGrid(Enemy, setup.EnemyUnits, troops, enemyAt, new Vec(Fix.Zero, -Fix.OneValue));
             else MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, setup.EnemyTroops, troops, enemyAt.Y, new Vec(Fix.Zero, -Fix.OneValue));
+            if (Terrain != null) MakeGates(allyAt, enemyAt);
             if (Terrain != null)
                 foreach (var a in Armies)
                 {
@@ -345,6 +367,90 @@ namespace Game.Battle.Model.Crowd
         /// 줄(앞 · 가운데 · 뒤) → 앞줄이 frontY, 뒤로 갈수록 자기 쪽으로 gridRowPitch씩. 총대장은 하나 (없으면 첫 부대, 여럿이면 첫 것만).
         /// 병사 수는 1 ~ gridMaxCount.
         /// </summary>
+        /// <summary>
+        /// 성문 만들기 (R-140): gate 칸을 4방향으로 이어진 덩어리마다 성문 하나, 체력 gateHp, 지키는 편 = 배치 자리가 더 가까운 편. 칸을 닫는다.
+        /// </summary>
+        private void MakeGates(Vec allyAt, Vec enemyAt)
+        {
+            Terrain.ResetClosed();
+            Terrain.GatePlanCost = Rules.GatePlanCost;
+            int w = Terrain.Map.Width, h = Terrain.Map.Height;
+            var seen = new bool[w * h];
+            for (int i = 0; i < w * h; i++)
+            {
+                if (seen[i] || Terrain.Map.TerrainAt(i % w, i / w) != "gate") continue;
+                var g = new CrowdGate { Hp = Rules.GateHp, MaxHp = Rules.GateHp };
+                var stack = new Stack<int>();
+                stack.Push(i);
+                seen[i] = true;
+                Fix sx = Fix.Zero, sy = Fix.Zero;
+                while (stack.Count > 0)
+                {
+                    int c = stack.Pop();
+                    g.Cells.Add(c);
+                    var cc = Terrain.CellCenter(c % w, c / w);
+                    sx += cc.X; sy += cc.Y;
+                    int x = c % w, y = c / w;
+                    foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+                    {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        int ni = ny * w + nx;
+                        if (seen[ni] || Terrain.Map.TerrainAt(nx, ny) != "gate") continue;
+                        seen[ni] = true;
+                        stack.Push(ni);
+                    }
+                }
+                g.Cells.Sort();
+                g.Center = new Vec(sx / g.Cells.Count, sy / g.Cells.Count);
+                g.Defender = Vec.DistanceSquared(allyAt, g.Center) < Vec.DistanceSquared(enemyAt, g.Center) ? Ally : Enemy;
+                foreach (var c in g.Cells) Terrain.SetClosed(c, true);
+                Gates.Add(g);
+            }
+            if (Gates.Count > 0) SiegeDefender = Gates[0].Defender;
+        }
+
+        /// <summary>그 부대가 성을 치는 쪽 (길 찾기에서 닫힌 성문을 지나갈 수 있는 것으로 봄).</summary>
+        private bool Besieging(CrowdArmy a) => SiegeDefender >= 0 && a.Team != SiegeDefender;
+
+        /// <summary>그 병사가 닿는 닫힌 성문 (칸 가운데까지 거리 ≤ reach), 없으면 -1.</summary>
+        private int GateInReach(CrowdSoldier s, Fix reach, out Vec at)
+        {
+            at = s.Pos;
+            int w = Terrain.Map.Width;
+            Fix reach2 = reach * reach;
+            for (int k = 0; k < Gates.Count; k++)
+            {
+                var g = Gates[k];
+                if (g.Open) continue;
+                foreach (var c in g.Cells)
+                {
+                    var p = Terrain.CellCenter(c % w, c / w);
+                    if (Vec.DistanceSquared(p, s.Pos) <= reach2) { at = p; return k; }
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>성문을 친 한 방 (R-140): 체력 − gateHitDamage (장수는 × 2). 0이 되면 열린다 (칸을 열고 길 지도를 새로).</summary>
+        private void HitGate(CrowdSoldier s, int gi, Vec at, CrowdArmy army)
+        {
+            var g = Gates[gi];
+            g.Hp -= Rules.GateHitDamage * (s.IsGeneral ? 2 : 1);
+            g.LastHitTick = Tick;
+            s.LastAttackTick = Tick;
+            s.LastTargetId = -1;
+            s.HitStructure = true;
+            s.StrikeAt = at;
+            s.Cooldown = Rules.AttackTicks + (Rules.AttackJitterTicks > 0 ? _rng.NextInt(Rules.AttackJitterTicks + 1) : 0);
+            if (g.Hp <= 0)
+            {
+                g.Hp = 0;
+                foreach (var c in g.Cells) Terrain.SetClosed(c, false);
+                foreach (var a in Armies) { a.Flow = null; a.Route.Clear(); }
+            }
+        }
+
         /// <summary>맵 시작 자리 (맵 칸) → 전장 자리 (칸 가운데).</summary>
         private Vec SpawnPoint(SpawnDef sp) => new Vec(Terrain.CellSize * sp.X + Terrain.CellSize / 2,
             Terrain.Flipped ? Terrain.CellSize * sp.Y + Terrain.CellSize / 2 : Terrain.CellSize * (Fix.FromInt(Terrain.Map.Height) - sp.Y) - Terrain.CellSize / 2);
@@ -569,7 +675,7 @@ namespace Game.Battle.Model.Crowd
             if (a.Route.Count == 0 || a.RouteGoal != gc || Tick - a.RouteTick >= 40)
             {
                 a.Route.Clear();
-                a.Route.AddRange(Terrain.FindPath(a.Troop, a.Center, goal));
+                a.Route.AddRange(Terrain.FindPath(a.Troop, a.Center, goal, Besieging(a)));
                 a.RouteGoal = gc;
                 a.RouteTick = Tick;
             }
@@ -812,6 +918,17 @@ namespace Game.Battle.Model.Crowd
                     _next[i] = s.Pos + ToSlot(army, s, walkStep) + Separation(s);
                     continue;
                 }
+                if (foe < 0 && Gates.Count > 0 && Besieging(army) && !Shooting(army))
+                {
+                    // 성문 치기 (R-140): 닿는 닫힌 성문이 있으면 서서 친다
+                    int gi = GateInReach(s, s.Radius + Terrain.CellSize * Fix.FromRatio(3, 4) + r.AttackReach, out var gat);
+                    if (gi >= 0)
+                    {
+                        if (s.Cooldown == 0) HitGate(s, gi, gat, army);
+                        _next[i] = s.Pos + Separation(s);
+                        continue;
+                    }
+                }
                 if (foe >= 0)
                 {
                     var e = Soldiers[foe];
@@ -928,7 +1045,10 @@ namespace Game.Battle.Model.Crowd
                     a.GeneralPulledBack = true;
                     var cur = new List<Vec>();
                     foreach (var s2 in a.Soldiers) if (s2.Alive && !s2.IsGeneral) cur.Add(s2.Slot);
-                    if (cur.Count > 0) g.Slot = new Vec(Fix.Zero, CrowdFormations.BackOf(cur) - r.GeneralBack);
+                    // 대열 맨 뒤가 아니라 앞줄 generalPullBackRows줄 바로 뒤 (대열 안) — 싸움 가까이서 지휘 (2026-11-22 사용자: 맨 뒤까지 가면 퇴각처럼 보임)
+                    Fix frontY = Fix.FromInt(-999);
+                    foreach (var v in cur) if (v.Y > frontY) frontY = v.Y;
+                    if (cur.Count > 0) g.Slot = new Vec(Fix.Zero, Fix.Max(CrowdFormations.BackOf(cur) - r.GeneralBack, frontY - SpacingOf(a.Troop) * r.GeneralPullBackRows));
                 }
                 // 물러나기 (도망): 체력 generalEscapeHpPct% 이하, 또는 부대가 흔들리거나 무너졌을 때 generalEscapeWaverHpPct% 이하 (R-139 — 부대가 버티면 장수도 남음)
                 bool shaky = a.Wavering || a.Routed;
@@ -1072,6 +1192,7 @@ namespace Game.Battle.Model.Crowd
             }
             s.LastAttackTick = Tick;
             s.LastTargetId = e.Id;
+            s.HitStructure = false;
             s.Cooldown = r.AttackTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks + 1) : 0);
             if (army.Wavering) s.Cooldown = (int)(Fix.FromInt(s.Cooldown) * r.WaverAttack).RoundToLong(); // 흔들리면 덜 친다
         }
@@ -1086,6 +1207,7 @@ namespace Game.Battle.Model.Crowd
             Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()) });
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
+            s.HitStructure = false;
             s.Cooldown = r.ShootTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0);
         }
 
@@ -1200,7 +1322,10 @@ namespace Game.Battle.Model.Crowd
             int alive = System.Math.Max(1, a.AliveCount);
             Fix slow = Fix.OneValue - Fix.Min(Fix.OneValue, Fix.FromRatio(engagedSoldiers * 2, alive));
             var dir = a.Order == CrowdOrders.Advance && !detour ? a.Facing : dl > Fix.Zero ? dv * (Fix.OneValue / dl) : Vec.Zero;
-            a.Center = a.Center + dir * Fix.Min(detour ? dl : dist, baseSpeed * dt * slow);
+            var nextCenter = a.Center + dir * Fix.Min(detour ? dl : dist, baseSpeed * dt * slow);
+            // 닫힌 성문 앞에서는 기다린다 (R-140: 병사들이 문을 부술 때까지 — 가운데만 성 안으로 들어가지 않게)
+            if (Gates.Count > 0 && Terrain.IsClosed(Terrain.CellIndex(nextCenter)) && !Terrain.IsClosed(Terrain.CellIndex(a.Center))) return; // 닫힌 성문만 (강 모서리를 스치는 건 그대로)
+            a.Center = nextCenter;
         }
 
         private const int RelaxPasses = 2;
@@ -1336,17 +1461,17 @@ namespace Game.Battle.Model.Crowd
             int goal = Terrain.CellIndex(a.Center);
             if (a.Flow == null || a.FlowCell != goal || Tick - a.FlowTick >= Rules.FlowRefreshTicks)
             {
-                a.Flow = Terrain.DistanceField(a.Troop, a.Center);
+                a.Flow = Terrain.DistanceField(a.Troop, a.Center, Besieging(a));
                 a.FlowCell = goal;
                 a.FlowTick = Tick;
             }
             int cell = Terrain.CellIndex(s.Pos);
             if (cell == goal || a.Flow[cell] == long.MaxValue) return null;
             int w = Terrain.Map.Width;
-            int n1 = Terrain.NextCell(a.Troop, a.Flow, cell);
+            int n1 = Terrain.NextCell(a.Troop, a.Flow, cell, Besieging(a));
             if (n1 < 0) return null;
             var p1 = Terrain.CellCenter(n1 % w, n1 / w);
-            int n2 = n1 == goal ? -1 : Terrain.NextCell(a.Troop, a.Flow, n1);
+            int n2 = n1 == goal ? -1 : Terrain.NextCell(a.Troop, a.Flow, n1, Besieging(a));
             if (n2 >= 0)
             {
                 var p2 = Terrain.CellCenter(n2 % w, n2 / w);

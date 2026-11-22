@@ -71,6 +71,7 @@ namespace Game.Unity.Battle3D
 
             BuildWater(newMaterial);
             BuildBridges(newMaterial);
+            BuildStructures(newMaterial);
             BuildProps(newMaterial);
             BuildMini();
         }
@@ -80,7 +81,23 @@ namespace Game.Unity.Battle3D
         private static readonly Color PlainColor = new Color(0.45f, 0.58f, 0.3f);
 
         /// <summary>칸 높이 (언덕 · 산), 물 바닥 깊이.</summary>
-        private float LevelAt(float x, float z) => (float)_t.LevelAt(Field(x, z)).ToDisplayDouble() * LevelHeight;
+        private float LevelAt(float x, float z) => IsStructure(_t.TerrainAt(Field(x, z))) ? 0f : (float)_t.LevelAt(Field(x, z)).ToDisplayDouble() * LevelHeight;
+
+        // ---- 공성 (R-140): 성벽 · 성벽 위 · 계단은 땅 높낮이가 아니라 돌 블록으로 (모서리가 또렷하게) ----
+        private const float WallH = 3.4f, WalkH = 2.8f, StairLowH = 0.9f, StairHighH = 1.9f;
+        private static bool IsStructure(string t) => t == "wall" || t == "wallTop" || t == "stairs";
+
+        /// <summary>그 칸 구조물 윗면 높이 (구조물이 아니면 -1).</summary>
+        private float StructureTop(int col, int row)
+        {
+            switch (_t.Map.TerrainAt(col, row))
+            {
+                case "wall": return WallH;
+                case "wallTop": return WalkH;
+                case "stairs": return _t.Map.HeightAt(col, row) >= 3 ? StairHighH : StairLowH; // 높이 층 값으로 아래 · 위 단
+                default: return -1f;
+            }
+        }
 
         private float BedAt(float x, float z)
         {
@@ -136,7 +153,13 @@ namespace Game.Unity.Battle3D
         /// <summary>병사가 서는 높이: 다리 위면 다리 판, 아니면 땅 (여울은 물에 발이 잠김).</summary>
         public float StandHeight(float x, float z)
         {
-            if (_t != null && x >= 0f && z >= 0f && x <= _w && z <= _d && _t.TerrainAt(Field(x, z)) == "bridge") return DeckTop;
+            if (_t != null && x >= 0f && z >= 0f && x <= _w && z <= _d)
+            {
+                var f = Field(x, z);
+                string t = _t.TerrainAt(f);
+                if (t == "bridge") return DeckTop;
+                if (IsStructure(t)) { _t.CellOf(f, out int c, out int r); return StructureTop(c, r); } // 성벽 위 · 계단에 선 병사
+            }
             return GroundHeight(x, z);
         }
 
@@ -187,6 +210,8 @@ namespace Game.Unity.Battle3D
                 case "cliff": return new Color(0.42f, 0.39f, 0.35f);
                 case "pass": return new Color(0.58f, 0.52f, 0.40f);
                 case "river": case "bridge": case "water": case "flood": return new Color(0.36f, 0.33f, 0.26f);
+                case "wall": case "wallTop": case "stairs": return new Color(0.56f, 0.53f, 0.48f);
+                case "gate": return new Color(0.48f, 0.42f, 0.34f);
                 case "ford": return new Color(0.56f, 0.51f, 0.40f);
                 case "marsh": return new Color(0.38f, 0.37f, 0.24f);
                 case "mud": return new Color(0.42f, 0.35f, 0.25f);
@@ -290,6 +315,29 @@ namespace Game.Unity.Battle3D
             mr.shadowCastingMode = ShadowCastingMode.Off;
         }
 
+        /// <summary>성벽 · 성벽 위 · 계단: 칸마다 돌 블록 (성벽은 위에 톱니 모양 여장).</summary>
+        private void BuildStructures(System.Func<Color, Material> newMaterial)
+        {
+            var cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            var stone = Own(newMaterial(new Color(0.58f, 0.55f, 0.50f)));
+            var stoneDark = Own(newMaterial(new Color(0.46f, 0.43f, 0.39f)));
+            var walk = Own(newMaterial(new Color(0.66f, 0.62f, 0.55f)));
+            float cell = (float)_t.CellSize.ToDisplayDouble();
+            int mw = _t.Map.Width, mh = _t.Map.Height;
+            for (int r = 0; r < mh; r++)
+                for (int c = 0; c < mw; c++)
+                {
+                    float top = StructureTop(c, r);
+                    if (top < 0f) continue;
+                    string t = _t.Map.TerrainAt(c, r);
+                    float x = c * cell + cell / 2f, z = _t.UpOf(r) * cell + cell / 2f;
+                    float g = GroundHeight(x, z);
+                    float h = top - g + 0.3f;
+                    Part(cube, t == "wall" ? stone : t == "wallTop" ? walk : stoneDark, new Vector3(x, g - 0.3f + h / 2f, z), new Vector3(cell + 0.02f, h, cell + 0.02f), "Wall");
+                    if (t == "wall" && (c + r) % 2 == 0) Part(cube, stoneDark, new Vector3(x, top + 0.35f, z), new Vector3(cell * 0.6f, 0.7f, cell * 0.6f), "Merlon"); // 여장 (톱니)
+                }
+        }
+
         private void BuildBridges(System.Func<Color, Material> newMaterial)
         {
             var cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
@@ -318,9 +366,9 @@ namespace Game.Unity.Battle3D
             for (int k = 0; k <= 2; k++) Part(cube, m, new Vector3(x, DeckTop + 0.17f, z0 + len * k / 2f), new Vector3(0.1f, 0.36f, 0.1f));
         }
 
-        private void Part(Mesh mesh, Material m, Vector3 pos, Vector3 scale)
+        private void Part(Mesh mesh, Material m, Vector3 pos, Vector3 scale, string name = "Bridge")
         {
-            var go = new GameObject("Bridge");
+            var go = new GameObject(name);
             go.transform.SetParent(_root.transform, false);
             go.transform.localPosition = pos;
             go.transform.localScale = scale;

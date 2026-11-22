@@ -223,6 +223,7 @@ namespace Game.Unity.Screens
             string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id)
                 + " · " + T("ui.crowd.general." + a.GeneralInfo.Preset); // 장수 성향 (R-138)
             if (a.GeneralEscaping && a.General.Alive) s += " · " + T("ui.crowd.generalEscaping");
+            else if (a.GeneralPulledBack && a.General.Alive && !a.Routed) s += " · " + T("ui.crowd.generalCommanding");
             if (a.Team == CrowdBattle.Ally && a.Delegated) s += " · " + T("ui.sample2.auto");
             if (a.Marching) s += " · " + T("ui.sample2.marching");
             // 켜져 있는 스킬 (R-130)
@@ -466,8 +467,10 @@ namespace Game.Unity.Screens
         private string MoraleText(CrowdArmy a)
         {
             if (a.Routed) return Ui.Colored(T("ui.sample2.routed"), Palette.Bad);
+            if (a.GeneralEscaping && a.General.Alive) return Ui.Colored(T("ui.crowd.generalEscaping"), Palette.Bad); // 장수 혼자 빠지는 중 (부대는 남음)
             if (!a.General.Alive) return Ui.Colored(T("ui.sample2.noGeneral"), Palette.Bad);
             string m = T("ui.sample2.morale", System.Math.Max(0, (int)a.Morale.FloorToLong()));
+            if (a.GeneralPulledBack) m += " " + T("ui.crowd.generalCommanding");
             if (a.Encircled) m += " " + T("ui.sample2.encircled");
             else if (a.Wavering) m += " " + T("ui.sample2.wavering");
             return a.Wavering || a.Encircled ? Ui.Colored(m, Palette.Bad) : m;
@@ -785,6 +788,13 @@ namespace Game.Unity.Screens
                 if (a.Place == place) { _field.Rig.LookAt(_field.ToWorld(a.General.Pos)); _field.Rig.SetDistance(distance); }
         }
 
+        /// <summary>캡처 투어: 그 자리 우리 부대 장수 체력을 pct%로 (물러나 지휘 장면).</summary>
+        public void WoundGeneralForTour(string place, int pct)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+                if (a.Place == place && a.General.Alive) a.General.Hp = System.Math.Max(1, a.General.MaxHp * pct / 100);
+        }
+
         /// <summary>캡처 투어: 우리 총대장(말 탄 장수) 가까이로 카메라.</summary>
         public void FocusGeneralForTour(float distance)
         {
@@ -876,6 +886,9 @@ namespace Game.Unity.Screens
                 }
             return Vector2.zero;
         }
+
+        /// <summary>캡처 투어: 성문이 (하나라도) 열림.</summary>
+        public bool GateOpenForTour { get { foreach (var g in _battle.Gates) if (g.Open) return true; return false; } }
 
         /// <summary>캡처 투어: 적 총대장 부대가 무너짐.</summary>
         public bool EnemyRoutedForTour => _battle.Commander(CrowdBattle.Enemy).Routed;

@@ -135,6 +135,37 @@ namespace Game.Unity.Battle3D
             return new Vector3(x, Ground.StandHeight(x, z), z);
         }
 
+        // ---- 성문 (R-140): 닫힌 동안 나무 문, 맞을수록 낮아지고 (금 간 모습), 부서지면 사라짐. 맞는 순간 살짝 흔들림 ----
+        private InstanceBatch _gateBatch;
+
+        private void DrawGates(Camera cam)
+        {
+            if (_battle.Gates.Count == 0 || _battle.Terrain == null) return;
+            if (_gateBatch == null)
+            {
+                var m = Own(NewMaterial(new Color(0.42f, 0.28f, 0.16f)));
+                m.enableInstancing = true;
+                _gateBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { m }, Matrix4x4.identity);
+            }
+            _gateBatch.Matrices.Clear();
+            float cell = (float)_battle.Terrain.CellSize.ToDisplayDouble();
+            int w = _battle.Terrain.Map.Width;
+            float tickSec = (float)_battle.Rules.TickSeconds.ToDisplayDouble();
+            foreach (var g in _battle.Gates)
+            {
+                if (g.Open) continue;
+                float ratio = Mathf.Clamp01((float)g.Hp / Mathf.Max(1, g.MaxHp));
+                float h = 0.6f + 2.6f * ratio;
+                float shake = g.LastHitTick >= 0 && _battle.Tick - g.LastHitTick < 2 ? 0.04f * Mathf.Sin(Time.time * 60f) : 0f;
+                foreach (var c in g.Cells)
+                {
+                    var p = ToWorld(_battle.Terrain.CellCenter(c % w, c / w));
+                    _gateBatch.Matrices.Add(Matrix4x4.TRS(new Vector3(p.x + shake, p.y + h / 2f, p.z), Quaternion.identity, new Vector3(cell + 0.04f, h, cell * 0.7f)));
+                }
+            }
+            _gateBatch.Draw(cam);
+        }
+
         /// <summary>땅 (높낮이 · 물 · 다리 · 소품, R-133).</summary>
         public CrowdGround Ground { get; }
 
@@ -218,12 +249,17 @@ namespace Game.Unity.Battle3D
                 }
                 // 바라볼 방향: 치는 중이면 대상, 걸으면 걷는 쪽, 아니면 군 앞
                 Vector3 look = Vector3.zero;
-                bool attacking = s.LastAttackTick >= 0 && _battle.Tick - s.LastAttackTick < _battle.Rules.AttackTicks && s.LastTargetId >= 0;
-                if (attacking) look = _cur[s.LastTargetId] - p;
+                bool attacking = s.LastAttackTick >= 0 && _battle.Tick - s.LastAttackTick < _battle.Rules.AttackTicks && (s.LastTargetId >= 0 || s.HitStructure);
+                if (attacking) look = s.HitStructure ? ToWorld(s.StrikeAt) - p : _cur[s.LastTargetId] - p; // 성문을 치면 성문 쪽 (R-140)
                 else
                 {
                     var mv = _cur[i] - _prev[i];
-                    if (mv.sqrMagnitude > 1e-5f) look = mv;
+                    var army = _battle.Armies[s.Army];
+                    var fa = new Vector3((float)army.Facing.X.ToDisplayDouble(), 0f, (float)army.Facing.Y.ToDisplayDouble());
+                    // 장수가 뒤로 가면 (물러나 지휘 · 자리 맞추기) 적 쪽을 본 채 뒷걸음 — 등을 보이면 퇴각처럼 보임 (2026-11-22 사용자). 도망 · 무너짐은 달려 감
+                    bool backpedal = s.IsGeneral && !army.GeneralEscaping && !army.Routed && army.Order != CrowdOrders.Retreat && Vector3.Dot(mv, fa) < 0f;
+                    if (backpedal) look = fa;
+                    else if (mv.sqrMagnitude > 1e-5f) look = mv;
                     else
                     {
                         var f = _battle.Armies[s.Army].Facing;
@@ -275,6 +311,13 @@ namespace Game.Unity.Battle3D
                     float amp = Mathf.Min(1f, _legAmp[i]);
                     var yawRot = Quaternion.Euler(0f, _yaw[i], 0f);
                     var horseRot = yawRot * Quaternion.Euler(4f * Mathf.Sin(gph * 2f) * amp, 0f, 0f);
+                    var ga = _battle.Armies[s.Army];
+                    if (ga.GeneralPulledBack && !ga.GeneralEscaping && !attacking)
+                    {
+                        // 지휘 동작: 2.4초마다 0.6초 동안 말이 앞발을 들 듯 몸을 젖힘
+                        float cyc = (now + s.Id * 0.37f) % 2.4f;
+                        if (cyc < 0.6f) horseRot = horseRot * Quaternion.Euler(-12f * Mathf.Sin(cyc / 0.6f * Mathf.PI), 0f, 0f);
+                    }
                     (ally ? _allyGeneral : _enemyGeneral).Add(p, horseRot);
                     var hl = ally ? _allyHorseLegs : _enemyHorseLegs;
                     var gm = Matrix4x4.TRS(p, horseRot, Vector3.one * GeneralModelScale);
@@ -322,6 +365,7 @@ namespace Game.Unity.Battle3D
             }
             var cam = Rig.Camera;
             _dustBatch.Draw(cam);
+            DrawGates(cam);
             Ground.Draw(cam);
             foreach (var b in _allBatches) b.Draw(cam);
         }

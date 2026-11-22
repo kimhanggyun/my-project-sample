@@ -2,11 +2,12 @@
 // 손으로 칸을 찍지 않고 모양(강 줄기 · 능선 · 길)을 식으로 그려 data/Maps/crowd_*.json으로 쓴다. 같은 식 = 같은 맵 (결정적).
 // 실행: node tools/crowd_maps.js
 // 지형 기호: . 평지 · g 풀숲 · r 길 · f 숲 · h 언덕 · m 산 · c 절벽 · p 고갯길 · ~ 강 · w 여울 · b 다리 · s 늪 · o 호수
+// 공성 (R-140): W 성벽(못 지나감) · T 성벽 위(지키는 병사 자리) · S 계단 · G 성문(부서지기 전엔 닫힘). 성 안 = 지키는 편 시작 자리 (spawns)
 // heights: 칸 높이 0~9 (3 = 언덕 한 단). 배치: 우리 = 아래 (spawn y 72), 적 = 위 (spawn y 8) — 그 둘레(위 · 아래 18줄)는 트인 땅.
 const fs = require("fs");
 const path = require("path");
 const W = 48, H = 80;
-const LEGEND = { ".": "plain", g: "grass", r: "road", f: "forest", h: "hill", m: "mountain", c: "cliff", p: "pass", "~": "river", w: "ford", b: "bridge", s: "marsh", o: "water" };
+const LEGEND = { ".": "plain", g: "grass", r: "road", f: "forest", h: "hill", m: "mountain", c: "cliff", p: "pass", "~": "river", w: "ford", b: "bridge", s: "marsh", o: "water", W: "wall", T: "wallTop", S: "stairs", G: "gate" };
 
 // ---- 결정적 노이즈 ----
 function hash(x, y, seed) {
@@ -58,14 +59,14 @@ function disc(m, cx, cy, r, cb) {
     if (inMap(x, y) && Math.hypot(x - cx, y - cy) <= r) cb(x, y, Math.hypot(x - cx, y - cy));
 }
 
-function write(id, comment, m) {
+function write(id, comment, m, spawns) {
   const doc = {
     _comment: comment,
     id, battleType: "field",
     legend: LEGEND,
     rows: m.t.map(r => r.join("")),
     heights: m.h.map(r => r.map(v => String(Math.max(0, Math.min(9, Math.round(v))))).join("")),
-    spawns: { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 8, facing: "S" } },
+    spawns: spawns || { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 8, facing: "S" } },
     retreatEdges: { teamA: "south", teamB: "north" },
   };
   // 쓰는 기호만 범례에
@@ -206,4 +207,23 @@ function write(id, comment, m) {
   stroke([[xc(52), 52], ...ridge, [xc(28), 28]], 2.2, (x, y) => { if (m.t[y][x] === "m") set(m, x, y, "h", 4); });
   clearDeploy(m, 15, ".");
   write("crowd_pass", "샘플전투2 산길 (R-135): 산맥 사이 구불구불한 고갯길(바닥엔 돌 없음), 넓은 분지 둘과 궁병 둔덕, 산을 넘는 좁은 언덕 샛길 하나", m);
+}
+
+// ---- 공성 시험 (R-140): 평지 위 네모 성 — 앞 성벽 가운데 성문 하나, 성벽 위 걷는 길, 계단 둘. 지키는 편(teamB)은 성 안 ----
+// (공성전 맵 세트는 원격이 이 기호로 만듦: 평지 성곽 · 강가 성채 · 산성)
+{
+  const m = blank(".");
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (noise(x, y, 81, 6) > 0.66) m.t[y][x] = "g";
+  const x0 = 8, x1 = 39, y0 = 4, y1 = 30; // 성벽 테두리 (y1 = 앞 성벽, 우리 쪽)
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const edge = y === y0 || y === y1 || x === x0 || x === x1;
+    const top = !edge && (y >= y1 - 2 || y <= y0 + 1 || x <= x0 + 2 || x >= x1 - 2);
+    if (edge) set(m, x, y, "W", 7);
+    else if (top) set(m, x, y, "T", 6);
+    else set(m, x, y, ".", 0);
+  }
+  for (let x = 22; x <= 25; x++) { set(m, x, y1, "G", 0); set(m, x, y1 - 1, ".", 0); set(m, x, y1 - 2, ".", 0); } // 성문 + 문 안 통로
+  for (const sx of [13, 33]) for (let x = sx; x <= sx + 1; x++) { set(m, x, y1 - 3, "S", 4); set(m, x, y1 - 4, "S", 2); } // 계단 (마당 → 성벽 위)
+  write("crowd_siege", "샘플전투2 공성 시험 (R-140): 평지 위 네모 성, 앞 성벽 가운데 성문 하나 · 성벽 위 걷는 길 · 계단 둘. 지키는 편(teamB)은 성 안", m,
+    { teamA: { x: 24, y: 72, facing: "N" }, teamB: { x: 24, y: 14, facing: "S" } });
 }
