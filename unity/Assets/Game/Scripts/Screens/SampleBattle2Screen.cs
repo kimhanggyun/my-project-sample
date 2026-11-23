@@ -715,7 +715,8 @@ namespace Game.Unity.Screens
         {
             if (_commandRow != null && _siegeShown != _battle.SiegeActive) BuildCommands(); // 성문이 부서지면 야전 명령 줄로 (R-145)
             var eg = _battle.Commander(CrowdBattle.Enemy).General;
-            string head = T("ui.sample2.count", _battle.AliveCount(CrowdBattle.Ally), _battle.AliveCount(CrowdBattle.Enemy), eg.Hp, eg.MaxHp);
+            var ag = _battle.Commander(CrowdBattle.Ally).General;
+            string head = T("ui.sample2.count", _battle.AliveCount(CrowdBattle.Ally), _battle.AliveCount(CrowdBattle.Enemy), eg.Hp, eg.MaxHp, ag.Hp, ag.MaxHp);
             if (_battle.IsOver)
                 head = T(_battle.Winner == CrowdBattle.Ally ? "ui.sample2.win" : _battle.Winner == CrowdBattle.Enemy ? "ui.sample2.lose" : "ui.sample2.draw")
                     + " · " + T("ui.sample2.end." + _battle.EndReason) + "  " + head;

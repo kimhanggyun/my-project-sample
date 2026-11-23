@@ -1023,11 +1023,19 @@ namespace Game.Tests.Battle
             Assert.False(w.GeneralEngaged);
             Assert.True(w.General.Slot.Y >= front - Fix.FromRatio(1, 100) && w.General.Slot.Y <= front + Fix.FromRatio(1, 100), "warrior in the front row");
             Assert.True(w.GeneralRoleSlot.Y > front); // 만나면 대열 맨 앞 (선봉)
-            Assert.True(st.General.Slot.Y <= front && st.General.Slot.Y >= back, "standard inside the formation"); // 2줄 진형이면 가운데 빈자리는 두 줄 중 하나
+            // 2줄 진형은 가운데가 곧 앞줄이라 지장은 대열 바로 뒤 (R-147), 두툼(6줄)이면 대열 가운데 빈자리
+            Assert.True(st.General.Slot.Y < back, "standard behind a thin line");
             Assert.Equal(st.GeneralBaseSlot, st.GeneralRoleSlot);
+            var thickSetup = One("infantry", "crowd_plain");
+            thickSetup.AllyUnits[0].General = "standard";
+            thickSetup.AllyUnits[0].Formation = CrowdFormations.Thick;
+            var tk = new CrowdBattle(Rules(), thickSetup, Defs.TroopTypes, Defs.TroopCounters).Commander(CrowdBattle.Ally);
+            Fix tf = Fix.FromInt(-99), tb = Fix.FromInt(99);
+            foreach (var s in tk.Soldiers) if (!s.IsGeneral) { if (s.Slot.Y > tf) tf = s.Slot.Y; if (s.Slot.Y < tb) tb = s.Slot.Y; }
+            Assert.True(tk.General.Slot.Y < tf && tk.General.Slot.Y > tb, "standard in the middle of a thick block");
+            foreach (var s in tk.Soldiers) if (!s.IsGeneral) Assert.True((s.Slot - tk.General.Slot).Length > Fix.FromRatio(3, 10), "hole for the general");
             Assert.True(sg.General.Slot.Y < back); // 책사 = 대열 뒤
             // 장수 빈자리: 장수 자리에 병사 자리가 없음 (병사와 겹쳐 밀지 않게)
-            foreach (var s in st.Soldiers) if (!s.IsGeneral) Assert.True((s.Slot - st.General.Slot).Length > Fix.FromRatio(3, 10), "hole for the general");
             Assert.True(w.General.MaxHp > st.General.MaxHp && st.General.MaxHp > sg.General.MaxHp); // 무력만큼 버팀
             Assert.Equal(b0().Rules.GeneralHp, st.General.MaxHp); // 장수(무력 70) = 지금까지와 같음
             CrowdBattle b0() => WithGeneral("standard");
@@ -1159,29 +1167,37 @@ namespace Game.Tests.Battle
         }
 
         [Fact]
-        public void ArmyRetreatsWithItsGeneralAtFivePercent()
+        public void ArmyRetreatsAtFivePercentTroops()
         {
-            // R-145 (2026-11-23 사용자 "부대 후퇴가 5%일 때"): 장수 체력 5% 이하면 장수가 빠지고 부대도 후퇴
+            // R-147 (2026-11-24 사용자 "부대 5% 병력일 때 퇴각"): 살아 있는 병사가 처음의 5% 이하면 부대 후퇴 + 장수 퇴로
             var setup = One("infantry", "crowd_plain");
-            setup.AllyUnits.Add(new CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", General = "standard" });
+            setup.AllyUnits.Add(new CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", General = "standard", Count = 100 });
+            setup.AllyUnits.Add(new CrowdUnitSpec { Row = 0, Col = 2, Troop = "infantry", General = "standard", Count = 100 });
             var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
-            CrowdArmy side = null;
-            foreach (var x in b.TeamArmies(CrowdBattle.Ally)) if (!x.IsCommander) side = x;
-            side.General.Hp = 1;
+            CrowdArmy At(string place) { foreach (var x in b.TeamArmies(CrowdBattle.Ally)) if (x.Place == place) return x; return null; }
+            var thin = At("front_left");
+            int k = 0;
+            foreach (var s in thin.Soldiers) if (!s.IsGeneral && k++ < 95) s.DiedTick = 0; // 100명 중 5명 남음
             b.Step();
-            Assert.True(side.GeneralEscaping);
-            Assert.Equal(CrowdOrders.Retreat, side.Order);
+            Assert.True(thin.GeneralEscaping);
+            Assert.Equal(CrowdOrders.Retreat, thin.Order);
+            // 장수 체력 5%는 장수 혼자 빠짐 (부대는 그대로)
+            var other = At("front_right");
+            other.General.Hp = 1;
+            b.Step();
+            Assert.True(other.GeneralEscaping);
+            Assert.NotEqual(CrowdOrders.Retreat, other.Order);
         }
 
         [Fact]
         public void WoundedGeneralStaysBehindWhileArmyHolds()
         {
-            // R-145 (2026-11-23 사용자 "20%일 때 뒤로 빠져서 체력 회복"): 성향과 관계없이 20% 이하면 물러나 회복, 맵 끝까지 가지 않음
+            // R-145 (2026-11-23 사용자 "20%일 때 뒤로 빠져서 체력 회복"): 성향과 관계없이 30%(2026-11-24 사용자, 예전 20%) 이하면 물러나 회복, 맵 끝까지 가지 않음
             foreach (var preset in new[] { "warrior", "standard", "strategist" })
             {
                 var b = WithGeneral(preset);
                 var a = b.Commander(CrowdBattle.Ally);
-                a.General.Hp = System.Math.Max(2, a.General.MaxHp * 15 / 100); // 20% 이하 · 5% 넘음 (책사 체력 13이면 2)
+                a.General.Hp = System.Math.Max(2, a.General.MaxHp * 15 / 100); // 30% 이하 · 5% 넘음 (책사 체력 13이면 2)
                 b.Step();
                 Assert.True(a.GeneralPulledBack, preset + " pulled back");
                 Assert.False(a.GeneralEscaping);
