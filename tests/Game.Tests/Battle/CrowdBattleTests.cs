@@ -831,18 +831,88 @@ namespace Game.Tests.Battle
             var sg = WithGeneral("strategist").Commander(CrowdBattle.Ally);
             Fix front = Fix.FromInt(-99), back = Fix.FromInt(99);
             foreach (var s in w.Soldiers) if (!s.IsGeneral) { if (s.Slot.Y > front) front = s.Slot.Y; if (s.Slot.Y < back) back = s.Slot.Y; }
-            // 적과 만나기 전 (R-142): 성향과 관계없이 모두 장수 자리 (대열 뒤)
+            // R-144 (2026-11-23 사용자 "진형에서 선두 · 중위 · 후위"): 맹장 = 앞줄 가운데 빈자리 (만나면 앞으로), 지장 = 대열 가운데 빈자리, 책사 = 대열 뒤
             Assert.False(w.GeneralEngaged);
-            Assert.Equal(st.General.Slot, w.General.Slot);
-            Assert.Equal(st.General.Slot, sg.General.Slot);
-            Assert.True(st.General.Slot.Y < back);
-            // 만나면 성향 자리
-            Assert.True(w.GeneralRoleSlot.Y > front); // 맹장 = 대열 맨 앞 (선봉)
-            Assert.Equal(st.GeneralBaseSlot, st.GeneralRoleSlot); // 장수 = 대열 뒤
-            Assert.True(sg.GeneralRoleSlot.Y < st.GeneralRoleSlot.Y); // 책사 = 더 뒤
+            Assert.True(w.General.Slot.Y >= front - Fix.FromRatio(1, 100) && w.General.Slot.Y <= front + Fix.FromRatio(1, 100), "warrior in the front row");
+            Assert.True(w.GeneralRoleSlot.Y > front); // 만나면 대열 맨 앞 (선봉)
+            Assert.True(st.General.Slot.Y <= front && st.General.Slot.Y >= back, "standard inside the formation"); // 2줄 진형이면 가운데 빈자리는 두 줄 중 하나
+            Assert.Equal(st.GeneralBaseSlot, st.GeneralRoleSlot);
+            Assert.True(sg.General.Slot.Y < back); // 책사 = 대열 뒤
+            // 장수 빈자리: 장수 자리에 병사 자리가 없음 (병사와 겹쳐 밀지 않게)
+            foreach (var s in st.Soldiers) if (!s.IsGeneral) Assert.True((s.Slot - st.General.Slot).Length > Fix.FromRatio(3, 10), "hole for the general");
             Assert.True(w.General.MaxHp > st.General.MaxHp && st.General.MaxHp > sg.General.MaxHp); // 무력만큼 버팀
             Assert.Equal(b0().Rules.GeneralHp, st.General.MaxHp); // 장수(무력 70) = 지금까지와 같음
             CrowdBattle b0() => WithGeneral("standard");
+        }
+
+        [Fact]
+        public void WarriorPullsBackHealsAndReturnsToTheFront()
+        {
+            // R-144 (2026-11-23 사용자 "맹장은 선두에서 싸우다 일정 체력 이하면 뒤로 잠시 빠졌다가 체력 회복해서 다시 싸움")
+            var b = WithGeneral("warrior");
+            var a = b.Commander(CrowdBattle.Ally);
+            a.General.Hp = a.General.MaxHp * 45 / 100;
+            b.Step();
+            Assert.True(a.GeneralPulledBack);
+            int back = -1;
+            for (int t = 0; t < 400 && back < 0; t++) { b.Step(); if (!a.GeneralPulledBack) back = b.Tick; }
+            _out.WriteLine($"warrior returned at tick {back}, hp {a.General.Hp}/{a.General.MaxHp}");
+            Assert.True(back > 0, "returned to the front");
+            Assert.True(a.General.Hp * 100 >= a.General.MaxHp * b.Rules.GeneralReturnHpPct);
+            // (80 − 45)% ÷ 초당 3% ≈ 11.7초 + 맞지 않은 2초 — 틱 0.1초면 약 137틱
+            Assert.InRange(back, 100, 200);
+        }
+
+        [Fact]
+        public void StandardGeneralStrikesButStaysInTheMiddle()
+        {
+            // R-144 (2026-11-23 사용자 "지장은 중위에서 부하들이 싸울 때 적들을 한 대씩 때리면서 다님")
+            var setup = One("infantry", "crowd_plain");
+            setup.AllyUnits[0].General = "standard";
+            setup.AllyUnits[0].Formation = CrowdFormations.Thick;
+            setup.EnemyUnits[0].Count = 140;
+            setup.EnemyAdvance = true;
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            var a = b.Commander(CrowdBattle.Ally);
+            int swings = 0;
+            Fix far = Fix.Zero;
+            for (int t = 0; t < 2500 && !b.IsOver; t++)
+            {
+                b.Step();
+                if (!a.General.Alive || a.GeneralEscaping || a.GeneralWounded || a.Routed) break;
+                if (a.General.LastAttackTick == b.Tick) swings++;
+                Fix off = (a.General.Pos - a.SlotWorld(a.General.Slot)).Length;
+                if (off > far) far = off;
+            }
+            _out.WriteLine($"standard general: swings {swings}, farthest from spot {far}, end {b.EndReason}");
+            Assert.True(swings > 0, "standard general struck");
+            Assert.True(far < b.Rules.GeneralRoamRange + Fix.FromInt(2), $"stayed near the middle ({far})");
+        }
+
+        [Fact]
+        public void SmartGeneralsUseSkillsMoreOften()
+        {
+            int Gap(string preset) { var b = WithGeneral(preset); return b.SkillGapTicksFor(b.Commander(CrowdBattle.Ally)); }
+            int warrior = Gap("warrior"), standard = Gap("standard"), strategist = Gap("strategist");
+            _out.WriteLine($"skill gap ticks: warrior {warrior}, standard {standard}, strategist {strategist}");
+            Assert.True(strategist < standard && standard < warrior); // 지력 92 < 65 < 40 순으로 자주
+        }
+
+        [Fact]
+        public void ColumnKeepsGeneralInTheMiddle()
+        {
+            foreach (var preset in new[] { "warrior", "standard", "strategist" })
+            {
+                var setup = One("infantry", "crowd_plain");
+                setup.AllyUnits[0].General = preset;
+                setup.AllyUnits[0].Formation = CrowdFormations.Column;
+                var a = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters).Commander(CrowdBattle.Ally);
+                Fix front = Fix.FromInt(-99), back = Fix.FromInt(99);
+                foreach (var s in a.Soldiers) if (!s.IsGeneral) { if (s.Slot.Y > front) front = s.Slot.Y; if (s.Slot.Y < back) back = s.Slot.Y; }
+                Fix mid = (front + back) / 2, quarter = (front - back) / 4;
+                Assert.True(Fix.Max(a.GeneralRoleSlot.Y - mid, mid - a.GeneralRoleSlot.Y) <= quarter, $"{preset} in the middle of the column");
+                Assert.Equal(a.GeneralBaseSlot, a.GeneralRoleSlot);
+            }
         }
 
         [Fact]
@@ -871,8 +941,7 @@ namespace Game.Tests.Battle
             var b = WithGeneral("warrior");
             var a = b.Commander(CrowdBattle.Ally);
             var y0 = a.General.Pos.Y;
-            a.General.Hp = 3; // 크게 다침
-            a.Morale = Fix.FromInt(20); // 부대도 흔들림 (R-142: 부대가 버티면 도망 대신 부상 — 아래 시험)
+            a.General.Hp = 1; // 체력 generalEscapeHpPct(5)% 이하 (R-144: 부대 상태와 관계없이 도망)
             for (int t = 0; t < 600 && !b.IsOver; t++) b.Step();
             Assert.True(a.GeneralEscaping);
             Assert.True(a.General.FledTick >= 0, "general fled");
@@ -887,7 +956,7 @@ namespace Game.Tests.Battle
             // R-142 (2026-11-22 사용자 영상 "병사는 이기는데 장수만 맵 끝까지"): 부대가 버티면 크게 다쳐도 대열 바로 뒤에서 지휘
             var b = WithGeneral("warrior");
             var a = b.Commander(CrowdBattle.Ally);
-            a.General.Hp = 3;
+            a.General.Hp = 4; // 체력 20% 이하 · 5% 넘음 (32 중 4 = 12.5%)
             for (int t = 0; t < 600 && !b.IsOver; t++) b.Step();
             Assert.True(a.GeneralWounded);
             Assert.False(a.GeneralEscaping);
@@ -896,8 +965,11 @@ namespace Game.Tests.Battle
             foreach (var s in a.Soldiers) if (s.Alive && !s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
             Assert.True(a.General.Slot.Y < back); // 대열 바로 뒤
             Assert.True((a.General.Pos - a.SlotWorld(a.General.Slot)).Length < Fix.FromInt(3), "general near his spot");
-            // 부대가 흔들리면 그때 퇴로로
+            // 부대가 흔들려도 5% 넘으면 남음 (R-144), 5% 이하면 퇴로로
             a.Morale = Fix.FromInt(20);
+            b.Step();
+            Assert.False(a.GeneralEscaping);
+            a.General.Hp = 1;
             b.Step();
             Assert.True(a.GeneralEscaping);
         }
@@ -916,7 +988,7 @@ namespace Game.Tests.Battle
             int t = 0;
             for (; t < 3000 && !b.IsOver && a.General.LastAttackTick < 0; t++) b.Step(); // 선봉에서 싸우기 시작
             Assert.True(a.General.LastAttackTick >= 0, "warrior fought");
-            a.General.Hp = a.General.MaxHp * 55 / 100;
+            a.General.Hp = a.General.MaxHp * 45 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);
             int swings = 0;
@@ -971,7 +1043,7 @@ namespace Game.Tests.Battle
             Fix back = Fix.FromInt(99);
             foreach (var s in a.Soldiers) if (!s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
             Assert.True(a.GeneralRoleSlot.Y > Fix.Zero); // 만나면 선봉
-            a.General.Hp = a.General.MaxHp * 55 / 100;
+            a.General.Hp = a.General.MaxHp * 45 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);
             Fix front = Fix.FromInt(-99);
@@ -1157,7 +1229,7 @@ namespace Game.Tests.Battle
             var a = b.Commander(CrowdBattle.Ally);
             b.SetAutoMarch(a.Id, false); // 대기 떨림만 본다 (행군 뒤 다시 펼치는 중이 아니게)
             b.OrderMove(a.Id, a.Center + new Game.Battle.Model.Geometry.Vec(Fix.FromInt(3), Fix.FromInt(-6)));
-            for (int t = 0; t < 200; t++) b.Step(); // 도착해 대기
+            for (int t = 0; t < 300; t++) b.Step(); // 도착해 대기 (지장이 대열 가운데 빈자리로 들어가 자리 잡을 때까지, R-144)
             Assert.Equal(CrowdOrders.Hold, a.Order);
             Fix moved = Fix.Zero;
             int jitter = 0;

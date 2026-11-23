@@ -62,7 +62,7 @@ namespace Game.Battle.Model.Crowd
             var a = Armies[army];
             var def = SkillDef(skill);
             if (def == null || !a.Leading || !a.SkillUses.TryGetValue(skill, out var left) || left <= 0) return false;
-            if (Tick - a.LastSkillTick < Rules.SkillGapTicks) return false;
+            if (Tick - a.LastSkillTick < SkillGapTicksFor(a)) return false; // 지력이 높으면 자주 (R-144)
             if (skill == ArrowRain)
             {
                 if (point == null) return true; // 지점은 아직 (고르는 중)

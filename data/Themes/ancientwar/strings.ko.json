@@ -861,7 +861,7 @@
   "ui.sample2.marchHint": "행군으로 갈 곳을 누르세요 (줄지어 가고, 도착하면 진형으로)",
   "ui.test.general": "장수",
   "ui.crowd.general.warrior": "맹장",
-  "ui.crowd.general.standard": "장수",
+  "ui.crowd.general.standard": "지장",
   "ui.crowd.general.strategist": "책사",
   "ui.crowd.generalEscaping": "장수 퇴각",
   "ui.sample2.end.generalFled": "총대장이 달아남",
