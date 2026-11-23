@@ -119,6 +119,15 @@ namespace Game.Battle.Model.Crowd
         public int GateHp { get; private set; }
         public int GateHitDamage { get; private set; }
         public long GatePlanCost { get; private set; }
+        // 높이 (R-143)
+        public Fix HeightMeleePpPerLevel { get; private set; }
+        public Fix HeightRangePctPerLevel { get; private set; }
+        public Fix HeightArrowHitPctPerLevel { get; private set; }
+        public Fix HeightMaxLevels { get; private set; }
+        public Fix UphillSlowPctPerLevel { get; private set; }
+        public Fix DownhillFastPctPerLevel { get; private set; }
+        public Fix SlopeMinPct { get; private set; }
+        public Fix SlopeMaxPct { get; private set; }
         // 호위 · 물러남 (R-139)
         public int GeneralPullBackHpPct { get; private set; }
         public Fix GeneralPullBackRows { get; private set; }
@@ -244,6 +253,14 @@ namespace Game.Battle.Model.Crowd
                 GeneralGuardMinPct = (int)JsonUtil.RequireLong(o, "generalGuardMinPct", c),
                 GeneralPullBackHpPct = (int)JsonUtil.RequireLong(o, "generalPullBackHpPct", c),
                 GeneralPullBackRows = JsonUtil.RequireFix(o, "generalPullBackRows", c),
+                HeightMeleePpPerLevel = JsonUtil.RequireFix(o, "heightMeleePpPerLevel", c),
+                HeightRangePctPerLevel = JsonUtil.RequireFix(o, "heightRangePctPerLevel", c),
+                HeightArrowHitPctPerLevel = JsonUtil.RequireFix(o, "heightArrowHitPctPerLevel", c),
+                HeightMaxLevels = JsonUtil.RequireFix(o, "heightMaxLevels", c),
+                UphillSlowPctPerLevel = JsonUtil.RequireFix(o, "uphillSlowPctPerLevel", c),
+                DownhillFastPctPerLevel = JsonUtil.RequireFix(o, "downhillFastPctPerLevel", c),
+                SlopeMinPct = JsonUtil.RequireFix(o, "slopeMinPct", c),
+                SlopeMaxPct = JsonUtil.RequireFix(o, "slopeMaxPct", c),
                 GateHp = (int)JsonUtil.RequireLong(o, "gateHp", c),
                 GateHitDamage = (int)JsonUtil.RequireLong(o, "gateHitDamage", c),
                 GatePlanCost = JsonUtil.RequireLong(o, "gatePlanCost", c),

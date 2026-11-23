@@ -231,6 +231,8 @@ namespace Game.Unity.Battle3D
             {
                 var s = soldiers[i];
                 var p = Vector3.Lerp(_prev[i], _cur[i], alpha);
+                // 서는 높이는 병사가 실제로 선 자리로 (칠 때 앞으로 내미는 몸 · 쓰러지며 뒤로 밀리는 몸 자리로 재면, 성벽에 붙어 치는 병사가 성벽 위에 그려짐 — 2026-11-23 캡처 45)
+                float standY = Ground.StandHeight(p.x, p.z);
                 bool ally = s.Team == CrowdBattle.Ally;
                 if (!s.Alive)
                 {
@@ -241,7 +243,7 @@ namespace Game.Unity.Battle3D
                     float sink = Mathf.Clamp01((age - FallSeconds) / SinkSeconds);
                     var back = Quaternion.Euler(0f, _yaw[i], 0f);
                     p += back * Vector3.back * (0.18f * (1f - (1f - fall) * (1f - fall)));
-                    p.y = Ground.StandHeight(p.x, p.z) + 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
+                    p.y = standY + 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
                     var rot = back * Quaternion.Euler(-80f * fall * fall, 0f, 0f);
                     (s.IsGeneral ? (age < FlashSeconds ? TroopBatch("infantry", 2, 2) : ally ? _allyGeneral : _enemyGeneral)
                         : TroopBatch(TroopOf(s), age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
@@ -302,7 +304,7 @@ namespace Game.Unity.Battle3D
                     float hit = now - s.ImpactTick * tickSec;
                     if (hit >= 0f && hit < 0.4f) bodyRot = bodyRot * Quaternion.Euler(-22f * Mathf.Sin(hit / 0.4f * Mathf.PI), 0f, 0f);
                 }
-                p.y = Ground.StandHeight(p.x, p.z);
+                p.y = standY;
                 if (s.IsGeneral)
                 {
                     // 말: 다리 넷을 따로 — 앞 둘 · 뒤 둘이 번갈아 (달리는 말), 몸은 걸음에 맞춰 앞뒤로 살짝 출렁 (위아래로 튀지 않음)

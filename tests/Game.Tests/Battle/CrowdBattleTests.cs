@@ -546,6 +546,111 @@ namespace Game.Tests.Battle
             Assert.True(loose < line, $"loose {loose} line {line}");
         }
 
+        // ---- 높이 (R-143) ----
+
+        /// <summary>맵에서 땅 높이가 가장 높은 칸 · 가장 낮은 칸 가운데 (못 가는 칸 빼고).</summary>
+        private static (Vec high, Vec low) HighLow(CrowdBattle b)
+        {
+            var t = b.Terrain;
+            var troop = b.Commander(CrowdBattle.Ally).Troop;
+            Vec high = Vec.Zero, low = Vec.Zero;
+            Fix hi = Fix.FromInt(-1), lo = Fix.FromInt(99);
+            for (int r = 0; r < t.Map.Height; r++)
+                for (int c = 0; c < t.Map.Width; c++)
+                {
+                    if (t.Blocks(troop, c, r)) continue;
+                    var p = t.CellCenter(c, r);
+                    var l = t.LevelAt(p);
+                    if (l > hi) { hi = l; high = p; }
+                    if (l < lo) { lo = l; low = p; }
+                }
+            return (high, low);
+        }
+
+        [Fact]
+        public void HigherGroundHitsHarderAndShootsFarther()
+        {
+            var b = new CrowdBattle(Rules(), One("archer", "crowd_highland"), Defs.TroopTypes, Defs.TroopCounters);
+            var (high, low) = HighLow(b);
+            Assert.True(b.Terrain.LevelAt(high) - b.Terrain.LevelAt(low) >= Fix.FromInt(2));
+            Assert.Equal(b.Rules.HeightMaxLevels, b.HeightDiff(high, low)); // ±heightMaxLevels까지
+            Assert.Equal(-b.Rules.HeightMaxLevels, b.HeightDiff(low, high));
+            // 근접: 내려치면 %p 더, 올려치면 덜
+            var foe = CrowdTroop.Of("infantry", Defs.TroopTypes);
+            Fix up = b.HeightDiff(high, low) * b.Rules.HeightMeleePpPerLevel;
+            Assert.True(b.HitDamage(foe, foe, up) > b.HitDamage(foe, foe, -up));
+            // 궁병: 위에서 더 멀리, 아래서는 그대로
+            var me = new CrowdSoldier { Pos = high };
+            var them = new CrowdSoldier { Pos = low };
+            Fix baseRange = b.RangeOf(b.Commander(CrowdBattle.Ally).Troop);
+            Assert.True(b.ShotRange(me, them, baseRange) > baseRange);
+            Assert.Equal(baseRange, b.ShotRange(them, me, baseRange));
+        }
+
+        [Fact]
+        public void WallTopStandsAboveTheGround()
+        {
+            var b = new CrowdBattle(Rules(), One("archer", "crowd_siege"), Defs.TroopTypes, Defs.TroopCounters);
+            var t = b.Terrain;
+            Vec top = Vec.Zero, ground = Vec.Zero;
+            bool found = false;
+            for (int r = 0; r < t.Map.Height && !found; r++)
+                for (int c = 0; c + 1 < t.Map.Width && !found; c++)
+                    if (t.Map.TerrainAt(c, r) == "wallTop") { top = t.CellCenter(c, r); found = true; }
+            Assert.True(found);
+            // 성 앞 들판(높이 0)보다 성벽 위 궁병이 2단 높다 (맵 heights: 성벽 위 6 = 2단)
+            ground = b.Commander(CrowdBattle.Ally).Center;
+            Assert.Equal(Fix.Zero, t.LevelAt(ground));
+            Assert.Equal(Fix.FromInt(2), b.HeightDiff(top, ground));
+            var me = new CrowdSoldier { Pos = top };
+            var them = new CrowdSoldier { Pos = ground };
+            Fix baseRange = b.RangeOf(b.Commander(CrowdBattle.Ally).Troop);
+            Assert.True(b.ShotRange(me, them, baseRange) > baseRange); // 성벽 위에서 더 멀리
+        }
+
+        [Fact]
+        public void ClimbingIsSlowerThanDescending()
+        {
+            var b = new CrowdBattle(Rules(), One("infantry", "crowd_highland"), Defs.TroopTypes, Defs.TroopCounters);
+            var (high, low) = HighLow(b);
+            var t = b.Terrain;
+            // 비탈 한 곳: 낮은 곳에서 높은 곳 쪽으로 걸으며 땅이 처음 오르는 자리
+            var dir = (high - low).Normalized();
+            Vec at = low;
+            Fix step = t.CellSize / 4;
+            for (int k = 0; k < 2000; k++)
+            {
+                if (t.LevelAt(at + dir * t.CellSize) > t.LevelAt(at)) break;
+                at = at + dir * step;
+            }
+            Fix up = b.SlopePct(at, dir), down = b.SlopePct(at + dir * t.CellSize, dir * -Fix.OneValue);
+            _out.WriteLine($"slope at {at.X},{at.Y}: up {up}% down {down}%");
+            Assert.True(up < Fix.FromInt(100));
+            Assert.True(up >= b.Rules.SlopeMinPct);
+            Assert.True(down > Fix.FromInt(100) && down <= b.Rules.SlopeMaxPct);
+            // 평지는 그대로
+            var flat = new CrowdBattle(Rules(), One("infantry", "crowd_plain"), Defs.TroopTypes, Defs.TroopCounters);
+            Assert.Equal(Fix.FromInt(100), flat.SlopePct(flat.Commander(CrowdBattle.Ally).Center, new Vec(Fix.Zero, Fix.OneValue)));
+        }
+
+        [Fact]
+        public void ArmyClimbsHillSlowerThanItWalksPlain()
+        {
+            int Ticks(string map)
+            {
+                var b = new CrowdBattle(Rules(), One("infantry", map), Defs.TroopTypes, Defs.TroopCounters);
+                var a = b.Commander(CrowdBattle.Ally);
+                var goal = new Vec(a.Center.X, a.Center.Y + Fix.FromInt(30));
+                b.OrderMove(a.Id, goal);
+                int t = 0;
+                for (; t < 3000 && a.Order == CrowdOrders.Move; t++) b.Step();
+                return t;
+            }
+            int plain = Ticks("crowd_plain"), hill = Ticks("crowd_highland");
+            _out.WriteLine($"30 cells forward: plain {plain} ticks, highland (uphill) {hill} ticks");
+            Assert.True(hill > plain, $"plain {plain} hill {hill}");
+        }
+
         // ---- 공성 (R-140) ----
 
         [Fact]
@@ -583,6 +688,49 @@ namespace Game.Tests.Battle
             bool viaStairs = false;
             foreach (var p in path) if (t.TerrainAt(p) == "stairs") viaStairs = true;
             Assert.True(viaStairs, "path climbs by stairs");
+        }
+
+        /// <summary>공성 평지 맵 공격 쪽 (캡처 투어 45와 같은 배치).</summary>
+        private static CrowdBattle SiegeAttack(string map) => new CrowdBattle(Rules(), new CrowdSetup
+        {
+            AllyUnits = new System.Collections.Generic.List<CrowdUnitSpec> { new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Commander = true, General = "warrior" }, new CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" } },
+            EnemyUnits = new System.Collections.Generic.List<CrowdUnitSpec> { new CrowdUnitSpec { Row = 0, Col = 1, Troop = "spearman", Commander = true }, new CrowdUnitSpec { Row = 2, Col = 0, Troop = "archer" } },
+            AllyAdvance = true, Seed = 19, Terrain = Terrain(map),
+        }, Defs.TroopTypes, Defs.TroopCounters);
+
+        [Fact]
+        public void AttackersOnStairsDoNotClimbTheWall()
+        {
+            // 2026-11-23 캡처 45 "성벽 위로 올라감": 성 안에서 계단을 밟은 공격 병사가 성벽 위 자리로 올라가던 것 — 공격 쪽은 계단에서도 안 올라감
+            var b = SiegeAttack("crowd_siege_plain");
+            var t = b.Terrain;
+            var a = b.Commander(CrowdBattle.Ally);
+            var stairs = t.CellCenter(12, 29);
+            var top = t.CellCenter(12, 30);
+            Assert.Equal("stairs", t.TerrainAt(stairs));
+            Assert.Equal("wallTop", t.TerrainAt(top));
+            a.Center = top; // 진형 자리 대부분이 성벽 위
+            foreach (var s in a.Soldiers) s.Pos = stairs;
+            b.OrderHold(a.Id);
+            for (int k = 0; k < 200; k++)
+            {
+                b.Step();
+                foreach (var s in a.Soldiers) Assert.False(s.Alive && t.TerrainAt(s.Pos) == "wallTop", $"tick {b.Tick} soldier {s.Id} on wall");
+            }
+        }
+
+        [Fact]
+        public void AttackerOnTheWallComesDownByStairs()
+        {
+            var b = SiegeAttack("crowd_siege_plain");
+            var t = b.Terrain;
+            var a = b.Commander(CrowdBattle.Ally);
+            var s0 = a.Soldiers[0];
+            s0.Pos = t.CellCenter(12, 30); // 성벽 위 (계단 바로 옆)
+            a.Center = t.CellCenter(12, 26); // 부대는 성 안 땅
+            b.OrderHold(a.Id);
+            for (int k = 0; k < 400 && t.TerrainAt(s0.Pos) == "wallTop"; k++) b.Step();
+            Assert.NotEqual("wallTop", t.TerrainAt(s0.Pos)); // 계단으로 내려옴 (성벽 위에 남아 있지 않음)
         }
 
         [Fact]
