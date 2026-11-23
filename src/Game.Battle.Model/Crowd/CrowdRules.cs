@@ -158,6 +158,7 @@ namespace Game.Battle.Model.Crowd
         public Fix GeneralRegenPctPerSec { get; private set; }
         public Fix GeneralRegenCalmSeconds { get; private set; }
         public Fix GeneralRoamRange { get; private set; }
+        public int ArmyRetreatTroopPct { get; private set; }
         public Fix SkillGapIntellectPct { get; private set; }
         public Fix SkillGapMinPct { get; private set; }
         public Fix SkillGapMaxPct { get; private set; }
@@ -317,6 +318,7 @@ namespace Game.Battle.Model.Crowd
                 GeneralRegenPctPerSec = JsonUtil.RequireFix(o, "generalRegenPctPerSec", c),
                 GeneralRegenCalmSeconds = JsonUtil.RequireFix(o, "generalRegenCalmSeconds", c),
                 GeneralRoamRange = JsonUtil.RequireFix(o, "generalRoamRange", c),
+                ArmyRetreatTroopPct = (int)JsonUtil.RequireLong(o, "armyRetreatTroopPct", c),
                 SkillGapIntellectPct = JsonUtil.RequireFix(o, "skillGapIntellectPct", c),
                 SkillGapMinPct = JsonUtil.RequireFix(o, "skillGapMinPct", c),
                 SkillGapMaxPct = JsonUtil.RequireFix(o, "skillGapMaxPct", c),

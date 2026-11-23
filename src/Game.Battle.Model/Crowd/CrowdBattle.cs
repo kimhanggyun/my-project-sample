@@ -584,6 +584,9 @@ namespace Game.Battle.Model.Crowd
             Fix sp = SpacingOf(a.Troop);
             bool inside = a.GeneralInfo.Role != "rear" || formation == CrowdFormations.Circle || formation == CrowdFormations.Column;
             if (!inside || count <= 0) return CrowdFormations.Slots(formation, count, sp);
+            // 지장(중위)은 대열이 3줄 넘게 두꺼울 때만 가운데 빈자리 — 1 · 2줄이면 가운데가 곧 앞줄이라 뒤에 선다 (R-147)
+            if (a.GeneralInfo.Role != "front" && formation != CrowdFormations.Circle && formation != CrowdFormations.Column && !ThickEnough(CrowdFormations.Slots(formation, count, sp), sp))
+                return CrowdFormations.Slots(formation, count, sp);
             var more = CrowdFormations.Slots(formation, count + 1, sp);
             Fix front = Fix.FromInt(-999);
             foreach (var s in more) if (s.Y > front) front = s.Y;
@@ -605,6 +608,15 @@ namespace Game.Battle.Model.Crowd
             return more;
         }
 
+        /// <summary>대열 깊이가 간격 × 2.5 넘음 (3줄 넘게 두꺼움) — 지장이 대열 가운데에 설 만함.</summary>
+        private static bool ThickEnough(List<Vec> slots, Fix sp)
+        {
+            if (slots.Count == 0) return false;
+            Fix front = Fix.FromInt(-999);
+            foreach (var s in slots) if (s.Y > front) front = s.Y;
+            return front - CrowdFormations.BackOf(slots) > sp * Fix.FromRatio(5, 2);
+        }
+
         private void PlaceGeneral(CrowdArmy a, List<Vec> slots, Vec? hole = null)
         {
             var r = Rules;
@@ -623,8 +635,8 @@ namespace Game.Battle.Model.Crowd
                 case "rear":
                     a.GeneralBaseSlot = a.GeneralRoleSlot = new Vec(Fix.Zero, back - r.GeneralRear);
                     break;
-                default: // middle (예전 back도 여기로)
-                    a.GeneralBaseSlot = a.GeneralRoleSlot = middle;
+                default: // middle (예전 back도 여기로) — 대열 안에 비워 둔 자리가 있을 때만 가운데 (아래), 없으면 (얇은 대열 · V자 · 분진처럼 가운데가 빔) 대열 뒤 generalBack칸 (R-147)
+                    a.GeneralBaseSlot = a.GeneralRoleSlot = new Vec(Fix.Zero, back - r.GeneralBack);
                     break;
             }
             a.GeneralCommandSlot = a.GeneralInfo.Role == "rear" ? new Vec(Fix.Zero, back - r.GeneralRear) : new Vec(Fix.Zero, Fix.Max(back - r.GeneralBack, front - sp * r.GeneralPullBackRows));
@@ -1289,12 +1301,15 @@ namespace Game.Battle.Model.Crowd
                     }
                     if (g.Hp * 100 >= g.MaxHp * r.GeneralReturnHpPct) { a.GeneralPulledBack = false; a.GeneralRegenAcc = Fix.Zero; }
                 }
-                // 부대 후퇴 (R-145, 2026-11-23 사용자 "부대 후퇴가 5%일 때"): 장수 체력 generalEscapeHpPct% 이하면 장수는 퇴로로 빠지고 부대도 후퇴. 부대가 무너져도 장수가 빠짐
-                if (g.Alive && !a.GeneralEscaping && (a.Routed || g.Hp <= System.Math.Max(1, g.MaxHp * r.GeneralEscapeHpPct / 100)))
+                // 부대 퇴각 (R-147, 2026-11-24 사용자 "부대 5% 병력일 때 퇴각"): 살아 있는 병사가 처음의 armyRetreatTroopPct% 이하면 부대가 후퇴하고 장수도 퇴로로
+                if (g.Alive && !a.GeneralEscaping && a.Leading && a.AliveCount * 100 <= a.StartCount * r.ArmyRetreatTroopPct)
                 {
-                    if (!a.Routed && a.Leading) OrderRetreat(a.Id);
+                    OrderRetreat(a.Id);
                     a.GeneralEscaping = true;
                 }
+                // 장수 혼자 퇴로: 체력 generalEscapeHpPct%(최소 1) 이하 (쓰러지기 직전) 또는 부대가 무너짐
+                if (g.Alive && !a.GeneralEscaping && (a.Routed || g.Hp <= System.Math.Max(1, g.MaxHp * r.GeneralEscapeHpPct / 100)))
+                    a.GeneralEscaping = true;
                 // 적과 만나면 성향 자리로 (R-142, 2026-11-22 사용자: 만나기 전까지는 장수 자리로 이동)
                 if (g.Alive && !a.GeneralEscaping)
                 {

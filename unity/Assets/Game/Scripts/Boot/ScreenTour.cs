@@ -372,7 +372,7 @@ namespace Game.Unity.Boot
                 yield return Shot("42b_generals_warrior", null, 0.3f);
                 sgn.FocusPlaceGeneralForTour("front_right", 14f);
                 yield return Shot("42b_generals_strategist", null, 0.3f);
-                // R-144 · R-145: 맹장 체력 15% (물러남 20%) → 대열 안으로 빠졌다가 (맞지 않으면) 회복해 80%에 다시 앞줄 — 싸우기 전이라 끝까지 보임
+                // R-144 · R-145: 맹장 체력 15% (물러남 30%) → 대열 안으로 빠졌다가 (맞지 않으면) 회복해 80%에 다시 앞줄 — 싸우기 전이라 끝까지 보임
                 sgn.WoundGeneralForTour("front_left", 15);
                 sgn.StepForTour(15);
                 sgn.FocusPlaceGeneralForTour("front_left", 14f);
