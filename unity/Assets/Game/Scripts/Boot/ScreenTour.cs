@@ -372,20 +372,24 @@ namespace Game.Unity.Boot
                 yield return Shot("42b_generals_warrior", null, 0.3f);
                 sgn.FocusPlaceGeneralForTour("front_right", 14f);
                 yield return Shot("42b_generals_strategist", null, 0.3f);
+                // R-144 · R-145: 맹장 체력 15% (물러남 20%) → 대열 안으로 빠졌다가 (맞지 않으면) 회복해 80%에 다시 앞줄 — 싸우기 전이라 끝까지 보임
+                sgn.WoundGeneralForTour("front_left", 15);
+                sgn.StepForTour(15);
+                sgn.FocusPlaceGeneralForTour("front_left", 14f);
+                yield return Shot("42e_generals_warrior_pulled_back", null, 0.3f);
+                sgn.StepForTour(250);
+                sgn.FocusPlaceGeneralForTour("front_left", 14f);
+                yield return Shot("42e_generals_warrior_healed_front", null, 0.3f);
+                sgn.FocusPlaceGeneralForTour("front_center", 16f);
+                yield return Shot("42f_generals_standard_middle", null, 0.3f);
                 sgn.PressForTour(null, "advance");
                 for (int w = 0; w < 400 && !sgn.FightingForTour; w++) sgn.StepForTour(2);
                 sgn.StepForTour(15);
                 sgn.FocusPlaceGeneralForTour("front_left", 16f);
                 yield return Shot("42c_generals_fight", null, 0.3f);
                 // 물러나 지휘: 맹장 체력 55% → 앞줄 바로 뒤로 (적 쪽을 본 채), "지휘"
-                sgn.WoundGeneralForTour("front_left", 45);
+                sgn.WoundGeneralForTour("front_left", 15);
                 for (int k = 0; k < 4; k++) { sgn.StepForTour(5); sgn.FocusPlaceGeneralForTour("front_left", 14f); yield return Shot($"42d_generals_commanding_{k}", null, 0.1f); }
-                // R-144: 물러난 맹장이 회복해 다시 선두로 · 가운데 지장
-                sgn.StepForTour(160);
-                sgn.FocusPlaceGeneralForTour("front_left", 16f);
-                yield return Shot("42e_generals_warrior_back", null, 0.3f);
-                sgn.FocusPlaceGeneralForTour("front_center", 16f);
-                yield return Shot("42f_generals_standard_middle", null, 0.3f);
             }
 
             // 공수 교대 (R-139): 고지전 수비 = 맵을 뒤집어 우리가 꼭대기, 적이 올라온다
@@ -513,6 +517,75 @@ namespace Game.Unity.Boot
                 yield return Shot("46d_formation_hold_line", null, 0.3f);
                 sf.FormationForTour("front_center", "circle");
                 for (int k = 0; k < 3; k++) { sf.StepForTour(20); sf.FocusArmyForTour(0, 30f); yield return Shot($"46e_formation_now_{k}", null, 0.1f); }
+            }
+            // 공성 명령 (R-145): 치는 쪽 — 충차 · 사다리 · 성벽 쏘기 · 돌입 대기, 지키는 적은 AI (궁병 · 창병 성벽, 보병 문 막기)
+            {
+                var au = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Commander = true, General = "warrior" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman", Count = 90 },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "cavalry", Count = 60 },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer", Count = 90, General = "strategist" },
+                };
+                var ae = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" },
+                };
+                var sa = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = au, EnemyUnits = ae, AllyAdvance = false, EnemyAdvance = true, Seed = 31,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_siege") }, startNow: true);
+                yield return Shot("47_siege_attack_open", () => sa, 0.5f);
+                sa.SiegeForTour("front_center", "ram");
+                sa.SiegeForTour("front_left", "ladder");
+                sa.SiegeForTour("front_right", "waitBreach");
+                sa.SiegeForTour("middle_center", "shootWall");
+                sa.SelectForTour("front_left");
+                yield return Shot("47a_siege_attack_commands", null, 0.3f);
+                sa.StepForTour(350);
+                sa.FocusLadderForTour(16f);
+                yield return Shot("47b_siege_ladder", null, 0.3f);
+                sa.StepForTour(60);
+                sa.FocusLadderForTour(16f);
+                yield return Shot("47b_siege_ladder_2", null, 0.3f);
+                sa.FocusGateForTour(18f);
+                yield return Shot("47c_siege_ram", null, 0.3f);
+                sa.FocusGateForTour(34f);
+                yield return Shot("47d_siege_walls", null, 0.3f);
+                for (int w = 0; w < 300 && !sa.BreachedForTour && !sa.OverForTour; w++) sa.StepForTour(10);
+                sa.StepForTour(40);
+                sa.FocusGateForTour(26f);
+                yield return Shot("47e_siege_breach_field_commands", null, 0.3f);
+            }
+            // 공성 명령 (R-145): 지키는 쪽 (맵을 뒤집어 우리가 성 안) — 성벽 배치 · 성벽 지키기 · 문 막기, 치는 적은 AI
+            {
+                var du2 = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" },
+                };
+                var de2 = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman", Count = 90 },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer", Count = 90 },
+                };
+                var sdf = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = du2, EnemyUnits = de2, AllyAdvance = false, EnemyAdvance = true, Seed = 37,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_siege", true) }, startNow: true);
+                yield return Shot("48_siege_defend_open", () => sdf, 0.5f);
+                sdf.SiegeForTour("middle_center", "wall");
+                sdf.SiegeForTour("front_left", "wall");
+                sdf.SiegeForTour("front_center", "brace");
+                yield return Shot("48a_siege_defend_commands", null, 0.3f);
+                sdf.StepForTour(400);
+                sdf.FocusGateForTour(30f);
+                yield return Shot("48b_siege_defend_walls", null, 0.3f);
+                sdf.StepForTour(200);
+                sdf.FocusLadderForTour(16f);
+                yield return Shot("48c_siege_defend_ladder", null, 0.3f);
+                sdf.FocusGateForTour(18f);
+                yield return Shot("48d_siege_defend_gate", null, 0.3f);
             }
             // 부대 하나면 [전체] 없음 (R-139)
             {

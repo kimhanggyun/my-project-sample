@@ -58,9 +58,11 @@ namespace Game.Unity.Screens
         /// <summary>[닫기]로 돌아갈 메인 탭 (테스트 탭에서 열면 "test").</summary>
         private readonly string _returnTab;
 
-        public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false, string returnTab = "test")
+        /// <param name="speed">시작 배속 (1 · 2 · 4, 시험 탭에서 고름).</param>
+        public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false, string returnTab = "test", int speed = 1)
         {
             _returnTab = returnTab;
+            _speed = System.Math.Max(0, System.Array.IndexOf(Speeds, speed));
             _setup = setup ?? new CrowdSetup
             {
                 AllyFormation = CrowdFormations.Wedge, EnemyFormation = CrowdFormations.Line, AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false,
@@ -223,8 +225,8 @@ namespace Game.Unity.Screens
             string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id)
                 + " · " + T("ui.crowd.general." + a.GeneralInfo.Preset); // 장수 성향 (R-138)
             if (a.GeneralEscaping && a.General.Alive) s += " · " + T("ui.crowd.generalEscaping");
-            else if (a.GeneralWounded && a.General.Alive && !a.Routed) s += " · " + T("ui.crowd.generalWounded"); // 부상: 대열 뒤에서 지휘 (R-142)
             else if (a.GeneralPulledBack && a.General.Alive && !a.Routed) s += " · " + T("ui.crowd.generalCommanding");
+            if (a.SiegeTask != null) s += " · " + SiegeLabel(a, a.SiegeTask); // 공성 명령 (R-145)
             if (a.Team == CrowdBattle.Ally && a.Delegated) s += " · " + T("ui.sample2.auto");
             if (a.Marching) s += " · " + T("ui.sample2.marching");
             // 켜져 있는 스킬 (R-130)
@@ -245,6 +247,28 @@ namespace Game.Unity.Screens
             bool all = _selected == AllCorps;
             int font = all ? 26 : 22;
             CommandButton("delegate", DelegateLabel(), ToggleDelegate, font);
+            _siegeShown = _battle.SiegeActive;
+            if (_siegeShown)
+            {
+                // 공성 명령 줄 (R-145): 성문이 부서지기 전까지 — 부대 병종 · 편에 따라 다름, [전체]는 병종대로 기본 명령
+                if (all) CommandButton("siege_default", T("ui.sample2.siege.default"), () => Order(a => _battle.OrderSiege(a.Id, _battle.DefaultSiegeTask(a))), font);
+                else
+                {
+                    var mine = Chosen();
+                    if (mine.Count > 0)
+                        foreach (var task in _battle.SiegeTasksFor(mine[0].Id))
+                        {
+                            string t = task;
+                            CommandButton("siege_" + t, SiegeLabel(mine[0], t), () => Order(a => _battle.OrderSiege(a.Id, t)), font);
+                        }
+                    CommandButton("formation", T("ui.sample2.cmd.formation"), () => OpenCommand("formation"), font);
+                }
+                CommandButton("hold", T("ui.sample2.cmd.hold"), () => Order(a => _battle.OrderHold(a.Id)), font);
+                CommandButton("retreat", T("ui.sample2.cmd.retreat"), () => Order(a => _battle.OrderRetreat(a.Id)), font);
+                RecolorCommands();
+                BuildDetail();
+                return;
+            }
             CommandButton("advance", T("ui.sample2.cmd.advance"), () => Order(a => _battle.OrderAdvance(a.Id)), font);
             if (!all)
             {
@@ -258,6 +282,12 @@ namespace Game.Unity.Screens
             RecolorCommands();
             BuildDetail();
         }
+
+        /// <summary>공성 명령 이름 (성벽: 궁병은 "성벽 배치", 보병 · 창병은 "성벽 지키기").</summary>
+        private string SiegeLabel(CrowdArmy a, string task) =>
+            T(task == SiegeTasks.Wall && !a.Troop.Ranged ? "ui.sample2.siege.wallGuard" : "ui.sample2.siege." + task);
+
+        private bool _siegeShown;
 
         private void CommandButton(string id, string text, System.Action act, int font)
         {
@@ -284,7 +314,8 @@ namespace Game.Unity.Screens
                     || (kv.Key == "delegate" && c.Count > 0 && c.TrueForAll(a => a.Delegated))
                     || (kv.Key == "advance" && Every(CrowdOrders.Advance))
                     || (kv.Key == "hold" && Every(CrowdOrders.Hold))
-                    || (kv.Key == "retreat" && Every(CrowdOrders.Retreat));
+                    || (kv.Key == "retreat" && Every(CrowdOrders.Retreat))
+                    || (kv.Key.StartsWith("siege_") && c.Count > 0 && c.TrueForAll(a => a.SiegeTask == kv.Key.Substring(6) && !a.Delegated));
                 Ui.Recolor(kv.Value, on ? Palette.ButtonActive : Palette.Button);
             }
             if (_commandButtons.TryGetValue("delegate", out var d)) d.GetComponentInChildren<Text>().text = DelegateLabel();
@@ -484,8 +515,7 @@ namespace Game.Unity.Screens
             if (a.GeneralEscaping && a.General.Alive) return Ui.Colored(T("ui.crowd.generalEscaping"), Palette.Bad); // 장수 혼자 빠지는 중 (부대는 남음)
             if (!a.General.Alive) return Ui.Colored(T("ui.sample2.noGeneral"), Palette.Bad);
             string m = T("ui.sample2.morale", System.Math.Max(0, (int)a.Morale.FloorToLong()));
-            if (a.GeneralWounded) m += " " + T("ui.crowd.generalWounded");
-            else if (a.GeneralPulledBack) m += " " + T("ui.crowd.generalCommanding");
+            if (a.GeneralPulledBack) m += " " + T("ui.crowd.generalCommanding");
             if (a.Encircled) m += " " + T("ui.sample2.encircled");
             else if (a.Wavering) m += " " + T("ui.sample2.wavering");
             return a.Wavering || a.Encircled ? Ui.Colored(m, Palette.Bad) : m;
@@ -683,6 +713,7 @@ namespace Game.Unity.Screens
 
         private void UpdateTexts()
         {
+            if (_commandRow != null && _siegeShown != _battle.SiegeActive) BuildCommands(); // 성문이 부서지면 야전 명령 줄로 (R-145)
             var eg = _battle.Commander(CrowdBattle.Enemy).General;
             string head = T("ui.sample2.count", _battle.AliveCount(CrowdBattle.Ally), _battle.AliveCount(CrowdBattle.Enemy), eg.Hp, eg.MaxHp);
             if (_battle.IsOver)
@@ -909,6 +940,25 @@ namespace Game.Unity.Screens
                 }
             return Vector2.zero;
         }
+
+        /// <summary>캡처 투어: 그 자리 우리 부대에 공성 명령 (R-145) — 고른 부대로 만들어 명령 줄도 그 부대 것으로.</summary>
+        public void SiegeForTour(string place, string task)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+                if (a.Place == place) { _battle.OrderSiege(a.Id, task); SelectForTour(place); }
+            BuildCommands();
+        }
+
+        /// <summary>캡처 투어: 첫 사다리 가운데 (발과 꼭대기 사이)로 카메라. 사다리가 없으면 그대로.</summary>
+        public void FocusLadderForTour(float distance)
+        {
+            if (_battle.Ladders.Count == 0) return;
+            var l = _battle.Ladders[0];
+            _field.Rig.LookAt((_field.ToWorld(l.Foot) + _field.ToWorld(l.Top)) / 2f);
+            _field.Rig.SetDistance(distance);
+        }
+
+        public bool BreachedForTour => _battle.BreachTick >= 0;
 
         /// <summary>캡처 투어: 성문을 누가 쳤음.</summary>
         public bool GateHitForTour { get { foreach (var g in _battle.Gates) if (g.LastHitTick >= 0) return true; return false; } }

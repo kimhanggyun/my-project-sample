@@ -125,7 +125,14 @@ namespace Game.Unity.Battle3D
             _allyGeneral = Batch(general, AllyColor, AllyDark, GeneralModelScale); // 장수 모형은 이미 1.8배라 병사만큼 더 키우지 않음 (캡처: 장수가 대열을 가림)
             _enemyGeneral = Batch(general, EnemyColor, EnemyDark, GeneralModelScale);
             // 모든 묶음이 만들어진 뒤에 목록으로 (2026-11-21 캡처 오류: 말 다리 · 장수 묶음이 아직 없을 때 넣어 null)
-            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs }) _allBatches.Add(b);
+            // 공성 (R-145): 사다리 · 충차 (나무), 떨어지는 돌
+            var wood = Own(NewMaterial(new Color(0.45f, 0.31f, 0.17f)));
+            wood.enableInstancing = true;
+            _woodBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { wood }, Matrix4x4.identity);
+            var stoneM = Own(NewMaterial(new Color(0.5f, 0.49f, 0.46f)));
+            stoneM.enableInstancing = true;
+            _stoneBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { stoneM }, Matrix4x4.identity);
+            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs, _woodBatch, _stoneBatch }) _allBatches.Add(b);
         }
 
         /// <summary>규칙 (x, y) → 월드 (x, 0, y): 우리 편(작은 y)이 화면 아래, 적이 위.</summary>
@@ -137,6 +144,7 @@ namespace Game.Unity.Battle3D
 
         // ---- 성문 (R-140): 닫힌 동안 나무 문, 맞을수록 낮아지고 (금 간 모습), 부서지면 사라짐. 맞는 순간 살짝 흔들림 ----
         private InstanceBatch _gateBatch;
+        private InstanceBatch _woodBatch, _stoneBatch;
 
         private void DrawGates(Camera cam)
         {
@@ -231,6 +239,14 @@ namespace Game.Unity.Battle3D
             {
                 var s = soldiers[i];
                 var p = Vector3.Lerp(_prev[i], _cur[i], alpha);
+                bool climbing = s.Alive && s.ClimbEnd >= 0 && s.ClimbLadder >= 0 && s.ClimbLadder < _battle.Ladders.Count;
+                if (climbing)
+                {
+                    // 사다리 오르는 중 (R-145): 발 → 꼭대기
+                    var lad = _battle.Ladders[s.ClimbLadder];
+                    float u = Mathf.Clamp01((now - s.ClimbStart * tickSec) / Mathf.Max(0.01f, (s.ClimbEnd - s.ClimbStart) * tickSec));
+                    p = Vector3.Lerp(ToWorld(lad.Foot), ToWorld(lad.Top), u);
+                }
                 // 서는 높이는 병사가 실제로 선 자리로 (칠 때 앞으로 내미는 몸 · 쓰러지며 뒤로 밀리는 몸 자리로 재면, 성벽에 붙어 치는 병사가 성벽 위에 그려짐 — 2026-11-23 캡처 45)
                 float standY = Ground.StandHeight(p.x, p.z);
                 bool ally = s.Team == CrowdBattle.Ally;
@@ -304,7 +320,7 @@ namespace Game.Unity.Battle3D
                     float hit = now - s.ImpactTick * tickSec;
                     if (hit >= 0f && hit < 0.4f) bodyRot = bodyRot * Quaternion.Euler(-22f * Mathf.Sin(hit / 0.4f * Mathf.PI), 0f, 0f);
                 }
-                p.y = standY;
+                p.y = climbing ? p.y : standY;
                 if (s.IsGeneral)
                 {
                     // 말: 다리 넷을 따로 — 앞 둘 · 뒤 둘이 번갈아 (달리는 말), 몸은 걸음에 맞춰 앞뒤로 살짝 출렁 (위아래로 튀지 않음)
@@ -314,7 +330,7 @@ namespace Game.Unity.Battle3D
                     var yawRot = Quaternion.Euler(0f, _yaw[i], 0f);
                     var horseRot = yawRot * Quaternion.Euler(4f * Mathf.Sin(gph * 2f) * amp, 0f, 0f);
                     var ga = _battle.Armies[s.Army];
-                    if ((ga.GeneralPulledBack || ga.GeneralWounded) && !ga.GeneralEscaping && !attacking)
+                    if (ga.GeneralPulledBack && !ga.GeneralEscaping && !attacking)
                     {
                         // 지휘 동작: 2.4초마다 0.6초 동안 말이 앞발을 들 듯 몸을 젖힘
                         float cyc = (now + s.Id * 0.37f) % 2.4f;
@@ -356,6 +372,7 @@ namespace Game.Unity.Battle3D
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(attacking ? -12f : -swingL, 0f, 0f), Vector3.one));
             }
             DrawArrows(now, tickSec);
+            DrawSiege(now);
             DrawDust(now, tickSec);
             DrawRings(alpha);
             // 흔들림: 카메라를 제자리로 맞춘 뒤 조금 흔든다 (금방 잦아듦)
@@ -414,10 +431,52 @@ namespace Game.Unity.Battle3D
         }
 
         /// <summary>화살 (R-127): 쏜 자리 → 쏠 때 대상 자리로 포물선, 날아가는 쪽을 본다.</summary>
+        /// <summary>공성 (R-145): 사다리 (발 → 꼭대기, 두 기둥 + 가로대), 충차 (사람이 넉넉하면 성문 앞 통나무가 앞뒤로).</summary>
+        private void DrawSiege(float now)
+        {
+            foreach (var l in _battle.Ladders)
+            {
+                var foot = ToWorld(l.Foot);
+                var top = ToWorld(l.Top) + Vector3.up * 0.3f;
+                var dir = top - foot;
+                float len = dir.magnitude;
+                if (len < 0.01f) continue;
+                var rot = Quaternion.LookRotation(dir);
+                var side = rot * Vector3.right * 0.22f;
+                foreach (var sgn in new[] { -1f, 1f })
+                    _woodBatch.Matrices.Add(Matrix4x4.TRS((foot + top) / 2f + side * sgn, rot, new Vector3(0.06f, 0.06f, len)));
+                for (float k = 0.4f; k < len; k += 0.45f)
+                    _woodBatch.Matrices.Add(Matrix4x4.TRS(foot + dir * (k / len), rot, new Vector3(0.46f, 0.05f, 0.05f)));
+            }
+            foreach (var a in _battle.Armies)
+            {
+                if (a.SiegeTask != Game.Battle.Model.Crowd.SiegeTasks.Ram || !_battle.SiegeActive) continue;
+                foreach (var g in _battle.Gates)
+                {
+                    if (g.Open || !_battle.RamManned(a, g)) continue;
+                    var inward = new Vector3((float)g.Inward.X.ToDisplayDouble(), 0f, (float)g.Inward.Y.ToDisplayDouble());
+                    float push = 0.25f * Mathf.Sin(now * 5f);
+                    var c = ToWorld(g.Center) - inward * (1.6f - push) + Vector3.up * 0.7f;
+                    _woodBatch.Matrices.Add(Matrix4x4.TRS(c, Quaternion.LookRotation(inward), new Vector3(0.5f, 0.5f, 2.6f)));
+                }
+            }
+        }
+
         private void DrawArrows(float now, float tickSec)
         {
             foreach (var a in _battle.Arrows)
             {
+                if (a.IsStone)
+                {
+                    // 돌 (R-145): 성벽 위에서 아래로 떨어짐
+                    float s0 = a.FireTick * tickSec, s1 = a.ArriveTick * tickSec;
+                    float v = Mathf.Clamp01((now - s0) / Mathf.Max(0.01f, s1 - s0));
+                    var top = ToWorld(a.From) + Vector3.up * 1.2f;
+                    var bottom = ToWorld(a.To) + Vector3.up * 0.3f;
+                    var sp = Vector3.Lerp(top, bottom, v) + Vector3.up * (0.6f * v * (1f - v));
+                    _stoneBatch.Matrices.Add(Matrix4x4.TRS(sp, Quaternion.Euler(v * 300f, v * 200f, 0f), Vector3.one * 0.32f));
+                    continue;
+                }
                 float t0 = a.FireTick * tickSec, t1 = a.ArriveTick * tickSec;
                 float u = Mathf.Clamp01((now - t0) / Mathf.Max(0.01f, t1 - t0));
                 var from = ToWorld(a.From) + Vector3.up * 0.4f;

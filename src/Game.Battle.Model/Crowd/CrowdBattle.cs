@@ -44,6 +44,13 @@ namespace Game.Battle.Model.Crowd
         /// <summary>성문 · 성벽 같은 구조물을 친 한 방 (R-140, 화면이 그쪽을 보고 휘두름): 친 자리.</summary>
         public bool HitStructure;
         public Vec StrikeAt;
+        /// <summary>따로 갈 자리 (R-145 성벽 위 · 사다리로 올라 성 안): 있으면 대열 자리 대신 맵 칸 길을 따라 간다.</summary>
+        public Vec? Spot;
+        public List<Vec> SpotPath;
+        public int SpotIdx;
+        /// <summary>사다리 오르기 (R-145): 시작 · 끝 틱 (오르지 않으면 -1), 사다리 번호, 이번 틱 꼭대기에 닿음.</summary>
+        public int ClimbStart = -1, ClimbEnd = -1, ClimbLadder = -1;
+        public bool ClimbArrived;
         /// <summary>전장에서 싸울 수 있음 (쓰러지지도 나가지도 않음).</summary>
         public bool Alive => DiedTick < 0 && FledTick < 0;
     }
@@ -72,6 +79,10 @@ namespace Game.Battle.Model.Crowd
         public int Hp, MaxHp;
         public int Defender;
         public int LastHitTick = -1;
+        /// <summary>성 안쪽 방향 (가로 · 세로 한 축, R-145): 지키는 편 배치 자리 쪽.</summary>
+        public Vec Inward;
+        /// <summary>1 미만 피해 조각 (문 막기 · 충차로 한 방 피해가 소수가 됨).</summary>
+        public Fix Carry;
         public bool Open => Hp <= 0;
     }
 
@@ -87,6 +98,8 @@ namespace Game.Battle.Model.Crowd
         public int Damage;
         /// <summary>맞을 확률 배수 % (R-143 높이 — 위에서 쏘면 크고 아래서 쏘면 작음).</summary>
         public Fix HitPct = Fix.FromInt(100);
+        /// <summary>성벽에서 떨어뜨린 돌 (R-145): 맞을 확률 stoneHitChance.</summary>
+        public bool IsStone;
     }
 
     public static class CrowdOrders
@@ -127,14 +140,16 @@ namespace Game.Battle.Model.Crowd
         public bool GeneralEscaping;
         /// <summary>선봉 장수가 다쳐 대열 안으로 물러남 (R-139): 체력 generalPullBackHpPct% 이하면 선봉 자리 → 앞줄 뒤 (지휘). 먼저 덤비지 않음 (R-142).</summary>
         public bool GeneralPulledBack;
-        /// <summary>장수 부상 (R-142): 부대가 버티는데 체력 generalEscapeHpPct% 이하 — 맵 끝까지 가지 않고 대열 바로 뒤에서 지휘 (먼저 덤비지 않음).</summary>
-        public bool GeneralWounded;
         /// <summary>적과 만남 (R-142): 적 부대가 돌격 거리 + marchReformRange 안. 만나기 전엔 장수가 성향과 관계없이 대열 뒤 (장수 자리)에서 움직인다.</summary>
         public bool GeneralEngaged;
         /// <summary>장수 자리들 (진형 자리 기준, R-142): 만나기 전 · 만난 뒤 성향 자리 · 물러나 지휘 · 부상.</summary>
         public Vec GeneralBaseSlot, GeneralRoleSlot, GeneralCommandSlot, GeneralWoundedSlot;
         /// <summary>장수가 마지막으로 맞은 틱 (R-144 회복: 맞지 않은 지 generalRegenCalmSeconds 지나야 회복). 처음 -1.</summary>
         public int GeneralHitTick = -1;
+        /// <summary>공성 명령 (R-145, SiegeTasks), 없으면 null.</summary>
+        public string SiegeTask;
+        /// <summary>시작 행동 (CrowdUnitSpec.Behavior), 없으면 null.</summary>
+        public string StartBehavior;
         /// <summary>장수 회복 누적 (체력 1 미만 조각, R-144).</summary>
         public Fix GeneralRegenAcc;
         /// <summary>지형 길 (R-133): 못 가는 땅을 돌아가는 맵 칸 길 (목표 칸 · 찾은 틱), 이번 틱 향하는 곳 (병사가 막히면 여기로).</summary>
@@ -225,6 +240,10 @@ namespace Game.Battle.Model.Crowd
         public bool Commander;
         /// <summary>장수 성향 (R-138): warrior 맹장 · standard 장수 · strategist 책사 (crowd.json generalPresets).</summary>
         public string General = "standard";
+        /// <summary>시작 행동 (2026-11-23 사용자, 시험 탭 적 부대): hold 대기 (기본) · advance 진군 · delegate 위임 (AI가 지휘).</summary>
+        public string Behavior = Behaviors.Hold;
+
+        public static class Behaviors { public const string Hold = "hold", Advance = "advance", Delegate = "delegate"; }
 
         public static readonly string[] RowIds = { "front", "middle", "back" };
         public static readonly string[] ColIds = { "left", "center", "right" };
@@ -356,6 +375,12 @@ namespace Game.Battle.Model.Crowd
             foreach (var a in Armies) a.Aim = a.Center;
             if (setup.AllyAdvance)
                 foreach (var a in Armies) if (a.Team == Ally) OrderAttack(a.Id, Commander(Enemy).Id);
+            // 부대 시작 행동: 위임이면 AI가 지휘, 진군이면 앞으로
+            foreach (var a in Armies)
+            {
+                if (a.StartBehavior == CrowdUnitSpec.Behaviors.Delegate) a.Delegated = true;
+                else if (a.StartBehavior == CrowdUnitSpec.Behaviors.Advance) OrderAdvance(a.Id);
+            }
         }
 
         public CrowdArmy Commander(int team)
@@ -418,6 +443,10 @@ namespace Game.Battle.Model.Crowd
                 g.Cells.Sort();
                 g.Center = new Vec(sx / g.Cells.Count, sy / g.Cells.Count);
                 g.Defender = Vec.DistanceSquared(allyAt, g.Center) < Vec.DistanceSquared(enemyAt, g.Center) ? Ally : Enemy;
+                var toIn = (g.Defender == Ally ? allyAt : enemyAt) - g.Center;
+                g.Inward = Fix.Max(toIn.Y, -toIn.Y) >= Fix.Max(toIn.X, -toIn.X)
+                    ? new Vec(Fix.Zero, toIn.Y >= Fix.Zero ? Fix.OneValue : -Fix.OneValue)
+                    : new Vec(toIn.X >= Fix.Zero ? Fix.OneValue : -Fix.OneValue, Fix.Zero);
                 foreach (var c in g.Cells) Terrain.SetClosed(c, true);
                 Gates.Add(g);
             }
@@ -450,7 +479,12 @@ namespace Game.Battle.Model.Crowd
         private void HitGate(CrowdSoldier s, int gi, Vec at, CrowdArmy army)
         {
             var g = Gates[gi];
-            g.Hp -= Rules.GateHitDamage * (s.IsGeneral ? 2 : 1);
+            // 문 막기 (지키는 병사가 많을수록 덜 들어감) · 충차 (R-145)
+            Fix hit = Fix.FromInt(Rules.GateHitDamage * (s.IsGeneral ? 2 : 1)) * RamMult(army, g) * (Fix.FromInt(100) - GateBracePct(g)) / 100;
+            g.Carry += hit;
+            int whole = (int)g.Carry.FloorToLong();
+            g.Hp -= whole;
+            g.Carry -= Fix.FromInt(whole);
             g.LastHitTick = Tick;
             s.LastAttackTick = Tick;
             s.LastTargetId = -1;
@@ -462,6 +496,7 @@ namespace Game.Battle.Model.Crowd
                 g.Hp = 0;
                 foreach (var c in g.Cells) Terrain.SetClosed(c, false);
                 foreach (var a in Armies) { a.Flow = null; a.Route.Clear(); }
+                if (BreachTick < 0) OnBreach(); // 공성 끝 → 야전 명령 (R-145)
             }
         }
 
@@ -484,6 +519,7 @@ namespace Game.Battle.Model.Crowd
                 int count = System.Math.Max(1, System.Math.Min(Rules.GridMaxCount, u.Count));
                 var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
                 var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops), u.General);
+                a.StartBehavior = u.Behavior;
                 Fix back = Rules.GridRowPitch * row;
                 a.Center = new Vec(mid + Rules.GridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
                 foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
@@ -591,7 +627,7 @@ namespace Game.Battle.Model.Crowd
                     a.GeneralBaseSlot = a.GeneralRoleSlot = middle;
                     break;
             }
-            a.GeneralCommandSlot = new Vec(Fix.Zero, Fix.Max(back - r.GeneralBack, front - sp * r.GeneralPullBackRows));
+            a.GeneralCommandSlot = a.GeneralInfo.Role == "rear" ? new Vec(Fix.Zero, back - r.GeneralRear) : new Vec(Fix.Zero, Fix.Max(back - r.GeneralBack, front - sp * r.GeneralPullBackRows));
             a.GeneralWoundedSlot = new Vec(Fix.Zero, back - r.GeneralRear);
             if (a.Formation == CrowdFormations.Circle)
                 a.GeneralBaseSlot = a.GeneralRoleSlot = a.GeneralCommandSlot = a.GeneralWoundedSlot = hole ?? Vec.Zero;
@@ -615,8 +651,10 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>지금 장수가 설 자리: 부상 → 물러나 지휘 → 만났으면 성향 자리 → 아니면 장수 자리.</summary>
+        /// 공성으로 성문 · 사다리 앞에 선 동안은 맹장도 앞으로 나서지 않음 (R-145 — 성문 앞에서 돌 · 화살을 다 맞음).
         private static Vec GeneralSlotNow(CrowdArmy a) =>
-            a.GeneralWounded ? a.GeneralWoundedSlot : a.GeneralPulledBack ? a.GeneralCommandSlot : a.GeneralEngaged ? a.GeneralRoleSlot : a.GeneralBaseSlot;
+            a.GeneralPulledBack ? a.GeneralCommandSlot
+            : a.GeneralEngaged && a.SiegeTask == null ? a.GeneralRoleSlot : a.GeneralBaseSlot;
 
         /// <summary>장수 자리를 바꾼다 (바뀌면 멈춤을 풀어 새 자리로 가게).</summary>
         private static void SetGeneralSlot(CrowdArmy a)
@@ -795,6 +833,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
+            ClearSiege(a); // 다른 명령이면 공성 명령을 지움 (R-145)
             a.Order = CrowdOrders.Hold; a.OrderTarget = -1; a.Charging = false;
             a.Waypoints.Clear();
             a.Melee = false; a.PathThenAttack = -1;
@@ -841,6 +880,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
+            ClearSiege(a); // 다른 명령이면 공성 명령을 지움 (R-145)
             point = Open(a, InField(point));
             if (append && a.Order == CrowdOrders.Move) { if (a.Waypoints.Count < MaxWaypoints) a.Waypoints.Add(point); return; }
             a.MarchMove = march; // [행군 이동] (R-137): 이번 이동만 행군 대열
@@ -862,6 +902,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading || points == null || points.Count == 0) return;
             var a = Armies[army];
+            ClearSiege(a); // 다른 명령이면 공성 명령을 지움 (R-145)
             OrderMove(army, points[0]);
             for (int k = 1; k < points.Count && k < MaxPathPoints; k++) a.Waypoints.Add(Open(a, InField(points[k])));
             if (thenAttack >= 0 && thenAttack < Armies.Count && Armies[thenAttack].Team != a.Team) a.PathThenAttack = thenAttack;
@@ -872,6 +913,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
+            ClearSiege(a); // 다른 명령이면 공성 명령을 지움 (R-145)
             OrderHold(army);
             a.Order = CrowdOrders.Advance;
         }
@@ -881,6 +923,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
+            ClearSiege(a); // 다른 명령이면 공성 명령을 지움 (R-145)
             OrderHold(army);
             a.Order = CrowdOrders.Retreat;
         }
@@ -928,6 +971,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (IsOver || army < 0 || army >= Armies.Count || target < 0 || target >= Armies.Count) return;
             var a = Armies[army];
+            ClearSiege(a); // 다른 명령이면 공성 명령을 지움 (R-145)
             if (!a.Leading || Armies[target].Team == a.Team) return;
             a.Order = CrowdOrders.Attack;
             a.OrderTarget = target;
@@ -939,7 +983,7 @@ namespace Game.Battle.Model.Crowd
         public static bool Shooting(CrowdArmy a) => a.Troop.Ranged && !a.Melee;
 
         /// <summary>AI가 움직이는 부대: 적은 전진 설정이면, 우리는 위임이면 (R-132).</summary>
-        private bool AiControls(CrowdArmy a) => a.Team == Enemy ? _enemyAdvance : a.Delegated;
+        private bool AiControls(CrowdArmy a) => a.Team == Enemy ? _enemyAdvance || a.Delegated : a.Delegated;
 
         /// <summary>그 부대가 아직 싸울 수 있음 (병사나 장수가 남음).</summary>
         public bool Standing(CrowdArmy a) => a.General.Alive || a.AliveCount > 0;
@@ -1040,6 +1084,7 @@ namespace Game.Battle.Model.Crowd
                     _next[i] = s.Pos + away * (r.FleeSpeed * army.SpeedFactor * ground * dt) + Separation(s);
                     continue;
                 }
+                if (Ladders.Count > 0 && ClimbStep(s, army, i)) continue; // 사다리 오르는 중 (R-145)
                 if (s.IsGeneral && army.GeneralEscaping)
                 {
                     // 장수 물러나기 (R-138): 자기 쪽 끝으로 말을 달린다 (무력이 높을수록 빠르게 — 적 사이를 뚫고), 싸우지 않음
@@ -1054,7 +1099,7 @@ namespace Game.Battle.Model.Crowd
                 // 장수: 무력이 generalFightMight 이상이면 직접 싸운다 (맹장), 아니면 싸우지 않고 자리만 (책사)
                 int foe;
                 if (s.IsGeneral && army.GeneralInfo.Might < r.GeneralFightMight) foe = -1;
-                else if (s.IsGeneral && (army.GeneralPulledBack || army.GeneralWounded))
+                else if (s.IsGeneral && army.GeneralPulledBack)
                 {
                     // 물러나 지휘 · 부상 (R-142): 먼저 덤비지 않고 자리로 — 바로 붙은 적만 맞받는다
                     Fix touch = s.Radius + r.MountedRadius + r.AttackReach;
@@ -1067,6 +1112,14 @@ namespace Game.Battle.Model.Crowd
                     if (foe >= 0 && (Soldiers[foe].Pos - army.SlotWorld(s.Slot)).Length > r.GeneralRoamRange) foe = -1;
                 }
                 else foe = NearestEnemy(s, engage2, r.EngageRange);
+                // 성벽 · 닫힌 성문 너머 적과는 맞붙지 않음 (R-145, 2026-11-23 캡처 47: 문 막는 적 보병 · 창병이 닫힌 문 너머로 쳐서 충차 부대가 녹음) — 화살 · 돌은 넘어감
+                if (foe >= 0 && Gates.Count > 0 && !Terrain.Clear(troop, s.Pos, Soldiers[foe].Pos)) foe = -1;
+                // 성벽 위 지키는 보병 · 창병: 아래 적에게 돌 (R-145)
+                if (foe < 0 && !troop.Ranged && s.Team == SiegeDefender && SiegeActive && TryDropStone(s))
+                {
+                    _next[i] = s.Pos + ToSlot(army, s, walkStep) + Separation(s);
+                    continue;
+                }
                 // 궁병: 맞붙을 만큼 가깝지 않으면 사거리 안의 적에게 쏜다 (자리를 지킨 채)
                 if (!s.IsGeneral && Shooting(army) && foe < 0)
                 {
@@ -1106,10 +1159,10 @@ namespace Game.Battle.Model.Crowd
                     if (d2 <= reach * reach)
                     {
                         // 닿았다: 서서 친다. 물러나 지휘 · 부상 장수는 치면서도 자리로 물러난다 (R-142 — 앞줄에 붙잡혀 계속 싸우지 않게)
-                        want = s.IsGeneral && (army.GeneralPulledBack || army.GeneralWounded) ? ToSlot(army, s, walkStep) : Vec.Zero;
+                        want = s.IsGeneral && army.GeneralPulledBack ? ToSlot(army, s, walkStep) : Vec.Zero;
                         if (s.Cooldown == 0) Strike(s, e, d, d2, army, walkStep);
                     }
-                    else if (army.Order == CrowdOrders.Retreat || (s.IsGeneral && (army.GeneralPulledBack || army.GeneralWounded))) want = ToSlot(army, s, stepLen); // 후퇴 · 지휘 장수: 닿은 적만 치고 쫓지 않는다
+                    else if (army.Order == CrowdOrders.Retreat || (s.IsGeneral && army.GeneralPulledBack)) want = ToSlot(army, s, stepLen); // 후퇴 · 지휘 장수: 닿은 적만 치고 쫓지 않는다
                     else
                     {
                         Fix len = Fix.Sqrt(d2);
@@ -1144,13 +1197,16 @@ namespace Game.Battle.Model.Crowd
                 if (ar.ArriveTick > Tick) continue;
                 if (ar.TargetId < 0) { Arrows.RemoveAt(k); k--; continue; } // 화살비 화살 (보이기만, 피해는 StepSkills)
                 var t = Soldiers[ar.TargetId];
-                if (t.Alive && _rng.Chance(r.ArrowHitChance * FormationPct(r.FormationArrowHitPct, Armies[t.Army].Formation) / 100 * ar.HitPct / 100)) // 산개는 덜 맞음 (R-141), 높이 (R-143)
+                Fix hitChance = ar.IsStone ? r.StoneHitChance : r.ArrowHitChance * FormationPct(r.FormationArrowHitPct, Armies[t.Army].Formation) / 100 * ar.HitPct / 100; // 산개는 덜 맞음 (R-141), 높이 (R-143), 돌 (R-145)
+                if (SiegeActive && UnderRamRoof(t)) hitChance = hitChance * (Fix.FromInt(100) - r.RamCoverPct) / 100; // 충차 지붕 밑 (R-145)
+                if (t.Alive && _rng.Chance(hitChance))
                 {
                     var ta = Armies[t.Army];
-                    int side = SideOf(ta, ta.TickCentroid, ar.From);
+                    // 성벽 위에서 쏜 화살 · 돌은 앞에서 맞은 것으로 (R-145 — 성문 앞 부대가 양옆 성벽에서 맞아 옆 · 포위로 사기가 무너짐, 캡처 47)
+                    int side = Terrain != null && Terrain.IsRaised(ar.From) ? 0 : SideOf(ta, ta.TickCentroid, ar.From);
                     _damage[t.Id] += side == 0 ? ar.Damage : ar.Damage + System.Math.Max(0, (int)(Fix.FromInt(ar.Damage) * SidePp(side) / 100).RoundToLong());
                     NoteHit(ta, side);
-                    ArrowHits++;
+                    if (ar.IsStone) StoneHits++; else ArrowHits++;
                 }
                 Arrows.RemoveAt(k);
                 k--;
@@ -1209,6 +1265,7 @@ namespace Game.Battle.Model.Crowd
                 // 무너진 병사가 자기 쪽 가장자리에 닿으면 전장 밖으로 (빠짐)
                 if (Armies[s.Army].Routed && (s.Team == Ally ? p.Y <= Fix.FromRatio(1, 2) : p.Y >= maxY - Fix.FromRatio(1, 2))) { s.FledTick = Tick; s.Moved = Vec.Zero; }
             }
+            if (Ladders.Count > 0) FinishClimbs(); // 사다리 꼭대기에 닿은 병사 (R-145)
             UpdateMorale();
             foreach (var a in Armies)
             {
@@ -1216,11 +1273,12 @@ namespace Game.Battle.Model.Crowd
                 // 장수가 크게 다치면 (체력 generalEscapeHpPct% 이하) 물러난다 (R-138)
                 // 선봉 장수가 다치면 대열 뒤로 (R-139)
                 // 대열 맨 뒤가 아니라 앞줄 generalPullBackRows줄 바로 뒤 (대열 안) — 싸움 가까이서 지휘 (2026-11-22 사용자: 맨 뒤까지 가면 퇴각처럼 보임)
-                if (g.Alive && !a.GeneralPulledBack && a.GeneralInfo.Role == "front" && g.Hp * 100 <= g.MaxHp * r.GeneralPullBackHpPct && a.Leading)
+                // R-145 (2026-11-23 사용자 "장수 뒤로 물러남은 20%일 때 뒤로 빠져서 체력 회복"): 성향과 관계없이 체력 generalPullBackHpPct% 이하면 물러나 회복
+                if (g.Alive && !a.GeneralPulledBack && g.Hp * 100 <= g.MaxHp * r.GeneralPullBackHpPct && a.Leading)
                     a.GeneralPulledBack = true;
                 // 맹장 회복 (R-144, 2026-11-23 사용자 "뒤로 잠시 빠졌다가 체력 회복해서 다시 싸움"): 물러난 동안 맞지 않은 지 generalRegenCalmSeconds 지나면
                 // 초당 최대 체력의 generalRegenPctPerSec% 회복, generalReturnHpPct%가 되면 다시 선두
-                if (g.Alive && a.GeneralPulledBack && !a.GeneralWounded && !a.GeneralEscaping)
+                if (g.Alive && a.GeneralPulledBack && !a.GeneralEscaping)
                 {
                     int calm = (int)(r.GeneralRegenCalmSeconds / r.TickSeconds).RoundToLong();
                     if (a.GeneralHitTick < 0 || Tick - a.GeneralHitTick >= calm)
@@ -1231,10 +1289,12 @@ namespace Game.Battle.Model.Crowd
                     }
                     if (g.Hp * 100 >= g.MaxHp * r.GeneralReturnHpPct) { a.GeneralPulledBack = false; a.GeneralRegenAcc = Fix.Zero; }
                 }
-                // 부상 (R-142): 체력 generalWoundedHpPct% 이하면 대열 뒤에서 지휘 (먼저 덤비지 않음)
-                if (g.Alive && !a.GeneralWounded && g.Hp * 100 <= g.MaxHp * r.GeneralWoundedHpPct) a.GeneralWounded = true;
-                // 도망 (R-144, 2026-11-23 사용자 "5% 남았을 때"): 체력 generalEscapeHpPct% 이하이거나 부대가 무너지면 퇴로로 맵 끝까지
-                if (g.Alive && !a.GeneralEscaping && (a.Routed || g.Hp * 100 <= g.MaxHp * r.GeneralEscapeHpPct)) a.GeneralEscaping = true;
+                // 부대 후퇴 (R-145, 2026-11-23 사용자 "부대 후퇴가 5%일 때"): 장수 체력 generalEscapeHpPct% 이하면 장수는 퇴로로 빠지고 부대도 후퇴. 부대가 무너져도 장수가 빠짐
+                if (g.Alive && !a.GeneralEscaping && (a.Routed || g.Hp <= System.Math.Max(1, g.MaxHp * r.GeneralEscapeHpPct / 100)))
+                {
+                    if (!a.Routed && a.Leading) OrderRetreat(a.Id);
+                    a.GeneralEscaping = true;
+                }
                 // 적과 만나면 성향 자리로 (R-142, 2026-11-22 사용자: 만나기 전까지는 장수 자리로 이동)
                 if (g.Alive && !a.GeneralEscaping)
                 {
@@ -1307,13 +1367,16 @@ namespace Game.Battle.Model.Crowd
 
         private Vec ToSlot(CrowdArmy army, CrowdSoldier s, Fix stepLen)
         {
-            var target = army.Marching ? ColumnPoint(army, s) : army.SlotWorld(s.Slot);
+            bool spot = s.Spot.HasValue && s.SpotPath != null && Terrain != null;
+            var target = spot ? SpotTarget(s) : army.Marching ? ColumnPoint(army, s) : army.SlotWorld(s.Slot);
+            // 사다리 명령: 아직 안 오른 병사는 사다리 발로 모인다 (R-145)
+            if (!spot && !s.IsGeneral && army.SiegeTask == SiegeTasks.Ladder && SiegeActive && LadderOf(army) is CrowdLadder lad) target = lad.Foot;
             // 자리가 바로 못 가는 높이(땅에 선 병사에게 성벽 위)면 가장 가까운 이어진 칸 (R-142 — 진형 맞춘다고 성벽 위로 올라가지 않게)
             // 공격 쪽은 계단에 섰어도 성벽 위 자리로 가지 않고, 이미 올라갔으면 내려옴 (2026-11-23 캡처 45). 지키는 쪽은 성벽 위에 남음
-            if (Terrain != null)
+            if (Terrain != null && !spot)
                 target = SiegeDefender >= 0 && army.Team != SiegeDefender ? Terrain.SnapOffRaised(army.Troop, s.Pos, target) : Terrain.SnapLinked(army.Troop, s.Pos, target);
             bool detour = false;
-            if (Terrain != null && !Terrain.Clear(army.Troop, s.Pos, target))
+            if (Terrain != null && !spot && !Terrain.Clear(army.Troop, s.Pos, target))
             {
                 detour = true;
                 // 자리까지 곧은 길이 막혔으면: 부대 가운데가 걸어온 자취를 따라간다 (협곡에서 길을 잃지 않게, 2026-11-22 사용자 영상),
@@ -1330,7 +1393,7 @@ namespace Game.Battle.Model.Crowd
             // (나무 · 이웃과 밀고 당기는 잔떨림 없앰, 2026-11-22 사용자 영상). 부대가 움직이면 풀림.
             // 자리로 못 가면 (StuckTicks 동안 가까워지지 못함) 갈 수 있는 데까지 간 그 자리에서 멈춘다 (2026-11-22 사용자 "못 가면 갈 때까지만 가고 멈춤")
             // 자취를 따라 돌아오는 중(detour)이면 멈추지 않는다 (가까워지는지는 돌아가는 길에선 알 수 없음 — 협곡에서 멈춰 버림, R-136)
-            if (army.Order != CrowdOrders.Hold || detour) { s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0; }
+            if (army.Order != CrowdOrders.Hold || detour || (spot && s.SpotIdx < s.SpotPath.Count - 1)) { s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0; }
             else
             {
                 if (s.Settled && (s.Pos - s.SettleAt).Length <= UnsettleDistance && (target - s.SettleGoal).Length <= UnsettleDistance) return Vec.Zero;
@@ -1411,6 +1474,7 @@ namespace Game.Battle.Model.Crowd
             foreach (var a in Armies)
             {
                 if (!a.Leading || !AiControls(a)) continue;
+                if (AiSiege(a)) continue; // 공성 중엔 공성 명령 (R-145)
                 if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && Standing(Armies[a.OrderTarget])) continue;
                 int best = NearestEnemyArmy(a.Id);
                 if (best >= 0) OrderAttack(a.Id, best);
