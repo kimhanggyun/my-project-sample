@@ -698,6 +698,194 @@ namespace Game.Tests.Battle
             AllyAdvance = true, Seed = 19, Terrain = Terrain(map),
         }, Defs.TroopTypes, Defs.TroopCounters);
 
+        // ---- 공성 명령 (R-145) ----
+
+        /// <summary>공성 시험 배치: 우리(공격) · 적(수비) 부대 병종을 고르고, 적 AI는 끔 (명령은 시험이 직접).</summary>
+        private static CrowdBattle Siege(string map, string[] ally, string[] enemy, bool enemyAi = false)
+        {
+            var au = new System.Collections.Generic.List<CrowdUnitSpec>();
+            for (int k = 0; k < ally.Length; k++) au.Add(new CrowdUnitSpec { Row = k / 3, Col = k % 3, Troop = ally[k], Count = 90, Commander = k == 0 });
+            var eu = new System.Collections.Generic.List<CrowdUnitSpec>();
+            for (int k = 0; k < enemy.Length; k++) eu.Add(new CrowdUnitSpec { Row = k / 3, Col = k % 3, Troop = enemy[k], Count = 60, Commander = k == 0 });
+            return new CrowdBattle(Rules(), new CrowdSetup { AllyUnits = au, EnemyUnits = eu, AllyAdvance = false, EnemyAdvance = enemyAi, Seed = 7, Terrain = Terrain(map) },
+                Defs.TroopTypes, Defs.TroopCounters);
+        }
+
+        [Fact]
+        public void SiegeOrdersDependOnSideAndTroop()
+        {
+            var b = Siege("crowd_siege", new[] { "infantry", "archer", "cavalry" }, new[] { "spearman", "archer", "cavalry" });
+            Assert.True(b.SiegeActive);
+            Assert.Equal(CrowdBattle.Enemy, b.SiegeDefender);
+            string Tasks(int id) => string.Join(",", b.SiegeTasksFor(id));
+            Assert.Equal("bash,ladder,ram", Tasks(0));
+            Assert.Equal("shootWall", Tasks(1));
+            Assert.Equal("waitBreach", Tasks(2));
+            Assert.Equal("brace,wall", Tasks(3));
+            Assert.Equal("wall", Tasks(4));
+            Assert.Equal("brace", Tasks(5));
+            b.OrderSiege(0, SiegeTasks.Wall); // 고를 수 없는 명령은 무시
+            Assert.Null(b.Armies[0].SiegeTask);
+        }
+
+        [Fact]
+        public void ArchersManTheWallsByStairs()
+        {
+            var b = Siege("crowd_siege", new[] { "infantry" }, new[] { "spearman", "archer" });
+            var archers = b.Armies[2];
+            b.OrderSiege(archers.Id, SiegeTasks.Wall);
+            Assert.Equal(SiegeTasks.Wall, archers.SiegeTask);
+            int on = 0;
+            for (int t = 0; t < 600; t++) b.Step();
+            foreach (var s in archers.Soldiers) if (s.Alive && !s.IsGeneral && b.Terrain.TerrainAt(s.Pos) == "wallTop") on++;
+            _out.WriteLine($"archers on the wall: {on}/{archers.AliveCount}");
+            Assert.True(on * 2 > archers.AliveCount, $"{on} on wall");
+            b.OrderHold(archers.Id); // 다른 명령 = 공성 명령 지움
+            Assert.Null(archers.SiegeTask);
+        }
+
+        [Fact]
+        public void BracedGateLastsLongerAndRamBreaksFaster()
+        {
+            int Break(bool brace, string task)
+            {
+                var b = Siege("crowd_siege", new[] { "infantry" }, new[] { "spearman", "cavalry" });
+                if (brace) { b.OrderSiege(1, SiegeTasks.Brace); b.OrderSiege(2, SiegeTasks.Brace); }
+                b.OrderSiege(0, task);
+                for (int t = 0; t < 6000 && b.SiegeActive; t++) b.Step();
+                _out.WriteLine($"brace {brace} {task}: breach tick {b.BreachTick}, brace% {b.GateBracePct(b.Gates[0])}");
+                return b.BreachTick < 0 ? 99999 : b.BreachTick;
+            }
+            int open = Break(false, SiegeTasks.Bash), braced = Break(true, SiegeTasks.Bash), ram = Break(true, SiegeTasks.Ram);
+            Assert.True(braced > open, $"braced {braced} open {open}");
+            Assert.True(ram < braced, $"ram {ram} braced {braced}");
+        }
+
+        [Fact]
+        public void LadderClimbersGetInOrAreThrownDown()
+        {
+            int Climbed(bool guards)
+            {
+                var b = Siege("crowd_siege", new[] { "spearman" }, guards ? new[] { "infantry", "spearman" } : new[] { "infantry" });
+                if (guards) b.OrderSiege(2, SiegeTasks.Wall);
+                b.OrderSiege(0, SiegeTasks.Ladder);
+                Assert.Equal(SiegeTasks.Ladder, b.Armies[0].SiegeTask);
+                for (int t = 0; t < 1500 && b.SiegeActive; t++) b.Step();
+                var l = b.LadderOf(b.Armies[0]);
+                Assert.NotNull(l);
+                int inside = 0;
+                foreach (var s in b.Armies[0].Soldiers) if (s.Alive && s.Pos.Y > b.Gates[0].Center.Y) inside++;
+                _out.WriteLine($"guards {guards}: climbed {l.Climbed}, thrown {l.Thrown}, inside now {inside}, breach {b.BreachTick}");
+                if (guards) Assert.True(l.Thrown > 0, "guards threw climbers down");
+                return l.Climbed;
+            }
+            int free = Climbed(false), guarded = Climbed(true);
+            Assert.True(free > 0, "climbed");
+            Assert.True(guarded < free, $"guarded {guarded} free {free}");
+        }
+
+        [Fact]
+        public void WallDefendersDropStones()
+        {
+            var b = Siege("crowd_siege", new[] { "infantry" }, new[] { "spearman", "infantry" });
+            b.OrderSiege(2, SiegeTasks.Wall);
+            for (int t = 0; t < 400; t++) b.Step(); // 성벽에 오름
+            b.OrderSiege(0, SiegeTasks.Bash);
+            for (int t = 0; t < 900 && b.SiegeActive; t++) b.Step();
+            _out.WriteLine($"stone hits {b.StoneHits}");
+            Assert.True(b.StoneHits > 0);
+        }
+
+        [Fact]
+        public void BreachTurnsSiegeIntoFieldBattle()
+        {
+            var b = Siege("crowd_siege", new[] { "infantry", "cavalry" }, new[] { "spearman" });
+            b.OrderSiege(0, SiegeTasks.Ram);
+            b.OrderSiege(1, SiegeTasks.WaitBreach);
+            for (int t = 0; t < 6000 && b.SiegeActive; t++) b.Step();
+            Assert.True(b.BreachTick > 0, "gate broke");
+            Assert.False(b.SiegeActive);
+            Assert.Empty(b.SiegeTasksFor(0)); // 야전 명령으로
+            Assert.Null(b.Armies[1].SiegeTask);
+            Assert.Equal(CrowdOrders.Attack, b.Armies[1].Order); // 기다리던 기병이 돌입
+        }
+
+        [Fact]
+        public void EnemyAiAttacksWhenWeDefend()
+        {
+            // 공수 교대 (맵 뒤집기): 우리가 성 안, 적 AI가 공성 — 보병 성문 부수기 · 창병 사다리 · 궁병 성벽 쏘기
+            var map = Game.Data.Defs.MapDef.Load(new FileDataSource(TestData.DataRoot), "crowd_siege");
+            var flipped = new CrowdTerrain(map, Defs.TerrainRules, Defs.TerrainCombat, CrowdTerrain.CellSizeFor(map, Rules().MapFieldWidth), flipped: true);
+            var au = new System.Collections.Generic.List<CrowdUnitSpec>
+            {
+                new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                new CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" },
+            };
+            var eu = new System.Collections.Generic.List<CrowdUnitSpec>
+            {
+                new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 100, Commander = true },
+                new CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman", Count = 80 },
+                new CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer", Count = 80 },
+            };
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyUnits = au, EnemyUnits = eu, AllyAdvance = false, EnemyAdvance = true, Seed = 37, Terrain = flipped }, Defs.TroopTypes, Defs.TroopCounters);
+            Assert.Equal(CrowdBattle.Ally, b.SiegeDefender);
+            b.OrderSiege(1, SiegeTasks.Wall);
+            b.OrderSiege(0, SiegeTasks.Brace);
+            for (int t = 0; t < 30; t++) b.Step();
+            CrowdArmy Of(string troop) { foreach (var x in b.Armies) if (x.Team == CrowdBattle.Enemy && x.Troop.BaseId == troop) return x; return null; }
+            Assert.Equal(SiegeTasks.Bash, Of("infantry").SiegeTask);
+            Assert.Equal(SiegeTasks.Ladder, Of("spearman").SiegeTask);
+            Assert.Equal(SiegeTasks.ShootWall, Of("archer").SiegeTask);
+            for (int t = 0; t < 2000 && !b.IsOver; t++) b.Step();
+            _out.WriteLine($"we defend: ladders {b.Ladders.Count}, climbed {(b.Ladders.Count > 0 ? b.Ladders[0].Climbed : -1)}, thrown {(b.Ladders.Count > 0 ? b.Ladders[0].Thrown : -1)}, breach {b.BreachTick}, arrows {b.ArrowHits}, end {b.EndReason}");
+            Assert.NotEmpty(b.Ladders);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(15)]
+        [InlineData(30)]
+        public void FullAssaultCanBreakTheGate(int waitBeforeOrders)
+        {
+            // 2026-11-23 캡처 47: 충차 · 사다리 · 성벽 쏘기 · 돌입 대기로 쳐도 성문이 열리기 전에 졌던 것 — 수치 조정 (문 막기 최대 40%, 돌 4, 공성 중엔 맹장이 앞으로 나서지 않음)
+            var au = new System.Collections.Generic.List<CrowdUnitSpec>
+            {
+                new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 120, Commander = true, General = "warrior" },
+                new CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman", Count = 90 },
+                new CrowdUnitSpec { Row = 0, Col = 2, Troop = "cavalry", Count = 60 },
+                new CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer", Count = 90, General = "strategist" },
+            };
+            var eu = new System.Collections.Generic.List<CrowdUnitSpec>
+            {
+                new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                new CrowdUnitSpec { Row = 0, Col = 0, Troop = "spearman" },
+                new CrowdUnitSpec { Row = 1, Col = 1, Troop = "archer" },
+            };
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyUnits = au, EnemyUnits = eu, AllyAdvance = false, EnemyAdvance = true, Seed = 31, Terrain = Terrain("crowd_siege") }, Defs.TroopTypes, Defs.TroopCounters);
+            b.UseSkillData(Defs.Skills);
+            for (int t = 0; t < waitBeforeOrders; t++) b.Step(); // 명령 내리는 때가 조금 달라도 (캡처 투어는 화면 시간으로 몇 틱 돈 뒤) 결과가 뒤집히지 않게
+            int Id(string place) { foreach (var x in b.TeamArmies(CrowdBattle.Ally)) if (x.Place == place) return x.Id; return -1; }
+            b.OrderSiege(Id("front_center"), SiegeTasks.Ram);
+            b.OrderSiege(Id("front_left"), SiegeTasks.Ladder);
+            b.OrderSiege(Id("front_right"), SiegeTasks.WaitBreach);
+            b.OrderSiege(Id("middle_center"), SiegeTasks.ShootWall);
+            for (int t = 0; t < 4000 && b.SiegeActive && !b.IsOver; t++) b.Step();
+            var cmd = b.Commander(CrowdBattle.Ally);
+            _out.WriteLine($"full assault: breach {b.BreachTick}, over {b.IsOver} {b.EndReason}, ally {b.AliveCount(CrowdBattle.Ally)} enemy {b.AliveCount(CrowdBattle.Enemy)}, commander hp {cmd.General.Hp}/{cmd.General.MaxHp}, stones {b.StoneHits}, gate hp {b.Gates[0].Hp}, ladder {b.Ladders[0].Climbed}/{b.Ladders[0].Thrown}");
+            Assert.True(b.BreachTick > 0, "gate broke");
+            Assert.False(b.IsOver && b.Winner == CrowdBattle.Enemy, "not lost before the breach");
+        }
+
+        [Fact]
+        public void EnemyAiDefendsTheCastle()
+        {
+            var b = Siege("crowd_siege", new[] { "infantry" }, new[] { "spearman", "archer", "infantry" }, enemyAi: true);
+            for (int t = 0; t < 30; t++) b.Step();
+            Assert.Equal(SiegeTasks.Wall, b.Armies[1].SiegeTask); // 창병 = 성벽
+            Assert.Equal(SiegeTasks.Wall, b.Armies[2].SiegeTask); // 궁병 = 성벽
+            Assert.Equal(SiegeTasks.Brace, b.Armies[3].SiegeTask); // 보병 = 문 막기
+        }
+
         [Fact]
         public void AttackersOnStairsDoNotClimbTheWall()
         {
@@ -846,12 +1034,32 @@ namespace Game.Tests.Battle
         }
 
         [Fact]
+        public void EnemyUnitsStartByTheirBehavior()
+        {
+            // 2026-11-23 사용자: 시험 탭 적 부대마다 시작 행동 [위임][진군][대기], 기본 대기
+            var eu = new System.Collections.Generic.List<CrowdUnitSpec>
+            {
+                new CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", Commander = true },
+                new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Behavior = CrowdUnitSpec.Behaviors.Advance },
+                new CrowdUnitSpec { Row = 0, Col = 2, Troop = "infantry", Behavior = CrowdUnitSpec.Behaviors.Delegate },
+            };
+            var au = new System.Collections.Generic.List<CrowdUnitSpec> { new CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true } };
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyUnits = au, EnemyUnits = eu, AllyAdvance = false, EnemyAdvance = false, Seed = 3, Terrain = Terrain("crowd_plain") }, Defs.TroopTypes, Defs.TroopCounters);
+            CrowdArmy At(string place) { foreach (var x in b.TeamArmies(CrowdBattle.Enemy)) if (x.Place == place) return x; return null; }
+            for (int t = 0; t < 20; t++) b.Step();
+            Assert.Equal(CrowdOrders.Hold, At("front_left").Order); // 대기 (기본)
+            Assert.Equal(CrowdOrders.Advance, At("front_center").Order); // 진군
+            Assert.True(At("front_right").Delegated); // 위임 = AI가 지휘
+            Assert.Equal(CrowdOrders.Attack, At("front_right").Order);
+        }
+
+        [Fact]
         public void WarriorPullsBackHealsAndReturnsToTheFront()
         {
             // R-144 (2026-11-23 사용자 "맹장은 선두에서 싸우다 일정 체력 이하면 뒤로 잠시 빠졌다가 체력 회복해서 다시 싸움")
             var b = WithGeneral("warrior");
             var a = b.Commander(CrowdBattle.Ally);
-            a.General.Hp = a.General.MaxHp * 45 / 100;
+            a.General.Hp = a.General.MaxHp * 15 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);
             int back = -1;
@@ -859,8 +1067,8 @@ namespace Game.Tests.Battle
             _out.WriteLine($"warrior returned at tick {back}, hp {a.General.Hp}/{a.General.MaxHp}");
             Assert.True(back > 0, "returned to the front");
             Assert.True(a.General.Hp * 100 >= a.General.MaxHp * b.Rules.GeneralReturnHpPct);
-            // (80 − 45)% ÷ 초당 3% ≈ 11.7초 + 맞지 않은 2초 — 틱 0.1초면 약 137틱
-            Assert.InRange(back, 100, 200);
+            // 체력 15% → 물러나 회복
+            Assert.InRange(back, 180, 300); // (80 − 15)% ÷ 초당 3% ≈ 21.7초 + 맞지 않은 2초 — 틱 0.1초면 약 237틱
         }
 
         [Fact]
@@ -879,7 +1087,7 @@ namespace Game.Tests.Battle
             for (int t = 0; t < 2500 && !b.IsOver; t++)
             {
                 b.Step();
-                if (!a.General.Alive || a.GeneralEscaping || a.GeneralWounded || a.Routed) break;
+                if (!a.General.Alive || a.GeneralEscaping || a.GeneralPulledBack || a.Routed) break;
                 if (a.General.LastAttackTick == b.Tick) swings++;
                 Fix off = (a.General.Pos - a.SlotWorld(a.General.Slot)).Length;
                 if (off > far) far = off;
@@ -951,27 +1159,43 @@ namespace Game.Tests.Battle
         }
 
         [Fact]
+        public void ArmyRetreatsWithItsGeneralAtFivePercent()
+        {
+            // R-145 (2026-11-23 사용자 "부대 후퇴가 5%일 때"): 장수 체력 5% 이하면 장수가 빠지고 부대도 후퇴
+            var setup = One("infantry", "crowd_plain");
+            setup.AllyUnits.Add(new CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", General = "standard" });
+            var b = new CrowdBattle(Rules(), setup, Defs.TroopTypes, Defs.TroopCounters);
+            CrowdArmy side = null;
+            foreach (var x in b.TeamArmies(CrowdBattle.Ally)) if (!x.IsCommander) side = x;
+            side.General.Hp = 1;
+            b.Step();
+            Assert.True(side.GeneralEscaping);
+            Assert.Equal(CrowdOrders.Retreat, side.Order);
+        }
+
+        [Fact]
         public void WoundedGeneralStaysBehindWhileArmyHolds()
         {
-            // R-142 (2026-11-22 사용자 영상 "병사는 이기는데 장수만 맵 끝까지"): 부대가 버티면 크게 다쳐도 대열 바로 뒤에서 지휘
-            var b = WithGeneral("warrior");
-            var a = b.Commander(CrowdBattle.Ally);
-            a.General.Hp = 4; // 체력 20% 이하 · 5% 넘음 (32 중 4 = 12.5%)
-            for (int t = 0; t < 600 && !b.IsOver; t++) b.Step();
-            Assert.True(a.GeneralWounded);
-            Assert.False(a.GeneralEscaping);
-            Assert.True(a.General.FledTick < 0, "stayed");
-            Fix back = Fix.FromInt(99);
-            foreach (var s in a.Soldiers) if (s.Alive && !s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
-            Assert.True(a.General.Slot.Y < back); // 대열 바로 뒤
-            Assert.True((a.General.Pos - a.SlotWorld(a.General.Slot)).Length < Fix.FromInt(3), "general near his spot");
-            // 부대가 흔들려도 5% 넘으면 남음 (R-144), 5% 이하면 퇴로로
-            a.Morale = Fix.FromInt(20);
-            b.Step();
-            Assert.False(a.GeneralEscaping);
-            a.General.Hp = 1;
-            b.Step();
-            Assert.True(a.GeneralEscaping);
+            // R-145 (2026-11-23 사용자 "20%일 때 뒤로 빠져서 체력 회복"): 성향과 관계없이 20% 이하면 물러나 회복, 맵 끝까지 가지 않음
+            foreach (var preset in new[] { "warrior", "standard", "strategist" })
+            {
+                var b = WithGeneral(preset);
+                var a = b.Commander(CrowdBattle.Ally);
+                a.General.Hp = System.Math.Max(2, a.General.MaxHp * 15 / 100); // 20% 이하 · 5% 넘음 (책사 체력 13이면 2)
+                b.Step();
+                Assert.True(a.GeneralPulledBack, preset + " pulled back");
+                Assert.False(a.GeneralEscaping);
+                for (int t = 0; t < 400 && a.GeneralPulledBack; t++) b.Step();
+                Assert.False(a.GeneralPulledBack, preset + " healed and returned");
+                Assert.True(a.General.FledTick < 0, "stayed");
+                // 부대가 흔들려도 5% 넘으면 남음, 5% 이하면 장수 퇴로 + 부대 후퇴
+                a.Morale = Fix.FromInt(20);
+                b.Step();
+                Assert.False(a.GeneralEscaping);
+                a.General.Hp = 1;
+                b.Step();
+                Assert.True(a.GeneralEscaping);
+            }
         }
 
         [Fact]
@@ -988,7 +1212,7 @@ namespace Game.Tests.Battle
             int t = 0;
             for (; t < 3000 && !b.IsOver && a.General.LastAttackTick < 0; t++) b.Step(); // 선봉에서 싸우기 시작
             Assert.True(a.General.LastAttackTick >= 0, "warrior fought");
-            a.General.Hp = a.General.MaxHp * 45 / 100;
+            a.General.Hp = a.General.MaxHp * 15 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);
             int swings = 0;
@@ -1043,7 +1267,7 @@ namespace Game.Tests.Battle
             Fix back = Fix.FromInt(99);
             foreach (var s in a.Soldiers) if (!s.IsGeneral && s.Slot.Y < back) back = s.Slot.Y;
             Assert.True(a.GeneralRoleSlot.Y > Fix.Zero); // 만나면 선봉
-            a.General.Hp = a.General.MaxHp * 45 / 100;
+            a.General.Hp = a.General.MaxHp * 15 / 100;
             b.Step();
             Assert.True(a.GeneralPulledBack);
             Fix front = Fix.FromInt(-99);

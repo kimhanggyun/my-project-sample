@@ -131,8 +131,29 @@ namespace Game.Battle.Model.Crowd
         // 호위 · 물러남 (R-139)
         public int GeneralPullBackHpPct { get; private set; }
         public Fix GeneralPullBackRows { get; private set; }
+        // 공성 명령 (R-145)
+        public Fix GateBraceRange { get; private set; }
+        public Fix GateBracePctPerWeight { get; private set; }
+        public Fix GateBraceMaxPct { get; private set; }
+        public IReadOnlyDictionary<string, Fix> GateBraceWeight { get; private set; } = new Dictionary<string, Fix>();
+        public Fix GateRamMult { get; private set; }
+        public int RamCrew { get; private set; }
+        public Fix RamCoverPct { get; private set; }
+        public Fix LadderClimbSeconds { get; private set; }
+        public Fix LadderReach { get; private set; }
+        public Fix LadderGuardRange { get; private set; }
+        public Fix LadderPushPct { get; private set; }
+        public Fix LadderPushMaxPct { get; private set; }
+        public int LadderFallDamagePct { get; private set; }
+        public Fix LadderMinGateCells { get; private set; }
+        public Fix StoneSeconds { get; private set; }
+        public Fix StoneRange { get; private set; }
+        public int StoneDamage { get; private set; }
+        public Fix StoneHitChance { get; private set; }
+        public int WallPerCell { get; private set; }
+        public Fix ShootWallRangePct { get; private set; }
+        public Fix WaitBreachCells { get; private set; }
         // 장수 자리 · 회복 · 지장 · 책사 스킬 (R-144)
-        public int GeneralWoundedHpPct { get; private set; }
         public int GeneralReturnHpPct { get; private set; }
         public Fix GeneralRegenPctPerSec { get; private set; }
         public Fix GeneralRegenCalmSeconds { get; private set; }
@@ -272,7 +293,26 @@ namespace Game.Battle.Model.Crowd
                 GateHp = (int)JsonUtil.RequireLong(o, "gateHp", c),
                 GateHitDamage = (int)JsonUtil.RequireLong(o, "gateHitDamage", c),
                 GatePlanCost = JsonUtil.RequireLong(o, "gatePlanCost", c),
-                GeneralWoundedHpPct = (int)JsonUtil.RequireLong(o, "generalWoundedHpPct", c),
+                GateBraceRange = JsonUtil.RequireFix(o, "gateBraceRange", c),
+                GateBracePctPerWeight = JsonUtil.RequireFix(o, "gateBracePctPerWeight", c),
+                GateBraceMaxPct = JsonUtil.RequireFix(o, "gateBraceMaxPct", c),
+                GateRamMult = JsonUtil.RequireFix(o, "gateRamMult", c),
+                RamCrew = (int)JsonUtil.RequireLong(o, "ramCrew", c),
+                RamCoverPct = JsonUtil.RequireFix(o, "ramCoverPct", c),
+                LadderClimbSeconds = JsonUtil.RequireFix(o, "ladderClimbSeconds", c),
+                LadderReach = JsonUtil.RequireFix(o, "ladderReach", c),
+                LadderGuardRange = JsonUtil.RequireFix(o, "ladderGuardRange", c),
+                LadderPushPct = JsonUtil.RequireFix(o, "ladderPushPct", c),
+                LadderPushMaxPct = JsonUtil.RequireFix(o, "ladderPushMaxPct", c),
+                LadderFallDamagePct = (int)JsonUtil.RequireLong(o, "ladderFallDamagePct", c),
+                LadderMinGateCells = JsonUtil.RequireFix(o, "ladderMinGateCells", c),
+                StoneSeconds = JsonUtil.RequireFix(o, "stoneSeconds", c),
+                StoneRange = JsonUtil.RequireFix(o, "stoneRange", c),
+                StoneDamage = (int)JsonUtil.RequireLong(o, "stoneDamage", c),
+                StoneHitChance = JsonUtil.RequireFix(o, "stoneHitChance", c),
+                WallPerCell = (int)JsonUtil.RequireLong(o, "wallPerCell", c),
+                ShootWallRangePct = JsonUtil.RequireFix(o, "shootWallRangePct", c),
+                WaitBreachCells = JsonUtil.RequireFix(o, "waitBreachCells", c),
                 GeneralReturnHpPct = (int)JsonUtil.RequireLong(o, "generalReturnHpPct", c),
                 GeneralRegenPctPerSec = JsonUtil.RequireFix(o, "generalRegenPctPerSec", c),
                 GeneralRegenCalmSeconds = JsonUtil.RequireFix(o, "generalRegenCalmSeconds", c),
@@ -333,6 +373,7 @@ namespace Game.Battle.Model.Crowd
             rules.FormationEncircleDrainPct = FixMap("formationEncircleDrainPct");
             rules.FormationSpeedPct = FixMap("formationSpeedPct");
             rules.FormationCounterPp = FixMap("formationCounterPp");
+            rules.GateBraceWeight = FixMap("gateBraceWeight");
             return rules;
         }
 
