@@ -378,8 +378,14 @@ namespace Game.Unity.Boot
                 sgn.FocusPlaceGeneralForTour("front_left", 16f);
                 yield return Shot("42c_generals_fight", null, 0.3f);
                 // 물러나 지휘: 맹장 체력 55% → 앞줄 바로 뒤로 (적 쪽을 본 채), "지휘"
-                sgn.WoundGeneralForTour("front_left", 55);
+                sgn.WoundGeneralForTour("front_left", 45);
                 for (int k = 0; k < 4; k++) { sgn.StepForTour(5); sgn.FocusPlaceGeneralForTour("front_left", 14f); yield return Shot($"42d_generals_commanding_{k}", null, 0.1f); }
+                // R-144: 물러난 맹장이 회복해 다시 선두로 · 가운데 지장
+                sgn.StepForTour(160);
+                sgn.FocusPlaceGeneralForTour("front_left", 16f);
+                yield return Shot("42e_generals_warrior_back", null, 0.3f);
+                sgn.FocusPlaceGeneralForTour("front_center", 16f);
+                yield return Shot("42f_generals_standard_middle", null, 0.3f);
             }
 
             // 공수 교대 (R-139): 고지전 수비 = 맵을 뒤집어 우리가 꼭대기, 적이 올라온다

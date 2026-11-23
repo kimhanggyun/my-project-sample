@@ -131,7 +131,15 @@ namespace Game.Battle.Model.Crowd
         // 호위 · 물러남 (R-139)
         public int GeneralPullBackHpPct { get; private set; }
         public Fix GeneralPullBackRows { get; private set; }
-        public int GeneralEscapeWaverHpPct { get; private set; }
+        // 장수 자리 · 회복 · 지장 · 책사 스킬 (R-144)
+        public int GeneralWoundedHpPct { get; private set; }
+        public int GeneralReturnHpPct { get; private set; }
+        public Fix GeneralRegenPctPerSec { get; private set; }
+        public Fix GeneralRegenCalmSeconds { get; private set; }
+        public Fix GeneralRoamRange { get; private set; }
+        public Fix SkillGapIntellectPct { get; private set; }
+        public Fix SkillGapMinPct { get; private set; }
+        public Fix SkillGapMaxPct { get; private set; }
         public Fix GeneralGuardRange { get; private set; }
         public int GeneralGuardMin { get; private set; }
         public int GeneralGuardSharePct { get; private set; }
@@ -264,7 +272,14 @@ namespace Game.Battle.Model.Crowd
                 GateHp = (int)JsonUtil.RequireLong(o, "gateHp", c),
                 GateHitDamage = (int)JsonUtil.RequireLong(o, "gateHitDamage", c),
                 GatePlanCost = JsonUtil.RequireLong(o, "gatePlanCost", c),
-                GeneralEscapeWaverHpPct = (int)JsonUtil.RequireLong(o, "generalEscapeWaverHpPct", c),
+                GeneralWoundedHpPct = (int)JsonUtil.RequireLong(o, "generalWoundedHpPct", c),
+                GeneralReturnHpPct = (int)JsonUtil.RequireLong(o, "generalReturnHpPct", c),
+                GeneralRegenPctPerSec = JsonUtil.RequireFix(o, "generalRegenPctPerSec", c),
+                GeneralRegenCalmSeconds = JsonUtil.RequireFix(o, "generalRegenCalmSeconds", c),
+                GeneralRoamRange = JsonUtil.RequireFix(o, "generalRoamRange", c),
+                SkillGapIntellectPct = JsonUtil.RequireFix(o, "skillGapIntellectPct", c),
+                SkillGapMinPct = JsonUtil.RequireFix(o, "skillGapMinPct", c),
+                SkillGapMaxPct = JsonUtil.RequireFix(o, "skillGapMaxPct", c),
                 GeneralGuardRange = JsonUtil.RequireFix(o, "generalGuardRange", c),
                 GeneralGuardMin = (int)JsonUtil.RequireLong(o, "generalGuardMin", c),
                 GeneralGuardSharePct = (int)JsonUtil.RequireLong(o, "generalGuardSharePct", c),
