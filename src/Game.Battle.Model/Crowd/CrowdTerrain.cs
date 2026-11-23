@@ -145,6 +145,36 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>
+        /// 공격 쪽 자리 (R-143 고침, 2026-11-23 캡처 45 "성벽 위로 올라감"): target이 connects가 있는 지형(성벽 위)이고 병사가 그 지형 위에 있지 않으면
+        /// target에서 가장 가까운 그런 지형이 아닌 갈 수 있는 칸 가운데 — 계단에 선 병사도 성벽 위 자리로 올라가지 않는다. 같은 거리면 칸 번호 작은 것.
+        /// 이미 성벽 위에 있으면 target 그대로 (땅 자리면 계단으로 돌아 내려옴).
+        /// </summary>
+        public Vec SnapOffRaised(CrowdTroop troop, Vec from, Vec target)
+        {
+            int fc = CellIndex(from), tc = CellIndex(target);
+            var r = Restricted;
+            if (!r[tc]) return target;
+            int w = Map.Width;
+            string ft = Map.TerrainAt(fc % w, fc / w), tt = Map.TerrainAt(tc % w, tc / w);
+            if (ft == tt) return target;
+            string key = "R|" + troop.Id + "|" + tc;
+            if (_snapCache.TryGetValue(key, out var hit)) return hit;
+            int c0 = tc % w, r0 = tc / w, best = -1;
+            long bestD = long.MaxValue;
+            for (int row = 0; row < Map.Height; row++)
+                for (int c = 0; c < w; c++)
+                {
+                    int i = row * w + c;
+                    if (r[i] || Blocks(troop, c, row)) continue;
+                    long d = (long)(c - c0) * (c - c0) + (long)(row - r0) * (row - r0);
+                    if (d < bestD) { bestD = d; best = i; }
+                }
+            var v = best < 0 ? target : CellCenter(best % w, best / w);
+            _snapCache[key] = v;
+            return v;
+        }
+
+        /// <summary>
         /// from에 선 병사가 target으로 바로 갈 수 없는 지형이면 (땅 → 성벽 위, R-142), target에서 가장 가까운 from 지형과 이어지는 갈 수 있는 칸 가운데.
         /// 같은 거리면 칸 번호 작은 것 (결정성).
         /// </summary>
@@ -338,9 +368,13 @@ namespace Game.Battle.Model.Crowd
             return Dijkstra(troop, gr * Map.Width + gc, -1, out _, openGates);
         }
 
-        /// <summary>길 찾기에서 막힘: 닫힌 성문은 openGates면 지나갈 수 있음.</summary>
+        /// <summary>connects가 있는 지형 (성벽 위) 칸인지.</summary>
+        public bool IsRaised(Vec p) => Restricted[CellIndex(p)];
+
+        /// <summary>길 찾기에서 막힘: 닫힌 성문은 openGates(공격 쪽)면 지나갈 수 있음. 공격 쪽은 성벽 위로 길을 잡지 않는다 (R-143 고침).</summary>
         private bool PlanBlocks(CrowdTroop troop, int c, int r, bool openGates)
         {
+            if (openGates && Restricted[r * Map.Width + c]) return true;
             if (openGates && _closed.Count > 0 && _closed.Contains(r * Map.Width + c))
             {
                 // 성문 칸 자체의 지형 규칙만 본다

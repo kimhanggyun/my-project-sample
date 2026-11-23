@@ -85,6 +85,8 @@ namespace Game.Battle.Model.Crowd
         public int FireTick;
         public int ArriveTick;
         public int Damage;
+        /// <summary>맞을 확률 배수 % (R-143 높이 — 위에서 쏘면 크고 아래서 쏘면 작음).</summary>
+        public Fix HitPct = Fix.FromInt(100);
     }
 
     public static class CrowdOrders
@@ -597,6 +599,45 @@ namespace Game.Battle.Model.Crowd
             }
         }
 
+        /// <summary>높이 차 (단, R-143): a 자리 높이 − b 자리 높이 (맵 heights ÷ 3 — 성벽 위 · 계단 높이도 들어 있음), ±heightMaxLevels. 지형 없으면 0.</summary>
+        public Fix HeightDiff(Vec a, Vec b)
+        {
+            if (Terrain == null) return Fix.Zero;
+            Fix d = Terrain.LevelAt(a) - Terrain.LevelAt(b);
+            return Fix.Clamp(d, -Rules.HeightMaxLevels, Rules.HeightMaxLevels);
+        }
+
+        /// <summary>궁병 사거리 (R-143): 기본 × (1 + max(0, 높이 차) × heightRangePctPerLevel%).</summary>
+        public Fix ShotRange(CrowdSoldier s, CrowdSoldier e, Fix baseRange)
+        {
+            Fix d = HeightDiff(s.Pos, e.Pos);
+            return d > Fix.Zero ? baseRange * (Fix.OneValue + d * Rules.HeightRangePctPerLevel / 100) : baseRange;
+        }
+
+        /// <summary>
+        /// 비탈 걸음 (R-143): 이번 걸음 방향으로 한 칸 앞이 s단 높으면 걸음 × (100 − s × uphillSlowPctPerLevel)%, 낮으면 × (100 + |s| × downhillFastPctPerLevel)%,
+        /// slopeMinPct ~ slopeMaxPct (계단도 높이 층이 2 → 4 → 6으로 오르므로 느려짐).
+        /// </summary>
+        private Vec Slope(CrowdSoldier s, Vec p)
+        {
+            var d = p - s.Pos;
+            Fix pct = SlopePct(s.Pos, d);
+            return pct == Fix.FromInt(100) ? p : s.Pos + d * (pct / 100);
+        }
+
+        /// <summary>from에서 dir 쪽으로 걸을 때 비탈 걸음 배수 % (R-143, 높이 층이 없으면 100).</summary>
+        public Fix SlopePct(Vec from, Vec dir)
+        {
+            var r = Rules;
+            Fix len = dir.Length;
+            if (Terrain == null || !Terrain.Map.HasHeights || len <= Fix.Zero) return Fix.FromInt(100);
+            var ahead = from + dir * (Terrain.CellSize / len);
+            Fix rise = Terrain.LevelAt(ahead) - Terrain.LevelAt(from);
+            if (rise == Fix.Zero) return Fix.FromInt(100);
+            Fix pct = rise > Fix.Zero ? Fix.FromInt(100) - rise * r.UphillSlowPctPerLevel : Fix.FromInt(100) - rise * r.DownhillFastPctPerLevel;
+            return Fix.Clamp(pct, r.SlopeMinPct, r.SlopeMaxPct);
+        }
+
         /// <summary>진형 특성 배수 % (표에 없으면 100).</summary>
         private static Fix FormationPct(IReadOnlyDictionary<string, Fix> table, string formation) =>
             table.TryGetValue(formation, out var v) ? v : Fix.FromInt(100);
@@ -967,9 +1008,15 @@ namespace Game.Battle.Model.Crowd
                 {
                     if (s.Cooldown == 0)
                     {
+                        // 높은 곳 궁병은 더 멀리 (R-143): 내 높이로 닿을 수 있는 가장 먼 거리 안에서 찾고, 그 적과의 높이 차로 실제 사거리를 다시 봄
                         Fix range = RangeOf(troop);
-                        int target = NearestEnemy(s, range * range, range);
-                        if (target >= 0) Shoot(s, target, troop);
+                        Fix far = range * (Fix.OneValue + r.HeightMaxLevels * r.HeightRangePctPerLevel / 100);
+                        int target = NearestEnemy(s, far * far, far);
+                        if (target >= 0)
+                        {
+                            Fix reachNow = ShotRange(s, Soldiers[target], range);
+                            if ((Soldiers[target].Pos - s.Pos).LengthSquared <= reachNow * reachNow) Shoot(s, target, troop);
+                        }
                     }
                     _next[i] = s.Pos + ToSlot(army, s, walkStep) + Separation(s);
                     continue;
@@ -1033,7 +1080,7 @@ namespace Game.Battle.Model.Crowd
                 if (ar.ArriveTick > Tick) continue;
                 if (ar.TargetId < 0) { Arrows.RemoveAt(k); k--; continue; } // 화살비 화살 (보이기만, 피해는 StepSkills)
                 var t = Soldiers[ar.TargetId];
-                if (t.Alive && _rng.Chance(r.ArrowHitChance * FormationPct(r.FormationArrowHitPct, Armies[t.Army].Formation) / 100)) // 산개는 덜 맞음 (R-141)
+                if (t.Alive && _rng.Chance(r.ArrowHitChance * FormationPct(r.FormationArrowHitPct, Armies[t.Army].Formation) / 100 * ar.HitPct / 100)) // 산개는 덜 맞음 (R-141), 높이 (R-143)
                 {
                     var ta = Armies[t.Army];
                     int side = SideOf(ta, ta.TickCentroid, ar.From);
@@ -1056,12 +1103,16 @@ namespace Game.Battle.Model.Crowd
                 if (!s.Alive) continue;
                 var p = _next[i];
                 p = new Vec(Fix.Clamp(p.X, Fix.Zero, maxX), Fix.Clamp(p.Y, Fix.Zero, maxY));
+                if (Terrain != null && Terrain.Map.HasHeights) p = Slope(s, p); // 오르막은 느리고 내리막은 조금 빠름 (R-143)
                 if (Terrain != null)
                 {
                     // 못 가는 땅(강 · 절벽 …)에는 들어가지 않는다: 한 축으로만 미끄러지거나 제자리 (이미 그 안이면 나오는 것은 됨)
                     var t = Armies[s.Army].Troop;
                     // 성벽 위 ↔ 땅은 바로 못 오감 — 계단으로만 (R-142)
-                    bool Stop(Vec q) => (Terrain.Blocks(t, q) && !Terrain.Blocks(t, s.Pos)) || !Terrain.Links(s.Pos, q);
+                    // 공격 쪽은 계단에서도 성벽 위로 올라서지 않음 (밀려도 — 2026-11-23 캡처 45)
+                    bool climber = SiegeDefender >= 0 && s.Team != SiegeDefender;
+                    bool Stop(Vec q) => (Terrain.Blocks(t, q) && !Terrain.Blocks(t, s.Pos)) || !Terrain.Links(s.Pos, q)
+                        || (climber && Terrain.IsRaised(q) && !Terrain.IsRaised(s.Pos));
                     if (Stop(p))
                     {
                         var px = new Vec(p.X, s.Pos.Y);
@@ -1181,7 +1232,9 @@ namespace Game.Battle.Model.Crowd
         {
             var target = army.Marching ? ColumnPoint(army, s) : army.SlotWorld(s.Slot);
             // 자리가 바로 못 가는 높이(땅에 선 병사에게 성벽 위)면 가장 가까운 이어진 칸 (R-142 — 진형 맞춘다고 성벽 위로 올라가지 않게)
-            if (Terrain != null) target = Terrain.SnapLinked(army.Troop, s.Pos, target);
+            // 공격 쪽은 계단에 섰어도 성벽 위 자리로 가지 않고, 이미 올라갔으면 내려옴 (2026-11-23 캡처 45). 지키는 쪽은 성벽 위에 남음
+            if (Terrain != null)
+                target = SiegeDefender >= 0 && army.Team != SiegeDefender ? Terrain.SnapOffRaised(army.Troop, s.Pos, target) : Terrain.SnapLinked(army.Troop, s.Pos, target);
             bool detour = false;
             if (Terrain != null && !Terrain.Clear(army.Troop, s.Pos, target))
             {
@@ -1225,7 +1278,8 @@ namespace Game.Battle.Model.Crowd
             var foeTroop = foeArmy.Troop;
             int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
             Fix mightPp = s.IsGeneral ? Fix.FromInt(army.GeneralInfo.Might - 50) * Rules.GeneralMightPp : Fix.Zero; // 장수가 직접 친 한 방 (R-138)
-            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy) + FormationCounterPp(army, foeArmy));
+            int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy) + FormationCounterPp(army, foeArmy)
+                + HeightDiff(s.Pos, e.Pos) * Rules.HeightMeleePpPerLevel); // 내려치면 세고 올려치면 약함 (R-143)
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
@@ -1266,7 +1320,8 @@ namespace Game.Battle.Model.Crowd
             var e = Soldiers[target];
             Fix dist = (e.Pos - s.Pos).Length;
             int flight = System.Math.Max(1, (int)(dist / (r.ArrowSpeed * r.TickSeconds)).RoundToLong());
-            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()) });
+            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()),
+                HitPct = Fix.Max(Fix.Zero, Fix.FromInt(100) + HeightDiff(s.Pos, e.Pos) * r.HeightArrowHitPctPerLevel) }); // 위에서 쏘면 잘 맞음 (R-143)
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
             s.HitStructure = false;
@@ -1363,7 +1418,8 @@ namespace Game.Battle.Model.Crowd
             }
             var d = goal - a.Center;
             Fix dist = d.Length;
-            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center) * FormationPct(r.FormationSpeedPct, a.Formation) / 100;
+            Fix baseSpeed = (a.Charging ? r.ChargeAdvanceSpeed : r.AdvanceSpeed) * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center) * FormationPct(r.FormationSpeedPct, a.Formation) / 100
+                * SlopePct(a.Center, d) / 100; // 부대 가운데도 비탈에서 느려짐 (R-143 — 병사만 느리면 대열이 뒤처짐)
             if (a.Order == CrowdOrders.Move && dist <= baseSpeed * dt)
             {
                 a.Center = goal;

@@ -404,6 +404,13 @@ namespace Game.Unity.Boot
                 sd.StepForTour(450);
                 sd.FocusArmyForTour(0, 34f);
                 yield return Shot("43c_defend_enemy_climbing", null, 0.3f);
+                // R-143 높이: 비탈을 오르는 적은 느려 대열이 늘어지고, 꼭대기 궁병은 멀리서 쏜다
+                sd.StepForTour(200);
+                sd.FocusArmyForTour(1, 34f);
+                yield return Shot("43d_height_climb_slow", null, 0.3f);
+                sd.StepForTour(150); // 적이 꼭대기 궁병 사거리에 들어올 때
+                sd.FocusArmyForTour(0, 40f);
+                yield return Shot("43e_height_archers_far", null, 0.3f);
             }
             // 공성 (R-140): 성문 앞에 모여 치고, 부서지면 들어간다
             {
