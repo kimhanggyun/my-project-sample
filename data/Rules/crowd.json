@@ -98,7 +98,7 @@
   "_generalGuard": "장수 받는 피해 % = 100 − (무력 − 30) × generalGuardPerMight ÷ 100, 최소 generalGuardMinPct (무력 92 → 약 38%, 38 → 92%)",
   "generalGuardPerMight": 100,
   "generalGuardMinPct": 25,
-  "_generalGuard2": "R-139 (2026-11-22 사용자: 맹장이 병사가 많은데도 먼저 퇴각): 선봉 장수는 체력 generalPullBackHpPct% 이하면 대열 뒤로. 장수가 맞은 피해의 generalGuardSharePct%를 generalGuardRange칸 안 자기 병사가 generalGuardMin명 이상이면 가까운 병사(최대 3)가 대신 받음. 도망 = 체력 generalEscapeHpPct% 이하, 또는 부대가 흔들리거나 무너졌을 때 generalEscapeWaverHpPct% 이하",
+  "_generalGuard2": "R-139 (2026-11-22 사용자: 맹장이 병사가 많은데도 먼저 퇴각): 선봉 장수는 체력 generalPullBackHpPct% 이하면 대열 뒤로. 장수가 맞은 피해의 generalGuardSharePct%를 generalGuardRange칸 안 자기 병사가 generalGuardMin명 이상이면 가까운 병사(최대 3)가 대신 받음. R-142: 부대가 버티면 체력 generalEscapeHpPct% 이하여도 도망 대신 부상 (대열 뒤 generalRear칸에서 지휘, 먼저 덤비지 않음). 도망 = 부대가 흔들리거나 무너졌을 때 체력 generalEscapeWaverHpPct% 이하 (맵 끝까지). 물러나 지휘 · 부상 장수는 바로 붙은 적만 치면서 자리로 물러남. 적과 만나기 전(적 부대가 chargeRange + marchReformRange 밖)엔 성향과 관계없이 장수 자리(대열 뒤 generalBack칸) — 원진은 늘 원 가운데, 종대는 만나도 장수 자리",
   "generalPullBackHpPct": 60,
   "_generalPullBack": "물러나 지휘: 선봉 장수가 체력 generalPullBackHpPct% 이하면 대열 맨 앞 줄에서 generalPullBackRows줄(병사 간격) 뒤 — 대열 안 (맨 뒤까지 가면 퇴각처럼 보임). 화면은 적 쪽을 본 채 뒷걸음질, 서 있으면 가끔 지휘 동작",
   "generalPullBackRows": 2.5,

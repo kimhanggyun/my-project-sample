@@ -106,6 +106,74 @@ namespace Game.Battle.Model.Crowd
 
         public bool Blocks(CrowdTroop troop, Vec p) { CellOf(p, out int c, out int r); return Blocks(troop, c, r); }
 
+        /// <summary>
+        /// 두 칸 사이를 바로 오갈 수 있음 (R-142): 같은 지형이거나, 양쪽 지형의 connects(비면 모두)가 서로를 허락. 성벽 위 ↔ 땅은 안 됨 (계단으로만).
+        /// </summary>
+        public bool Links(int a, int b)
+        {
+            if (a == b) return true;
+            var r = Restricted;
+            if (!r[a] && !r[b]) return true;
+            int w = Map.Width;
+            string ta = Map.TerrainAt(a % w, a / w), tb = Map.TerrainAt(b % w, b / w);
+            if (ta == tb) return true;
+            return Allows(ta, tb) && Allows(tb, ta);
+        }
+
+        public bool Links(Vec from, Vec to) => Links(CellIndex(from), CellIndex(to));
+
+        private bool Allows(string terrain, string other)
+        {
+            if (!_rules.TryGetValue(terrain, out var rule) || rule.Connects == null || rule.Connects.Count == 0) return true;
+            foreach (var c in rule.Connects) if (c == other) return true;
+            return false;
+        }
+
+        private bool[] _restricted;
+        /// <summary>칸마다 connects가 있는 지형인지 (빠른 길: 둘 다 아니면 바로 오감).</summary>
+        private bool[] Restricted
+        {
+            get
+            {
+                if (_restricted != null) return _restricted;
+                int w = Map.Width, n = w * Map.Height;
+                var r = new bool[n];
+                for (int i = 0; i < n; i++)
+                    r[i] = _rules.TryGetValue(Map.TerrainAt(i % w, i / w), out var rule) && rule.Connects != null && rule.Connects.Count > 0;
+                return _restricted = r;
+            }
+        }
+
+        /// <summary>
+        /// from에 선 병사가 target으로 바로 갈 수 없는 지형이면 (땅 → 성벽 위, R-142), target에서 가장 가까운 from 지형과 이어지는 갈 수 있는 칸 가운데.
+        /// 같은 거리면 칸 번호 작은 것 (결정성).
+        /// </summary>
+        public Vec SnapLinked(CrowdTroop troop, Vec from, Vec target)
+        {
+            int fc = CellIndex(from), tc = CellIndex(target);
+            var r = Restricted;
+            if (!r[fc] && !r[tc]) return target;
+            int w = Map.Width;
+            string ft = Map.TerrainAt(fc % w, fc / w), tt = Map.TerrainAt(tc % w, tc / w);
+            if (ft == tt || (Allows(ft, tt) && Allows(tt, ft))) return target;
+            string key = "L|" + troop.Id + "|" + ft + "|" + tc;
+            if (_snapCache.TryGetValue(key, out var hit)) return hit;
+            int c0 = tc % w, r0 = tc / w, best = -1;
+            long bestD = long.MaxValue;
+            for (int row = 0; row < Map.Height; row++)
+                for (int c = 0; c < w; c++)
+                {
+                    if (Blocks(troop, c, row)) continue;
+                    string ct = Map.TerrainAt(c, row);
+                    if (ct != ft && !(Allows(ft, ct) && Allows(ct, ft))) continue;
+                    long d = (long)(c - c0) * (c - c0) + (long)(row - r0) * (row - r0);
+                    if (d < bestD) { bestD = d; best = row * w + c; }
+                }
+            var v = best < 0 ? target : CellCenter(best % w, best / w);
+            _snapCache[key] = v;
+            return v;
+        }
+
         /// <summary>이동 비용 배율 (태그별 값이 있으면 그중 가장 큰 것, 없으면 기본). 모르는 지형은 1.</summary>
         public Fix Cost(CrowdTroop troop, int col, int row)
         {
@@ -204,8 +272,15 @@ namespace Game.Battle.Model.Crowd
             var d = to - from;
             Fix len = d.Length;
             int steps = (int)(len / (CellSize / 2)).FloorToLong() + 1;
+            int prev = CellIndex(from);
             for (int k = 0; k <= steps; k++)
-                if (Blocks(troop, from + d * Fix.FromRatio(k, steps))) return false;
+            {
+                var p = from + d * Fix.FromRatio(k, steps);
+                if (Blocks(troop, p)) return false;
+                int cell = CellIndex(p);
+                if (!Links(prev, cell)) return false; // 땅 ↔ 성벽 위 (R-142)
+                prev = cell;
+            }
             return true;
         }
 
@@ -291,6 +366,7 @@ namespace Game.Battle.Model.Crowd
                     if (nc < 0 || nr < 0 || nc >= w || nr >= h || PlanBlocks(troop, nc, nr, openGates)) continue;
                     if (dx != 0 && dy != 0 && (PlanBlocks(troop, cc + dx, cr, openGates) || PlanBlocks(troop, cc, cr + dy, openGates))) continue;
                     int ni = nr * w + nc;
+                    if (!Links(cell, ni)) continue;
                     if (field[ni] < bestD) { bestD = field[ni]; best = ni; }
                 }
             return best;
@@ -348,7 +424,7 @@ namespace Game.Battle.Model.Crowd
                         if (nc < 0 || nr < 0 || nc >= w || nr >= h || PlanBlocks(troop, nc, nr, openGates)) continue;
                         if (dx != 0 && dy != 0 && (PlanBlocks(troop, cc + dx, cr, openGates) || PlanBlocks(troop, cc, cr + dy, openGates))) continue; // 모서리 끼기 금지
                         int ni = nr * w + nc;
-                        if (done[ni]) continue;
+                        if (done[ni] || !Links(cur, ni)) continue; // 성벽 위는 계단으로만 (R-142)
                         long step = Cost(troop, nc, nr).Raw * (dx != 0 && dy != 0 ? 14 : 10) / 10;
                         if (openGates && _closed.Count > 0 && _closed.Contains(ni)) step *= GatePlanCost; // 닫힌 성문은 비싸게 (다른 길이 있으면 그리로)
                         long nd = dist[cur] + step;

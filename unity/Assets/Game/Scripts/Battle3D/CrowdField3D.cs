@@ -312,7 +312,7 @@ namespace Game.Unity.Battle3D
                     var yawRot = Quaternion.Euler(0f, _yaw[i], 0f);
                     var horseRot = yawRot * Quaternion.Euler(4f * Mathf.Sin(gph * 2f) * amp, 0f, 0f);
                     var ga = _battle.Armies[s.Army];
-                    if (ga.GeneralPulledBack && !ga.GeneralEscaping && !attacking)
+                    if ((ga.GeneralPulledBack || ga.GeneralWounded) && !ga.GeneralEscaping && !attacking)
                     {
                         // 지휘 동작: 2.4초마다 0.6초 동안 말이 앞발을 들 듯 몸을 젖힘
                         float cyc = (now + s.Id * 0.37f) % 2.4f;

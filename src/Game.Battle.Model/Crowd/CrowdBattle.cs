@@ -37,6 +37,8 @@ namespace Game.Battle.Model.Crowd
         public bool Settled;
         /// <summary>멈춘 자리 · 자리까지 가장 가까웠던 거리 · 가까워지지 못한 틱 수 (못 가면 그 자리에서 멈춤).</summary>
         public Vec SettleAt;
+        /// <summary>멈출 때의 목표 자리 (R-142): 목표가 UnsettleDistance 넘게 옮겨지면 (진형 바뀜 · 장수 자리 바뀜 · 부대 가운데 움직임) 멈춤을 푼다.</summary>
+        public Vec SettleGoal;
         public Fix BestDist = Fix.FromInt(9999);
         public int StuckTicks;
         /// <summary>성문 · 성벽 같은 구조물을 친 한 방 (R-140, 화면이 그쪽을 보고 휘두름): 친 자리.</summary>
@@ -119,10 +121,16 @@ namespace Game.Battle.Model.Crowd
         public int PathThenAttack = -1;
         /// <summary>장수 (R-138): 능력치 · 자리 · 병종 적성.</summary>
         public CrowdGeneral GeneralInfo = new CrowdGeneral();
-        /// <summary>장수가 다쳐 물러나는 중 (체력 generalEscapeHpPct% 이하): 싸우지 않고 자기 쪽 끝으로 말을 달린다. 빠져나가면 부대는 장수 없음.</summary>
+        /// <summary>장수 도망 (R-142): 부대가 흔들리거나 무너졌을 때 체력 generalEscapeWaverHpPct% 이하 — 싸우지 않고 자기 쪽 끝으로 말을 달린다. 빠져나가면 부대는 장수 없음.</summary>
         public bool GeneralEscaping;
-        /// <summary>선봉 장수가 다쳐 대열 뒤로 물러남 (R-139): 체력 generalPullBackHpPct% 이하면 선봉 자리 → 대열 뒤.</summary>
+        /// <summary>선봉 장수가 다쳐 대열 안으로 물러남 (R-139): 체력 generalPullBackHpPct% 이하면 선봉 자리 → 앞줄 뒤 (지휘). 먼저 덤비지 않음 (R-142).</summary>
         public bool GeneralPulledBack;
+        /// <summary>장수 부상 (R-142): 부대가 버티는데 체력 generalEscapeHpPct% 이하 — 맵 끝까지 가지 않고 대열 바로 뒤에서 지휘 (먼저 덤비지 않음).</summary>
+        public bool GeneralWounded;
+        /// <summary>적과 만남 (R-142): 적 부대가 돌격 거리 + marchReformRange 안. 만나기 전엔 장수가 성향과 관계없이 대열 뒤 (장수 자리)에서 움직인다.</summary>
+        public bool GeneralEngaged;
+        /// <summary>장수 자리들 (진형 자리 기준, R-142): 만나기 전 · 만난 뒤 성향 자리 · 물러나 지휘 · 부상.</summary>
+        public Vec GeneralBaseSlot, GeneralRoleSlot, GeneralCommandSlot, GeneralWoundedSlot;
         /// <summary>지형 길 (R-133): 못 가는 땅을 돌아가는 맵 칸 길 (목표 칸 · 찾은 틱), 이번 틱 향하는 곳 (병사가 막히면 여기로).</summary>
         public readonly List<Vec> Route = new List<Vec>();
         public int RouteGoal = -1, RouteTick = -9999;
@@ -519,19 +527,45 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>
-        /// 장수 자리 (R-138): front = 대열 맨 앞에서 generalFront칸 앞 (선봉), back = 대열 뒤 generalBack칸 (지금까지와 같음), rear = 대열 뒤 generalRear칸 (멀리 뒤 — 책사).
+        /// 장수 자리들 (R-138 · R-142). 성향 자리: front = 대열 맨 앞에서 generalFront칸 앞 (선봉), back = 대열 뒤 generalBack칸, rear = 대열 뒤 generalRear칸 (책사).
+        /// 만나기 전 자리 = 대열 뒤 generalBack칸 (성향과 관계없이). 물러나 지휘 = 앞줄에서 generalPullBackRows줄 뒤 (대열 뒤보다는 앞). 부상 = 대열 뒤 generalRear칸.
+        /// 원진은 모두 원 가운데 (사방을 막는 진형), 종대는 성향 자리 = 만나기 전 자리.
         /// </summary>
-        private Vec GeneralSlot(CrowdArmy a, List<Vec> slots)
+        private void PlaceGeneral(CrowdArmy a, List<Vec> slots)
         {
+            var r = Rules;
+            Fix front = Fix.FromInt(-999);
+            foreach (var s in slots) if (s.Y > front) front = s.Y;
+            if (slots.Count == 0) front = Fix.Zero;
+            Fix back = CrowdFormations.BackOf(slots);
+            a.GeneralBaseSlot = new Vec(Fix.Zero, back - r.GeneralBack);
             switch (a.GeneralInfo.Role)
             {
-                case "front":
-                    Fix max = Fix.Zero;
-                    foreach (var s in slots) if (s.Y > max) max = s.Y;
-                    return new Vec(Fix.Zero, max + Rules.GeneralFront);
-                case "rear": return new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralRear);
-                default: return new Vec(Fix.Zero, CrowdFormations.BackOf(slots) - Rules.GeneralBack);
+                case "front": a.GeneralRoleSlot = new Vec(Fix.Zero, front + r.GeneralFront); break;
+                case "rear": a.GeneralRoleSlot = new Vec(Fix.Zero, back - r.GeneralRear); break;
+                default: a.GeneralRoleSlot = a.GeneralBaseSlot; break;
             }
+            a.GeneralCommandSlot = new Vec(Fix.Zero, Fix.Max(back - r.GeneralBack, front - SpacingOf(a.Troop) * r.GeneralPullBackRows));
+            a.GeneralWoundedSlot = new Vec(Fix.Zero, back - r.GeneralRear);
+            if (a.Formation == CrowdFormations.Circle)
+                a.GeneralBaseSlot = a.GeneralRoleSlot = a.GeneralCommandSlot = a.GeneralWoundedSlot = Vec.Zero;
+            else if (a.Formation == CrowdFormations.Column)
+                a.GeneralRoleSlot = a.GeneralBaseSlot;
+            if (a.General != null) SetGeneralSlot(a);
+        }
+
+        /// <summary>지금 장수가 설 자리: 부상 → 물러나 지휘 → 만났으면 성향 자리 → 아니면 장수 자리.</summary>
+        private static Vec GeneralSlotNow(CrowdArmy a) =>
+            a.GeneralWounded ? a.GeneralWoundedSlot : a.GeneralPulledBack ? a.GeneralCommandSlot : a.GeneralEngaged ? a.GeneralRoleSlot : a.GeneralBaseSlot;
+
+        /// <summary>장수 자리를 바꾼다 (바뀌면 멈춤을 풀어 새 자리로 가게).</summary>
+        private static void SetGeneralSlot(CrowdArmy a)
+        {
+            var g = a.General;
+            var slot = GeneralSlotNow(a);
+            if (g.Slot.Equals(slot)) return;
+            g.Slot = slot;
+            g.Settled = false; g.BestDist = Fix.FromInt(9999); g.StuckTicks = 0;
         }
 
         /// <summary>
@@ -593,8 +627,8 @@ namespace Game.Battle.Model.Crowd
             // 장수 체력 = generalHp × 무력 ÷ generalHpMight (무력이 높을수록 둘러싸여도 오래 버팀, R-138)
             int ghp = System.Math.Max(1, (int)(Fix.FromInt(Rules.GeneralHp) * Fix.FromInt(a.GeneralInfo.Might) / Rules.GeneralHpMight).RoundToLong());
             var g = new CrowdSoldier { Id = Soldiers.Count, Team = team, Army = a.Id, IsGeneral = true, Hp = ghp, MaxHp = ghp, Radius = Rules.MountedRadius };
-            g.Slot = GeneralSlot(a, slots);
             a.General = g;
+            PlaceGeneral(a, slots);
             a.Soldiers.Add(g);
             Soldiers.Add(g);
             Measure(a, slots);
@@ -647,8 +681,14 @@ namespace Game.Battle.Model.Crowd
                 return c != 0 ? c : p.Id.CompareTo(q.Id);
             });
             slots.Sort((p, q) => { int c = p.X.CompareTo(q.X); return c != 0 ? c : p.Y.CompareTo(q.Y); });
-            for (int i = 0; i < alive.Count; i++) alive[i].Slot = slots[i];
-            a.General.Slot = GeneralSlot(a, slots);
+            for (int i = 0; i < alive.Count; i++)
+            {
+                // 누르자마자 새 자리로 (R-142): 대기 중 멈춘 병사도 멈춤을 푼다 (풀지 않으면 이동 명령 전까지 옛 진형에 머묾)
+                var s = alive[i];
+                s.Slot = slots[i];
+                s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0;
+            }
+            PlaceGeneral(a, slots);
             Measure(a, slots);
         }
 
@@ -913,7 +953,15 @@ namespace Game.Battle.Model.Crowd
                 }
                 Vec want;
                 // 장수: 무력이 generalFightMight 이상이면 직접 싸운다 (맹장), 아니면 싸우지 않고 자리만 (책사)
-                int foe = s.IsGeneral && army.GeneralInfo.Might < r.GeneralFightMight ? -1 : NearestEnemy(s, engage2, r.EngageRange);
+                int foe;
+                if (s.IsGeneral && army.GeneralInfo.Might < r.GeneralFightMight) foe = -1;
+                else if (s.IsGeneral && (army.GeneralPulledBack || army.GeneralWounded))
+                {
+                    // 물러나 지휘 · 부상 (R-142): 먼저 덤비지 않고 자리로 — 바로 붙은 적만 맞받는다
+                    Fix touch = s.Radius + r.MountedRadius + r.AttackReach;
+                    foe = NearestEnemy(s, touch * touch, touch);
+                }
+                else foe = NearestEnemy(s, engage2, r.EngageRange);
                 // 궁병: 맞붙을 만큼 가깝지 않으면 사거리 안의 적에게 쏜다 (자리를 지킨 채)
                 if (!s.IsGeneral && Shooting(army) && foe < 0)
                 {
@@ -946,10 +994,11 @@ namespace Game.Battle.Model.Crowd
                     Fix reach = s.Radius + e.Radius + r.AttackReach + (troop.AttackRange > Fix.OneValue && !troop.Ranged ? (troop.AttackRange - Fix.OneValue) * r.PolearmReach : Fix.Zero);
                     if (d2 <= reach * reach)
                     {
-                        want = Vec.Zero; // 닿았다: 서서 친다
+                        // 닿았다: 서서 친다. 물러나 지휘 · 부상 장수는 치면서도 자리로 물러난다 (R-142 — 앞줄에 붙잡혀 계속 싸우지 않게)
+                        want = s.IsGeneral && (army.GeneralPulledBack || army.GeneralWounded) ? ToSlot(army, s, walkStep) : Vec.Zero;
                         if (s.Cooldown == 0) Strike(s, e, d, d2, army, walkStep);
                     }
-                    else if (army.Order == CrowdOrders.Retreat) want = ToSlot(army, s, stepLen); // 후퇴: 닿은 적만 치고 쫓지 않는다
+                    else if (army.Order == CrowdOrders.Retreat || (s.IsGeneral && (army.GeneralPulledBack || army.GeneralWounded))) want = ToSlot(army, s, stepLen); // 후퇴 · 지휘 장수: 닿은 적만 치고 쫓지 않는다
                     else
                     {
                         Fix len = Fix.Sqrt(d2);
@@ -1011,11 +1060,13 @@ namespace Game.Battle.Model.Crowd
                 {
                     // 못 가는 땅(강 · 절벽 …)에는 들어가지 않는다: 한 축으로만 미끄러지거나 제자리 (이미 그 안이면 나오는 것은 됨)
                     var t = Armies[s.Army].Troop;
-                    if (Terrain.Blocks(t, p) && !Terrain.Blocks(t, s.Pos))
+                    // 성벽 위 ↔ 땅은 바로 못 오감 — 계단으로만 (R-142)
+                    bool Stop(Vec q) => (Terrain.Blocks(t, q) && !Terrain.Blocks(t, s.Pos)) || !Terrain.Links(s.Pos, q);
+                    if (Stop(p))
                     {
                         var px = new Vec(p.X, s.Pos.Y);
                         var py = new Vec(s.Pos.X, p.Y);
-                        p = !Terrain.Blocks(t, px) ? px : !Terrain.Blocks(t, py) ? py : s.Pos;
+                        p = !Stop(px) ? px : !Stop(py) ? py : s.Pos;
                     }
                 }
                 s.Moved = p - s.Pos;
@@ -1048,19 +1099,20 @@ namespace Game.Battle.Model.Crowd
                 var g = a.General;
                 // 장수가 크게 다치면 (체력 generalEscapeHpPct% 이하) 물러난다 (R-138)
                 // 선봉 장수가 다치면 대열 뒤로 (R-139)
+                // 대열 맨 뒤가 아니라 앞줄 generalPullBackRows줄 바로 뒤 (대열 안) — 싸움 가까이서 지휘 (2026-11-22 사용자: 맨 뒤까지 가면 퇴각처럼 보임)
                 if (g.Alive && !a.GeneralPulledBack && a.GeneralInfo.Role == "front" && g.Hp * 100 <= g.MaxHp * r.GeneralPullBackHpPct && a.Leading)
-                {
                     a.GeneralPulledBack = true;
-                    var cur = new List<Vec>();
-                    foreach (var s2 in a.Soldiers) if (s2.Alive && !s2.IsGeneral) cur.Add(s2.Slot);
-                    // 대열 맨 뒤가 아니라 앞줄 generalPullBackRows줄 바로 뒤 (대열 안) — 싸움 가까이서 지휘 (2026-11-22 사용자: 맨 뒤까지 가면 퇴각처럼 보임)
-                    Fix frontY = Fix.FromInt(-999);
-                    foreach (var v in cur) if (v.Y > frontY) frontY = v.Y;
-                    if (cur.Count > 0) g.Slot = new Vec(Fix.Zero, Fix.Max(CrowdFormations.BackOf(cur) - r.GeneralBack, frontY - SpacingOf(a.Troop) * r.GeneralPullBackRows));
-                }
-                // 물러나기 (도망): 체력 generalEscapeHpPct% 이하, 또는 부대가 흔들리거나 무너졌을 때 generalEscapeWaverHpPct% 이하 (R-139 — 부대가 버티면 장수도 남음)
+                // 부상 (R-142, 2026-11-22 사용자 영상 "병사는 이기는데 장수만 맵 끝까지"): 부대가 버티면 체력 generalEscapeHpPct% 이하여도 대열 바로 뒤에서 지휘
                 bool shaky = a.Wavering || a.Routed;
-                if (g.Alive && !a.GeneralEscaping && (g.Hp * 100 <= g.MaxHp * r.GeneralEscapeHpPct || (shaky && g.Hp * 100 <= g.MaxHp * r.GeneralEscapeWaverHpPct))) a.GeneralEscaping = true;
+                if (g.Alive && !a.GeneralWounded && !shaky && g.Hp * 100 <= g.MaxHp * r.GeneralEscapeHpPct) a.GeneralWounded = true;
+                // 도망: 부대가 흔들리거나 무너졌을 때 체력 generalEscapeWaverHpPct% 이하 — 퇴로로 맵 끝까지 (R-139 · R-142)
+                if (g.Alive && !a.GeneralEscaping && shaky && g.Hp * 100 <= g.MaxHp * r.GeneralEscapeWaverHpPct) a.GeneralEscaping = true;
+                // 적과 만나면 성향 자리로 (R-142, 2026-11-22 사용자: 만나기 전까지는 장수 자리로 이동)
+                if (g.Alive && !a.GeneralEscaping)
+                {
+                    a.GeneralEngaged = EnemyNear(a, r.ChargeRange + r.MarchReformRange);
+                    SetGeneralSlot(a);
+                }
                 if (a.GeneralEscaping && g.Alive && (g.Team == Ally ? g.Pos.Y <= Fix.FromRatio(1, 2) : g.Pos.Y >= maxY - Fix.FromRatio(1, 2))) { g.FledTick = Tick; g.Moved = Vec.Zero; }
                 if (!a.General.Alive && a.Order != CrowdOrders.Hold) { a.Order = CrowdOrders.Hold; a.Charging = false; } // 장수를 잃으면 제자리
             }
@@ -1128,6 +1180,8 @@ namespace Game.Battle.Model.Crowd
         private Vec ToSlot(CrowdArmy army, CrowdSoldier s, Fix stepLen)
         {
             var target = army.Marching ? ColumnPoint(army, s) : army.SlotWorld(s.Slot);
+            // 자리가 바로 못 가는 높이(땅에 선 병사에게 성벽 위)면 가장 가까운 이어진 칸 (R-142 — 진형 맞춘다고 성벽 위로 올라가지 않게)
+            if (Terrain != null) target = Terrain.SnapLinked(army.Troop, s.Pos, target);
             bool detour = false;
             if (Terrain != null && !Terrain.Clear(army.Troop, s.Pos, target))
             {
@@ -1149,12 +1203,12 @@ namespace Game.Battle.Model.Crowd
             if (army.Order != CrowdOrders.Hold || detour) { s.Settled = false; s.BestDist = Fix.FromInt(9999); s.StuckTicks = 0; }
             else
             {
-                if (s.Settled && (s.Pos - s.SettleAt).Length <= UnsettleDistance) return Vec.Zero;
+                if (s.Settled && (s.Pos - s.SettleAt).Length <= UnsettleDistance && (target - s.SettleGoal).Length <= UnsettleDistance) return Vec.Zero;
                 s.Settled = false;
                 bool stuck = false;
                 if (len < s.BestDist - Fix.FromRatio(2, 100)) { s.BestDist = len; s.StuckTicks = 0; }
                 else stuck = ++s.StuckTicks >= StuckLimitTicks;
-                if (len <= SettleDistance || stuck) { s.Settled = true; s.SettleAt = s.Pos; s.StuckTicks = 0; return Vec.Zero; }
+                if (len <= SettleDistance || stuck) { s.Settled = true; s.SettleAt = s.Pos; s.SettleGoal = target; s.StuckTicks = 0; return Vec.Zero; }
             }
             return len <= stepLen ? d : d * (stepLen / len);
         }
@@ -1447,7 +1501,7 @@ namespace Game.Battle.Model.Crowd
             if (s.IsGeneral)
             {
                 int rows = alive / width;
-                int at = a.GeneralInfo.Role == "front" ? 0 : a.GeneralInfo.Role == "rear" ? rows + 1 : rows / 2 + 1;
+                int at = rows / 2 + 1; // 행군은 적과 만나기 전 — 성향과 관계없이 대열 가운데 (R-142)
                 return TrailPoint(a, sp * at + sp / 2, out _);
             }
             int k = 0;
