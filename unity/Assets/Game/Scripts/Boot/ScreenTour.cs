@@ -602,6 +602,14 @@ namespace Game.Unity.Boot
                     LooksTabView.ShowForTour(troop, null, cat, null);
                     yield return Shot("50_slooks_" + troop + "_" + cat, () => new MainScreen("looks"), 0.6f);
                 }
+                // 부위마다 20개 (R-150 원격 추가): 가운데 · 맨 아래까지 스크롤해서 카드 전부
+                foreach (var (troop, cat) in new[] { ("infantry", "H"), ("infantry", "A"), ("infantry", "C"), ("infantry", "S"), ("infantry", "P"), ("infantry", "B"), ("infantry", "D"), ("cavalry", "M") })
+                    foreach (var (sc, tag) in new[] { (0.5f, "mid"), (0f, "end") })
+                    {
+                        LooksTabView.ShowForTour(troop, null, cat, null, sc);
+                        yield return Shot("50b_slooks_" + troop + "_" + cat + "_" + tag, () => new MainScreen("looks"), 0.8f);
+                    }
+                LooksTabView.ShowForTour(null, null, null, null);
                 foreach (var set in new[] { "armor_brown", "armor_iron", "armor_crimson", "armor_black", "armor_white", "armor_gold" })
                 {
                     LooksTabView.PickForTour("infantry", set);
@@ -616,6 +624,13 @@ namespace Game.Unity.Boot
                         LooksTabView.ShowForTour(null, preset, null, cat);
                         yield return Shot("51_glooks_" + preset + "_" + cat, () => new MainScreen("generalLooks"), 0.6f);
                     }
+                foreach (var cat in new[] { "H", "M" })
+                    foreach (var (sc, tag) in new[] { (0.5f, "mid"), (0f, "end") })
+                    {
+                        LooksTabView.ShowForTour(null, "warrior", null, cat, sc);
+                        yield return Shot("51b_glooks_warrior_" + cat + "_" + tag, () => new MainScreen("generalLooks"), 0.8f);
+                    }
+                LooksTabView.ShowForTour(null, null, null, null);
                 // 샘플전투2: 우리 보병 = 진홍 세트, 기병 = 기본, 창병 = 금테 / 장수 = 맹장 · 지장 · 책사 (말에 앉은 모습 가까이)
                 LooksTabView.PickForTour("infantry", "armor_crimson");
                 LooksTabView.PickForTour("spearman", "armor_gold");
