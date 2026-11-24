@@ -29,12 +29,17 @@ namespace Game.Unity.UI
         }
 
         /// <summary>계열 · 갑옷 · 말 조합의 그림 (꾸미기 미리보기는 안 가진 것도 입혀 본다).</summary>
-        public static Sprite For(GameContext ctx, string line, string armor, string horse)
+        public static Sprite For(GameContext ctx, string line, string armor, string horse) => ForTroop(ctx, line, line, armor, horse);
+
+        /// <summary>
+        /// 병종 · 갑옷 · 말 조합의 그림 (R-149): 모양은 병종 기본 모양(승급 병종 = 방패병의 긴 방패 …) + 세트, 몸은 계열(line) 인형.
+        /// </summary>
+        public static Sprite ForTroop(GameContext ctx, string troopId, string line, string armor, string horse)
         {
             if (ctx?.Defs == null || line == null) return null;
-            string key = line + "|" + armor + "|" + horse;
+            string key = troopId + "|" + line + "|" + armor + "|" + horse;
             if (Cache.TryGetValue(key, out var s) && s != null) return s;
-            try { s = Render(ctx, line, armor, horse); }
+            try { s = Render(ctx, troopId ?? line, line, armor, horse); }
             catch (System.Exception e) { Debug.LogWarning("병종 그림을 찍지 못했습니다: " + e.Message); s = null; }
             if (s != null) Cache[key] = s;
             return s;
@@ -50,23 +55,17 @@ namespace Game.Unity.UI
             return m;
         }
 
-        private static Sprite Render(GameContext ctx, string line, string armor, string horse)
+        private static Sprite Render(GameContext ctx, string troopId, string line, string armor, string horse)
         {
-            var armorLook = CosmeticLooks.Of(ctx.Defs, armor);
-            var horseLook = CosmeticLooks.Of(ctx.Defs, horse);
-            var mesh = SoldierMeshes.For(line, armorLook != null);
+            // 겉모습 (R-149): 전투(샘플전투2)와 같은 모양 · 색. 색 없는 부위는 아군 색 · 갈색 (미리보기)
+            var look = Game.Unity.Battle3D.SoldierLook.Resolve(ctx.Defs, troopId, armor, horse);
+            var mesh = SoldierMeshes.For(line, look.Armored, true, look);
             var parts = SoldierMeshes.PartsOf(mesh);
             var made = new List<Object>();
             var mats = new Material[parts.Length];
             for (int i = 0; i < parts.Length; i++)
             {
-                Color c = parts[i] == SoldierMeshes.Team ? AllyColor
-                    : parts[i] == SoldierMeshes.Skin ? SoldierMeshes.SkinColor
-                    : parts[i] == SoldierMeshes.Metal ? SoldierMeshes.MetalColor
-                    : parts[i] == SoldierMeshes.Armor ? CosmeticLooks.ColorOf(armorLook, "trim", SoldierMeshes.DarkColor)
-                    : parts[i] == SoldierMeshes.Horse ? (horseLook != null ? CosmeticLooks.ColorOf(horseLook, "horse", SoldierMeshes.DarkColor) : SoldierMeshes.DarkColor)
-                    : SoldierMeshes.DarkColor;
-                mats[i] = NewMaterial(c);
+                mats[i] = NewMaterial(look.PartColor(parts[i], AllyColor, SoldierMeshes.DarkColor));
                 made.Add(mats[i]);
             }
             // 다른 화면과 겹치지 않게 아주 먼 곳에 인형 · 빛 · 카메라를 잠깐 둔다

@@ -587,6 +587,42 @@ namespace Game.Unity.Boot
                 sdf.FocusGateForTour(18f);
                 yield return Shot("48d_siege_defend_gate", null, 0.3f);
             }
+            // 꾸미기 탭 (R-149, 개발용): 병종 · 세트 입혀 보기 → 샘플전투2 우리 편 (투어가 바꾼 개발용 고르기는 끝나면 되돌림)
+            {
+                var keep = new System.Collections.Generic.Dictionary<string, (string, string)>();
+                foreach (var t in LooksTabView.Troops) keep[t] = Game.Unity.Battle3D.DevLooks.Pick(t);
+                LooksTabView.PickForTour("infantry", null);
+                yield return Shot("49_looks_tab_default", () => new MainScreen("looks"), 0.4f);
+                foreach (var (troop, set) in new[] { ("infantry", "armor_crimson"), ("infantry", "armor_gold"), ("infantry", "armor_black"), ("shieldbearer", null), ("guard", "armor_iron") })
+                {
+                    LooksTabView.PickForTour(troop, set);
+                    yield return Shot("49_looks_" + troop + "_" + (set ?? "default"), () => new MainScreen("looks"), 0.4f);
+                }
+                // 샘플전투2: 우리 보병 = 진홍, 방패병 = 황금, 창병 = 기본 / 적 = 기본
+                LooksTabView.PickForTour("infantry", "armor_crimson");
+                LooksTabView.PickForTour("shieldbearer", "armor_gold");
+                var lu = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", Count = 80 },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "shieldbearer", Count = 80, Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "spearman", Count = 80 },
+                };
+                var le = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 100, Commander = true },
+                };
+                var sl = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = lu, EnemyUnits = le, AllyAdvance = false, EnemyAdvance = false, Seed = 41,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain") }, startNow: true);
+                yield return Shot("49b_looks_battle_open", () => sl, 0.5f);
+                sl.StepForTour(1);
+                sl.FocusArmyForTour(0, 22f);
+                yield return Shot("49b_looks_battle_close", null, 0.3f);
+                sl.FocusPlaceGeneralForTour("front_center", 9f);
+                yield return Shot("49b_looks_battle_shieldbearer", null, 0.3f);
+                sl.FocusPlaceGeneralForTour("front_left", 9f);
+                yield return Shot("49b_looks_battle_crimson", null, 0.3f);
+                foreach (var kv in keep) { Game.Unity.Battle3D.DevLooks.SetArmor(kv.Key, kv.Value.Item1); Game.Unity.Battle3D.DevLooks.SetHorse(kv.Key, kv.Value.Item2); }
+            }
             // 부대 하나면 [전체] 없음 (R-139)
             {
                 var one = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup

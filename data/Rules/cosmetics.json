@@ -1,15 +1,46 @@
 {
   "_comment": "치장 (cosmetics.md, verification R-108). 겉모습만 — 전투 계산에 들어가지 않는다. kind = armor(갑옷 한 벌: 사람 계열) · horse(말 색: 말 탄 계열). lines = 입을 수 있는 계열 (없으면 그 종류의 모든 계열). look = 그림 값 (요소 → 색 이름, 그림 쪽이 테마 색으로). obtain.shop = 가격 하나 (gold 엽전 · gem 금괴 · priceKRW 결제) + defaultOff(데이터 기본 끔: 관리자 [상점 상품]에서 켜야 판다, R-123), playPaths = 플레이로 얻는 길. 가격은 임시값 (open-values.md). duplicateGold = 보상으로 이미 가진 치장이 또 나오면 대신 주는 엽전 (임시값, R-111). 결제 치장(priceKRW)은 products.json에 kind cosmetic 상품이 있어야 한다",
   "duplicateGold": 200,
+  "_looks": "병사 겉모습 (R-149, 2026-11-24 사용자): look = 부위 → \"모양:색\" · \"모양\" · \"색\". body 몸통 · legs 다리 · hat 모자 (kasa 삿갓형 기본 · helmet 둥근 투구 · plume 깃 투구) · shield 방패 (round · square · tower 긴 네모) · pattern 무늬 (none · rim 테 · cross 십자 · boss 큰 꼭지) · trim 장식 색 · plume 깃 색. 엽전 · 플레이 세트 = 삿갓형, 금괴(gem) 세트 = 투구, 결제(priceKRW) 세트 = 깃 투구. 색 이름은 테마 그림 쪽 (CosmeticLooks). troopLooks = 병종 기본 모양 (승급하면 바뀜, 세트가 덮어씀)",
+  "troopLooks": {
+    "shieldbearer": {
+      "shield": "tower"
+    },
+    "guard": {
+      "shield": "tower",
+      "pattern": "rim",
+      "hat": "helmet"
+    },
+    "pikeman": {
+      "hat": "helmet"
+    },
+    "pikeWall": {
+      "hat": "helmet"
+    },
+    "heavyCavalry": {
+      "hat": "helmet"
+    },
+    "ironCavalry": {
+      "hat": "plume"
+    },
+    "crossbowman": {
+      "hat": "helmet"
+    },
+    "heavyCrossbow": {
+      "hat": "helmet"
+    }
+  },
   "items": [
     {
       "id": "armor_brown",
       "kind": "armor",
       "nameKey": "cos.armor_brown",
       "look": {
-        "helmet": "leather",
-        "trim": "leather",
-        "shield": "leather"
+        "body": "leather",
+        "legs": "brown",
+        "hat": "kasa:leather",
+        "shield": "round:leather",
+        "trim": "iron"
       },
       "obtain": {
         "shop": {
@@ -35,9 +66,12 @@
       "kind": "armor",
       "nameKey": "cos.armor_iron",
       "look": {
-        "helmet": "iron",
-        "trim": "iron",
-        "shield": "iron"
+        "body": "steel",
+        "legs": "black",
+        "hat": "kasa:iron",
+        "shield": "round:iron",
+        "pattern": "boss",
+        "trim": "black"
       },
       "obtain": {
         "playPaths": [
@@ -50,9 +84,12 @@
       "kind": "armor",
       "nameKey": "cos.armor_crimson",
       "look": {
-        "helmet": "crimson",
-        "trim": "crimson",
-        "cape": "crimson"
+        "body": "crimson",
+        "legs": "darkred",
+        "hat": "helmet:crimson",
+        "shield": "square:crimson",
+        "pattern": "rim",
+        "trim": "gold"
       },
       "obtain": {
         "playPaths": [
@@ -65,9 +102,13 @@
       "kind": "armor",
       "nameKey": "cos.armor_gold",
       "look": {
-        "helmet": "gold",
-        "trim": "gold",
-        "shield": "gold"
+        "body": "gold",
+        "legs": "darkred",
+        "hat": "plume:gold",
+        "plume": "crimson",
+        "shield": "square:gold",
+        "pattern": "cross",
+        "trim": "crimson"
       },
       "obtain": {
         "shop": {
@@ -79,29 +120,67 @@
       "id": "armor_black",
       "kind": "armor",
       "nameKey": "cos.armor_black",
-      "look": { "helmet": "black", "trim": "black", "shield": "black" },
-      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+      "look": {
+        "body": "black",
+        "legs": "black",
+        "hat": "helmet:black",
+        "shield": "square:black",
+        "pattern": "rim",
+        "trim": "gold"
+      },
+      "obtain": {
+        "shop": {
+          "gem": 300,
+          "defaultOff": true
+        }
+      }
     },
     {
       "id": "armor_white",
       "kind": "armor",
       "nameKey": "cos.armor_white",
-      "look": { "helmet": "white", "trim": "white", "shield": "white" },
-      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+      "look": {
+        "body": "white",
+        "legs": "steel",
+        "hat": "helmet:white",
+        "shield": "square:white",
+        "pattern": "cross",
+        "trim": "crimson"
+      },
+      "obtain": {
+        "shop": {
+          "gem": 300,
+          "defaultOff": true
+        }
+      }
     },
     {
       "id": "horse_black",
       "kind": "horse",
       "nameKey": "cos.horse_black",
-      "look": { "horse": "black" },
-      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+      "look": {
+        "horse": "black"
+      },
+      "obtain": {
+        "shop": {
+          "gem": 300,
+          "defaultOff": true
+        }
+      }
     },
     {
       "id": "horse_white",
       "kind": "horse",
       "nameKey": "cos.horse_white",
-      "look": { "horse": "white" },
-      "obtain": { "shop": { "gem": 300, "defaultOff": true } }
+      "look": {
+        "horse": "white"
+      },
+      "obtain": {
+        "shop": {
+          "gem": 300,
+          "defaultOff": true
+        }
+      }
     }
   ]
 }

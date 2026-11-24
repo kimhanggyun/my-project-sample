@@ -91,7 +91,7 @@ namespace Game.Unity.Screens
             Ui.Size(Ui.Button(top, T("ui.sample2.close"), () => App.ShowMain(_returnTab), TopHeight, fontSize: 26), width: 120);
 
             App.SetBackdrop(false);
-            _field = new CrowdField3D(_battle);
+            _field = new CrowdField3D(_battle) { LookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.Resolve(Ctx, a.Troop.Id) : SoldierLook.Resolve(Ctx.Defs, a.Troop.Id, null, null) }; // 겉모습 (R-149): 우리 편 = 꾸미기 · 입은 치장, 적 = 병종 기본
             _fieldArea = Ui.Rect(Root, "Field");
             Ui.Size(_fieldArea, flexibleHeight: 1);
             Ui.Background(_fieldArea, new Color(0, 0, 0, 0));
@@ -694,7 +694,7 @@ namespace Game.Unity.Screens
             _field?.Destroy();
             _setup.Seed = (ulong)Ctx.NewSeed();
             _battle = NewBattle(CrowdRules.Load(Ctx.Data));
-            _field = new CrowdField3D(_battle);
+            _field = new CrowdField3D(_battle) { LookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.Resolve(Ctx, a.Troop.Id) : SoldierLook.Resolve(Ctx.Defs, a.Troop.Id, null, null) }; // 겉모습 (R-149): 우리 편 = 꾸미기 · 입은 치장, 적 = 병종 기본
             _hud?.Destroy();
             _hud = new CrowdHud(_battle, _field, _fieldArea, TagName);
             _pickMode = null;

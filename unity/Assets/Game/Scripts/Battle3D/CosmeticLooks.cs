@@ -20,6 +20,9 @@ namespace Game.Unity.Battle3D
             ["crimson"] = new Color(0.6f, 0.12f, 0.14f),
             ["black"] = new Color(0.12f, 0.11f, 0.1f),
             ["white"] = new Color(0.92f, 0.9f, 0.86f),
+            ["darkred"] = new Color(0.4f, 0.08f, 0.09f),
+            ["brown"] = new Color(0.36f, 0.24f, 0.13f),
+            ["steel"] = new Color(0.34f, 0.36f, 0.4f),
         };
 
         private static CosmeticService _svc;
@@ -48,6 +51,9 @@ namespace Game.Unity.Battle3D
             string name = colon >= 0 ? v.Substring(colon + 1) : v;
             return Named.TryGetValue(name, out var c) ? c : fallback;
         }
+
+        /// <summary>색 이름 → 색 (R-149 SoldierLook).</summary>
+        public static bool TryNamed(string name, out Color c) { c = default; return name != null && Named.TryGetValue(name, out c); }
 
         /// <summary>팀 색과 가까우면(색 거리 &lt; 0.25) 채도를 낮추고 어둡게 (팀 구분 유지).</summary>
         public static Color AwayFromTeams(Color c, params Color[] teams)

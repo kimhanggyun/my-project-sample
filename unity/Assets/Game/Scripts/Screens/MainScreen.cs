@@ -51,6 +51,7 @@ namespace Game.Unity.Screens
             { "parts", () => new PartsTabView() }, // 부품 미리보기 (공통부품.md 0장)
             { "sampleBattle", () => new SampleBattleTabView() },
             { "test", () => new TestBattleTabView() }, // 테스트 탭 (R-131): 샘플전투2를 3×3 칸으로 짜서
+            { "looks", () => new LooksTabView() }, // 꾸미기 탭 (R-149, 개발용): 병종 겉모습을 사지 않고 입혀 봄 → 샘플전투2 우리 편
             { "map", () => new MapTabView() },
             // 묶은 탭 (2026-11-15 사용자 결정): 군대 = 장수 · 병력 · 편성, 모집 = 장수 · 용병
             { "army", () => new GroupTabView("army", ("general", "ui.seg.general"), ("troop", "ui.seg.troop"), ("formation", "ui.seg.formation")) },

@@ -30,6 +30,11 @@ namespace Game.Unity.Battle3D
         private readonly InstanceBatch _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch;
         /// <summary>병종(1단계 뿌리) · 편 · 모양(0 다리 뺀 몸, 1 통째, 2 하얀 통째)마다 묶음 (R-127).</summary>
         private readonly Dictionary<(string troop, int team, int kind), InstanceBatch> _troopBatches = new Dictionary<(string, int, int), InstanceBatch>();
+        /// <summary>부대 겉모습 (R-149, 꾸미기 · 병종 기본 모양). 화면이 정함 — 없으면 병종 기본 모양만.</summary>
+        public System.Func<CrowdArmy, SoldierLook> LookFor;
+        private readonly Dictionary<int, SoldierLook> _armyLooks = new Dictionary<int, SoldierLook>();
+        private readonly Dictionary<string, InstanceBatch> _lookBatches = new Dictionary<string, InstanceBatch>();
+        private readonly Dictionary<string, InstanceBatch> _legBatches = new Dictionary<string, InstanceBatch>();
         private readonly List<InstanceBatch> _allBatches = new List<InstanceBatch>();
         private const float CavStride = 0.7f, CavSwingDeg = 40f;
         private static readonly Color ArrowColor = new Color(0.86f, 0.74f, 0.52f);
@@ -262,7 +267,7 @@ namespace Game.Unity.Battle3D
                     p.y = standY + 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
                     var rot = back * Quaternion.Euler(-80f * fall * fall, 0f, 0f);
                     (s.IsGeneral ? (age < FlashSeconds ? TroopBatch("infantry", 2, 2) : ally ? _allyGeneral : _enemyGeneral)
-                        : TroopBatch(TroopOf(s), age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
+                        : SoldierBatch(s, age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
                     continue;
                 }
                 // 바라볼 방향: 치는 중이면 대상, 걸으면 걷는 쪽, 아니면 군 앞
@@ -347,7 +352,7 @@ namespace Game.Unity.Battle3D
                     }
                     continue;
                 }
-                TroopBatch(TroopOf(s), s.Team, 0).Add(p, bodyRot);
+                SoldierBatch(s, s.Team, 0).Add(p, bodyRot);
                 float walked = _stride[i] - (1f - alpha) * (_cur[i] - _prev[i]).magnitude; // 틱 사이도 이어서
                 if (_battle.Armies[s.Army].Troop.Mounted)
                 {
@@ -366,7 +371,7 @@ namespace Game.Unity.Battle3D
                 float step = walked / StrideLength * Mathf.PI * 2f + i * 0.7f;
                 float swingL = Mathf.Sin(step) * LegSwingDeg * _legAmp[i];
                 if (attacking) swingL = Mathf.Lerp(swingL, 18f, 0.6f); // 칠 때 한 발 앞으로 디딤
-                var legs = ally ? _allyLegs : _enemyLegs;
+                var legs = LegsFor(s);
                 var baseM = Matrix4x4.TRS(p, Quaternion.Euler(0f, _yaw[i], 0f), Vector3.one * ModelScale);
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(-SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(swingL, 0f, 0f), Vector3.one));
                 legs.Matrices.Add(baseM * Matrix4x4.TRS(new Vector3(SoldierMeshes.HipSide, SoldierMeshes.HipHeight, 0f), Quaternion.Euler(attacking ? -12f : -swingL, 0f, 0f), Vector3.one));
@@ -417,6 +422,55 @@ namespace Game.Unity.Battle3D
         }
 
         private string TroopOf(CrowdSoldier s) => _battle.Armies[s.Army].Troop.BaseId;
+
+        /// <summary>부대 겉모습 (처음 한 번 정함, R-149).</summary>
+        private SoldierLook LookOf(CrowdArmy a)
+        {
+            if (_armyLooks.TryGetValue(a.Id, out var l)) return l;
+            l = LookFor?.Invoke(a) ?? new SoldierLook();
+            _armyLooks[a.Id] = l;
+            return l;
+        }
+
+        /// <summary>
+        /// 병사 몸 묶음 (R-149): 병종 · 겉모습(모양 · 색) · 편마다. kind 0 다리 뺀 몸 · 1 통째 · 2 하얀 통째, team 2 = 하양 (쓰러질 때 번쩍).
+        /// 색이 없는 부위는 편 색 · 편의 어두운 색 — 아무것도 안 입으면 예전과 같은 색.
+        /// </summary>
+        private InstanceBatch SoldierBatch(CrowdSoldier s, int team, int kind)
+        {
+            var a = _battle.Armies[s.Army];
+            var look = LookOf(a);
+            string key = a.Troop.BaseId + "|" + team + "|" + kind + "|" + look.Key;
+            if (_lookBatches.TryGetValue(key, out var b)) return b;
+            var mesh = SoldierMeshes.For(a.Troop.BaseId, look.Armored, kind != 0, look);
+            bool white = kind == 2 || team == 2;
+            Color teamC = team == CrowdBattle.Ally ? AllyColor : EnemyColor, darkC = team == CrowdBattle.Ally ? AllyDark : EnemyDark;
+            var parts = SoldierMeshes.PartsOf(mesh);
+            var mats = new Material[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var m = Own(NewMaterial(white ? DeadWhite : look.PartColor(parts[i], teamC, darkC)));
+                m.enableInstancing = true;
+                mats[i] = m;
+            }
+            b = new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * ModelScale));
+            _lookBatches[key] = b;
+            _allBatches.Add(b);
+            return b;
+        }
+
+        /// <summary>걷는 다리 묶음: 겉모습의 다리 색 (없으면 편의 어두운 색).</summary>
+        private InstanceBatch LegsFor(CrowdSoldier s)
+        {
+            var look = LookOf(_battle.Armies[s.Army]);
+            if (!look.Legs.HasValue) return s.Team == CrowdBattle.Ally ? _allyLegs : _enemyLegs;
+            string key = ColorUtility.ToHtmlStringRGB(look.Legs.Value);
+            if (_legBatches.TryGetValue(key, out var b)) return b;
+            b = LegBatch(SoldierMeshes.Leg(), look.Legs.Value);
+            _legBatches[key] = b;
+            _allBatches.Add(b);
+            return b;
+        }
 
         /// <summary>병종 모양 묶음 (kind 0 다리 뺀 몸 · 1 통째 · 2 하얀 통째, team 2 = 하양).</summary>
         private InstanceBatch TroopBatch(string troop, int team, int kind)
