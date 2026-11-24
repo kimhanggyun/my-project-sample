@@ -23,7 +23,21 @@ namespace Game.Unity.Battle3D
             ["darkred"] = new Color(0.4f, 0.08f, 0.09f),
             ["brown"] = new Color(0.36f, 0.24f, 0.13f),
             ["steel"] = new Color(0.34f, 0.36f, 0.4f),
+            // 꾸미기 탭 색 고르기 (R-150)
+            ["red"] = new Color(0.78f, 0.18f, 0.14f),
+            ["orange"] = new Color(0.86f, 0.48f, 0.16f),
+            ["tan"] = new Color(0.78f, 0.66f, 0.46f),
+            ["olive"] = new Color(0.42f, 0.44f, 0.2f),
+            ["green"] = new Color(0.2f, 0.5f, 0.26f),
+            ["teal"] = new Color(0.14f, 0.46f, 0.46f),
+            ["blue"] = new Color(0.2f, 0.36f, 0.72f),
+            ["purple"] = new Color(0.42f, 0.24f, 0.58f),
+            ["gray"] = new Color(0.5f, 0.5f, 0.5f),
+            ["silver"] = new Color(0.78f, 0.8f, 0.83f),
         };
+
+        /// <summary>색 이름 차례 (꾸미기 탭 색 칸).</summary>
+        public static IEnumerable<string> Names => Named.Keys;
 
         private static CosmeticService _svc;
         private static DefinitionSet _svcDefs;
