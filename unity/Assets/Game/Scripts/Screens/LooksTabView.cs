@@ -25,6 +25,8 @@ namespace Game.Unity.Screens
         private readonly bool _general;
         private static string _troop = "infantry", _preset = "warrior", _catSoldier = "H", _catGeneral = "H";
         private static bool _commander = true;
+        /// <summary>캡처 투어: 목록 스크롤 (1 = 맨 위, 0 = 맨 아래, 음수 = 그대로) — 부품이 부위마다 20개라 아래 카드까지 찍음.</summary>
+        private static float _tourScroll = -1f;
         private GameApp _app;
         private RectTransform _root;
 
@@ -44,8 +46,9 @@ namespace Game.Unity.Screens
         /// <summary>캡처 투어: 병종 · 세트를 골라 다시 그림.</summary>
         public static void PickForTour(string troop, string armor) { _troop = troop; DevLooks.SetArmor(troop, armor); }
         /// <summary>캡처 투어: 보는 칸 · 병종 · 장수 성향.</summary>
-        public static void ShowForTour(string troop, string preset, string soldierCat, string generalCat)
+        public static void ShowForTour(string troop, string preset, string soldierCat, string generalCat, float scroll = -1f)
         {
+            _tourScroll = scroll;
             if (troop != null) _troop = troop;
             if (preset != null) _preset = preset;
             if (soldierCat != null) _catSoldier = soldierCat;
@@ -115,6 +118,16 @@ namespace Game.Unity.Screens
             else if (Cat == "color") ColorsPanel(body, look);
             else if (Cat == "L") Loadouts(body, look, lib);
             else Parts(body, look, lib, Cat);
+            if (_tourScroll >= 0f)
+            {
+                var sr = _root.GetComponentInChildren<ScrollRect>();
+                if (sr != null)
+                {
+                    Canvas.ForceUpdateCanvases();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(sr.content);
+                    sr.verticalNormalizedPosition = _tourScroll;
+                }
+            }
         }
 
         /// <summary>번호 요약: "H01 삿갓 · A01 무명 옷 · …" (2026-11-24 사용자 "번호를 말하면 지움").</summary>
@@ -148,6 +161,13 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>카드 격자: 넷씩 한 줄.</summary>
+        /// <summary>마지막 줄을 빈 칸으로 채움 (카드 한 장이 줄 전체로 늘어나던 것 — 2026-11-24 캡처 50b).</summary>
+        private static void FillRow(RectTransform row, int n)
+        {
+            if (row == null) return;
+            for (int i = n % 4; i > 0 && i < 4; i++) Ui.Size(Ui.Rect(row, "Empty"), 330, flexibleWidth: 1);
+        }
+
         private static RectTransform GridRow(RectTransform parent, ref int n, ref RectTransform row)
         {
             if (n++ % 4 == 0) row = Ui.Row(parent, "Cells", 330, 10);
@@ -193,6 +213,7 @@ namespace Game.Unity.Screens
                 string id = p.Id;
                 Cell(GridRow(body, ref n, ref row), pv, p.Id + " " + p.Name, Grade(p.Grade), worn == p.Id, () => DevLooks.SetPart(DevKey, slot, id));
             }
+            FillRow(row, n);
             if (n <= 1) Ui.Label(body, T("ui.looks.empty"), 20, TextAnchor.MiddleCenter, Palette.TextDim);
         }
 
@@ -208,6 +229,7 @@ namespace Game.Unity.Screens
                 var lo = l;
                 Cell(GridRow(body, ref n, ref row), pv, l.Id + " " + l.Name, string.Join(" + ", new[] { l.Right, l.Left, l.Back }.Where0()), on, () => DevLooks.SetLoadout(DevKey, lo));
             }
+            FillRow(row, n);
         }
 
         /// <summary>갑옷 세트 (사지 않고 입혀 봄) · 말 색.</summary>
@@ -223,12 +245,14 @@ namespace Game.Unity.Screens
             SetCell(GridRow(body, ref n, ref row), null, e.Armor == null, true);
             foreach (var d in svc.Items)
                 if (d.Kind == CosmeticKinds.Armor && (line == null || CosmeticService.CanWear(d, line))) SetCell(GridRow(body, ref n, ref row), d, e.Armor == d.Id, true);
+            FillRow(row, n);
             if (!look.Mounted) return;
             Ui.Label(body, T("ui.looks.horses"), 26).fontStyle = FontStyle.Bold;
             n = 0;
             SetCell(GridRow(body, ref n, ref row), null, e.Horse == null, false);
             foreach (var d in svc.Items)
                 if (d.Kind == CosmeticKinds.Horse) SetCell(GridRow(body, ref n, ref row), d, e.Horse == d.Id, false);
+            FillRow(row, n);
         }
 
         private void SetCell(RectTransform row, CosmeticDef d, bool on, bool armor)
