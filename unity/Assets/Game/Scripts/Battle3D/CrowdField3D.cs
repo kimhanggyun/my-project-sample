@@ -32,6 +32,10 @@ namespace Game.Unity.Battle3D
         private readonly Dictionary<(string troop, int team, int kind), InstanceBatch> _troopBatches = new Dictionary<(string, int, int), InstanceBatch>();
         /// <summary>부대 겉모습 (R-149, 꾸미기 · 병종 기본 모양). 화면이 정함 — 없으면 병종 기본 모양만.</summary>
         public System.Func<CrowdArmy, SoldierLook> LookFor;
+        /// <summary>장수 겉모습 (R-150, 장수 꾸미기 · 성향 기본 차림). 없으면 예전 흰 말 장수.</summary>
+        public System.Func<CrowdArmy, SoldierLook> GeneralLookFor;
+        private readonly Dictionary<int, SoldierLook> _generalLooks = new Dictionary<int, SoldierLook>();
+        private readonly Dictionary<string, InstanceBatch> _horseLegBatches = new Dictionary<string, InstanceBatch>();
         private readonly Dictionary<int, SoldierLook> _armyLooks = new Dictionary<int, SoldierLook>();
         private readonly Dictionary<string, InstanceBatch> _lookBatches = new Dictionary<string, InstanceBatch>();
         private readonly Dictionary<string, InstanceBatch> _legBatches = new Dictionary<string, InstanceBatch>();
@@ -266,7 +270,7 @@ namespace Game.Unity.Battle3D
                     p += back * Vector3.back * (0.18f * (1f - (1f - fall) * (1f - fall)));
                     p.y = standY + 0.06f * Mathf.Sin(Mathf.PI * fall) - 0.35f * sink * sink;
                     var rot = back * Quaternion.Euler(-80f * fall * fall, 0f, 0f);
-                    (s.IsGeneral ? (age < FlashSeconds ? TroopBatch("infantry", 2, 2) : ally ? _allyGeneral : _enemyGeneral)
+                    (s.IsGeneral ? (age < FlashSeconds ? TroopBatch("infantry", 2, 2) : GeneralBatch(s, true))
                         : SoldierBatch(s, age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
                     continue;
                 }
@@ -341,14 +345,16 @@ namespace Game.Unity.Battle3D
                         float cyc = (now + s.Id * 0.37f) % 2.4f;
                         if (cyc < 0.6f) horseRot = horseRot * Quaternion.Euler(-12f * Mathf.Sin(cyc / 0.6f * Mathf.PI), 0f, 0f);
                     }
-                    (ally ? _allyGeneral : _enemyGeneral).Add(p, horseRot);
-                    var hl = ally ? _allyHorseLegs : _enemyHorseLegs;
+                    GeneralBatch(s, false).Add(p, horseRot);
+                    var glook = GeneralLookOf(ga);
+                    bool partsHorse = glook != null && glook.UsesParts;
+                    var hl = partsHorse ? HorseLegsFor(glook, true, ally) : ally ? _allyHorseLegs : _enemyHorseLegs;
                     var gm = Matrix4x4.TRS(p, horseRot, Vector3.one * GeneralModelScale);
                     for (int k = 0; k < 4; k++)
                     {
                         bool front = k < 2;
                         float sw = Mathf.Sin(gph + (front ? 0f : Mathf.PI) + (k % 2 == 0 ? 0f : 0.5f)) * HorseSwingDeg * amp;
-                        hl.Matrices.Add(gm * Matrix4x4.TRS(SoldierMeshes.HorseLegAt(k), Quaternion.Euler(sw, 0f, 0f), Vector3.one));
+                        hl.Matrices.Add(gm * Matrix4x4.TRS(partsHorse ? LookMeshes.HorseLegAt(k, true) : SoldierMeshes.HorseLegAt(k), Quaternion.Euler(sw, 0f, 0f), Vector3.one));
                     }
                     continue;
                 }
@@ -359,12 +365,14 @@ namespace Game.Unity.Battle3D
                     // 기병 말 다리 넷 (앞 둘 · 뒤 둘 번갈아)
                     float cph = walked / CavStride * Mathf.PI * 2f + i * 0.9f;
                     float camp = Mathf.Min(1.2f, _legAmp[i]);
-                    var cl = ally ? _allyCavLegs : _enemyCavLegs;
+                    var clook = LookOf(_battle.Armies[s.Army]);
+                    bool partsCav = PartsLook(_battle.Armies[s.Army]);
+                    var cl = partsCav ? HorseLegsFor(clook, false, ally) : ally ? _allyCavLegs : _enemyCavLegs;
                     var cm = Matrix4x4.TRS(p, bodyRot, Vector3.one * ModelScale);
                     for (int k = 0; k < 4; k++)
                     {
                         float sw = Mathf.Sin(cph + (k < 2 ? 0f : Mathf.PI) + (k % 2 == 0 ? 0f : 0.5f)) * CavSwingDeg * camp;
-                        cl.Matrices.Add(cm * Matrix4x4.TRS(SoldierMeshes.CavalryLegAt(k), Quaternion.Euler(sw, 0f, 0f), Vector3.one));
+                        cl.Matrices.Add(cm * Matrix4x4.TRS(partsCav ? LookMeshes.HorseLegAt(k, false) : SoldierMeshes.CavalryLegAt(k), Quaternion.Euler(sw, 0f, 0f), Vector3.one));
                     }
                     continue;
                 }
@@ -439,22 +447,74 @@ namespace Game.Unity.Battle3D
         private InstanceBatch SoldierBatch(CrowdSoldier s, int team, int kind)
         {
             var a = _battle.Armies[s.Army];
+            if (!PartsLook(a)) return TroopBatch(a.Troop.BaseId, team, kind); // 사람이 아닌 병종 (투석기 · 배) · 부품 목록 없음 = 예전 모양
             var look = LookOf(a);
-            string key = a.Troop.BaseId + "|" + team + "|" + kind + "|" + look.Key;
+            string key = "s|" + s.Team + "|" + team + "|" + kind + "|" + look.Key;
             if (_lookBatches.TryGetValue(key, out var b)) return b;
-            var mesh = SoldierMeshes.For(a.Troop.BaseId, look.Armored, kind != 0, look);
-            bool white = kind == 2 || team == 2;
-            Color teamC = team == CrowdBattle.Ally ? AllyColor : EnemyColor, darkC = team == CrowdBattle.Ally ? AllyDark : EnemyDark;
-            var parts = SoldierMeshes.PartsOf(mesh);
-            var mats = new Material[parts.Length];
-            for (int i = 0; i < parts.Length; i++)
+            b = LookBatch(LookMeshes.Body(look, kind != 0), look, s.Team, kind == 2 || team == 2, ModelScale);
+            _lookBatches[key] = b;
+            return b;
+        }
+
+        /// <summary>부품 겉모습 (R-150)으로 그리는 부대: 사람 병종이고 부품 목록이 있음.</summary>
+        private bool PartsLook(CrowdArmy a) { var l = LookOf(a); return l.UsesParts && l.Person; }
+
+        /// <summary>부품 메시의 재질 묶음: 색 자리마다 겉모습의 색 (편 색 · 편의 어두운 색이 기본).</summary>
+        private InstanceBatch LookBatch(Mesh mesh, SoldierLook look, int side, bool white, float scale)
+        {
+            Color teamC = side == CrowdBattle.Ally ? AllyColor : EnemyColor, darkC = side == CrowdBattle.Ally ? AllyDark : EnemyDark;
+            var slots = LookMeshes.ColorsOf(mesh);
+            var mats = new Material[slots.Length];
+            for (int i = 0; i < slots.Length; i++)
             {
-                var m = Own(NewMaterial(white ? DeadWhite : look.PartColor(parts[i], teamC, darkC)));
+                var m = Own(NewMaterial(white ? DeadWhite : look.ColorFor(slots[i], teamC, darkC)));
                 m.enableInstancing = true;
                 mats[i] = m;
             }
-            b = new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * ModelScale));
+            var b = new InstanceBatch(mesh, mats, Matrix4x4.Scale(Vector3.one * scale));
+            _allBatches.Add(b);
+            return b;
+        }
+
+        /// <summary>장수 겉모습 (처음 한 번 정함). 정하는 쪽이 없으면 null (예전 흰 말 장수).</summary>
+        private SoldierLook GeneralLookOf(CrowdArmy a)
+        {
+            if (_generalLooks.TryGetValue(a.Id, out var l)) return l;
+            l = GeneralLookFor?.Invoke(a);
+            _generalLooks[a.Id] = l;
+            return l;
+        }
+
+        /// <summary>장수 몸 + 말 (다리 뺌, whole = 다리까지 — 쓰러질 때).</summary>
+        private InstanceBatch GeneralBatch(CrowdSoldier s, bool whole)
+        {
+            var a = _battle.Armies[s.Army];
+            var look = GeneralLookOf(a);
+            if (look == null || !look.UsesParts) return s.Team == CrowdBattle.Ally ? _allyGeneral : _enemyGeneral;
+            string key = "g|" + s.Team + "|" + (whole ? 1 : 0) + "|" + look.Key;
+            if (_lookBatches.TryGetValue(key, out var b)) return b;
+            b = LookBatch(LookMeshes.Body(look, whole), look, s.Team, false, GeneralModelScale);
             _lookBatches[key] = b;
+            return b;
+        }
+
+        /// <summary>말 다리 묶음 (말 색 · 발굽), 행렬을 직접 넣음.</summary>
+        private InstanceBatch HorseLegsFor(SoldierLook look, bool general, bool ally)
+        {
+            var mesh = LookMeshes.HorseLeg(general);
+            Color team = ally ? AllyColor : EnemyColor, dark = ally ? AllyDark : EnemyDark;
+            string key = (general ? "g" : "s") + ColorUtility.ToHtmlStringRGB(look.ColorFor("horse", team, dark));
+            if (_horseLegBatches.TryGetValue(key, out var b)) return b;
+            var slots = LookMeshes.ColorsOf(mesh);
+            var mats = new Material[slots.Length];
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var m = Own(NewMaterial(look.ColorFor(slots[i], team, dark)));
+                m.enableInstancing = true;
+                mats[i] = m;
+            }
+            b = new InstanceBatch(mesh, mats, Matrix4x4.identity);
+            _horseLegBatches[key] = b;
             _allBatches.Add(b);
             return b;
         }

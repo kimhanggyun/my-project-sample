@@ -62,6 +62,7 @@
 | [territory-v2.md](design/content/territory-v2.md) | 영토 개편: 깃발 원형 땅(반지름 = 계급), 공성전(준비 1분 · 유저 대전/AI 수비), 전장 지원, 줌 단계, Natural Earth 지도 | 확정 (2026-11-14), 구현 전 |
 | [general-growth.md](design/content/general-growth.md) | 장수 키우기 (스킬북·특성서·대결 보상 먼저, 세부 성장은 TO-BE) | 일부 먼저 열림 |
 | [cosmetics.md](design/content/cosmetics.md) | 치장: 병종(계열)마다 갑옷 한 벌 겉모습 꾸미기, 전투 계산 무관 · 팀 색 유지, 데이터 · 세이브 · 얻기 · 녹화/용병/대전 전달 | 초안 (2026-11-15), 미결 9장 |
+| [look-parts.md](design/content/look-parts.md) | 겉모습 부품 만드는 법: 번호 · 등급 · 도형 · 자리 · 색 (R-150, 원격이 부품을 데이터로 늘릴 때) | 첫판 (2026-11-24) |
 | [troop-growth.md](design/content/troop-growth.md) | 부대 키우기 | TO-BE |
 
 ## 구현 선택 (impl/)

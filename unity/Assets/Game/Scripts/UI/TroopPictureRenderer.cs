@@ -16,6 +16,7 @@ namespace Game.Unity.UI
     {
         private const int Size = 256;
         private static readonly Color AllyColor = new Color(0.20f, 0.36f, 0.62f);
+        private static readonly Color AllyDark = new Color(0.13f, 0.22f, 0.4f);
         private static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
         private static Material _template;
 
@@ -39,8 +40,27 @@ namespace Game.Unity.UI
             if (ctx?.Defs == null || line == null) return null;
             string key = troopId + "|" + line + "|" + armor + "|" + horse;
             if (Cache.TryGetValue(key, out var s) && s != null) return s;
-            try { s = Render(ctx, troopId ?? line, line, armor, horse); }
+            try
+            {
+                var look = Game.Unity.Battle3D.SoldierLook.Resolve(ctx, troopId ?? line, armor, horse);
+                s = look.UsesParts && look.Person ? Render(look, LookMeshes.Body(look, true), line == "cavalry") : RenderOld(line, armor != null);
+            }
             catch (System.Exception e) { Debug.LogWarning("병종 그림을 찍지 못했습니다: " + e.Message); s = null; }
+            if (s != null) Cache[key] = s;
+            return s;
+        }
+
+        /// <summary>
+        /// 겉모습 한 벌의 그림 (R-150 꾸미기 탭): 부품으로 조립한 몸 (다리 · 말 다리 포함). 같은 모양 · 색이면 보관한 것.
+        /// side = 옆에서 (말 탄 모습).
+        /// </summary>
+        public static Sprite ForLook(Game.Unity.Battle3D.SoldierLook look, bool side)
+        {
+            if (look == null || !look.UsesParts) return null;
+            string key = "look|" + look.Key + (side ? "|side" : "");
+            if (Cache.TryGetValue(key, out var s) && s != null) return s;
+            try { s = Render(look, LookMeshes.Body(look, true), side); }
+            catch (System.Exception e) { Debug.LogWarning("겉모습 그림을 찍지 못했습니다: " + e.Message); s = null; }
             if (s != null) Cache[key] = s;
             return s;
         }
@@ -55,19 +75,31 @@ namespace Game.Unity.UI
             return m;
         }
 
-        private static Sprite Render(GameContext ctx, string troopId, string line, string armor, string horse)
+        /// <summary>부품 목록이 없거나 사람이 아닌 병종: 예전 모양 (몸 = 아군 색).</summary>
+        private static Sprite RenderOld(string line, bool armored)
         {
-            // 겉모습 (R-149): 전투(샘플전투2)와 같은 모양 · 색. 색 없는 부위는 아군 색 · 갈색 (미리보기)
-            var look = Game.Unity.Battle3D.SoldierLook.Resolve(ctx.Defs, troopId, armor, horse);
-            var mesh = SoldierMeshes.For(line, look.Armored, true, look);
+            var mesh = SoldierMeshes.For(line, armored, true);
             var parts = SoldierMeshes.PartsOf(mesh);
-            var made = new List<Object>();
             var mats = new Material[parts.Length];
             for (int i = 0; i < parts.Length; i++)
-            {
-                mats[i] = NewMaterial(look.PartColor(parts[i], AllyColor, SoldierMeshes.DarkColor));
-                made.Add(mats[i]);
-            }
+                mats[i] = NewMaterial(parts[i] == SoldierMeshes.Skin ? SoldierMeshes.SkinColor : parts[i] == SoldierMeshes.Metal ? SoldierMeshes.MetalColor
+                    : parts[i] == SoldierMeshes.Team ? AllyColor : SoldierMeshes.DarkColor);
+            return Shoot(mesh, mats, line == "cavalry");
+        }
+
+        private static Sprite Render(Game.Unity.Battle3D.SoldierLook look, Mesh mesh, bool side)
+        {
+            // 겉모습 (R-150): 전투(샘플전투2)와 같은 모양 · 색. 색 없는 자리는 아군 색 · 어두운 아군 색 (미리보기)
+            var slots = LookMeshes.ColorsOf(mesh);
+            var mats = new Material[slots.Length];
+            for (int i = 0; i < slots.Length; i++) mats[i] = NewMaterial(look.ColorFor(slots[i], AllyColor, AllyDark));
+            return Shoot(mesh, mats, side, look.Mounted);
+        }
+
+        /// <param name="mounted">말 탄 모습의 앞 그림은 비스듬히 (정면이면 말이 가늘게 보여 장수 카드가 좁음 — 2026-11-24 캡처 51).</param>
+        private static Sprite Shoot(Mesh mesh, Material[] mats, bool side, bool mounted = false)
+        {
+            var made = new List<Object>(mats);
             // 다른 화면과 겹치지 않게 아주 먼 곳에 인형 · 빛 · 카메라를 잠깐 둔다
             var origin = new Vector3(0f, -5000f, 0f);
             var root = new GameObject("TroopPictureStage");
@@ -93,7 +125,7 @@ namespace Game.Unity.UI
             float half = Mathf.Max(b.extents.y, b.extents.x * 1.1f, b.extents.z * 0.9f) * 1.18f;
             cam.orthographic = true;
             cam.orthographicSize = half;
-            cam.transform.position = center + (line == "cavalry" ? new Vector3(-1f, 0.25f, 0.35f) : new Vector3(-0.22f, 0.12f, 1f)).normalized * 3f; // 사람 = 거의 앞모습 (병종 그림 PNG처럼), 말 = 옆모습
+            cam.transform.position = center + (side ? new Vector3(-1f, 0.25f, 0.35f) : mounted ? new Vector3(-0.75f, 0.3f, 0.8f) : new Vector3(-0.22f, 0.12f, 1f)).normalized * 3f; // 사람 = 거의 앞모습 (병종 그림 PNG처럼), 말 = 옆모습
             cam.transform.LookAt(center);
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 10f;
@@ -108,7 +140,7 @@ namespace Game.Unity.UI
             else cam.Render();
             var prev = RenderTexture.active;
             RenderTexture.active = rt;
-            var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false) { name = "troop_" + line, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+            var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false) { name = "troop_" + mesh.name, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
             tex.ReadPixels(new Rect(0, 0, Size, Size), 0, 0);
             tex.Apply(false);
             RenderTexture.active = prev;

@@ -587,41 +587,64 @@ namespace Game.Unity.Boot
                 sdf.FocusGateForTour(18f);
                 yield return Shot("48d_siege_defend_gate", null, 0.3f);
             }
-            // 꾸미기 탭 (R-149, 개발용): 병종 · 세트 입혀 보기 → 샘플전투2 우리 편 (투어가 바꾼 개발용 고르기는 끝나면 되돌림)
+            // 병사꾸미기 · 장수꾸미기 탭 (R-149 · R-150, 개발용): 부위 칸마다 번호 붙은 부품 → 샘플전투2 우리 편 · 장수 (투어가 바꾼 개발용 고르기는 끝나면 되돌림)
             {
-                var keep = new System.Collections.Generic.Dictionary<string, (string, string)>();
-                foreach (var t in LooksTabView.Troops) keep[t] = Game.Unity.Battle3D.DevLooks.Pick(t);
-                LooksTabView.PickForTour("infantry", null);
-                yield return Shot("49_looks_tab_default", () => new MainScreen("looks"), 0.4f);
-                foreach (var (troop, set) in new[] { ("infantry", "armor_crimson"), ("infantry", "armor_gold"), ("infantry", "armor_black"), ("shieldbearer", null), ("guard", "armor_iron") })
+                string keep = Game.Unity.Battle3D.DevLooks.Snapshot();
+                Game.Unity.Battle3D.DevLooks.Restore("");
+                foreach (var cat in LooksTabView.Categories)
                 {
-                    LooksTabView.PickForTour(troop, set);
-                    yield return Shot("49_looks_" + troop + "_" + (set ?? "default"), () => new MainScreen("looks"), 0.4f);
+                    if (cat == "M") continue;
+                    LooksTabView.ShowForTour("infantry", null, cat, null);
+                    yield return Shot("50_slooks_infantry_" + cat, () => new MainScreen("looks"), 0.6f);
                 }
-                // 샘플전투2: 우리 보병 = 진홍, 방패병 = 황금, 창병 = 기본 / 적 = 기본
+                foreach (var (troop, cat) in new[] { ("cavalry", "M"), ("cavalry", "H"), ("archer", "B"), ("shieldbearer", "D"), ("spearman", "P") })
+                {
+                    LooksTabView.ShowForTour(troop, null, cat, null);
+                    yield return Shot("50_slooks_" + troop + "_" + cat, () => new MainScreen("looks"), 0.6f);
+                }
+                foreach (var set in new[] { "armor_brown", "armor_iron", "armor_crimson", "armor_black", "armor_white", "armor_gold" })
+                {
+                    LooksTabView.PickForTour("infantry", set);
+                    LooksTabView.ShowForTour("infantry", null, "set", null);
+                    yield return Shot("50_slooks_set_" + set, () => new MainScreen("looks"), 0.6f);
+                }
+                Game.Unity.Battle3D.DevLooks.Restore("");
+                foreach (var preset in LooksTabView.Presets)
+                    foreach (var cat in new[] { "H", "A", "C", "S", "P", "M" })
+                    {
+                        if (preset != "warrior" && cat != "H") continue;
+                        LooksTabView.ShowForTour(null, preset, null, cat);
+                        yield return Shot("51_glooks_" + preset + "_" + cat, () => new MainScreen("generalLooks"), 0.6f);
+                    }
+                // 샘플전투2: 우리 보병 = 진홍 세트, 기병 = 기본, 창병 = 금테 / 장수 = 맹장 · 지장 · 책사 (말에 앉은 모습 가까이)
                 LooksTabView.PickForTour("infantry", "armor_crimson");
-                LooksTabView.PickForTour("shieldbearer", "armor_gold");
+                LooksTabView.PickForTour("spearman", "armor_gold");
                 var lu = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
                 {
-                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", Count = 80 },
-                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "shieldbearer", Count = 80, Commander = true },
-                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "spearman", Count = 80 },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Troop = "infantry", Count = 60, General = "warrior" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "cavalry", Count = 40, Commander = true, General = "standard" },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Troop = "spearman", Count = 60, General = "strategist" },
                 };
                 var le = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
                 {
-                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Count = 100, Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "heavyCavalry", Count = 60, Commander = true, General = "warrior" },
                 };
                 var sl = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = lu, EnemyUnits = le, AllyAdvance = false, EnemyAdvance = false, Seed = 41,
                     Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain") }, startNow: true);
-                yield return Shot("49b_looks_battle_open", () => sl, 0.5f);
+                yield return Shot("52_looks_battle_open", () => sl, 0.5f);
                 sl.StepForTour(1);
                 sl.FocusArmyForTour(0, 22f);
-                yield return Shot("49b_looks_battle_close", null, 0.3f);
-                sl.FocusPlaceGeneralForTour("front_center", 9f);
-                yield return Shot("49b_looks_battle_shieldbearer", null, 0.3f);
-                sl.FocusPlaceGeneralForTour("front_left", 9f);
-                yield return Shot("49b_looks_battle_crimson", null, 0.3f);
-                foreach (var kv in keep) { Game.Unity.Battle3D.DevLooks.SetArmor(kv.Key, kv.Value.Item1); Game.Unity.Battle3D.DevLooks.SetHorse(kv.Key, kv.Value.Item2); }
+                yield return Shot("52_looks_battle_close", null, 0.3f);
+                sl.FocusPlaceGeneralForTour("front_center", 6f);
+                yield return Shot("52_looks_battle_cavalry_general", null, 0.3f);
+                sl.FocusPlaceGeneralForTour("front_left", 6f);
+                yield return Shot("52_looks_battle_warrior", null, 0.3f);
+                sl.FocusPlaceGeneralForTour("front_right", 6f);
+                yield return Shot("52_looks_battle_strategist", null, 0.3f);
+                sl.StepForTour(400);
+                sl.FocusFightForTour(10f);
+                yield return Shot("52_looks_battle_fight", null, 0.3f);
+                Game.Unity.Battle3D.DevLooks.Restore(keep);
             }
             // 부대 하나면 [전체] 없음 (R-139)
             {
