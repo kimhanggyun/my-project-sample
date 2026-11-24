@@ -72,7 +72,13 @@ namespace Game.Battle.Model.Crowd
         public Fix CalmSeconds { get; private set; }
         public Fix MoraleRegen { get; private set; }
         public Fix WaverAt { get; private set; }
-        public Fix RoutAt { get; private set; }
+        // 사기 약화 · 이탈 (R-148)
+        public Fix MoraleLowAt { get; private set; }
+        public Fix MoraleLowPct { get; private set; }
+        public Fix MoraleWaverPct { get; private set; }
+        public Fix DesertSeconds { get; private set; }
+        public Fix DesertMinPct { get; private set; }
+        public Fix DesertMaxPct { get; private set; }
         public Fix WaverSpeed { get; private set; }
         public Fix WaverAttack { get; private set; }
         public Fix FleeSpeed { get; private set; }
@@ -250,7 +256,12 @@ namespace Game.Battle.Model.Crowd
                 CalmSeconds = JsonUtil.RequireFix(o, "calmSeconds", c),
                 MoraleRegen = JsonUtil.RequireFix(o, "moraleRegen", c),
                 WaverAt = JsonUtil.RequireFix(o, "waverAt", c),
-                RoutAt = JsonUtil.RequireFix(o, "routAt", c),
+                MoraleLowAt = JsonUtil.RequireFix(o, "moraleLowAt", c),
+                MoraleLowPct = JsonUtil.RequireFix(o, "moraleLowPct", c),
+                MoraleWaverPct = JsonUtil.RequireFix(o, "moraleWaverPct", c),
+                DesertSeconds = JsonUtil.RequireFix(o, "desertSeconds", c),
+                DesertMinPct = JsonUtil.RequireFix(o, "desertMinPct", c),
+                DesertMaxPct = JsonUtil.RequireFix(o, "desertMaxPct", c),
                 WaverSpeed = JsonUtil.RequireFix(o, "waverSpeed", c),
                 WaverAttack = JsonUtil.RequireFix(o, "waverAttack", c),
                 FleeSpeed = JsonUtil.RequireFix(o, "fleeSpeed", c),

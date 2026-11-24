@@ -1179,14 +1179,42 @@ namespace Game.Tests.Battle
             int k = 0;
             foreach (var s in thin.Soldiers) if (!s.IsGeneral && k++ < 95) s.DiedTick = 0; // 100명 중 5명 남음
             b.Step();
-            Assert.True(thin.GeneralEscaping);
-            Assert.Equal(CrowdOrders.Retreat, thin.Order);
+            b.Step();
+            Assert.True(thin.Routed); // 퇴각 (R-148): 부대가 도망
+            Assert.True(thin.GeneralEscaping); // 장수도 퇴로로
             // 장수 체력 5%는 장수 혼자 빠짐 (부대는 그대로)
             var other = At("front_right");
             other.General.Hp = 1;
             b.Step();
             Assert.True(other.GeneralEscaping);
-            Assert.NotEqual(CrowdOrders.Retreat, other.Order);
+            Assert.False(other.Routed);
+        }
+
+        [Fact]
+        public void LowMoraleWeakensButDoesNotRout()
+        {
+            // R-148 (2026-11-24 사용자 "사기가 깎이면 공격력 · 방어력을 줄이거나 이탈자"): 사기로는 무너지지 않고, 약해지고, 이탈자가 나옴
+            var b = WithGeneral("standard");
+            var a = b.Commander(CrowdBattle.Ally);
+            var r = b.Rules;
+            a.Morale = Fix.FromInt(100);
+            Assert.Equal(Fix.Zero, b.MoralePenaltyPp(a));
+            a.Morale = r.WaverAt;
+            Assert.Equal(r.MoraleLowPct, b.MoralePenaltyPp(a));
+            a.Morale = Fix.Zero;
+            Assert.Equal(r.MoraleWaverPct, b.MoralePenaltyPp(a));
+            // 사기 0이어도 퇴각은 안 함, 대신 이탈자가 뒷줄부터 나감
+            int start = a.FightingCount;
+            for (int t = 0; t < 100; t++) { a.Morale = Fix.Zero; b.Step(); }
+            Assert.False(a.Routed);
+            int deserters = 0;
+            foreach (var s in a.Soldiers) if (s.Deserting) deserters++;
+            _out.WriteLine($"morale 0 for 10s: deserters {deserters}/{start}, fighting {a.FightingCount}");
+            Assert.True(deserters > 0 && deserters < start / 2, $"deserters {deserters}");
+            // 이탈자는 맞붙지 않은 뒷줄부터
+            Fix backAvg = Fix.Zero, allAvg = Fix.Zero; int nb = 0, na = 0;
+            foreach (var s in a.Soldiers) { if (s.IsGeneral || !s.Alive) continue; var y = s.Slot.Y; allAvg += y; na++; if (s.Deserting) { backAvg += y; nb++; } }
+            Assert.True(nb == 0 || backAvg / nb < allAvg / na, "deserters from the rear");
         }
 
         [Fact]
