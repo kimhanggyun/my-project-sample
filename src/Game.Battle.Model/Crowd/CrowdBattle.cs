@@ -51,6 +51,8 @@ namespace Game.Battle.Model.Crowd
         /// <summary>사다리 오르기 (R-145): 시작 · 끝 틱 (오르지 않으면 -1), 사다리 번호, 이번 틱 꼭대기에 닿음.</summary>
         public int ClimbStart = -1, ClimbEnd = -1, ClimbLadder = -1;
         public bool ClimbArrived;
+        /// <summary>이탈자 (R-148): 흔들리는 부대 뒷줄에서 빠져나가 자기 쪽 끝으로 도망 (싸우지 않음, 끝에 닿으면 빠짐).</summary>
+        public bool Deserting;
         /// <summary>전장에서 싸울 수 있음 (쓰러지지도 나가지도 않음).</summary>
         public bool Alive => DiedTick < 0 && FledTick < 0;
     }
@@ -186,7 +188,7 @@ namespace Game.Battle.Model.Crowd
         public Fix Morale;
         /// <summary>흔들림 (사기 waverAt 이하): 느려지고 덜 친다.</summary>
         public bool Wavering;
-        /// <summary>무너짐 (사기 routAt 이하, 되돌아오지 않음): 도망치고 명령을 못 받는다.</summary>
+        /// <summary>퇴각 (R-148: 남아 싸우는 병사가 처음의 armyRetreatTroopPct% 이하, 되돌아오지 않음 — 예전엔 사기 routAt 이하 "무너짐"): 도망치고 명령을 못 받는다.</summary>
         public bool Routed;
         public int RoutedTick = -1;
         /// <summary>포위됨 (최근 앞이 아닌 두 방향 이상에서 맞음) — 사기가 계속 깎인다.</summary>
@@ -206,6 +208,12 @@ namespace Game.Battle.Model.Crowd
         public int AliveCount
         {
             get { int n = 0; foreach (var s in Soldiers) if (s.Alive && !s.IsGeneral) n++; return n; }
+        }
+
+        /// <summary>남아 싸우는 병사 (살아 있고 이탈하지 않음, 장수 빼고) — 퇴각 기준 (R-148).</summary>
+        public int FightingCount
+        {
+            get { int n = 0; foreach (var s in Soldiers) if (s.Alive && !s.IsGeneral && !s.Deserting) n++; return n; }
         }
 
         /// <summary>장수가 살아 있으면 명령을 받는다 (장수를 잃은 부대는 제자리에서 싸움만).</summary>
@@ -639,7 +647,8 @@ namespace Game.Battle.Model.Crowd
                     a.GeneralBaseSlot = a.GeneralRoleSlot = new Vec(Fix.Zero, back - r.GeneralBack);
                     break;
             }
-            a.GeneralCommandSlot = a.GeneralInfo.Role == "rear" ? new Vec(Fix.Zero, back - r.GeneralRear) : new Vec(Fix.Zero, Fix.Max(back - r.GeneralBack, front - sp * r.GeneralPullBackRows));
+            // 물러나 회복 = 대열 바로 뒤 (R-148, 2026-11-24 사용자 "뒤로 빠지는 게 보여야") — 책사는 원래 대열 뒤
+            a.GeneralCommandSlot = a.GeneralInfo.Role == "rear" ? new Vec(Fix.Zero, back - r.GeneralRear) : new Vec(Fix.Zero, back - r.GeneralBack);
             a.GeneralWoundedSlot = new Vec(Fix.Zero, back - r.GeneralRear);
             if (a.Formation == CrowdFormations.Circle)
                 a.GeneralBaseSlot = a.GeneralRoleSlot = a.GeneralCommandSlot = a.GeneralWoundedSlot = hole ?? Vec.Zero;
@@ -744,6 +753,24 @@ namespace Game.Battle.Model.Crowd
             if (rise == Fix.Zero) return Fix.FromInt(100);
             Fix pct = rise > Fix.Zero ? Fix.FromInt(100) - rise * r.UphillSlowPctPerLevel : Fix.FromInt(100) - rise * r.DownhillFastPctPerLevel;
             return Fix.Clamp(pct, r.SlopeMinPct, r.SlopeMaxPct);
+        }
+
+        /// <summary>
+        /// 사기 약화 %p (R-148): 사기 moraleLowAt 이상 0, moraleLowAt → waverAt 사이 0 → moraleLowPct, waverAt → 0 사이 moraleLowPct → moraleWaverPct (직선).
+        /// 치는 쪽은 그만큼 덜 아프게(공격 −), 맞는 쪽은 그만큼 더 아프게(방어 −).
+        /// </summary>
+        public Fix MoralePenaltyPp(CrowdArmy a)
+        {
+            var r = Rules;
+            Fix m = a.Morale;
+            if (m >= r.MoraleLowAt) return Fix.Zero;
+            if (m >= r.WaverAt)
+            {
+                Fix span = r.MoraleLowAt - r.WaverAt;
+                return span > Fix.Zero ? r.MoraleLowPct * (r.MoraleLowAt - m) / span : r.MoraleLowPct;
+            }
+            Fix w = r.WaverAt > Fix.Zero ? (r.WaverAt - Fix.Max(Fix.Zero, m)) / r.WaverAt : Fix.OneValue;
+            return r.MoraleLowPct + (r.MoraleWaverPct - r.MoraleLowPct) * w;
         }
 
         /// <summary>진형 특성 배수 % (표에 없으면 100).</summary>
@@ -1087,9 +1114,9 @@ namespace Game.Battle.Model.Crowd
                 Fix walkStep = r.MoveSpeed * army.SpeedFactor * MoveMult(army) * ground * dt;
                 Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * MoveMult(army) * ground * dt : walkStep;
                 if (army.Wavering) { walkStep = walkStep * r.WaverSpeed; stepLen = stepLen * r.WaverSpeed; }
-                if (army.Routed)
+                if (army.Routed || s.Deserting)
                 {
-                    // 무너짐: 자기 쪽 가장자리로 도망 (가까운 적에게서 멀어지는 쪽으로 조금 비켜), 치지 않는다
+                    // 퇴각 · 이탈자 (R-148): 자기 쪽 가장자리로 도망 (가까운 적에게서 멀어지는 쪽으로 조금 비켜), 치지 않는다
                     var away = new Vec(Fix.Zero, s.Team == Ally ? -Fix.OneValue : Fix.OneValue);
                     int near = NearestEnemy(s, engage2, r.EngageRange);
                     if (near >= 0) away = (away + (s.Pos - Soldiers[near].Pos).Normalized()).Normalized();
@@ -1275,7 +1302,7 @@ namespace Game.Battle.Model.Crowd
                     }
                 }
                 // 무너진 병사가 자기 쪽 가장자리에 닿으면 전장 밖으로 (빠짐)
-                if (Armies[s.Army].Routed && (s.Team == Ally ? p.Y <= Fix.FromRatio(1, 2) : p.Y >= maxY - Fix.FromRatio(1, 2))) { s.FledTick = Tick; s.Moved = Vec.Zero; }
+                if ((Armies[s.Army].Routed || s.Deserting) && (s.Team == Ally ? p.Y <= Fix.FromRatio(1, 2) : p.Y >= maxY - Fix.FromRatio(1, 2))) { s.FledTick = Tick; s.Moved = Vec.Zero; }
             }
             if (Ladders.Count > 0) FinishClimbs(); // 사다리 꼭대기에 닿은 병사 (R-145)
             UpdateMorale();
@@ -1301,13 +1328,7 @@ namespace Game.Battle.Model.Crowd
                     }
                     if (g.Hp * 100 >= g.MaxHp * r.GeneralReturnHpPct) { a.GeneralPulledBack = false; a.GeneralRegenAcc = Fix.Zero; }
                 }
-                // 부대 퇴각 (R-147, 2026-11-24 사용자 "부대 5% 병력일 때 퇴각"): 살아 있는 병사가 처음의 armyRetreatTroopPct% 이하면 부대가 후퇴하고 장수도 퇴로로
-                if (g.Alive && !a.GeneralEscaping && a.Leading && a.AliveCount * 100 <= a.StartCount * r.ArmyRetreatTroopPct)
-                {
-                    OrderRetreat(a.Id);
-                    a.GeneralEscaping = true;
-                }
-                // 장수 혼자 퇴로: 체력 generalEscapeHpPct%(최소 1) 이하 (쓰러지기 직전) 또는 부대가 무너짐
+                // 장수 퇴로: 체력 generalEscapeHpPct%(최소 1) 이하 (쓰러지기 직전) 또는 부대가 퇴각 (R-148 — 부대 퇴각은 UpdateMorale)
                 if (g.Alive && !a.GeneralEscaping && (a.Routed || g.Hp <= System.Math.Max(1, g.MaxHp * r.GeneralEscapeHpPct / 100)))
                     a.GeneralEscaping = true;
                 // 적과 만나면 성향 자리로 (R-142, 2026-11-22 사용자: 만나기 전까지는 장수 자리로 이동)
@@ -1349,7 +1370,7 @@ namespace Game.Battle.Model.Crowd
 
         /// <summary>
         /// 사기 (R-128): 포위면 초당 encircleDrain 깎임, 맞지 않은 지 calmSeconds면 초당 moraleRegen 오름.
-        /// waverAt 이하 = 흔들림, routAt 이하 = 무너짐 (되돌아오지 않음, 같은 편 부대 사기 allyRoutedMorale 깎임).
+        /// waverAt 이하 = 흔들림 (이탈자, R-148). 퇴각은 병력 armyRetreatTroopPct% 이하 (되돌아오지 않음, 같은 편 부대 사기 allyRoutedMorale 깎임).
         /// </summary>
         private void UpdateMorale()
         {
@@ -1369,9 +1390,27 @@ namespace Game.Battle.Model.Crowd
                 if (a.Morale < Fix.Zero) a.Morale = Fix.Zero;
                 a.Wavering = a.Morale <= r.WaverAt;
             }
+            // 이탈자 (R-148, 2026-11-24 사용자 "사기가 깎이면 이탈자"): 흔들리는 부대는 desertSeconds마다 남은 병사의
+            // desertMinPct%(사기 waverAt) ~ desertMaxPct%(사기 0)를 (최소 1명) 뒷줄 · 맞붙지 않은 병사부터 내보낸다
+            int desertTicks = System.Math.Max(1, (int)(r.DesertSeconds / dt).RoundToLong());
+            if (Tick % desertTicks == 0)
+                foreach (var a in Armies)
+                {
+                    if (a.Routed || !a.Wavering || !Standing(a)) continue;
+                    Fix low = r.WaverAt > Fix.Zero ? Fix.Clamp((r.WaverAt - a.Morale) / r.WaverAt, Fix.Zero, Fix.OneValue) : Fix.OneValue;
+                    Fix pct = r.DesertMinPct + (r.DesertMaxPct - r.DesertMinPct) * low;
+                    int n = System.Math.Max(1, (int)(Fix.FromInt(a.FightingCount) * pct / 100).RoundToLong());
+                    var cands = new List<(Fix back, CrowdSoldier s)>();
+                    foreach (var s in a.Soldiers)
+                        if (s.Alive && !s.IsGeneral && !s.Deserting && s.LastAttackTick < Tick - r.AttackTicks * 2)
+                            cands.Add(((s.Pos - a.Center).Dot(a.Facing), s));
+                    cands.Sort((p, q) => { int c = p.back.CompareTo(q.back); return c != 0 ? c : p.s.Id.CompareTo(q.s.Id); });
+                    for (int k = 0; k < n && k < cands.Count; k++) cands[k].s.Deserting = true;
+                }
+            // 퇴각 (R-148, 2026-11-24 사용자 "부대원 5% 이하 남았을 때 퇴각"): 남아 싸우는 병사가 처음의 armyRetreatTroopPct% 이하 — 사기로는 무너지지 않음
             foreach (var a in Armies)
             {
-                if (a.Routed || !Standing(a) || a.Morale > r.RoutAt) continue;
+                if (a.Routed || !Standing(a) || a.FightingCount * 100 > a.StartCount * r.ArmyRetreatTroopPct) continue;
                 a.Routed = true;
                 a.RoutedTick = Tick;
                 a.Order = CrowdOrders.Hold;
@@ -1434,6 +1473,7 @@ namespace Game.Battle.Model.Crowd
             int side = SideOf(foeArmy, foeArmy.TickCentroid, s.Pos);
             Fix mightPp = s.IsGeneral ? Fix.FromInt(army.GeneralInfo.Might - 50) * Rules.GeneralMightPp : Fix.Zero; // 장수가 직접 친 한 방 (R-138)
             int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy) + FormationCounterPp(army, foeArmy)
+                - MoralePenaltyPp(army) + MoralePenaltyPp(foeArmy) // 사기가 낮으면 덜 아프게 치고 더 아프게 맞음 (R-148)
                 + HeightDiff(s.Pos, e.Pos) * Rules.HeightMeleePpPerLevel); // 내려치면 세고 올려치면 약함 (R-143)
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
@@ -1475,7 +1515,7 @@ namespace Game.Battle.Model.Crowd
             var e = Soldiers[target];
             Fix dist = (e.Pos - s.Pos).Length;
             int flight = System.Math.Max(1, (int)(dist / (r.ArrowSpeed * r.TickSeconds)).RoundToLong());
-            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()),
+            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]) - MoralePenaltyPp(Armies[s.Army]) + MoralePenaltyPp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()),
                 HitPct = Fix.Max(Fix.Zero, Fix.FromInt(100) + HeightDiff(s.Pos, e.Pos) * r.HeightArrowHitPctPerLevel) }); // 위에서 쏘면 잘 맞음 (R-143)
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
