@@ -100,6 +100,175 @@
       ]
     },
     {
+      "id": "H09",
+      "name": "전립",
+      "grade": "basic",
+      "note": "챙 넓은 펠트 모자",
+      "pieces": [
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.004, 0], "size": [0.12, 0.007, 0.12], "color": "hat"},
+        {"shape": "dome", "at": "head", "pos": [0, 0.016, 0], "size": [0.072, 0.044, 0.072], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.01, 0], "size": [0.074, 0.008, 0.074], "color": "trim"}
+      ]
+    },
+    {
+      "id": "H10",
+      "name": "상투 두건",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.014, -0.002], "size": [0.07, 0.042, 0.07], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.045, -0.004], "size": [0.02, 0.022, 0.02], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.002, 0], "size": [0.069, 0.01, 0.069], "color": "trim"},
+        {"shape": "box", "at": "head", "pos": [0.008, -0.01, -0.037], "size": [0.007, 0.03, 0.004], "color": "trim", "rot": [15, 0, 10], "mirror": true}
+      ]
+    },
+    {
+      "id": "H11",
+      "name": "가죽 전립",
+      "grade": "coin",
+      "note": "챙 + 쇠 꼭지 + 턱끈",
+      "pieces": [
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.004, 0], "size": [0.11, 0.008, 0.11], "color": "dark"},
+        {"shape": "dome", "at": "head", "pos": [0, 0.016, 0], "size": [0.074, 0.048, 0.074], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.01, 0], "size": [0.076, 0.01, 0.076], "color": "trim"},
+        {"shape": "cone", "at": "head", "pos": [0, 0.05, 0], "size": [0.012, 0.022, 0.012], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0.033, -0.022, 0.006], "size": [0.003, 0.04, 0.006], "color": "dark", "mirror": true}
+      ]
+    },
+    {
+      "id": "H12",
+      "name": "쇠테 두건",
+      "grade": "coin",
+      "note": "이마에 쇠판, 뒤로 늘어진 천",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.015, -0.002], "size": [0.072, 0.044, 0.072], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.003, 0], "size": [0.076, 0.012, 0.076], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, 0.012, 0.034], "size": [0.026, 0.022, 0.004], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, -0.024, -0.032], "size": [0.06, 0.036, 0.006], "color": "hat", "rot": [-12, 0, 0]}
+      ]
+    },
+    {
+      "id": "H13",
+      "name": "첨모",
+      "grade": "coin",
+      "note": "뾰족한 가죽 모자 + 귀 가리개",
+      "pieces": [
+        {"shape": "cone", "at": "head", "pos": [0, 0.03, 0], "size": [0.078, 0.07, 0.078], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.002, 0], "size": [0.08, 0.01, 0.08], "color": "trim"},
+        {"shape": "box", "at": "head", "pos": [0.035, -0.02, 0], "size": [0.006, 0.034, 0.03], "color": "hat", "mirror": true},
+        {"shape": "sphere", "at": "head", "pos": [0, 0.066, 0], "size": [0.012, 0.012, 0.012], "color": "trim"}
+      ]
+    },
+    {
+      "id": "H14",
+      "name": "첨주 철 투구",
+      "grade": "gem",
+      "note": "뾰족 쇠 투구, 차양 · 볼 가리개 · 목 가리개",
+      "pieces": [
+        {"shape": "cone", "at": "head", "pos": [0, 0.032, 0], "size": [0.08, 0.07, 0.08], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.003, 0], "size": [0.086, 0.012, 0.086], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, -0.024, -0.031], "size": [0.076, 0.036, 0.008], "color": "metal", "rot": [-14, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0.036, -0.022, 0.004], "size": [0.007, 0.034, 0.034], "color": "metal", "mirror": true},
+        {"shape": "box", "at": "head", "pos": [0, 0.004, 0.04], "size": [0.05, 0.006, 0.01], "color": "metal"},
+        {"shape": "cone", "at": "head", "pos": [0, 0.078, 0], "size": [0.01, 0.03, 0.01], "color": "metal"},
+        {"shape": "cylinder", "at": "head", "pos": [0, 0.064, 0], "size": [0.018, 0.006, 0.018], "color": "trim"}
+      ]
+    },
+    {
+      "id": "H15",
+      "name": "목가리개 투구",
+      "grade": "gem",
+      "note": "목 뒤로 세 겹 찰갑 가리개",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.017, 0], "size": [0.078, 0.05, 0.078], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.006, 0], "size": [0.086, 0.008, 0.086], "color": "trim"},
+        {"shape": "box", "at": "head", "pos": [0, 0.018, 0], "size": [0.006, 0.05, 0.08], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, -0.02, -0.034], "size": [0.08, 0.016, 0.008], "color": "metal", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0, -0.034, -0.038], "size": [0.084, 0.016, 0.008], "color": "hat", "rot": [-16, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0, -0.048, -0.043], "size": [0.088, 0.016, 0.008], "color": "metal", "rot": [-20, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0.038, -0.03, -0.006], "size": [0.008, 0.04, 0.044], "color": "hat", "mirror": true},
+        {"shape": "cone", "at": "head", "pos": [0, 0.054, 0], "size": [0.012, 0.024, 0.012], "color": "metal"}
+      ]
+    },
+    {
+      "id": "H16",
+      "name": "뿔 장식 투구",
+      "grade": "gem",
+      "note": "이마 위 V자 쇠 뿔",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.017, 0], "size": [0.078, 0.05, 0.078], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.006, 0], "size": [0.088, 0.009, 0.088], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0.024, 0.05, 0.02], "size": [0.006, 0.05, 0.012], "color": "metal", "rot": [-10, 0, -30], "mirror": true},
+        {"shape": "box", "at": "head", "pos": [0, 0.006, 0.039], "size": [0.03, 0.02, 0.005], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, -0.022, -0.03], "size": [0.074, 0.032, 0.01], "color": "hat", "rot": [-15, 0, 0]},
+        {"shape": "sphere", "at": "head", "pos": [0, 0.04, 0.03], "size": [0.012, 0.012, 0.008], "color": "trim"}
+      ]
+    },
+    {
+      "id": "H17",
+      "name": "면갑 투구",
+      "grade": "gem",
+      "note": "얼굴 아래를 덮는 쇠 가면",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.017, 0], "size": [0.078, 0.052, 0.078], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.006, 0], "size": [0.088, 0.009, 0.088], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, -0.016, 0.034], "size": [0.054, 0.03, 0.006], "color": "metal"},
+        {"shape": "box", "at": "head", "pos": [0, -0.006, 0.0375], "size": [0.04, 0.004, 0.002], "color": "dark"},
+        {"shape": "box", "at": "head", "pos": [0, -0.024, -0.03], "size": [0.074, 0.034, 0.01], "color": "metal", "rot": [-15, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0, 0.018, 0], "size": [0.006, 0.052, 0.08], "color": "trim"},
+        {"shape": "cone", "at": "head", "pos": [0, 0.056, 0], "size": [0.014, 0.028, 0.014], "color": "metal"}
+      ]
+    },
+    {
+      "id": "H18",
+      "name": "금관 투구",
+      "grade": "cash",
+      "note": "높이 솟은 금 볏 + 뒤로 흐르는 깃",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.018, 0], "size": [0.08, 0.054, 0.08], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.006, 0], "size": [0.092, 0.01, 0.092], "color": "gold"},
+        {"shape": "box", "at": "head", "pos": [0, 0.06, 0.012], "size": [0.006, 0.07, 0.05], "color": "gold", "rot": [-8, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0, 0.012, 0.04], "size": [0.04, 0.026, 0.005], "color": "gold"},
+        {"shape": "box", "at": "head", "pos": [0.04, 0.012, 0.012], "size": [0.004, 0.044, 0.03], "color": "gold", "rot": [0, 0, -18], "mirror": true},
+        {"shape": "capsule", "at": "head", "pos": [0, 0.07, -0.04], "size": [0.02, 0.07, 0.026], "color": "plume", "rot": [-55, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0, -0.024, -0.032], "size": [0.08, 0.034, 0.01], "color": "hat", "rot": [-15, 0, 0]},
+        {"shape": "sphere", "at": "head", "pos": [0, 0.014, 0.043], "size": [0.012, 0.012, 0.006], "color": "plume"}
+      ]
+    },
+    {
+      "id": "H19",
+      "name": "봉황 날개 투구",
+      "grade": "cash",
+      "note": "양옆으로 펼친 금 날개 + 붉은 깃",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.018, 0], "size": [0.08, 0.054, 0.08], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.006, 0], "size": [0.092, 0.01, 0.092], "color": "gold"},
+        {"shape": "box", "at": "head", "pos": [0.05, 0.04, -0.004], "size": [0.004, 0.05, 0.034], "color": "gold", "rot": [0, 0, -40], "mirror": true},
+        {"shape": "box", "at": "head", "pos": [0.064, 0.05, -0.008], "size": [0.003, 0.034, 0.026], "color": "plume", "rot": [0, 0, -55], "mirror": true},
+        {"shape": "cone", "at": "head", "pos": [0, 0.068, 0], "size": [0.014, 0.036, 0.014], "color": "gold"},
+        {"shape": "sphere", "at": "head", "pos": [0, 0.05, 0], "size": [0.02, 0.016, 0.02], "color": "plume"},
+        {"shape": "box", "at": "head", "pos": [0, 0.008, 0.04], "size": [0.03, 0.022, 0.005], "color": "gold"},
+        {"shape": "box", "at": "head", "pos": [0, -0.024, -0.032], "size": [0.08, 0.034, 0.01], "color": "hat", "rot": [-15, 0, 0]}
+      ]
+    },
+    {
+      "id": "H20",
+      "name": "장수 금룡 투구",
+      "grade": "general",
+      "note": "장수 전용: 하늘로 솟은 금 뿔 둘 + 붉은 술 + 긴 깃",
+      "pieces": [
+        {"shape": "dome", "at": "head", "pos": [0, 0.019, 0], "size": [0.084, 0.058, 0.084], "color": "hat"},
+        {"shape": "cylinder", "at": "head", "pos": [0, -0.006, 0], "size": [0.096, 0.011, 0.096], "color": "gold"},
+        {"shape": "box", "at": "head", "pos": [0.02, 0.07, 0.024], "size": [0.008, 0.08, 0.014], "color": "gold", "rot": [-12, 0, -22], "mirror": true},
+        {"shape": "box", "at": "head", "pos": [0.034, 0.112, 0.016], "size": [0.006, 0.03, 0.01], "color": "gold", "rot": [-12, 0, 20], "mirror": true},
+        {"shape": "box", "at": "head", "pos": [0, 0.016, 0.042], "size": [0.04, 0.03, 0.006], "color": "gold"},
+        {"shape": "sphere", "at": "head", "pos": [0, 0.03, 0.044], "size": [0.014, 0.014, 0.008], "color": "plume"},
+        {"shape": "sphere", "at": "head", "pos": [0, 0.054, 0], "size": [0.026, 0.02, 0.026], "color": "plume"},
+        {"shape": "capsule", "at": "head", "pos": [0, 0.07, -0.05], "size": [0.022, 0.09, 0.028], "color": "plume", "rot": [-60, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0, -0.024, -0.034], "size": [0.086, 0.036, 0.01], "color": "gold", "rot": [-15, 0, 0]},
+        {"shape": "box", "at": "head", "pos": [0.04, -0.026, -0.004], "size": [0.008, 0.036, 0.04], "color": "hat", "mirror": true}
+      ]
+    },
+    {
       "id": "A01",
       "name": "무명 옷",
       "grade": "basic",
@@ -223,6 +392,211 @@
       ]
     },
     {
+      "id": "A09",
+      "name": "누비 옷",
+      "grade": "basic",
+      "note": "솜 넣고 누빈 두꺼운 옷",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, -0.002, 0], "size": [0.066, 0.096, 0.042], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.016, 0], "size": [0.068, 0.003, 0.044], "color": "trim"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.016, 0], "size": [0.068, 0.003, 0.044], "color": "trim"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.002, 0], "size": [0.056, 0.012, 0.042], "color": "dark"}
+      ]
+    },
+    {
+      "id": "A10",
+      "name": "띠 두른 무명",
+      "grade": "basic",
+      "note": "어깨에서 비껴 두른 띠 + 허리띠 끝자락",
+      "pieces": [
+        {"shape": "box", "at": "chest", "pos": [0, -0.004, 0.019], "size": [0.01, 0.106, 0.004], "color": "trim", "rot": [0, 0, -30]},
+        {"shape": "box", "at": "chest", "pos": [0, -0.004, -0.019], "size": [0.01, 0.106, 0.004], "color": "trim", "rot": [0, 0, 30]},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.002, 0], "size": [0.056, 0.014, 0.042], "color": "trim"},
+        {"shape": "box", "at": "waist", "pos": [0.012, -0.02, 0.022], "size": [0.008, 0.034, 0.003], "color": "trim", "rot": [0, 0, 8]}
+      ]
+    },
+    {
+      "id": "A11",
+      "name": "가죽 찰갑 조끼",
+      "grade": "coin",
+      "note": "가죽 조각을 세 줄로 엮음",
+      "pieces": [
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.024, 0], "size": [0.068, 0.024, 0.045], "color": "dark"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0, 0], "size": [0.068, 0.024, 0.045], "color": "dark"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.024, 0], "size": [0.068, 0.024, 0.045], "color": "dark"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.012, 0], "size": [0.07, 0.003, 0.047], "color": "trim"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.012, 0], "size": [0.07, 0.003, 0.047], "color": "trim"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.002, 0], "size": [0.058, 0.012, 0.044], "color": "trim"}
+      ]
+    },
+    {
+      "id": "A12",
+      "name": "솜 갑옷",
+      "grade": "coin",
+      "note": "허벅지까지 오는 짧은 솜 갑옷",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0, 0.002], "size": [0.068, 0.1, 0.046], "color": "main"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.018, 0], "size": [0.074, 0.036, 0.056], "color": "main"},
+        {"shape": "box", "at": "chest", "pos": [0, -0.02, 0.026], "size": [0.006, 0.12, 0.004], "color": "trim"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.058, 0.01, 0.044], "color": "dark"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.036, 0], "size": [0.076, 0.003, 0.058], "color": "trim"}
+      ]
+    },
+    {
+      "id": "A13",
+      "name": "가슴 가리개",
+      "grade": "coin",
+      "note": "앞뒤 쇠판을 끈으로 맴",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, -0.002, 0], "size": [0.066, 0.096, 0.042], "color": "dark"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.008, 0.024], "size": [0.046, 0.05, 0.006], "color": "metal"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.008, -0.024], "size": [0.046, 0.05, 0.006], "color": "metal"},
+        {"shape": "box", "at": "chest", "pos": [0.02, 0.047, 0], "size": [0.008, 0.006, 0.05], "color": "trim", "mirror": true},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.002, 0], "size": [0.056, 0.012, 0.042], "color": "trim"}
+      ]
+    },
+    {
+      "id": "A14",
+      "name": "철 찰갑 긴 치마",
+      "grade": "gem",
+      "note": "쇠 · 가죽 띠 번갈아, 무릎까지 치마",
+      "pieces": [
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.03, 0], "size": [0.07, 0.017, 0.046], "color": "metal"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.01, 0], "size": [0.07, 0.017, 0.046], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.01, 0], "size": [0.07, 0.017, 0.046], "color": "metal"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.03, 0], "size": [0.07, 0.017, 0.046], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.02, 0], "size": [0.072, 0.003, 0.048], "color": "trim"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0, 0], "size": [0.072, 0.003, 0.048], "color": "trim"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.02, 0], "size": [0.072, 0.003, 0.048], "color": "trim"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.05, 0], "size": [0.05, 0.012, 0.04], "color": "metal"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.058, 0.012, 0.044], "color": "dark"},
+        {"shape": "cone", "at": "waist", "pos": [0, -0.04, 0], "size": [0.09, 0.08, 0.066], "color": "main"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.06, 0], "size": [0.084, 0.004, 0.062], "color": "metal"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.03, 0], "size": [0.074, 0.003, 0.056], "color": "trim"}
+      ]
+    },
+    {
+      "id": "A15",
+      "name": "목깃 판갑",
+      "grade": "gem",
+      "note": "목을 감싸는 높은 깃 + 네 장 허리판",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0.002, 0.004], "size": [0.068, 0.096, 0.046], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.056, 0], "size": [0.056, 0.018, 0.044], "color": "metal"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.004, 0.027], "size": [0.04, 0.06, 0.004], "color": "metal"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.004, 0.0295], "size": [0.004, 0.056, 0.002], "color": "trim"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.058, 0.012, 0.044], "color": "trim"},
+        {"shape": "box", "at": "waist", "pos": [0.026, -0.03, 0], "size": [0.006, 0.046, 0.04], "color": "metal", "rot": [0, 0, 10], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0, -0.03, 0.024], "size": [0.04, 0.046, 0.006], "color": "metal", "rot": [-10, 0, 0]},
+        {"shape": "box", "at": "waist", "pos": [0, -0.03, -0.024], "size": [0.04, 0.046, 0.006], "color": "metal", "rot": [10, 0, 0]}
+      ]
+    },
+    {
+      "id": "A16",
+      "name": "쇠 비늘갑",
+      "grade": "gem",
+      "note": "앞가슴에 겹친 쇠 비늘 다섯 줄",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0.002, 0.002], "size": [0.068, 0.098, 0.046], "color": "main"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.032, 0.024], "size": [0.06, 0.014, 0.004], "color": "metal", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, 0.016, 0.025], "size": [0.062, 0.014, 0.004], "color": "metal", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, 0, 0.025], "size": [0.062, 0.014, 0.004], "color": "metal", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, -0.016, 0.024], "size": [0.06, 0.014, 0.004], "color": "metal", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, -0.032, 0.022], "size": [0.056, 0.014, 0.004], "color": "metal", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, 0, -0.024], "size": [0.058, 0.08, 0.004], "color": "metal"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.058, 0.012, 0.044], "color": "dark"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.02, 0], "size": [0.07, 0.03, 0.054], "color": "metal"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.036, 0], "size": [0.074, 0.004, 0.058], "color": "trim"}
+      ]
+    },
+    {
+      "id": "A17",
+      "name": "금 비늘 흉갑",
+      "grade": "cash",
+      "note": "금 비늘 + 높은 금 깃 + 벌어진 허리판, 붉은 술",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0.002, 0.004], "size": [0.072, 0.1, 0.05], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.058, 0], "size": [0.058, 0.02, 0.046], "color": "gold"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.03, 0.027], "size": [0.062, 0.014, 0.004], "color": "gold", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, 0.012, 0.028], "size": [0.064, 0.014, 0.004], "color": "main", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, -0.006, 0.028], "size": [0.064, 0.014, 0.004], "color": "gold", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "chest", "pos": [0, -0.024, 0.027], "size": [0.06, 0.014, 0.004], "color": "main", "rot": [-12, 0, 0]},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.062, 0.014, 0.048], "color": "gold"},
+        {"shape": "sphere", "at": "waist", "pos": [0, 0.004, 0.026], "size": [0.018, 0.018, 0.01], "color": "gold"},
+        {"shape": "box", "at": "waist", "pos": [0.03, -0.034, 0.004], "size": [0.006, 0.06, 0.044], "color": "main", "rot": [0, 0, 14], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0.034, -0.034, 0.004], "size": [0.003, 0.064, 0.046], "color": "gold", "rot": [0, 0, 14], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0, -0.034, 0.028], "size": [0.044, 0.06, 0.006], "color": "main", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "waist", "pos": [0, -0.034, 0.031], "size": [0.046, 0.064, 0.002], "color": "gold", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "waist", "pos": [0, -0.034, -0.028], "size": [0.044, 0.06, 0.006], "color": "main", "rot": [12, 0, 0]},
+        {"shape": "sphere", "at": "waist", "pos": [0.02, -0.006, 0.028], "size": [0.012, 0.018, 0.01], "color": "plume", "mirror": true}
+      ]
+    },
+    {
+      "id": "A18",
+      "name": "호랑이 띠 갑옷",
+      "grade": "cash",
+      "note": "허리에 큰 금 호랑이 얼굴 띠쇠 + 붉은 앞자락",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0.002, 0.004], "size": [0.072, 0.1, 0.05], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.03, 0], "size": [0.074, 0.004, 0.052], "color": "gold"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.01, 0], "size": [0.074, 0.004, 0.052], "color": "gold"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, -0.01, 0], "size": [0.074, 0.004, 0.052], "color": "gold"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.054, 0], "size": [0.052, 0.014, 0.042], "color": "gold"},
+        {"shape": "box", "at": "chest", "pos": [0, 0, 0.028], "size": [0.012, 0.1, 0.003], "color": "plume", "rot": [0, 0, -30]},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.066, 0.018, 0.052], "color": "gold"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0.028], "size": [0.03, 0.006, 0.03], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "waist", "pos": [0.006, 0.01, 0.032], "size": [0.006, 0.006, 0.004], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0, -0.002, 0.033], "size": [0.014, 0.004, 0.002], "color": "white"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.026, 0], "size": [0.076, 0.036, 0.058], "color": "main"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.046, 0], "size": [0.084, 0.006, 0.064], "color": "gold"},
+        {"shape": "box", "at": "waist", "pos": [0, -0.056, 0.034], "size": [0.02, 0.04, 0.004], "color": "plume", "rot": [-8, 0, 0]}
+      ]
+    },
+    {
+      "id": "A19",
+      "name": "금테 판갑",
+      "grade": "cash",
+      "note": "금테 두른 가슴판 + 사방으로 벌어진 허리판",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0.002, 0.004], "size": [0.072, 0.1, 0.05], "color": "main"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.006, 0.028], "size": [0.05, 0.064, 0.004], "color": "main"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.006, 0.026], "size": [0.056, 0.07, 0.003], "color": "gold"},
+        {"shape": "box", "at": "chest", "pos": [0, 0.006, 0.031], "size": [0.004, 0.06, 0.002], "color": "gold"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.054, 0], "size": [0.054, 0.016, 0.044], "color": "gold"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.062, 0.014, 0.048], "color": "gold"},
+        {"shape": "box", "at": "waist", "pos": [0.022, -0.034, 0.024], "size": [0.022, 0.056, 0.006], "color": "main", "rot": [-14, 0, 8], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0.022, -0.034, 0.022], "size": [0.026, 0.06, 0.003], "color": "gold", "rot": [-14, 0, 8], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0, -0.036, 0.028], "size": [0.02, 0.06, 0.006], "color": "plume", "rot": [-14, 0, 0]},
+        {"shape": "box", "at": "waist", "pos": [0.034, -0.034, -0.006], "size": [0.006, 0.056, 0.036], "color": "main", "rot": [0, 0, 16], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0, -0.034, -0.026], "size": [0.05, 0.056, 0.006], "color": "main", "rot": [14, 0, 0]},
+        {"shape": "box", "at": "waist", "pos": [0, -0.034, -0.024], "size": [0.054, 0.06, 0.003], "color": "gold", "rot": [14, 0, 0]}
+      ]
+    },
+    {
+      "id": "A20",
+      "name": "장수 산문갑",
+      "grade": "general",
+      "note": "장수 전용: 가슴에 금 산 무늬, 무릎까지 금테 치마, 붉은 앞자락",
+      "pieces": [
+        {"shape": "capsule", "at": "chest", "pos": [0, 0.002, 0.004], "size": [0.074, 0.102, 0.052], "color": "main"},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.06, 0], "size": [0.06, 0.022, 0.048], "color": "gold"},
+        {"shape": "box", "at": "chest", "pos": [0.01, 0.026, 0.029], "size": [0.014, 0.004, 0.003], "color": "gold", "rot": [0, 0, 40], "mirror": true},
+        {"shape": "box", "at": "chest", "pos": [0.01, 0.01, 0.029], "size": [0.014, 0.004, 0.003], "color": "gold", "rot": [0, 0, -40], "mirror": true},
+        {"shape": "box", "at": "chest", "pos": [0.01, -0.006, 0.029], "size": [0.014, 0.004, 0.003], "color": "gold", "rot": [0, 0, 40], "mirror": true},
+        {"shape": "box", "at": "chest", "pos": [0.01, -0.022, 0.029], "size": [0.014, 0.004, 0.003], "color": "gold", "rot": [0, 0, -40], "mirror": true},
+        {"shape": "box", "at": "chest", "pos": [0, 0, 0.03], "size": [0.004, 0.07, 0.002], "color": "gold"},
+        {"shape": "box", "at": "chest", "pos": [0, 0, -0.027], "size": [0.06, 0.08, 0.004], "color": "main"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0], "size": [0.068, 0.018, 0.054], "color": "gold"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, 0.004, 0.03], "size": [0.032, 0.006, 0.032], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "waist", "pos": [0, 0.004, 0.034], "size": [0.012, 0.012, 0.006], "color": "plume"},
+        {"shape": "cone", "at": "waist", "pos": [0, -0.05, 0], "size": [0.098, 0.1, 0.074], "color": "main"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.076, 0], "size": [0.094, 0.005, 0.07], "color": "gold"},
+        {"shape": "cylinder", "at": "waist", "pos": [0, -0.04, 0], "size": [0.078, 0.003, 0.06], "color": "gold"},
+        {"shape": "box", "at": "waist", "pos": [0.024, -0.054, 0.034], "size": [0.012, 0.07, 0.004], "color": "plume", "rot": [-8, 0, 6], "mirror": true},
+        {"shape": "box", "at": "waist", "pos": [0, -0.06, 0.04], "size": [0.024, 0.08, 0.003], "color": "gold", "rot": [-8, 0, 0]}
+      ]
+    },
+    {
       "id": "C01",
       "name": "화살통",
       "grade": "basic",
@@ -281,6 +655,181 @@
         {"shape": "box", "at": "back", "pos": [-0.077, 0.235, -0.016], "size": [0.09, 0.12, 0.004], "color": "team"},
         {"shape": "box", "at": "back", "pos": [-0.077, 0.235, -0.016], "size": [0.096, 0.126, 0.002], "color": "gold"},
         {"shape": "sphere", "at": "back", "pos": [-0.03, 0.305, -0.016], "size": [0.018, 0.018, 0.018], "color": "gold"}
+      ]
+    },
+    {
+      "id": "C07",
+      "name": "봇짐",
+      "grade": "basic",
+      "note": "등에 멘 천 보따리 + 멜끈",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, 0.006, -0.018], "size": [0.05, 0.05, 0.03], "color": "white"},
+        {"shape": "box", "at": "back", "pos": [0, 0.006, -0.034], "size": [0.006, 0.052, 0.003], "color": "dark"},
+        {"shape": "box", "at": "back", "pos": [0, 0.006, -0.034], "size": [0.052, 0.006, 0.003], "color": "dark"},
+        {"shape": "box", "at": "chest", "pos": [0.018, 0.012, 0.02], "size": [0.006, 0.07, 0.003], "color": "dark", "rot": [0, 0, 20], "mirror": true}
+      ]
+    },
+    {
+      "id": "C08",
+      "name": "대나무 화살통",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "cylinder", "at": "back", "pos": [0, -0.004, -0.014], "size": [0.024, 0.09, 0.024], "color": "wood", "rot": [0, 0, 20]},
+        {"shape": "cylinder", "at": "back", "pos": [0, 0.03, -0.014], "size": [0.026, 0.004, 0.026], "color": "trim", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "back", "pos": [-0.02, 0.05, -0.012], "size": [0.003, 0.03, 0.003], "color": "white", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "back", "pos": [-0.012, 0.052, -0.018], "size": [0.003, 0.03, 0.003], "color": "white", "rot": [0, 0, 24]}
+      ]
+    },
+    {
+      "id": "C09",
+      "name": "도롱이",
+      "grade": "basic",
+      "note": "짚으로 엮은 비옷",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.02, -0.01], "size": [0.074, 0.1, 0.008], "color": "wood", "rot": [10, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, 0.014, -0.006], "size": [0.08, 0.04, 0.008], "color": "wood", "rot": [16, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, 0.026, -0.002], "size": [0.066, 0.008, 0.014], "color": "dark"}
+      ]
+    },
+    {
+      "id": "C10",
+      "name": "쌍 화살통",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "cylinder", "at": "back", "pos": [0.008, -0.004, -0.014], "size": [0.024, 0.09, 0.024], "color": "dark", "rot": [0, 0, 20]},
+        {"shape": "cylinder", "at": "back", "pos": [-0.012, -0.008, -0.014], "size": [0.022, 0.08, 0.022], "color": "dark", "rot": [0, 0, 14]},
+        {"shape": "box", "at": "back", "pos": [-0.01, 0.046, -0.014], "size": [0.024, 0.02, 0.012], "color": "plume", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "back", "pos": [-0.026, 0.036, -0.014], "size": [0.022, 0.018, 0.01], "color": "white", "rot": [0, 0, 14]},
+        {"shape": "cylinder", "at": "back", "pos": [0.008, 0.02, -0.014], "size": [0.026, 0.004, 0.026], "color": "trim", "rot": [0, 0, 20]}
+      ]
+    },
+    {
+      "id": "C11",
+      "name": "목 두른 반 망토",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.02, -0.008], "size": [0.074, 0.09, 0.006], "color": "cape", "rot": [10, 0, 0]},
+        {"shape": "capsule", "at": "back", "pos": [0, 0.026, 0.008], "size": [0.026, 0.074, 0.046], "color": "cape", "rot": [0, 0, 90]},
+        {"shape": "box", "at": "back", "pos": [0, -0.064, -0.016], "size": [0.076, 0.006, 0.006], "color": "trim", "rot": [10, 0, 0]}
+      ]
+    },
+    {
+      "id": "C12",
+      "name": "등 장검",
+      "grade": "coin",
+      "note": "등에 비껴 멘 긴 칼",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, 0, -0.006], "size": [0.012, 0.16, 0.006], "color": "dark", "rot": [0, 0, -35]},
+        {"shape": "box", "at": "back", "pos": [-0.048, 0.07, -0.006], "size": [0.026, 0.006, 0.01], "color": "metal", "rot": [0, 0, -35]},
+        {"shape": "box", "at": "back", "pos": [-0.056, 0.082, -0.006], "size": [0.007, 0.024, 0.007], "color": "dark", "rot": [0, 0, -35]},
+        {"shape": "box", "at": "back", "pos": [0.034, -0.05, -0.006], "size": [0.014, 0.01, 0.008], "color": "metal", "rot": [0, 0, -35]}
+      ]
+    },
+    {
+      "id": "C13",
+      "name": "쇠 고리 긴 망토",
+      "grade": "gem",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.07, -0.014], "size": [0.08, 0.19, 0.006], "color": "cape", "rot": [9, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, -0.07, -0.014], "size": [0.086, 0.196, 0.003], "color": "trim", "rot": [9, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, 0.026, -0.004], "size": [0.074, 0.012, 0.014], "color": "metal"},
+        {"shape": "cylinder", "at": "chest", "pos": [0.026, 0.044, 0.02], "size": [0.014, 0.004, 0.014], "color": "metal", "rot": [90, 0, 0], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0, -0.162, -0.028], "size": [0.088, 0.008, 0.006], "color": "metal", "rot": [9, 0, 0]}
+      ]
+    },
+    {
+      "id": "C14",
+      "name": "두 갈래 망토",
+      "grade": "gem",
+      "note": "자락이 둘로 갈라진 긴 망토",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0.02, -0.07, -0.016], "size": [0.038, 0.19, 0.006], "color": "cape", "rot": [10, 0, -4], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.02, -0.07, -0.016], "size": [0.042, 0.196, 0.003], "color": "trim", "rot": [10, 0, -4], "mirror": true},
+        {"shape": "capsule", "at": "back", "pos": [0, 0.026, 0.008], "size": [0.028, 0.076, 0.048], "color": "cape", "rot": [0, 0, 90]},
+        {"shape": "sphere", "at": "chest", "pos": [0, 0.044, 0.024], "size": [0.012, 0.012, 0.008], "color": "metal"}
+      ]
+    },
+    {
+      "id": "C15",
+      "name": "작은 등 깃",
+      "grade": "gem",
+      "note": "짧은 깃대 + 붉은 술",
+      "pieces": [
+        {"shape": "cylinder", "at": "back", "pos": [0, 0.05, -0.014], "size": [0.007, 0.18, 0.007], "color": "wood"},
+        {"shape": "box", "at": "back", "pos": [0.022, 0.11, -0.014], "size": [0.04, 0.05, 0.004], "color": "cape"},
+        {"shape": "box", "at": "back", "pos": [0.022, 0.11, -0.014], "size": [0.044, 0.054, 0.002], "color": "trim"},
+        {"shape": "sphere", "at": "back", "pos": [0, 0.142, -0.014], "size": [0.014, 0.014, 0.014], "color": "plume"},
+        {"shape": "cone", "at": "back", "pos": [0, 0.154, -0.014], "size": [0.008, 0.02, 0.008], "color": "metal"}
+      ]
+    },
+    {
+      "id": "C16",
+      "name": "망토 · 화살통",
+      "grade": "gem",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.04, -0.008], "size": [0.074, 0.13, 0.006], "color": "cape", "rot": [10, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, 0.025, -0.004], "size": [0.07, 0.01, 0.012], "color": "trim"},
+        {"shape": "cylinder", "at": "back", "pos": [-0.008, -0.004, -0.028], "size": [0.026, 0.09, 0.026], "color": "dark", "rot": [0, 0, 20]},
+        {"shape": "cylinder", "at": "back", "pos": [-0.008, 0.024, -0.028], "size": [0.028, 0.004, 0.028], "color": "metal", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "back", "pos": [-0.024, 0.046, -0.028], "size": [0.024, 0.02, 0.012], "color": "plume", "rot": [0, 0, 20]}
+      ]
+    },
+    {
+      "id": "C17",
+      "name": "금테 깃 망토",
+      "grade": "cash",
+      "note": "금테 긴 망토 + 붉은 깃 목도리 + 끝 술",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.08, -0.016], "size": [0.09, 0.21, 0.006], "color": "cape", "rot": [10, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, -0.08, -0.016], "size": [0.096, 0.216, 0.003], "color": "gold", "rot": [10, 0, 0]},
+        {"shape": "capsule", "at": "back", "pos": [0, 0.028, 0.006], "size": [0.032, 0.084, 0.052], "color": "plume", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "chest", "pos": [0.026, 0.044, 0.022], "size": [0.018, 0.005, 0.018], "color": "gold", "rot": [90, 0, 0], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0, -0.18, -0.034], "size": [0.096, 0.012, 0.006], "color": "gold", "rot": [10, 0, 0]},
+        {"shape": "sphere", "at": "back", "pos": [0.03, -0.196, -0.036], "size": [0.012, 0.016, 0.01], "color": "plume", "mirror": true}
+      ]
+    },
+    {
+      "id": "C18",
+      "name": "쌍 등 깃발",
+      "grade": "cash",
+      "note": "V자로 벌린 등 깃발 둘",
+      "pieces": [
+        {"shape": "cylinder", "at": "back", "pos": [0.02, 0.09, -0.016], "size": [0.008, 0.28, 0.008], "color": "wood", "rot": [0, 0, -10], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.058, 0.17, -0.016], "size": [0.046, 0.08, 0.004], "color": "cape", "rot": [0, 0, -10], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.058, 0.17, -0.016], "size": [0.052, 0.086, 0.002], "color": "gold", "rot": [0, 0, -10], "mirror": true},
+        {"shape": "sphere", "at": "back", "pos": [0.044, 0.226, -0.016], "size": [0.014, 0.014, 0.014], "color": "gold", "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.072, 0.122, -0.016], "size": [0.006, 0.02, 0.004], "color": "plume", "rot": [0, 0, -10], "mirror": true}
+      ]
+    },
+    {
+      "id": "C19",
+      "name": "봉황 날개 망토",
+      "grade": "cash",
+      "note": "등 위로 펼친 금 · 붉은 날개 깃",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.07, -0.014], "size": [0.084, 0.19, 0.006], "color": "cape", "rot": [9, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, -0.07, -0.014], "size": [0.09, 0.196, 0.003], "color": "gold", "rot": [9, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0.044, 0.05, -0.012], "size": [0.06, 0.012, 0.004], "color": "gold", "rot": [0, 0, 35], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.05, 0.034, -0.012], "size": [0.06, 0.01, 0.004], "color": "plume", "rot": [0, 0, 25], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.046, 0.018, -0.012], "size": [0.05, 0.01, 0.004], "color": "gold", "rot": [0, 0, 15], "mirror": true},
+        {"shape": "sphere", "at": "back", "pos": [0, 0.03, -0.012], "size": [0.016, 0.016, 0.01], "color": "gold"}
+      ]
+    },
+    {
+      "id": "C20",
+      "name": "장수 호피 망토",
+      "grade": "general",
+      "note": "장수 전용: 줄무늬 긴 망토 + 흰 털 목도리 + 금 고리",
+      "pieces": [
+        {"shape": "box", "at": "back", "pos": [0, -0.08, -0.016], "size": [0.096, 0.22, 0.006], "color": "cape", "rot": [10, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0, -0.08, -0.016], "size": [0.102, 0.226, 0.003], "color": "gold", "rot": [10, 0, 0]},
+        {"shape": "box", "at": "back", "pos": [0.018, -0.03, -0.0112], "size": [0.03, 0.006, 0.002], "color": "dark", "rot": [10, 0, 12], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.018, -0.07, -0.0183], "size": [0.034, 0.006, 0.002], "color": "dark", "rot": [10, 0, -12], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.018, -0.11, -0.0253], "size": [0.03, 0.006, 0.002], "color": "dark", "rot": [10, 0, 12], "mirror": true},
+        {"shape": "box", "at": "back", "pos": [0.018, -0.15, -0.0324], "size": [0.026, 0.006, 0.002], "color": "dark", "rot": [10, 0, -12], "mirror": true},
+        {"shape": "capsule", "at": "back", "pos": [0, 0.028, 0.006], "size": [0.034, 0.088, 0.054], "color": "white", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "chest", "pos": [0, 0.042, 0.026], "size": [0.024, 0.006, 0.024], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "chest", "pos": [0, 0.042, 0.03], "size": [0.01, 0.01, 0.006], "color": "plume"}
       ]
     },
     {
@@ -365,6 +914,187 @@
       ]
     },
     {
+      "id": "S08",
+      "name": "곤봉",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.04, 0], "size": [0.012, 0.1, 0.012], "color": "wood"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.096, 0], "size": [0.02, 0.04, 0.02], "color": "wood"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.004, 0], "size": [0.014, 0.006, 0.014], "color": "dark"}
+      ]
+    },
+    {
+      "id": "S09",
+      "name": "단도",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "box", "at": "rightHand", "pos": [0.004, 0.044, 0], "size": [0.008, 0.06, 0.004], "color": "metal", "rot": [0, 0, -6]},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.012, 0], "size": [0.02, 0.005, 0.01], "color": "dark"},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.002, 0], "size": [0.007, 0.022, 0.007], "color": "dark"}
+      ]
+    },
+    {
+      "id": "S10",
+      "name": "철퇴",
+      "grade": "coin",
+      "note": "쇠 공 머리에 징",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.04, 0], "size": [0.01, 0.11, 0.01], "color": "wood"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.1, 0], "size": [0.03, 0.03, 0.03], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.1, 0], "size": [0.042, 0.006, 0.006], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.1, 0], "size": [0.006, 0.006, 0.042], "color": "metal"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.122, 0], "size": [0.008, 0.016, 0.008], "color": "metal"}
+      ]
+    },
+    {
+      "id": "S11",
+      "name": "넓은 외날 도",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "box", "at": "rightHand", "pos": [0.012, 0.075, 0], "size": [0.018, 0.11, 0.004], "color": "metal", "rot": [0, 0, -6]},
+        {"shape": "box", "at": "rightHand", "pos": [0.006, 0.075, 0], "size": [0.004, 0.108, 0.005], "color": "trim", "rot": [0, 0, -6]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.014, 0], "size": [0.026, 0.005, 0.016], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.004, 0], "size": [0.008, 0.028, 0.008], "color": "dark"}
+      ]
+    },
+    {
+      "id": "S12",
+      "name": "쌍날 도끼",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.04, 0], "size": [0.009, 0.13, 0.009], "color": "wood"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.09, 0.018], "size": [0.006, 0.03, 0.028], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.09, 0.034], "size": [0.004, 0.046, 0.006], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.09, -0.018], "size": [0.006, 0.03, 0.028], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.09, -0.034], "size": [0.004, 0.046, 0.006], "color": "metal"}
+      ]
+    },
+    {
+      "id": "S13",
+      "name": "장검",
+      "grade": "gem",
+      "note": "곧고 긴 양날 칼",
+      "pieces": [
+        {"shape": "box", "at": "rightHand", "pos": [0.008, 0.095, 0], "size": [0.009, 0.16, 0.004], "color": "metal"},
+        {"shape": "cone", "at": "rightHand", "pos": [0.008, 0.182, 0], "size": [0.009, 0.016, 0.004], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0.008, 0.095, 0.0025], "size": [0.002, 0.14, 0.001], "color": "trim"},
+        {"shape": "box", "at": "rightHand", "pos": [0.004, 0.012, 0], "size": [0.034, 0.007, 0.012], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.006, 0], "size": [0.008, 0.032, 0.008], "color": "dark"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, -0.024, 0], "size": [0.012, 0.012, 0.012], "color": "metal"}
+      ]
+    },
+    {
+      "id": "S14",
+      "name": "편곤",
+      "grade": "gem",
+      "note": "자루 끝에 쇠 막대를 사슬로 단 도리깨",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.03, 0], "size": [0.01, 0.09, 0.01], "color": "wood"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.078, 0], "size": [0.012, 0.006, 0.012], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0.006, 0.09, 0], "size": [0.004, 0.016, 0.004], "color": "metal", "rot": [0, 0, -20]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0.024, 0.122, 0], "size": [0.012, 0.06, 0.012], "color": "metal", "rot": [0, 0, -30]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0.038, 0.146, 0], "size": [0.014, 0.006, 0.014], "color": "trim", "rot": [0, 0, -30]}
+      ]
+    },
+    {
+      "id": "S15",
+      "name": "참마도",
+      "grade": "gem",
+      "note": "끝이 휘어진 긴 대도",
+      "pieces": [
+        {"shape": "box", "at": "rightHand", "pos": [0.01, 0.08, 0], "size": [0.014, 0.12, 0.004], "color": "metal", "rot": [0, 0, -4]},
+        {"shape": "box", "at": "rightHand", "pos": [0.022, 0.16, 0], "size": [0.012, 0.05, 0.004], "color": "metal", "rot": [0, 0, -22]},
+        {"shape": "box", "at": "rightHand", "pos": [0.004, 0.08, 0], "size": [0.003, 0.118, 0.005], "color": "dark", "rot": [0, 0, -4]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.014, 0], "size": [0.03, 0.006, 0.018], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.012, 0], "size": [0.008, 0.044, 0.008], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, -0.036, 0], "size": [0.012, 0.006, 0.012], "color": "metal"}
+      ]
+    },
+    {
+      "id": "S16",
+      "name": "쇠 편",
+      "grade": "gem",
+      "note": "마디진 쇠 막대",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.08, 0], "size": [0.012, 0.13, 0.012], "color": "metal"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.05, 0], "size": [0.016, 0.006, 0.016], "color": "metal"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.08, 0], "size": [0.016, 0.006, 0.016], "color": "metal"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.11, 0], "size": [0.016, 0.006, 0.016], "color": "metal"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.152, 0], "size": [0.012, 0.016, 0.012], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.014, 0], "size": [0.026, 0.006, 0.012], "color": "trim"},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.004, 0], "size": [0.008, 0.026, 0.008], "color": "dark"}
+      ]
+    },
+    {
+      "id": "S17",
+      "name": "금장 대도",
+      "grade": "cash",
+      "note": "넓은 날 + 금 등줄 + 날개 코등이 + 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "rightHand", "pos": [0.013, 0.09, 0], "size": [0.02, 0.14, 0.004], "color": "metal", "rot": [0, 0, -6]},
+        {"shape": "box", "at": "rightHand", "pos": [0.005, 0.09, 0], "size": [0.004, 0.142, 0.005], "color": "gold", "rot": [0, 0, -6]},
+        {"shape": "box", "at": "rightHand", "pos": [0.026, 0.164, 0], "size": [0.014, 0.022, 0.004], "color": "metal", "rot": [0, 0, -30]},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.014, 0], "size": [0.044, 0.01, 0.016], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0.018, 0.022, 0], "size": [0.006, 0.016, 0.006], "color": "gold", "rot": [0, 0, -30], "mirror": true},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.006, 0], "size": [0.008, 0.034, 0.008], "color": "dark"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, -0.026, 0], "size": [0.016, 0.016, 0.016], "color": "gold"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0.004, -0.048, 0], "size": [0.01, 0.04, 0.01], "color": "plume"}
+      ]
+    },
+    {
+      "id": "S18",
+      "name": "봉황 도끼",
+      "grade": "cash",
+      "note": "금테 두른 큰 반달 날 + 위로 솟은 창끝",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.06, 0], "size": [0.011, 0.2, 0.011], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.128, 0.03], "size": [0.07, 0.005, 0.064], "color": "metal", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.128, 0.03], "size": [0.076, 0.003, 0.07], "color": "gold", "rot": [0, 0, 90]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.128, -0.02], "size": [0.014, 0.03, 0.006], "color": "gold", "rot": [-90, 0, 0]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.176, 0], "size": [0.012, 0.03, 0.012], "color": "gold"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.156, 0], "size": [0.018, 0.012, 0.018], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.1, 0], "size": [0.022, 0.02, 0.022], "color": "plume"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, -0.03, 0], "size": [0.014, 0.006, 0.014], "color": "gold"}
+      ]
+    },
+    {
+      "id": "S19",
+      "name": "용두 철퇴",
+      "grade": "cash",
+      "note": "가시 돋친 금 머리 + 붉은 술",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.05, 0], "size": [0.011, 0.14, 0.011], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.03, 0], "size": [0.014, 0.006, 0.014], "color": "gold"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.08, 0], "size": [0.014, 0.006, 0.014], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.132, 0], "size": [0.036, 0.04, 0.036], "color": "gold"},
+        {"shape": "cone", "at": "rightHand", "pos": [0.02, 0.132, 0], "size": [0.01, 0.016, 0.01], "color": "gold", "rot": [0, 0, -90], "mirror": true},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.132, 0.02], "size": [0.01, 0.016, 0.01], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.132, -0.02], "size": [0.01, 0.016, 0.01], "color": "gold", "rot": [-90, 0, 0]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.162, 0], "size": [0.012, 0.022, 0.012], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.106, 0], "size": [0.024, 0.016, 0.024], "color": "plume"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0.004, -0.024, 0], "size": [0.01, 0.036, 0.01], "color": "plume"}
+      ]
+    },
+    {
+      "id": "S20",
+      "name": "장수 청룡 대검",
+      "grade": "general",
+      "note": "장수 전용: 넓고 긴 양날 대검, 금 홈 · 금 날개 코등이 · 붉은 술 두 갈래",
+      "pieces": [
+        {"shape": "box", "at": "rightHand", "pos": [0.012, 0.11, 0], "size": [0.022, 0.18, 0.005], "color": "metal"},
+        {"shape": "cone", "at": "rightHand", "pos": [0.012, 0.212, 0], "size": [0.022, 0.026, 0.005], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0.012, 0.11, 0.003], "size": [0.004, 0.16, 0.001], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0.012, 0.11, -0.003], "size": [0.004, 0.16, 0.001], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0.004, 0.016, 0], "size": [0.05, 0.012, 0.018], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0.024, 0.03, 0], "size": [0.008, 0.024, 0.008], "color": "gold", "rot": [0, 0, -35], "mirror": true},
+        {"shape": "sphere", "at": "rightHand", "pos": [0.004, 0.016, 0.01], "size": [0.012, 0.012, 0.006], "color": "trim"},
+        {"shape": "box", "at": "rightHand", "pos": [0, -0.008, 0], "size": [0.009, 0.036, 0.009], "color": "dark"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, -0.03, 0], "size": [0.018, 0.018, 0.018], "color": "gold"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0.004, -0.054, 0], "size": [0.012, 0.044, 0.012], "color": "plume"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0.012, -0.05, 0], "size": [0.008, 0.04, 0.008], "color": "plume", "rot": [0, 0, 20]}
+      ]
+    },
+    {
       "id": "P01",
       "name": "창",
       "grade": "basic",
@@ -432,6 +1162,214 @@
       "pieces": [
         {"shape": "cylinder", "at": "rightHand", "pos": [-0.021, 0.017, 0.088], "size": [0.008, 0.36, 0.008], "color": "wood", "rot": [70, 0, 0]},
         {"shape": "cone", "at": "rightHand", "pos": [-0.021, 0.087, 0.27], "size": [0.014, 0.04, 0.008], "color": "metal", "rot": [70, 0, 0]}
+      ]
+    },
+    {
+      "id": "P07",
+      "name": "죽창",
+      "grade": "basic",
+      "note": "끝을 비스듬히 깎은 대나무 창",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.057, 0], "size": [0.01, 0.48, 0.01], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.322, 0], "size": [0.012, 0.05, 0.008], "color": "wood", "rot": [0, 0, -8]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.1, 0], "size": [0.012, 0.004, 0.012], "color": "trim"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, -0.04, 0], "size": [0.012, 0.004, 0.012], "color": "trim"}
+      ]
+    },
+    {
+      "id": "P08",
+      "name": "갈고리 창",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.067, 0], "size": [0.009, 0.5, 0.009], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.342, 0], "size": [0.016, 0.05, 0.008], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.3, 0.014], "size": [0.004, 0.006, 0.024], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.31, 0.024], "size": [0.004, 0.018, 0.005], "color": "metal"}
+      ]
+    },
+    {
+      "id": "P09",
+      "name": "삼지창",
+      "grade": "coin",
+      "note": "세 갈래 날",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.067, 0], "size": [0.009, 0.5, 0.009], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.35, 0], "size": [0.012, 0.06, 0.006], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.318, 0], "size": [0.05, 0.006, 0.006], "color": "metal"},
+        {"shape": "cone", "at": "rightHand", "pos": [0.022, 0.338, 0], "size": [0.008, 0.034, 0.005], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.31, 0], "size": [0.012, 0.01, 0.012], "color": "trim"}
+      ]
+    },
+    {
+      "id": "P10",
+      "name": "당파",
+      "grade": "coin",
+      "note": "가운데 긴 날, 양옆에 휜 날",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.067, 0], "size": [0.009, 0.5, 0.009], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.36, 0], "size": [0.012, 0.07, 0.006], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0.016, 0.32, 0], "size": [0.03, 0.006, 0.005], "color": "metal", "rot": [0, 0, -15], "mirror": true},
+        {"shape": "box", "at": "rightHand", "pos": [0.03, 0.345, 0], "size": [0.005, 0.044, 0.005], "color": "metal", "rot": [0, 0, 10], "mirror": true},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.312, 0], "size": [0.014, 0.012, 0.014], "color": "metal"}
+      ]
+    },
+    {
+      "id": "P11",
+      "name": "깃발 창",
+      "grade": "coin",
+      "note": "창날 아래 작은 깃발",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.067, 0], "size": [0.009, 0.5, 0.009], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.338, 0], "size": [0.018, 0.05, 0.008], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [-0.026, 0.27, 0], "size": [0.05, 0.05, 0.003], "color": "cape"},
+        {"shape": "box", "at": "rightHand", "pos": [-0.026, 0.27, 0], "size": [0.054, 0.054, 0.0015], "color": "trim"}
+      ]
+    },
+    {
+      "id": "P12",
+      "name": "낭선",
+      "grade": "gem",
+      "note": "가지 붙은 긴 대나무 창",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.097, 0], "size": [0.012, 0.56, 0.012], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.4, 0], "size": [0.016, 0.04, 0.008], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0.014, 0.35, 0], "size": [0.003, 0.03, 0.003], "color": "wood", "rot": [0, 0, -50], "mirror": true},
+        {"shape": "box", "at": "rightHand", "pos": [0.016, 0.32, 0.004], "size": [0.003, 0.034, 0.003], "color": "wood", "rot": [0, 0, -45], "mirror": true},
+        {"shape": "box", "at": "rightHand", "pos": [0.018, 0.29, -0.004], "size": [0.003, 0.038, 0.003], "color": "wood", "rot": [0, 0, -40], "mirror": true},
+        {"shape": "box", "at": "rightHand", "pos": [0.018, 0.26, 0.004], "size": [0.003, 0.038, 0.003], "color": "wood", "rot": [0, 0, -40], "mirror": true},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.33, 0.014], "size": [0.003, 0.034, 0.003], "color": "wood", "rot": [45, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.28, -0.016], "size": [0.003, 0.038, 0.003], "color": "wood", "rot": [-45, 0, 0]}
+      ]
+    },
+    {
+      "id": "P13",
+      "name": "협도",
+      "grade": "gem",
+      "note": "자루 끝에 넓은 외날",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.047, 0], "size": [0.01, 0.46, 0.01], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.282, 0], "size": [0.016, 0.01, 0.016], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.33, 0.006], "size": [0.006, 0.09, 0.022], "color": "metal", "rot": [-6, 0, 0]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.384, 0.01], "size": [0.006, 0.024, 0.016], "color": "metal", "rot": [-14, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.33, -0.006], "size": [0.007, 0.088, 0.004], "color": "trim", "rot": [-6, 0, 0]}
+      ]
+    },
+    {
+      "id": "P14",
+      "name": "부월창",
+      "grade": "gem",
+      "note": "창끝 + 한쪽 도끼날",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.077, 0], "size": [0.009, 0.52, 0.009], "color": "wood"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.362, 0], "size": [0.016, 0.05, 0.008], "color": "metal"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.32, 0.026], "size": [0.05, 0.005, 0.044], "color": "metal", "rot": [0, 0, 90]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.32, -0.014], "size": [0.01, 0.024, 0.005], "color": "metal", "rot": [-90, 0, 0]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.3, 0], "size": [0.014, 0.01, 0.014], "color": "trim"}
+      ]
+    },
+    {
+      "id": "P15",
+      "name": "깃 마상창",
+      "grade": "gem",
+      "note": "말 위에서 겨누는 창, 손 보호 쇠판 + 작은 깃",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [-0.021, 0.017, 0.088], "size": [0.009, 0.36, 0.009], "color": "wood", "rot": [70, 0, 0]},
+        {"shape": "cone", "at": "rightHand", "pos": [-0.021, 0.087, 0.27], "size": [0.016, 0.044, 0.008], "color": "metal", "rot": [70, 0, 0]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [-0.021, 0, 0.04], "size": [0.03, 0.004, 0.03], "color": "metal", "rot": [70, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [-0.021, 0.082, 0.191], "size": [0.003, 0.02, 0.05], "color": "cape", "rot": [70, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [-0.021, 0.082, 0.191], "size": [0.0015, 0.024, 0.054], "color": "trim", "rot": [70, 0, 0]}
+      ]
+    },
+    {
+      "id": "P16",
+      "name": "금장 극",
+      "grade": "cash",
+      "note": "금 테 극 + 붉은 술 두 겹",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.097, 0], "size": [0.011, 0.56, 0.011], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.2, 0], "size": [0.015, 0.008, 0.015], "color": "gold"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, -0.06, 0], "size": [0.015, 0.008, 0.015], "color": "gold"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.42, 0], "size": [0.02, 0.07, 0.008], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.37, 0.024], "size": [0.005, 0.014, 0.046], "color": "metal"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.37, 0.026], "size": [0.006, 0.004, 0.05], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.358, -0.018], "size": [0.005, 0.034, 0.008], "color": "metal", "rot": [30, 0, 0]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.383, 0], "size": [0.018, 0.012, 0.018], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.35, 0], "size": [0.032, 0.026, 0.032], "color": "plume"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.31, -0.008], "size": [0.012, 0.05, 0.012], "color": "plume", "rot": [-10, 0, 0]}
+      ]
+    },
+    {
+      "id": "P17",
+      "name": "봉황 언월도",
+      "grade": "cash",
+      "note": "더 큰 반달 날 + 금 등 + 붉은 술 두 갈래",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.077, 0], "size": [0.012, 0.52, 0.012], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.21, 0], "size": [0.016, 0.008, 0.016], "color": "gold"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, -0.06, 0], "size": [0.016, 0.008, 0.016], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.33, 0], "size": [0.026, 0.024, 0.026], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.4, 0.016], "size": [0.006, 0.14, 0.04], "color": "metal", "rot": [-10, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.4, -0.004], "size": [0.007, 0.14, 0.006], "color": "gold", "rot": [-10, 0, 0]},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.478, 0.026], "size": [0.006, 0.036, 0.024], "color": "metal", "rot": [-25, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [0, 0.36, -0.016], "size": [0.005, 0.03, 0.014], "color": "gold", "rot": [30, 0, 0]},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.306, -0.012], "size": [0.016, 0.05, 0.016], "color": "plume"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.3, 0.008], "size": [0.012, 0.044, 0.012], "color": "plume", "rot": [10, 0, 0]}
+      ]
+    },
+    {
+      "id": "P18",
+      "name": "용 깃발창",
+      "grade": "cash",
+      "note": "창에 길게 늘어진 금테 깃발",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.117, 0], "size": [0.011, 0.6, 0.011], "color": "dark"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.448, 0], "size": [0.018, 0.05, 0.008], "color": "metal"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.416, 0], "size": [0.018, 0.01, 0.018], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [-0.03, 0.39, 0], "size": [0.06, 0.006, 0.006], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [-0.03, 0.31, 0], "size": [0.05, 0.15, 0.003], "color": "cape"},
+        {"shape": "box", "at": "rightHand", "pos": [-0.03, 0.31, 0], "size": [0.056, 0.156, 0.0015], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [-0.03, 0.31, 0.002], "size": [0.02, 0.05, 0.001], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [-0.058, 0.226, 0], "size": [0.012, 0.016, 0.01], "color": "plume"},
+        {"shape": "sphere", "at": "rightHand", "pos": [-0.002, 0.226, 0], "size": [0.012, 0.016, 0.01], "color": "plume"}
+      ]
+    },
+    {
+      "id": "P19",
+      "name": "장수 방천극",
+      "grade": "general",
+      "note": "장수 전용: 양쪽 반달 날 극, 금테 + 큰 붉은 술",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.117, 0], "size": [0.012, 0.6, 0.012], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.24, 0], "size": [0.018, 0.01, 0.018], "color": "gold"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, -0.08, 0], "size": [0.018, 0.01, 0.018], "color": "gold"},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.47, 0], "size": [0.02, 0.08, 0.008], "color": "metal"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.41, 0.032], "size": [0.06, 0.005, 0.05], "color": "metal", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.41, -0.032], "size": [0.06, 0.005, 0.05], "color": "metal", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.41, 0.032], "size": [0.066, 0.003, 0.056], "color": "gold", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.41, -0.032], "size": [0.066, 0.003, 0.056], "color": "gold", "rot": [0, 0, 90]},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.425, 0], "size": [0.02, 0.014, 0.02], "color": "gold"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.37, 0], "size": [0.04, 0.032, 0.04], "color": "plume"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.33, 0.012], "size": [0.012, 0.06, 0.012], "color": "plume", "rot": [12, 0, 0]},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.33, -0.012], "size": [0.012, 0.06, 0.012], "color": "plume", "rot": [-12, 0, 0]}
+      ]
+    },
+    {
+      "id": "P20",
+      "name": "장수 금룡창",
+      "grade": "general",
+      "note": "장수 전용: 금 자루, 용머리에서 나온 창날, 붉은 술 · 흰 끈",
+      "pieces": [
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.127, 0], "size": [0.012, 0.62, 0.012], "color": "gold"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0, 0], "size": [0.016, 0.03, 0.016], "color": "dark"},
+        {"shape": "cylinder", "at": "rightHand", "pos": [0, 0.2, 0], "size": [0.016, 0.03, 0.016], "color": "dark"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.44, 0.006], "size": [0.03, 0.03, 0.04], "color": "gold"},
+        {"shape": "box", "at": "rightHand", "pos": [0.01, 0.452, -0.008], "size": [0.004, 0.024, 0.006], "color": "gold", "rot": [-30, 0, -15], "mirror": true},
+        {"shape": "sphere", "at": "rightHand", "pos": [0.008, 0.446, 0.02], "size": [0.006, 0.006, 0.006], "color": "plume", "mirror": true},
+        {"shape": "cone", "at": "rightHand", "pos": [0, 0.49, 0.004], "size": [0.018, 0.07, 0.008], "color": "metal"},
+        {"shape": "sphere", "at": "rightHand", "pos": [0, 0.41, 0], "size": [0.034, 0.028, 0.034], "color": "plume"},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.37, 0.01], "size": [0.012, 0.06, 0.012], "color": "plume", "rot": [10, 0, 0]},
+        {"shape": "capsule", "at": "rightHand", "pos": [0, 0.37, -0.01], "size": [0.012, 0.06, 0.012], "color": "plume", "rot": [-10, 0, 0]},
+        {"shape": "box", "at": "rightHand", "pos": [0.01, 0.38, 0], "size": [0.004, 0.08, 0.002], "color": "white", "rot": [0, 0, -10], "mirror": true}
       ]
     },
     {
@@ -511,6 +1449,221 @@
       ]
     },
     {
+      "id": "B07",
+      "name": "짧은 활",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.008, 0.04, 0.008], "size": [0.007, 0.08, 0.01], "color": "wood", "rot": [0, 0, -20]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.008, -0.036, 0.008], "size": [0.007, 0.08, 0.01], "color": "wood", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "leftHand", "pos": [0.007, 0.002, 0.008], "size": [0.002, 0.15, 0.002], "color": "white"}
+      ]
+    },
+    {
+      "id": "B08",
+      "name": "대나무 활",
+      "grade": "basic",
+      "note": "길고 곧은 대나무 활",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.06, 0.008], "size": [0.007, 0.12, 0.01], "color": "wood", "rot": [0, 0, -12]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.056, 0.008], "size": [0.007, 0.12, 0.01], "color": "wood", "rot": [0, 0, 12]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.009, 0.018, 0.012], "color": "white"},
+        {"shape": "box", "at": "leftHand", "pos": [0.008, 0.002, 0.008], "size": [0.002, 0.23, 0.002], "color": "white"}
+      ]
+    },
+    {
+      "id": "B09",
+      "name": "사냥 쇠뇌",
+      "grade": "basic",
+      "note": "작은 나무 쇠뇌 (두 손으로 앞에 듦)",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.02, 0.05], "size": [0.014, 0.014, 0.09], "color": "wood"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.024, 0.09], "size": [0.1, 0.007, 0.01], "color": "wood"},
+        {"shape": "box", "at": "leftHand", "pos": [0.036, 0.03, 0.078], "size": [0.002, 0.002, 0.032], "color": "white", "rot": [0, -55, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.088, 0.03, 0.078], "size": [0.002, 0.002, 0.032], "color": "white", "rot": [0, 55, 0]}
+      ]
+    },
+    {
+      "id": "B10",
+      "name": "가죽 감은 활",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.009, 0.052, 0.008], "size": [0.008, 0.1, 0.012], "color": "wood", "rot": [0, 0, -20]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.009, -0.048, 0.008], "size": [0.008, 0.1, 0.012], "color": "wood", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.012, 0.028, 0.014], "color": "dark"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.018, 0.1, 0.008], "size": [0.009, 0.01, 0.013], "color": "dark", "rot": [0, 0, -20]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.018, -0.096, 0.008], "size": [0.009, 0.01, 0.013], "color": "dark", "rot": [0, 0, 20]},
+        {"shape": "box", "at": "leftHand", "pos": [0.008, 0.002, 0.008], "size": [0.002, 0.19, 0.002], "color": "white"}
+      ]
+    },
+    {
+      "id": "B11",
+      "name": "긴 활",
+      "grade": "coin",
+      "note": "키만 한 긴 활",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.01, 0.064, 0.008], "size": [0.008, 0.124, 0.012], "color": "wood", "rot": [0, 0, -18]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.01, -0.06, 0.008], "size": [0.008, 0.124, 0.012], "color": "wood", "rot": [0, 0, 18]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.011, 0.022, 0.013], "color": "trim"},
+        {"shape": "box", "at": "leftHand", "pos": [0.009, 0.002, 0.008], "size": [0.002, 0.24, 0.002], "color": "white"}
+      ]
+    },
+    {
+      "id": "B12",
+      "name": "쇠테 쇠뇌",
+      "grade": "coin",
+      "note": "쇠 테 · 발걸이 달린 쇠뇌",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.02, 0.05], "size": [0.016, 0.016, 0.11], "color": "wood"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.024, 0.1], "size": [0.13, 0.008, 0.012], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [0.03, 0.03, 0.085], "size": [0.002, 0.002, 0.04], "color": "white", "rot": [0, -55, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.094, 0.03, 0.085], "size": [0.002, 0.002, 0.04], "color": "white", "rot": [0, 55, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.006, 0.03], "size": [0.006, 0.016, 0.006], "color": "dark"},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0.062, 0.024, 0.114], "size": [0.02, 0.004, 0.02], "color": "metal", "rot": [90, 0, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.021, 0.07], "size": [0.018, 0.004, 0.02], "color": "metal"}
+      ]
+    },
+    {
+      "id": "B13",
+      "name": "쇠 장식 각궁",
+      "grade": "gem",
+      "note": "쇠 고자 · 쇠 띠 각궁",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, 0.039, 0.008], "size": [0.008, 0.07, 0.012], "color": "dark", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, -0.035, 0.008], "size": [0.008, 0.07, 0.012], "color": "dark", "rot": [0, 0, 25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.082, 0.008], "size": [0.007, 0.03, 0.01], "color": "metal", "rot": [0, 0, 25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.078, 0.008], "size": [0.007, 0.03, 0.01], "color": "metal", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.01, 0.022, 0.012], "color": "trim"},
+        {"shape": "box", "at": "leftHand", "pos": [0.004, 0.002, 0.008], "size": [0.002, 0.17, 0.002], "color": "white"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.016, 0.044, 0.008], "size": [0.009, 0.006, 0.013], "color": "metal", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.016, -0.04, 0.008], "size": [0.009, 0.006, 0.013], "color": "metal", "rot": [0, 0, 25]}
+      ]
+    },
+    {
+      "id": "B14",
+      "name": "큰 쇠뇌",
+      "grade": "gem",
+      "note": "넓은 쇠 활대 + 발걸이",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.02, 0.055], "size": [0.02, 0.02, 0.13], "color": "wood"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.026, 0.114], "size": [0.16, 0.01, 0.014], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [0.022, 0.032, 0.096], "size": [0.002, 0.002, 0.05], "color": "white", "rot": [0, -55, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.102, 0.032, 0.096], "size": [0.002, 0.002, 0.05], "color": "white", "rot": [0, 55, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0.062, 0.026, 0.13], "size": [0.026, 0.005, 0.026], "color": "metal", "rot": [90, 0, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.006, 0.03], "size": [0.008, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.032, 0.06], "size": [0.004, 0.004, 0.1], "color": "metal"}
+      ]
+    },
+    {
+      "id": "B15",
+      "name": "흑각궁",
+      "grade": "gem",
+      "note": "검은 뿔 활 + 흰 고자",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, 0.041, 0.008], "size": [0.009, 0.074, 0.012], "color": "dark", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, -0.037, 0.008], "size": [0.009, 0.074, 0.012], "color": "dark", "rot": [0, 0, 25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.086, 0.008], "size": [0.008, 0.034, 0.01], "color": "white", "rot": [0, 0, 25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.082, 0.008], "size": [0.008, 0.034, 0.01], "color": "white", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.01, 0.022, 0.012], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [0.004, 0.002, 0.008], "size": [0.002, 0.18, 0.002], "color": "white"},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0, 0.016, 0.008], "size": [0.014, 0.004, 0.014], "color": "metal"},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0, -0.012, 0.008], "size": [0.014, 0.004, 0.014], "color": "metal"}
+      ]
+    },
+    {
+      "id": "B16",
+      "name": "봉황 금 활",
+      "grade": "cash",
+      "note": "손잡이에 금 날개, 양 끝 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, 0.042, 0.008], "size": [0.009, 0.076, 0.012], "color": "dark", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, -0.038, 0.008], "size": [0.009, 0.076, 0.012], "color": "dark", "rot": [0, 0, 25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.088, 0.008], "size": [0.008, 0.036, 0.01], "color": "gold", "rot": [0, 0, 25]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.084, 0.008], "size": [0.008, 0.036, 0.01], "color": "gold", "rot": [0, 0, -25]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.01, 0.022, 0.012], "color": "plume"},
+        {"shape": "box", "at": "leftHand", "pos": [0.004, 0.002, 0.008], "size": [0.002, 0.18, 0.002], "color": "white"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.018, 0.012, 0.008], "size": [0.03, 0.006, 0.004], "color": "gold", "rot": [0, 0, 35]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.018, -0.008, 0.008], "size": [0.03, 0.006, 0.004], "color": "gold", "rot": [0, 0, -35]},
+        {"shape": "capsule", "at": "leftHand", "pos": [-0.004, 0.104, 0.008], "size": [0.008, 0.03, 0.008], "color": "plume", "rot": [0, 0, 20]},
+        {"shape": "capsule", "at": "leftHand", "pos": [-0.004, -0.1, 0.008], "size": [0.008, 0.03, 0.008], "color": "plume", "rot": [0, 0, -20]}
+      ]
+    },
+    {
+      "id": "B17",
+      "name": "금장 연노",
+      "grade": "cash",
+      "note": "금 화살 상자 연노 + 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.02, 0.05], "size": [0.018, 0.018, 0.11], "color": "wood"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.044, 0.06], "size": [0.018, 0.034, 0.054], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.024, 0.1], "size": [0.13, 0.009, 0.012], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.03, 0.04], "size": [0.004, 0.02, 0.06], "color": "dark", "rot": [30, 0, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.03, 0.03, 0.085], "size": [0.002, 0.002, 0.04], "color": "white", "rot": [0, -55, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.094, 0.03, 0.085], "size": [0.002, 0.002, 0.04], "color": "white", "rot": [0, 55, 0]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.062, 0.066, 0.06], "size": [0.016, 0.014, 0.016], "color": "plume"},
+        {"shape": "capsule", "at": "leftHand", "pos": [0.004, 0.018, 0.1], "size": [0.008, 0.028, 0.008], "color": "plume"},
+        {"shape": "capsule", "at": "leftHand", "pos": [0.12, 0.018, 0.1], "size": [0.008, 0.028, 0.008], "color": "plume"}
+      ]
+    },
+    {
+      "id": "B18",
+      "name": "용뿔 활",
+      "grade": "cash",
+      "note": "크게 휜 활, 금 용뿔 끝",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, 0.045, 0.008], "size": [0.01, 0.082, 0.012], "color": "trim", "rot": [0, 0, -28]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, -0.041, 0.008], "size": [0.01, 0.082, 0.012], "color": "trim", "rot": [0, 0, 28]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.094, 0.008], "size": [0.009, 0.03, 0.01], "color": "gold", "rot": [0, 0, 28]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.09, 0.008], "size": [0.009, 0.03, 0.01], "color": "gold", "rot": [0, 0, -28]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.012, 0.022, 0.012], "color": "plume"},
+        {"shape": "box", "at": "leftHand", "pos": [0.004, 0.002, 0.008], "size": [0.002, 0.2, 0.002], "color": "white"},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.006, 0.118, 0.008], "size": [0.012, 0.024, 0.012], "color": "gold", "rot": [0, 0, 40]},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.006, -0.114, 0.008], "size": [0.012, 0.024, 0.012], "color": "gold", "rot": [0, 0, 140]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0, 0.016, 0.008], "size": [0.016, 0.004, 0.016], "color": "gold"},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0, -0.012, 0.008], "size": [0.016, 0.004, 0.016], "color": "gold"},
+        {"shape": "capsule", "at": "leftHand", "pos": [-0.002, -0.024, 0.016], "size": [0.008, 0.034, 0.008], "color": "plume"}
+      ]
+    },
+    {
+      "id": "B19",
+      "name": "장수 금장 쇠뇌",
+      "grade": "general",
+      "note": "장수 전용: 넓은 금 활대 · 금 고리 · 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.02, 0.055], "size": [0.022, 0.02, 0.13], "color": "trim"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.02, 0.055], "size": [0.024, 0.006, 0.134], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.026, 0.114], "size": [0.17, 0.011, 0.014], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [0.018, 0.032, 0.096], "size": [0.002, 0.002, 0.054], "color": "white", "rot": [0, -55, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [0.106, 0.032, 0.096], "size": [0.002, 0.002, 0.054], "color": "white", "rot": [0, 55, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [0.062, 0.026, 0.13], "size": [0.03, 0.006, 0.03], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.062, 0.026, 0.134], "size": [0.012, 0.012, 0.008], "color": "plume"},
+        {"shape": "box", "at": "leftHand", "pos": [0.062, 0.006, 0.03], "size": [0.008, 0.02, 0.008], "color": "dark"},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.022, 0.026, 0.114], "size": [0.01, 0.02, 0.01], "color": "gold", "rot": [0, 0, 90]},
+        {"shape": "cone", "at": "leftHand", "pos": [0.146, 0.026, 0.114], "size": [0.01, 0.02, 0.01], "color": "gold", "rot": [0, 0, -90]},
+        {"shape": "capsule", "at": "leftHand", "pos": [-0.014, 0.008, 0.114], "size": [0.008, 0.03, 0.008], "color": "plume"},
+        {"shape": "capsule", "at": "leftHand", "pos": [0.138, 0.008, 0.114], "size": [0.008, 0.03, 0.008], "color": "plume"}
+      ]
+    },
+    {
+      "id": "B20",
+      "name": "장수 흑룡 활",
+      "grade": "general",
+      "note": "장수 전용: 큰 검은 활, 금 고자 · 금 띠, 붉은 술 셋",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, 0.048, 0.008], "size": [0.011, 0.088, 0.012], "color": "dark", "rot": [0, 0, -27]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.012, -0.044, 0.008], "size": [0.011, 0.088, 0.012], "color": "dark", "rot": [0, 0, 27]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.1, 0.008], "size": [0.01, 0.04, 0.01], "color": "gold", "rot": [0, 0, 27]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.096, 0.008], "size": [0.01, 0.04, 0.01], "color": "gold", "rot": [0, 0, -27]},
+        {"shape": "box", "at": "leftHand", "pos": [0, 0.002, 0.008], "size": [0.012, 0.022, 0.012], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [0.004, 0.002, 0.008], "size": [0.002, 0.22, 0.002], "color": "white"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.02, 0.05, 0.008], "size": [0.011, 0.008, 0.014], "color": "gold", "rot": [0, 0, -27]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.02, -0.046, 0.008], "size": [0.011, 0.008, 0.014], "color": "gold", "rot": [0, 0, 27]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0, 0.002, 0.016], "size": [0.012, 0.012, 0.008], "color": "plume"},
+        {"shape": "capsule", "at": "leftHand", "pos": [-0.004, 0.12, 0.008], "size": [0.009, 0.036, 0.009], "color": "plume", "rot": [0, 0, 20]},
+        {"shape": "capsule", "at": "leftHand", "pos": [-0.004, -0.116, 0.008], "size": [0.009, 0.036, 0.009], "color": "plume", "rot": [0, 0, -20]},
+        {"shape": "capsule", "at": "leftHand", "pos": [0.002, -0.03, 0.016], "size": [0.008, 0.04, 0.008], "color": "plume"}
+      ]
+    },
+    {
       "id": "D01",
       "name": "둥근 나무 방패",
       "grade": "basic",
@@ -580,6 +1733,205 @@
         {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.146, 0.006, 0.146], "color": "gold", "rot": [90, 0, 0]},
         {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.026], "size": [0.08, 0.003, 0.08], "color": "trim", "rot": [90, 0, 0]},
         {"shape": "sphere", "at": "leftHand", "pos": [-0.004, 0.017, 0.031], "size": [0.04, 0.04, 0.018], "color": "gold"}
+      ]
+    },
+    {
+      "id": "D07",
+      "name": "등패",
+      "grade": "basic",
+      "note": "등나무로 엮은 둥근 방패",
+      "pieces": [
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.02], "size": [0.11, 0.008, 0.11], "color": "wood", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.024], "size": [0.08, 0.002, 0.08], "color": "trim", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.026], "size": [0.044, 0.002, 0.044], "color": "trim", "rot": [90, 0, 0]}
+      ]
+    },
+    {
+      "id": "D08",
+      "name": "가죽 방패",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.012, 0.02], "size": [0.09, 0.11, 0.008], "color": "dark"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.012, 0.025], "size": [0.006, 0.1, 0.002], "color": "trim"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.012, 0.025], "size": [0.08, 0.006, 0.002], "color": "trim"}
+      ]
+    },
+    {
+      "id": "D09",
+      "name": "작은 원패",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.02], "size": [0.085, 0.008, 0.085], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.025], "size": [0.022, 0.004, 0.022], "color": "metal", "rot": [90, 0, 0]}
+      ]
+    },
+    {
+      "id": "D10",
+      "name": "쇠징 네모 방패",
+      "grade": "coin",
+      "note": "네 귀에 쇠징",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.012, 0.02], "size": [0.1, 0.12, 0.01], "color": "shield"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.012, 0.02], "size": [0.112, 0.132, 0.006], "color": "trim"},
+        {"shape": "box", "at": "leftHand", "pos": [0.032, 0.056, 0.026], "size": [0.008, 0.008, 0.004], "color": "metal", "mirror": true},
+        {"shape": "box", "at": "leftHand", "pos": [0.032, -0.032, 0.026], "size": [0.008, 0.008, 0.004], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.012, 0.026], "size": [0.024, 0.004, 0.024], "color": "metal", "rot": [90, 0, 0]}
+      ]
+    },
+    {
+      "id": "D11",
+      "name": "가죽 테 원패",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.02], "size": [0.114, 0.008, 0.114], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.02], "size": [0.124, 0.005, 0.124], "color": "dark", "rot": [90, 0, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.017, 0.025], "size": [0.012, 0.1, 0.002], "color": "dark"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.017, 0.025], "size": [0.1, 0.012, 0.002], "color": "dark"},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.026], "size": [0.024, 0.004, 0.024], "color": "metal", "rot": [90, 0, 0]}
+      ]
+    },
+    {
+      "id": "D12",
+      "name": "쇠테 긴 방패",
+      "grade": "gem",
+      "note": "쇠 테 · 쇠 띠 · 가운데 쇠 뿔",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.012, 0.022], "size": [0.1, 0.21, 0.012], "color": "shield"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.012, 0.022], "size": [0.112, 0.222, 0.006], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.012, 0.029], "size": [0.04, 0.06, 0.004], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.07, 0.029], "size": [0.09, 0.008, 0.003], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.094, 0.029], "size": [0.09, 0.008, 0.003], "color": "metal"},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.006, -0.012, 0.038], "size": [0.014, 0.018, 0.014], "color": "metal", "rot": [90, 0, 0]}
+      ]
+    },
+    {
+      "id": "D13",
+      "name": "거북등 방패",
+      "grade": "gem",
+      "note": "앞으로 볼록한 둥근 방패",
+      "pieces": [
+        {"shape": "dome", "at": "leftHand", "pos": [-0.004, 0.017, 0.026], "size": [0.116, 0.026, 0.116], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.016], "size": [0.126, 0.006, 0.126], "color": "metal", "rot": [90, 0, 0]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.017, 0.036], "size": [0.04, 0.004, 0.006], "color": "trim", "rot": [0, 0, 60]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.017, 0.036], "size": [0.04, 0.004, 0.006], "color": "trim", "rot": [0, 0, -60]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.017, 0.036], "size": [0.04, 0.004, 0.006], "color": "trim"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.004, 0.017, 0.04], "size": [0.02, 0.02, 0.01], "color": "metal"}
+      ]
+    },
+    {
+      "id": "D14",
+      "name": "쇠 띠 방패",
+      "grade": "gem",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.008, 0.021], "size": [0.104, 0.14, 0.012], "color": "shield"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.008, 0.021], "size": [0.116, 0.152, 0.006], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.05, 0.028], "size": [0.104, 0.01, 0.003], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, 0.008, 0.028], "size": [0.104, 0.01, 0.003], "color": "metal"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, -0.034, 0.028], "size": [0.104, 0.01, 0.003], "color": "metal"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.004, 0.008, 0.031], "size": [0.026, 0.026, 0.012], "color": "metal"}
+      ]
+    },
+    {
+      "id": "D15",
+      "name": "뿔 원패",
+      "grade": "gem",
+      "note": "가운데 긴 쇠 뿔",
+      "pieces": [
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.12, 0.01, 0.12], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.134, 0.006, 0.134], "color": "metal", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.027], "size": [0.044, 0.004, 0.044], "color": "metal", "rot": [90, 0, 0]},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.004, 0.017, 0.042], "size": [0.022, 0.034, 0.022], "color": "metal", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.038, 0.017, 0.027], "size": [0.008, 0.008, 0.004], "color": "metal", "mirror": true},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.004, 0.059, 0.027], "size": [0.008, 0.008, 0.004], "color": "metal"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.004, -0.025, 0.027], "size": [0.008, 0.008, 0.004], "color": "metal"}
+      ]
+    },
+    {
+      "id": "D16",
+      "name": "금 호두 원패",
+      "grade": "cash",
+      "note": "금테 큰 원패에 호랑이 얼굴, 금 귀",
+      "pieces": [
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.13, 0.01, 0.13], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.144, 0.006, 0.144], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.016, 0.037, 0.028], "size": [0.024, 0.018, 0.008], "color": "white", "mirror": true},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.016, 0.037, 0.032], "size": [0.01, 0.01, 0.004], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "leftHand", "pos": [0.016, 0.055, 0.028], "size": [0.03, 0.008, 0.004], "color": "gold", "rot": [0, 0, -15], "mirror": true},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, -0.007, 0.028], "size": [0.05, 0.016, 0.004], "color": "white"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, -0.007, 0.031], "size": [0.05, 0.003, 0.002], "color": "dark"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.004, 0.017, 0.03], "size": [0.018, 0.014, 0.008], "color": "trim"},
+        {"shape": "box", "at": "leftHand", "pos": [0.046, 0.067, 0.026], "size": [0.02, 0.014, 0.004], "color": "gold", "rot": [0, 0, 45], "mirror": true}
+      ]
+    },
+    {
+      "id": "D17",
+      "name": "봉황 긴 방패",
+      "grade": "cash",
+      "note": "위에 금 날개 · 볏, 아래 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.012, 0.022], "size": [0.104, 0.21, 0.012], "color": "shield"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.012, 0.022], "size": [0.116, 0.222, 0.006], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [0.03, 0.1, 0.024], "size": [0.05, 0.012, 0.006], "color": "gold", "rot": [0, 0, 30]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.042, 0.1, 0.024], "size": [0.05, 0.012, 0.006], "color": "gold", "rot": [0, 0, -30]},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.006, 0.12, 0.024], "size": [0.02, 0.03, 0.006], "color": "gold"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.006, 0.02, 0.03], "size": [0.03, 0.03, 0.01], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.04, 0.03], "size": [0.006, 0.08, 0.003], "color": "gold"},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.03, -0.124, 0.024], "size": [0.012, 0.018, 0.01], "color": "plume"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.042, -0.124, 0.024], "size": [0.012, 0.018, 0.01], "color": "plume"}
+      ]
+    },
+    {
+      "id": "D18",
+      "name": "금 비늘 연 방패",
+      "grade": "cash",
+      "note": "아래가 뾰족한 금테 방패 + 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.02, 0.022], "size": [0.1, 0.11, 0.012], "color": "shield"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.05, 0.022], "size": [0.072, 0.072, 0.012], "color": "shield", "rot": [0, 0, 45]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.02, 0.022], "size": [0.112, 0.122, 0.006], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.05, 0.022], "size": [0.082, 0.082, 0.006], "color": "gold", "rot": [0, 0, 45]},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.05, 0.029], "size": [0.08, 0.01, 0.003], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.02, 0.029], "size": [0.08, 0.01, 0.003], "color": "gold"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.006, -0.02, 0.031], "size": [0.026, 0.026, 0.012], "color": "gold"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.006, -0.108, 0.024], "size": [0.014, 0.022, 0.01], "color": "plume"}
+      ]
+    },
+    {
+      "id": "D19",
+      "name": "장수 귀면 방패",
+      "grade": "general",
+      "note": "장수 전용: 금테 큰 원패에 귀신 얼굴 · 금 뿔",
+      "pieces": [
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.14, 0.01, 0.14], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.004, 0.017, 0.021], "size": [0.156, 0.007, 0.156], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.018, 0.033, 0.029], "size": [0.026, 0.02, 0.008], "color": "gold", "mirror": true},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.018, 0.033, 0.033], "size": [0.01, 0.01, 0.004], "color": "plume", "mirror": true},
+        {"shape": "box", "at": "leftHand", "pos": [0.018, 0.053, 0.029], "size": [0.034, 0.008, 0.004], "color": "dark", "rot": [0, 0, -20], "mirror": true},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.004, 0.013, 0.03], "size": [0.02, 0.018, 0.01], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.004, -0.015, 0.028], "size": [0.06, 0.02, 0.004], "color": "dark"},
+        {"shape": "cone", "at": "leftHand", "pos": [0.008, -0.009, 0.031], "size": [0.008, 0.014, 0.003], "color": "white", "rot": [0, 0, 180], "mirror": true},
+        {"shape": "cone", "at": "leftHand", "pos": [0.026, 0.085, 0.024], "size": [0.014, 0.04, 0.008], "color": "gold", "rot": [0, 0, -25], "mirror": true}
+      ]
+    },
+    {
+      "id": "D20",
+      "name": "장수 금 사자 방패",
+      "grade": "general",
+      "note": "장수 전용: 금 갈기 사자 얼굴 긴 방패, 금 뿔 · 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.01, 0.022], "size": [0.114, 0.22, 0.012], "color": "shield"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.01, 0.022], "size": [0.128, 0.234, 0.007], "color": "gold"},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.006, 0.03, 0.029], "size": [0.07, 0.004, 0.07], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "cylinder", "at": "leftHand", "pos": [-0.006, 0.03, 0.031], "size": [0.05, 0.003, 0.05], "color": "shield", "rot": [90, 0, 0]},
+        {"shape": "sphere", "at": "leftHand", "pos": [0.006, 0.04, 0.034], "size": [0.014, 0.012, 0.006], "color": "gold"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.018, 0.04, 0.034], "size": [0.014, 0.012, 0.006], "color": "gold"},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.006, 0.026, 0.035], "size": [0.012, 0.012, 0.008], "color": "gold"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, 0.014, 0.034], "size": [0.03, 0.008, 0.003], "color": "plume"},
+        {"shape": "box", "at": "leftHand", "pos": [-0.006, -0.07, 0.029], "size": [0.09, 0.008, 0.003], "color": "gold"},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.006, -0.1, 0.036], "size": [0.012, 0.02, 0.012], "color": "gold", "rot": [90, 0, 0]},
+        {"shape": "cone", "at": "leftHand", "pos": [0.05, 0.1, 0.022], "size": [0.012, 0.03, 0.008], "color": "gold", "rot": [0, 0, -30]},
+        {"shape": "cone", "at": "leftHand", "pos": [-0.062, 0.1, 0.022], "size": [0.012, 0.03, 0.008], "color": "gold", "rot": [0, 0, 30]},
+        {"shape": "sphere", "at": "leftHand", "pos": [-0.006, -0.136, 0.024], "size": [0.016, 0.022, 0.01], "color": "plume"}
       ]
     },
     {
@@ -696,6 +2048,291 @@
         {"shape": "box", "at": "horseBody", "pos": [0.043, -0.012, 0], "size": [0.006, 0.085, 0.22], "color": "white", "rot": [0, 0, 6], "mirror": true},
         {"shape": "box", "at": "horseBody", "pos": [0.047, -0.055, 0], "size": [0.007, 0.01, 0.222], "color": "gold", "rot": [0, 0, 6], "mirror": true},
         {"shape": "box", "at": "horseRump", "pos": [0, 0.044, -0.01], "size": [0.07, 0.006, 0.07], "color": "main"}
+      ]
+    },
+    {
+      "id": "M07",
+      "name": "나무 안장",
+      "grade": "basic",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "wood"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "wood"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "wood"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "dark", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "wood", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]}
+      ]
+    },
+    {
+      "id": "M08",
+      "name": "고삐 안장",
+      "grade": "basic",
+      "note": "굴레 + 목까지 오는 고삐",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "horseNeck", "pos": [0.022, 0.01, 0], "size": [0.003, 0.003, 0.1], "color": "dark", "rot": [35, 0, 0], "mirror": true}
+      ]
+    },
+    {
+      "id": "M09",
+      "name": "모포 안장",
+      "grade": "basic",
+      "note": "안장 밑 흰 모포",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "saddle", "pos": [0, -0.001, -0.004], "size": [0.084, 0.004, 0.1], "color": "white"},
+        {"shape": "box", "at": "saddle", "pos": [0.043, -0.018, -0.004], "size": [0.004, 0.034, 0.1], "color": "white", "rot": [0, 0, 8], "mirror": true}
+      ]
+    },
+    {
+      "id": "M10",
+      "name": "가죽 덮개",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "horseBody", "pos": [0.042, -0.008, 0], "size": [0.006, 0.07, 0.2], "color": "dark", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.045, -0.044, 0], "size": [0.007, 0.008, 0.202], "color": "trim", "rot": [0, 0, 6], "mirror": true}
+      ]
+    },
+    {
+      "id": "M11",
+      "name": "목 덮개",
+      "grade": "coin",
+      "note": "목을 덮는 천 + 붉은 술",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "capsule", "at": "horseNeck", "pos": [0, 0.002, 0], "size": [0.05, 0.1, 0.056], "color": "cape", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, -0.04, -0.03], "size": [0.056, 0.006, 0.062], "color": "trim", "rot": [35, 0, 0]},
+        {"shape": "sphere", "at": "horseNeck", "pos": [0, 0.034, 0.03], "size": [0.014, 0.016, 0.014], "color": "plume"}
+      ]
+    },
+    {
+      "id": "M12",
+      "name": "엉덩이 덮개",
+      "grade": "coin",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "horseRump", "pos": [0, 0.044, -0.004], "size": [0.084, 0.006, 0.08], "color": "main"},
+        {"shape": "box", "at": "horseRump", "pos": [0.043, 0.012, -0.004], "size": [0.006, 0.06, 0.08], "color": "main", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "box", "at": "horseRump", "pos": [0.046, -0.02, -0.004], "size": [0.007, 0.008, 0.082], "color": "trim", "rot": [0, 0, 6], "mirror": true}
+      ]
+    },
+    {
+      "id": "M13",
+      "name": "쇠 머리 가리개",
+      "grade": "gem",
+      "note": "쇠 얼굴 가리개 + 이마 뿔, 가죽 옆 갑",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.004, 0], "size": [0.04, 0.062, 0.047], "color": "metal", "rot": [115, 0, 0]},
+        {"shape": "cone", "at": "horseHead", "pos": [0, 0.03, -0.012], "size": [0.01, 0.024, 0.01], "color": "metal", "rot": [-20, 0, 0]},
+        {"shape": "box", "at": "horseBody", "pos": [0.042, -0.006, 0], "size": [0.006, 0.07, 0.2], "color": "dark", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.045, -0.006, 0], "size": [0.007, 0.004, 0.202], "color": "metal", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.045, -0.04, 0], "size": [0.007, 0.008, 0.202], "color": "metal", "rot": [0, 0, 6], "mirror": true}
+      ]
+    },
+    {
+      "id": "M14",
+      "name": "찰갑 마갑",
+      "grade": "gem",
+      "note": "목 · 옆구리를 쇠 · 천 띠로 번갈아",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, 0.02, 0.016], "size": [0.054, 0.024, 0.058], "color": "metal", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, -0.004, 0], "size": [0.056, 0.024, 0.06], "color": "main", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, -0.028, -0.016], "size": [0.058, 0.024, 0.062], "color": "metal", "rot": [35, 0, 0]},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, 0.01, 0.005], "size": [0.006, 0.02, 0.19], "color": "metal", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, -0.012, 0.005], "size": [0.006, 0.02, 0.19], "color": "main", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, -0.034, 0.005], "size": [0.006, 0.02, 0.19], "color": "metal", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.004, 0], "size": [0.04, 0.062, 0.047], "color": "main", "rot": [115, 0, 0]}
+      ]
+    },
+    {
+      "id": "M15",
+      "name": "가슴 판 마갑",
+      "grade": "gem",
+      "note": "가슴에 큰 쇠판 + 목 · 옆 덮개",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "dark", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "horseChest", "pos": [0, -0.004, 0.04], "size": [0.076, 0.07, 0.008], "color": "metal", "rot": [-10, 0, 0]},
+        {"shape": "box", "at": "horseChest", "pos": [0, -0.004, 0.045], "size": [0.006, 0.066, 0.003], "color": "trim", "rot": [-10, 0, 0]},
+        {"shape": "capsule", "at": "horseNeck", "pos": [0, 0, 0], "size": [0.052, 0.1, 0.058], "color": "main", "rot": [35, 0, 0]},
+        {"shape": "box", "at": "horseBody", "pos": [0.042, -0.006, 0], "size": [0.006, 0.07, 0.2], "color": "main", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.045, -0.042, 0], "size": [0.007, 0.008, 0.202], "color": "metal", "rot": [0, 0, 6], "mirror": true}
+      ]
+    },
+    {
+      "id": "M16",
+      "name": "비늘 마갑",
+      "grade": "gem",
+      "note": "온몸을 덮는 쇠 비늘",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "metal", "mirror": true},
+        {"shape": "capsule", "at": "horseNeck", "pos": [0, 0, 0], "size": [0.052, 0.1, 0.058], "color": "metal", "rot": [35, 0, 0]},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.004, 0], "size": [0.04, 0.062, 0.047], "color": "metal", "rot": [115, 0, 0]},
+        {"shape": "sphere", "at": "horseRump", "pos": [0, 0.004, -0.004], "size": [0.088, 0.096, 0.09], "color": "metal"},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, 0.004, 0.005], "size": [0.006, 0.03, 0.19], "color": "metal", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, -0.026, 0.005], "size": [0.006, 0.03, 0.19], "color": "metal", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, -0.011, 0.005], "size": [0.006, 0.003, 0.19], "color": "trim", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.041, -0.041, 0.005], "size": [0.006, 0.003, 0.19], "color": "trim", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "cone", "at": "horseHead", "pos": [0, 0.03, -0.012], "size": [0.01, 0.022, 0.01], "color": "metal", "rot": [-20, 0, 0]}
+      ]
+    },
+    {
+      "id": "M17",
+      "name": "금 비늘 마갑",
+      "grade": "cash",
+      "note": "금 띠 마갑 + 금 머리 가리개 + 깃",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "gold", "mirror": true},
+        {"shape": "capsule", "at": "horseNeck", "pos": [0, 0, 0], "size": [0.054, 0.104, 0.06], "color": "main", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, 0.018, 0.012], "size": [0.058, 0.004, 0.064], "color": "gold", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, -0.012, -0.01], "size": [0.058, 0.004, 0.064], "color": "gold", "rot": [35, 0, 0]},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.004, 0], "size": [0.041, 0.064, 0.048], "color": "gold", "rot": [115, 0, 0]},
+        {"shape": "sphere", "at": "horseRump", "pos": [0, 0.004, -0.004], "size": [0.09, 0.098, 0.092], "color": "main"},
+        {"shape": "box", "at": "horseBody", "pos": [0.042, -0.01, 0.005], "size": [0.006, 0.064, 0.19], "color": "main", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.045, 0.008, 0.005], "size": [0.007, 0.004, 0.192], "color": "gold", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.046, -0.044, 0.005], "size": [0.007, 0.008, 0.192], "color": "gold", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.05, -0.034], "size": [0.02, 0.06, 0.026], "color": "plume", "rot": [-20, 0, 0]},
+        {"shape": "sphere", "at": "horseChest", "pos": [0, -0.03, 0.04], "size": [0.018, 0.024, 0.018], "color": "plume"}
+      ]
+    },
+    {
+      "id": "M18",
+      "name": "붉은 술 마구",
+      "grade": "cash",
+      "note": "가슴 · 목 · 머리 · 꼬리 위 붉은 술 줄",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "gold", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "gold", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "gold", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "horseChest", "pos": [0, 0, 0.038], "size": [0.074, 0.008, 0.008], "color": "gold"},
+        {"shape": "sphere", "at": "horseChest", "pos": [0.026, -0.02, 0.04], "size": [0.016, 0.024, 0.016], "color": "plume", "mirror": true},
+        {"shape": "sphere", "at": "horseChest", "pos": [0.009, -0.024, 0.042], "size": [0.016, 0.024, 0.016], "color": "plume", "mirror": true},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, 0.03, 0.026], "size": [0.03, 0.004, 0.034], "color": "gold", "rot": [35, 0, 0]},
+        {"shape": "sphere", "at": "horseNeck", "pos": [0, 0.022, 0.044], "size": [0.02, 0.026, 0.02], "color": "plume"},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.044, -0.03], "size": [0.02, 0.06, 0.024], "color": "plume", "rot": [-20, 0, 0]},
+        {"shape": "box", "at": "horseRump", "pos": [0, 0.044, -0.01], "size": [0.04, 0.006, 0.05], "color": "gold"},
+        {"shape": "sphere", "at": "horseRump", "pos": [0, 0.03, -0.05], "size": [0.016, 0.03, 0.016], "color": "plume"}
+      ]
+    },
+    {
+      "id": "M19",
+      "name": "봉황 안장",
+      "grade": "cash",
+      "note": "높은 금 뒷안장에 날개 장식 + 긴 덮개",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "gold", "mirror": true},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, -0.012, 0.03], "size": [0.04, 0.008, 0.044], "color": "gold", "rot": [115, 0, 0]},
+        {"shape": "cylinder", "at": "horseHead", "pos": [0, 0.012, -0.018], "size": [0.044, 0.008, 0.046], "color": "gold", "rot": [115, 0, 0]},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.034, -0.04], "size": [0.056, 0.036, 0.006], "color": "gold", "rot": [-12, 0, 0]},
+        {"shape": "box", "at": "saddle", "pos": [0.034, 0.04, -0.044], "size": [0.03, 0.01, 0.004], "color": "gold", "rot": [0, 20, 35], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.036, 0.024, -0.044], "size": [0.03, 0.008, 0.004], "color": "plume", "rot": [0, 20, 20], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.043, -0.012, 0], "size": [0.006, 0.085, 0.22], "color": "main", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.047, -0.055, 0], "size": [0.007, 0.01, 0.222], "color": "gold", "rot": [0, 0, 6], "mirror": true},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.044, -0.03], "size": [0.018, 0.05, 0.024], "color": "plume", "rot": [-20, 0, 0]}
+      ]
+    },
+    {
+      "id": "M20",
+      "name": "장수 호랑이 마갑",
+      "grade": "general",
+      "note": "장수 전용: 금 호랑이 머리 가리개 (뿔 · 붉은 눈), 줄무늬 마갑, 깃 셋",
+      "pieces": [
+        {"shape": "box", "at": "saddle", "pos": [0, 0.005, 0], "size": [0.062, 0.014, 0.075], "color": "dark"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, 0.034], "size": [0.05, 0.018, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0, 0.016, -0.036], "size": [0.054, 0.02, 0.008], "color": "gold"},
+        {"shape": "box", "at": "saddle", "pos": [0.04, -0.026, 0], "size": [0.004, 0.05, 0.09], "color": "main", "rot": [0, 0, 12], "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.042, 0.03], "size": [0.003, 0.07, 0.006], "color": "dark", "mirror": true},
+        {"shape": "box", "at": "saddle", "pos": [0.048, -0.078, 0.03], "size": [0.014, 0.004, 0.014], "color": "gold", "mirror": true},
+        {"shape": "capsule", "at": "horseNeck", "pos": [0, 0, 0], "size": [0.056, 0.106, 0.062], "color": "main", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, 0.02, 0.014], "size": [0.06, 0.005, 0.066], "color": "gold", "rot": [35, 0, 0]},
+        {"shape": "cylinder", "at": "horseNeck", "pos": [0, -0.014, -0.01], "size": [0.06, 0.005, 0.066], "color": "gold", "rot": [35, 0, 0]},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.004, 0], "size": [0.042, 0.066, 0.05], "color": "gold", "rot": [115, 0, 0]},
+        {"shape": "sphere", "at": "horseHead", "pos": [0.02, 0.014, 0.006], "size": [0.01, 0.008, 0.006], "color": "plume", "mirror": true},
+        {"shape": "cone", "at": "horseHead", "pos": [0.012, 0.04, -0.016], "size": [0.01, 0.03, 0.01], "color": "gold", "rot": [-20, 0, -15], "mirror": true},
+        {"shape": "sphere", "at": "horseRump", "pos": [0, 0.004, -0.004], "size": [0.092, 0.1, 0.094], "color": "main"},
+        {"shape": "box", "at": "horseBody", "pos": [0.043, -0.012, 0.005], "size": [0.006, 0.066, 0.19], "color": "main", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.047, -0.048, 0.005], "size": [0.007, 0.008, 0.192], "color": "gold", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.047, 0, 0.03], "size": [0.007, 0.006, 0.03], "color": "dark", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "box", "at": "horseBody", "pos": [0.047, 0, -0.03], "size": [0.007, 0.006, 0.03], "color": "dark", "rot": [0, 0, 8], "mirror": true},
+        {"shape": "capsule", "at": "horseHead", "pos": [0, 0.056, -0.034], "size": [0.022, 0.07, 0.026], "color": "plume", "rot": [-20, 0, 0]},
+        {"shape": "capsule", "at": "horseRump", "pos": [0, 0.05, -0.02], "size": [0.014, 0.05, 0.014], "color": "plume", "rot": [-40, 0, 0]},
+        {"shape": "sphere", "at": "horseChest", "pos": [0, -0.032, 0.04], "size": [0.02, 0.026, 0.02], "color": "plume"}
       ]
     }
   ],
