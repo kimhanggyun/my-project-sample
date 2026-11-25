@@ -25,6 +25,8 @@ namespace Game.Unity.Battle3D
         public bool Mounted;
         /// <summary>사람 병종 (보병 · 창병 · 궁병 · 기병 · 정찰병 · 공병 계열). 아니면 (투석기 · 배) 부품을 쓰지 않음.</summary>
         public bool Person;
+        /// <summary>계열 (infantry · spearman · archer · cavalry · scout · engineer) — 세트의 계열별 무기 ("infantry.right" …).</summary>
+        public string Line;
         /// <summary>장수 (크게, 장수 기본 말 색).</summary>
         public bool General;
         /// <summary>총대장 (군기를 더 붙임).</summary>
@@ -38,7 +40,7 @@ namespace Game.Unity.Battle3D
         /// <summary>같은 차림 하나 더 (꾸미기 탭이 부품 하나만 바꿔 그려 볼 때).</summary>
         public SoldierLook Clone()
         {
-            var o = new SoldierLook { Mounted = Mounted, General = General, Commander = Commander, Person = Person, Library = Library };
+            var o = new SoldierLook { Mounted = Mounted, General = General, Commander = Commander, Person = Person, Line = Line, Library = Library };
             foreach (var kv in Wear) o.Wear[kv.Key] = kv.Value;
             foreach (var kv in Colors) o.Colors[kv.Key] = kv.Value;
             return o;
@@ -84,6 +86,7 @@ namespace Game.Unity.Battle3D
             var defs = ctx?.Defs;
             var look = new SoldierLook { Library = LookPartLibrary.Of(ctx?.Data) };
             string line = defs != null && troopId != null ? CosmeticService.LineOf(defs, troopId) : null;
+            look.Line = line;
             look.Mounted = line == "cavalry" || troopId == "cavalry";
             look.Person = line != null || (troopId != null && look.Library.Troops.ContainsKey(troopId));
             var lib = look.Library;
@@ -170,6 +173,11 @@ namespace Game.Unity.Battle3D
                         break;
                     case "armor": Upgrade(LookPartLibrary.SlotArmor, first); break;
                     case "back": if (Of(LookPartLibrary.SlotBack) == null) Set(LookPartLibrary.SlotBack, first); break; // 화살통은 지킴
+                    default:
+                        // 계열별 부위 "계열.부위" = 번호 ("-" = 비움): 그 계열이면 등급과 상관없이 그대로 (2026-11-25 상품 세트 — 보병 장검 · 방패, 궁병 활 · 화살통, 창병 창)
+                        int dot = kv.Key.IndexOf('.');
+                        if (dot > 0 && Line != null && kv.Key.Substring(0, dot) == Line) Set(kv.Key.Substring(dot + 1), v);
+                        break;
                 }
             }
         }

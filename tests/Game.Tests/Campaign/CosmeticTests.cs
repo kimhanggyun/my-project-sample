@@ -18,7 +18,7 @@ namespace Game.Tests.Campaign
             var svc = Svc();
             Assert.Empty(svc.Validate());
             var goldShop = svc.Items.Where(i => i.PriceGold != null).Select(i => i.Id);
-            Assert.Equal(new[] { "armor_brown", "horse_navy" }, goldShop); // 첫 목록 (엽전). 보상 · 결제 치장은 R-111
+            Assert.Equal(new[] { "armor_brown", "horse_navy", "armor_coin_white", "armor_coin_black", "armor_coin_gold", "armor_coin_red" }, goldShop); // 첫 목록 (엽전) + 상품 세트 샘플 (R-150, 2026-11-25). 보상 · 결제 치장은 R-111
             Assert.Equal("infantry", CosmeticService.LineOf(Kit.D, "guard"));
             Assert.Equal("spearman", CosmeticService.LineOf(Kit.D, "pikeWall"));
             Assert.Equal("cavalry", CosmeticService.LineOf(Kit.D, "ironCavalry"));
