@@ -921,6 +921,41 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>캡처 투어: 스킬 쓰기 (화면 조작과 같은 규칙 길).</summary>
+        /// <summary>
+        /// 캡처 투어 (R-152 머리 위 상태 표시): 부대마다 상태를 걸어 둠 — 우리 부대 차례로 사기 충만 · 공격 강화 · 방어 강화,
+        /// 적 부대 차례로 혼란 · 사기 저하 + 이탈(패닉) · 강행군.
+        /// </summary>
+        public void MarksForTour()
+        {
+            int until = _battle.Tick + 2000;
+            var allies = new System.Collections.Generic.List<CrowdArmy>(_battle.TeamArmies(CrowdBattle.Ally));
+            var enemies = new System.Collections.Generic.List<CrowdArmy>(_battle.TeamArmies(CrowdBattle.Enemy));
+            if (allies.Count > 0) allies[0].InspiredUntil = until;
+            if (allies.Count > 1) allies[1].AttackBuffUntil = until;
+            if (allies.Count > 2) allies[2].FortifyUntil = until;
+            if (enemies.Count > 0) enemies[0].ConfusedUntil = until;
+            if (enemies.Count > 1)
+            {
+                enemies[1].Morale = Fix.FromInt(45);
+                int n = 0;
+                foreach (var s in enemies[1].Soldiers) if (!s.IsGeneral && s.Alive && n++ < 6) s.Deserting = true;
+            }
+            if (enemies.Count > 2) enemies[2].MarchUntil = until;
+        }
+
+        /// <summary>캡처 투어: 그 편의 index번째 부대 가운데로 카메라 (패닉은 이탈자 쪽).</summary>
+        public void FocusArmyIndexForTour(int team, int index, float distance, bool deserters = false)
+        {
+            var list = new System.Collections.Generic.List<CrowdArmy>(_battle.TeamArmies(team));
+            if (index >= list.Count) return;
+            Vector3 sum = Vector3.zero;
+            int n = 0;
+            foreach (var s in list[index].Soldiers)
+                if (s.Alive && !s.IsGeneral && (!deserters || s.Deserting)) { sum += _field.ToWorld(s.Pos); n++; }
+            if (n > 0) _field.Rig.LookAt(sum / n);
+            _field.Rig.SetDistance(distance);
+        }
+
         public bool SkillForTour(string place, string skill, float x = -1f, float y = -1f)
         {
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))

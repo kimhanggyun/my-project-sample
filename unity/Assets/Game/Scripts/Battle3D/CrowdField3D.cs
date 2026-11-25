@@ -37,6 +37,12 @@ namespace Game.Unity.Battle3D
         public System.Func<CrowdArmy, SoldierLook> GeneralLookFor;
         private readonly Dictionary<int, SoldierLook> _generalLooks = new Dictionary<int, SoldierLook>();
         private readonly Dictionary<string, InstanceBatch> _horseLegBatches = new Dictionary<string, InstanceBatch>();
+        /// <summary>병사 머리 위 상태 표시 (R-152): 표시 × (기본 색 · 깜박 색).</summary>
+        private readonly InstanceBatch[] _markBatches = new InstanceBatch[MarkIcons.Count * 2];
+        /// <summary>표시를 그리는 가장 먼 카메라 거리 (더 멀면 점 무더기가 되어 끔), 표시를 띄우는 병사 몫 (패닉은 모두).</summary>
+        private const float MarkMaxDistance = 44f;
+        private const int MarkEvery = 3;
+        private const float MarkScale = 1.25f;
         private readonly Dictionary<int, SoldierLook> _armyLooks = new Dictionary<int, SoldierLook>();
         private readonly Dictionary<string, InstanceBatch> _lookBatches = new Dictionary<string, InstanceBatch>();
         private readonly Dictionary<string, InstanceBatch> _legBatches = new Dictionary<string, InstanceBatch>();
@@ -331,6 +337,7 @@ namespace Game.Unity.Battle3D
                     if (hit >= 0f && hit < 0.4f) bodyRot = bodyRot * Quaternion.Euler(-22f * Mathf.Sin(hit / 0.4f * Mathf.PI), 0f, 0f);
                 }
                 p.y = climbing ? p.y : standY;
+                if (!s.IsGeneral) AddMark(s, p, _yaw[i], _battle.Armies[s.Army].Troop.Mounted, now);
                 if (s.IsGeneral)
                 {
                     // 말: 다리 넷을 따로 — 앞 둘 · 뒤 둘이 번갈아 (달리는 말), 몸은 걸음에 맞춰 앞뒤로 살짝 출렁 (위아래로 튀지 않음)
@@ -496,6 +503,34 @@ namespace Game.Unity.Battle3D
             if (_lookBatches.TryGetValue(key, out var b)) return b;
             b = LookBatch(LookMeshes.Body(look, whole), look, s.Team, false, GeneralModelScale);
             _lookBatches[key] = b;
+            return b;
+        }
+
+        /// <summary>
+        /// 병사 머리 위 상태 표시 (R-152, 2026-11-25 사용자): 보통이면 없음, 상태가 있으면 MarkEvery명 중 하나만 (패닉은 모두), 카메라가 멀면 끔.
+        /// 모양 · 애니메이션은 <see cref="MarkIcons"/>.
+        /// </summary>
+        private void AddMark(CrowdSoldier s, Vector3 p, float yaw, bool mounted, float now)
+        {
+            int mark = _battle.MarkOf(s);
+            if (mark == CrowdBattle.Marks.None || Rig.Distance > MarkMaxDistance) return;
+            if (mark != CrowdBattle.Marks.Panic && s.Id % MarkEvery != 0) return;
+            var head = p + Vector3.up * ((mounted ? 0.58f : 0.46f) * ModelScale);
+            var m = MarkIcons.Pose(mark, head, Rig.Camera.transform.rotation, yaw, now, s.Id * 0.137f, MarkScale, out bool alt);
+            MarkBatch(mark, alt).Matrices.Add(m);
+        }
+
+        private InstanceBatch MarkBatch(int mark, bool alt)
+        {
+            int k = mark * 2 + (alt ? 1 : 0);
+            if (_markBatches[k] != null) return _markBatches[k];
+            var (main, second) = MarkIcons.ColorsOf(mark);
+            var mat = Own(NewMaterial(alt ? second : main));
+            mat.enableInstancing = true;
+            if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", (alt ? second : main) * 0.6f); } // 그늘에서도 또렷하게
+            var b = new InstanceBatch(MarkIcons.Of(mark), new[] { mat }, Matrix4x4.identity);
+            _markBatches[k] = b;
+            _allBatches.Add(b);
             return b;
         }
 

@@ -95,14 +95,21 @@ namespace Game.Battle.Model.Crowd
                         var me = a.Centroid();
                         Fix reach2 = Rules.SkillContactRange * Rules.SkillContactRange;
                         foreach (var o in Armies)
-                            if (o.Team != a.Team && Standing(o) && Vec.DistanceSquared(o.Centroid(), me) <= reach2) LoseMorale(o, e.Fix("amount"));
+                            if (o.Team != a.Team && Standing(o) && Vec.DistanceSquared(o.Centroid(), me) <= reach2)
+                            {
+                                LoseMorale(o, e.Fix("amount"));
+                                o.ConfusedUntil = Tick + Ticks(Rules.ConfuseSeconds); // 함성 혼란 (R-152)
+                            }
                         break;
                     case "morale":
                         Fix r2 = e.Fix("allyRadius") * e.Fix("allyRadius");
                         var c = a.Centroid();
                         foreach (var o in Armies)
                             if (o.Team == a.Team && !o.Routed && Standing(o) && (o == a || Vec.DistanceSquared(o.Centroid(), c) <= r2))
+                            {
                                 o.Morale = Fix.Min(Rules.MoraleStart, o.Morale + e.Fix("amount"));
+                                o.InspiredUntil = Tick + Ticks(Rules.InspireSeconds); // 사기 충만 (R-152)
+                            }
                         break;
                     case "fortify":
                         a.DefenseBuffPp = e.Fix("defensePp");
