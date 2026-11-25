@@ -617,6 +617,27 @@ namespace Game.Unity.Boot
                 sdf.FocusGateForTour(18f);
                 yield return Shot("48d_siege_defend_gate", null, 0.3f);
             }
+            // 출격 (R-153): 지키는 쪽은 자기 성문을 지나감 — 기병 [출격], 성문은 닫힌 채
+            {
+                var su = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 0, Troop = "cavalry" },
+                };
+                var se = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                {
+                    new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Troop = "infantry", Commander = true },
+                };
+                var sso = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = su, EnemyUnits = se, AllyAdvance = false, EnemyAdvance = false, Seed = 41,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_siege", true) }, startNow: true);
+                yield return Shot("48e_sortie_open", () => sso, 0.5f);
+                sso.SelectForTour("middle_left");
+                yield return Shot("48f_sortie_commands", null, 0.3f);
+                sso.SiegeForTour("middle_left", "sortie");
+                sso.StepForTour(500);
+                sso.FocusGateForTour(26f);
+                yield return Shot("48g_sortie_outside", null, 0.3f);
+            }
             // 병사꾸미기 · 장수꾸미기 탭 (R-149 · R-150, 개발용): 부위 칸마다 번호 붙은 부품 → 샘플전투2 우리 편 · 장수 (투어가 바꾼 개발용 고르기는 끝나면 되돌림)
             {
                 string keep = Game.Unity.Battle3D.DevLooks.Snapshot();
