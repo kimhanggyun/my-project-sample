@@ -155,6 +155,17 @@ namespace Game.Tests
                     if (!Regex.IsMatch(first, "^[A-Z][0-9]{2,3}$")) continue; // 옛 모양 이름 · 색 이름
                     Ref(parts, first, letters, id + ".look." + key);
                 }
+                // 계열별 부위 "계열.부위" = 번호 또는 "-" (2026-11-25 상품 세트)
+                foreach (var p in look.Properties())
+                {
+                    int dot = p.Name.IndexOf('.');
+                    if (dot < 0) continue;
+                    string line = p.Name.Substring(0, dot), slot = p.Name.Substring(dot + 1), v = (string)p.Value;
+                    Assert.Contains(line, new[] { "infantry", "spearman", "archer", "cavalry", "scout", "engineer" });
+                    var letters = new Dictionary<string, string> { ["hat"] = "H", ["armor"] = "A", ["back"] = "C", ["right"] = "SP", ["left"] = "BD", ["tack"] = "M" };
+                    Assert.True(letters.ContainsKey(slot), id + ".look." + p.Name + ": 모르는 부위");
+                    if (v != "-") Ref(parts, v, letters[slot], id + ".look." + p.Name);
+                }
             }
         }
     }

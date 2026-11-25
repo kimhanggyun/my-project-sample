@@ -162,6 +162,158 @@
           "defaultOff": true
         }
       }
+    },
+    {
+      "id": "armor_coin_white",
+      "kind": "armor",
+      "nameKey": "cos.armor_coin_white",
+      "look": {
+        "body": "white",
+        "hat": "H04:white",
+        "cape": "white",
+        "plume": "white",
+        "shield": "white",
+        "armor": "A03",
+        "infantry.right": "S13",
+        "infantry.left": "D06",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gold": 1000 } }
+    },
+    {
+      "id": "armor_coin_black",
+      "kind": "armor",
+      "nameKey": "cos.armor_coin_black",
+      "look": {
+        "body": "black",
+        "hat": "H04:black",
+        "cape": "black",
+        "plume": "black",
+        "shield": "black",
+        "armor": "A03",
+        "infantry.right": "S13",
+        "infantry.left": "D06",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gold": 1000 } }
+    },
+    {
+      "id": "armor_coin_gold",
+      "kind": "armor",
+      "nameKey": "cos.armor_coin_gold",
+      "look": {
+        "body": "gold",
+        "hat": "H04:gold",
+        "cape": "gold",
+        "plume": "gold",
+        "shield": "gold",
+        "armor": "A03",
+        "infantry.right": "S13",
+        "infantry.left": "D06",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gold": 1000 } }
+    },
+    {
+      "id": "armor_coin_red",
+      "kind": "armor",
+      "nameKey": "cos.armor_coin_red",
+      "look": {
+        "body": "red",
+        "hat": "H04:red",
+        "cape": "red",
+        "plume": "red",
+        "shield": "red",
+        "armor": "A03",
+        "infantry.right": "S13",
+        "infantry.left": "D06",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gold": 1000 } }
+    },
+    {
+      "id": "armor_gem_white",
+      "kind": "armor",
+      "nameKey": "cos.armor_gem_white",
+      "look": {
+        "body": "white",
+        "hat": "H18:white",
+        "cape": "white",
+        "plume": "white",
+        "shield": "white",
+        "armor": "A20",
+        "infantry.right": "S20",
+        "infantry.left": "D13",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gem": 300 } }
+    },
+    {
+      "id": "armor_gem_black",
+      "kind": "armor",
+      "nameKey": "cos.armor_gem_black",
+      "look": {
+        "body": "black",
+        "hat": "H18:black",
+        "cape": "black",
+        "plume": "black",
+        "shield": "black",
+        "armor": "A20",
+        "infantry.right": "S20",
+        "infantry.left": "D13",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gem": 300 } }
+    },
+    {
+      "id": "armor_gem_gold",
+      "kind": "armor",
+      "nameKey": "cos.armor_gem_gold",
+      "look": {
+        "body": "gold",
+        "hat": "H18:gold",
+        "cape": "gold",
+        "plume": "gold",
+        "shield": "gold",
+        "armor": "A20",
+        "infantry.right": "S20",
+        "infantry.left": "D13",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gem": 300 } }
+    },
+    {
+      "id": "armor_gem_red",
+      "kind": "armor",
+      "nameKey": "cos.armor_gem_red",
+      "look": {
+        "body": "red",
+        "hat": "H18:red",
+        "cape": "red",
+        "plume": "red",
+        "shield": "red",
+        "armor": "A20",
+        "infantry.right": "S20",
+        "infantry.left": "D13",
+        "archer.left": "B20",
+        "archer.back": "C10",
+        "spearman.right": "P20"
+      },
+      "obtain": { "shop": { "gem": 300 } }
     }
   ]
 }

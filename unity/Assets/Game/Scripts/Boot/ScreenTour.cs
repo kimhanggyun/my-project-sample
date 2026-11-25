@@ -25,6 +25,9 @@ namespace Game.Unity.Boot
 
         private GameContext Ctx => _app.Context;
 
+        /// <summary>예전 전투 (16 대결 ~ 20b 결과) 장면도 찍음. 기본 끔 (2026-11-25 사용자 "이전 샘플전투는 캡처할 필요 없음, 시간만 오래 걸림").</summary>
+        public static bool IncludeOldBattle = false;
+
         public IEnumerator Run()
         {
             Directory.CreateDirectory(_folder);
@@ -83,8 +86,8 @@ namespace Game.Unity.Boot
             ReplayListScreen.Tab = "mine";
 
             // 전투: 세이브는 그대로 두고 출진 준비만 해서 몇 초 돌린 화면
-            var plan = Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = FirstStep(), Seed = 5 });
-            if (plan.Ok)
+            var plan = IncludeOldBattle ? Ctx.Flow.Prepare(Ctx.State, new SortieRequest { StepId = FirstStep(), Seed = 5 }) : null;
+            if (plan != null && plan.Ok)
             {
                 if (plan.Setup.Contests.Count > 0) yield return Shot("16_contest", () => new ContestScreen(plan, 0), 0f);
                 yield return Shot("17_dialogue", () => new DialogueScreen(plan, "dialogue." + plan.Step.Id + ".start"), 0f);
@@ -616,6 +619,16 @@ namespace Game.Unity.Boot
                     LooksTabView.ShowForTour("infantry", null, "set", null);
                     yield return Shot("50_slooks_set_" + set, () => new MainScreen("looks"), 0.6f);
                 }
+                // 상품 세트 샘플 (2026-11-25): 엽전 · 금괴 × 흰 · 검은 · 황금 · 붉은 — 보병 전부, 궁병 · 창병은 흰색
+                foreach (var tier in new[] { "coin", "gem" })
+                    foreach (var col in new[] { "white", "black", "gold", "red" })
+                        foreach (var troop in col == "white" ? new[] { "infantry", "archer", "spearman" } : new[] { "infantry" })
+                        {
+                            Game.Unity.Battle3D.DevLooks.Restore("");
+                            LooksTabView.PickForTour(troop, "armor_" + tier + "_" + col);
+                            LooksTabView.ShowForTour(troop, null, "set", null);
+                            yield return Shot("50c_shopset_" + tier + "_" + col + "_" + troop, () => new MainScreen("looks"), 0.6f);
+                        }
                 Game.Unity.Battle3D.DevLooks.Restore("");
                 foreach (var preset in LooksTabView.Presets)
                     foreach (var cat in new[] { "H", "A", "C", "S", "P", "M" })
