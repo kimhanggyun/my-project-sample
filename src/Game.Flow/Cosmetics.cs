@@ -199,6 +199,25 @@ namespace Game.Flow
             return true;
         }
 
+        /// <summary>
+        /// 가진 세트 목록 (2026-11-25 사용자 "산 세트는 갖고 있어 언제든 입고, 여러 개면 목록"): 그 계열 · 종류에서 가진 것, 데이터 차례.
+        /// 하나 사면 그 세트를 입을 수 있는 모든 계열의 목록에 나온다.
+        /// </summary>
+        public List<CosmeticDef> OwnedFor(CampaignState s, string line, string kind)
+        {
+            var list = new List<CosmeticDef>();
+            foreach (var d in _order) if (d.Kind == kind && CanWear(d, line) && Owns(s, d.Id)) list.Add(d);
+            return list;
+        }
+
+        /// <summary>아직 안 가진 것 중 보이는 것 (꾸미기 "더 얻기"), 데이터 차례.</summary>
+        public List<CosmeticDef> NotOwnedFor(CampaignState s, string line, string kind)
+        {
+            var list = new List<CosmeticDef>();
+            foreach (var d in _order) if (d.Kind == kind && CanWear(d, line) && !Owns(s, d.Id) && Visible(s, d)) list.Add(d);
+            return list;
+        }
+
         /// <summary>그 계열이 입은 것 (없으면 null = 기본).</summary>
         public static string Worn(CampaignState s, string line, string kind)
         {

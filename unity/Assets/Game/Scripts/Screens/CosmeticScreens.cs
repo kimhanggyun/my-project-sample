@@ -46,8 +46,13 @@ namespace Game.Unity.Screens
             string looking = (showArmor == wornArmor && showHorse == wornHorse) ? T("ui.cos.now") : T("ui.cos.trying");
             Ui.Label(stage, looking, 24, TextAnchor.MiddleCenter, Palette.TextDim);
 
-            Section(body, svc, CosmeticKinds.Armor, T("ui.cos.armor"), wornArmor, showArmor, showHorse);
-            if (mounted) Section(body, svc, CosmeticKinds.Horse, T("ui.cos.horse"), wornHorse, showArmor, showHorse);
+            Ui.Label(stage, T("ui.cos.wearing", wornArmor == null ? T("ui.cos.default") : T(svc.Find(wornArmor)?.NameKey ?? "ui.cos.default")), 22, TextAnchor.MiddleCenter, Palette.TextDim);
+
+            // 가진 세트 목록 · 더 얻기 (2026-11-25 사용자 "산 세트는 갖고 있어 언제든 입고, 여러 개면 목록")
+            Grid(body, svc, CosmeticKinds.Armor, T("ui.cos.ownedArmor", svc.OwnedFor(Ctx.State, _line, CosmeticKinds.Armor).Count), true, wornArmor, showArmor, showHorse);
+            if (mounted) Grid(body, svc, CosmeticKinds.Horse, T("ui.cos.ownedHorse", svc.OwnedFor(Ctx.State, _line, CosmeticKinds.Horse).Count), true, wornHorse, showArmor, showHorse);
+            Grid(body, svc, CosmeticKinds.Armor, T("ui.cos.moreArmor"), false, wornArmor, showArmor, showHorse);
+            if (mounted) Grid(body, svc, CosmeticKinds.Horse, T("ui.cos.moreHorse"), false, wornHorse, showArmor, showHorse);
         }
 
         /// <summary>입어 보기 상태로 열기 (캡처 · 상점에서 "입어 보기").</summary>
@@ -80,14 +85,20 @@ namespace Game.Unity.Screens
             return bg;
         }
 
-        private void Section(RectTransform body, CosmeticService svc, string kind, string title, string worn, string showArmor, string showHorse)
+        /// <summary>세트 칸 격자 (셋씩 한 줄): owned = 기본 + 가진 것 ([입기] · 입음), 아니면 안 가진 것 ([사고 입기] · 얻는 길).</summary>
+        private void Grid(RectTransform body, CosmeticService svc, string kind, string title, bool owned, string worn, string showArmor, string showHorse)
         {
-            var card = Ui.Card(body, "Section_" + kind, 16, 8);
+            var list = owned ? svc.OwnedFor(Ctx.State, _line, kind) : svc.NotOwnedFor(Ctx.State, _line, kind);
+            if (!owned && list.Count == 0) return;
+            var card = Ui.Card(body, "Section_" + kind + (owned ? "_owned" : "_more"), 16, 8);
             Ui.Label(card, title, 30).fontStyle = FontStyle.Bold;
-            var row = Ui.HScrollRow(card, "Cells", 330, 12, 4);
-            Cell(row, svc, kind, null, worn, showArmor, showHorse);
-            foreach (var d in svc.Items)
-                if (d.Kind == kind && CosmeticService.CanWear(d, _line) && svc.Visible(Ctx.State, d)) Cell(row, svc, kind, d, worn, showArmor, showHorse);
+            if (owned && list.Count == 0) Ui.Label(card, T("ui.cos.ownedNone"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            RectTransform row = null;
+            int n = 0;
+            void Next() { if (n++ % 3 == 0) row = Ui.Row(card, "Cells", 400, 12); }
+            if (owned) { Next(); Cell(row, svc, kind, null, worn, showArmor, showHorse); }
+            foreach (var d in list) { Next(); Cell(row, svc, kind, d, worn, showArmor, showHorse); }
+            for (int i = n % 3; i > 0 && i < 3; i++) Ui.Size(Ui.Rect(row, "Empty"), 400, flexibleWidth: 1);
         }
 
         private void Cell(RectTransform row, CosmeticService svc, string kind, CosmeticDef d, string worn, string showArmor, string showHorse)
@@ -97,15 +108,16 @@ namespace Game.Unity.Screens
             bool owned = id == null || CosmeticService.Owns(Ctx.State, id);
             bool shown = (kind == CosmeticKinds.Armor ? showArmor : showHorse) == id;
             var cell = Ui.Rect(row, "Cell_" + (id ?? "default"));
-            Ui.Size(cell, 320, 210).flexibleWidth = 0;
+            Ui.Size(cell, 400, flexibleWidth: 1);
             var bg = Ui.Background(cell, shown ? new Color(0.98f, 0.93f, 0.82f) : Palette.Card);
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             Ui.Column(cell, 4, 8);
             // 칸 그림: 그 갑옷(또는 말)을 입힌 모습
             string a = kind == CosmeticKinds.Armor ? id : showArmor, h = kind == CosmeticKinds.Horse ? id : showHorse;
-            Ui.Size(Picture(cell, 160, a, h), 170, 190);
+            Ui.Size(Picture(cell, 220, a, h), 220, flexibleWidth: 1); // 칸 너비를 채움 (그림은 비율 유지 · 가운데)
             Ui.Label(cell, d == null ? T("ui.cos.default") : T(d.NameKey), 22, TextAnchor.MiddleCenter);
+            Ui.Label(cell, Tier(d), 18, TextAnchor.MiddleCenter, Palette.TextDim);
             string previewArmor = kind == CosmeticKinds.Armor ? id : showArmor, previewHorse = kind == CosmeticKinds.Horse ? id : showHorse;
             var tap = cell.gameObject.AddComponent<Button>();
             tap.targetGraphic = bg;
@@ -119,6 +131,16 @@ namespace Game.Unity.Screens
             else if (d.PriceGem != null) btn = Ui.Button(cell, T("ui.cos.price.gem", d.PriceGem.Value.ToString("N0")), () => BuyAndWear(svc, kind, d), 56, Palette.ButtonActive, 22);
             else { btn = Ui.SecondaryButton(cell, T("ui.cos.price.shop"), () => { }, 56, 22); Ui.SetEnabled(btn, false); }
             Ui.Size(btn, 56);
+        }
+
+        /// <summary>얻는 길 (기본 · 엽전 · 금괴 · 결제 · 플레이 보상).</summary>
+        private string Tier(CosmeticDef d)
+        {
+            if (d == null) return T("ui.looks.tier.default");
+            if (d.PriceKRW != null) return T("ui.looks.tier.cash");
+            if (d.PriceGem != null) return T("ui.looks.tier.gem");
+            if (d.PriceGold != null) return T("ui.looks.tier.gold");
+            return T("ui.looks.tier.play");
         }
 
         private void Wear(string kind, string id)
