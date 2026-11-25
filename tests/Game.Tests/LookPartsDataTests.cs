@@ -106,6 +106,18 @@ namespace Game.Tests
             }
             foreach (var p in presets) Assert.True(doc["generals"][p] != null, "장수 성향 " + p + "의 기본 차림이 없음");
             Ref(parts, (string)doc["commanderExtra"], "C", "commanderExtra");
+            // 편 기본 색 (2026-11-25): ally · enemy → 고를 수 있는 색 자리 → 색 이름
+            if (doc["teamColors"] is JObject tc)
+                foreach (var side in tc.Properties())
+                {
+                    if (side.Name.StartsWith("_")) continue;
+                    Assert.Contains(side.Name, new[] { "ally", "enemy" });
+                    foreach (var c in ((JObject)side.Value).Properties())
+                    {
+                        Assert.Contains(c.Name, new[] { "main", "trim", "hat", "cape", "shield", "plume", "legs", "horse" });
+                        Assert.False(string.IsNullOrWhiteSpace((string)c.Value), "teamColors." + side.Name + "." + c.Name + ": 색 이름이 없음");
+                    }
+                }
         }
 
         private static void Outfit(Dictionary<string, JObject> parts, HashSet<string> loads, JObject o, string where)

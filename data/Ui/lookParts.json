@@ -2352,8 +2352,8 @@
   ],
   "troops": {
     "infantry": {
-      "hat": "H01",
-      "armor": "A01",
+      "hat": "H12",
+      "armor": "A02",
       "loadout": "L01"
     },
     "shieldbearer": {
@@ -2367,8 +2367,8 @@
       "loadout": "L08"
     },
     "spearman": {
-      "hat": "H01",
-      "armor": "A01",
+      "hat": "H12",
+      "armor": "A02",
       "loadout": "L02"
     },
     "pikeman": {
@@ -2382,8 +2382,8 @@
       "loadout": "L07"
     },
     "archer": {
-      "hat": "H01",
-      "armor": "A01",
+      "hat": "H12",
+      "armor": "A02",
       "loadout": "L04"
     },
     "crossbowman": {
@@ -2397,8 +2397,8 @@
       "loadout": "L05"
     },
     "cavalry": {
-      "hat": "H01",
-      "armor": "A01",
+      "hat": "H12",
+      "armor": "A02",
       "loadout": "L09",
       "tack": "M01"
     },
@@ -2415,12 +2415,12 @@
       "tack": "M03"
     },
     "scout": {
-      "hat": "H02",
-      "armor": "A01",
+      "hat": "H12",
+      "armor": "A02",
       "loadout": "L12"
     },
     "engineer": {
-      "hat": "H02",
+      "hat": "H12",
       "armor": "A02",
       "right": "S02"
     }
@@ -2449,6 +2449,10 @@
     }
   },
   "commanderExtra": "C06",
+  "teamColors": {
+    "_note": "편마다 기본 색 (색 자리 → 색 이름, 고른 색 · 세트 색이 없을 때). 적 = 2026-11-25 사용자 사진 (진홍 몸 · 검은 테). 아군은 비워 둠 = 편 색 파랑",
+    "enemy": { "main": "crimson", "hat": "crimson", "cape": "crimson", "shield": "crimson", "plume": "crimson", "legs": "crimson", "trim": "black" }
+  },
   "legacy": {
     "hat": {
       "kasa": "H01",

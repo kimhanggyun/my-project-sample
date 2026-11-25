@@ -92,8 +92,8 @@ namespace Game.Unity.Screens
 
             App.SetBackdrop(false);
             _field = new CrowdField3D(_battle) {
-                LookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.Resolve(Ctx, a.Troop.Id) : SoldierLook.Resolve(Ctx, a.Troop.Id, null, null), // 겉모습 (R-149 · R-150): 우리 편 = 꾸미기 · 입은 치장, 적 = 병종 기본
-                GeneralLookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.ResolveGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander) : SoldierLook.ForGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander),
+                LookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.Resolve(Ctx, a.Troop.Id) : SoldierLook.Resolve(Ctx, a.Troop.Id, null, null).WithTeamColors("enemy"), // 적 = 기본 차림 + 적 기본 색 (진홍 · 검은 테)
+                GeneralLookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.ResolveGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander) : SoldierLook.ForGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander).WithTeamColors("enemy"),
             };
             _fieldArea = Ui.Rect(Root, "Field");
             Ui.Size(_fieldArea, flexibleHeight: 1);
@@ -698,8 +698,8 @@ namespace Game.Unity.Screens
             _setup.Seed = (ulong)Ctx.NewSeed();
             _battle = NewBattle(CrowdRules.Load(Ctx.Data));
             _field = new CrowdField3D(_battle) {
-                LookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.Resolve(Ctx, a.Troop.Id) : SoldierLook.Resolve(Ctx, a.Troop.Id, null, null), // 겉모습 (R-149 · R-150): 우리 편 = 꾸미기 · 입은 치장, 적 = 병종 기본
-                GeneralLookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.ResolveGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander) : SoldierLook.ForGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander),
+                LookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.Resolve(Ctx, a.Troop.Id) : SoldierLook.Resolve(Ctx, a.Troop.Id, null, null).WithTeamColors("enemy"), // 적 = 기본 차림 + 적 기본 색 (진홍 · 검은 테)
+                GeneralLookFor = a => a.Team == CrowdBattle.Ally ? DevLooks.ResolveGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander) : SoldierLook.ForGeneral(Ctx, a.GeneralInfo.Preset, a.IsCommander).WithTeamColors("enemy"),
             };
             _hud?.Destroy();
             _hud = new CrowdHud(_battle, _field, _fieldArea, TagName);
