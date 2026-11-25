@@ -80,6 +80,11 @@ namespace Game.Battle.Model.Crowd
         public Fix DesertMinPct { get; private set; }
         public Fix DesertMaxPct { get; private set; }
         public Fix WaverSpeed { get; private set; }
+        // 사기 충만 · 함성 혼란 (R-152, 2026-11-25 사용자 "고무 쓰면 사기 충만, 혼란한 상태"): 초 · 공격 · 방어 %p
+        public Fix InspireSeconds { get; private set; }
+        public Fix InspirePp { get; private set; }
+        public Fix ConfuseSeconds { get; private set; }
+        public Fix ConfusePp { get; private set; }
         public Fix WaverAttack { get; private set; }
         public Fix FleeSpeed { get; private set; }
         public Fix FlankPp { get; private set; }
@@ -260,6 +265,10 @@ namespace Game.Battle.Model.Crowd
                 MoraleLowPct = JsonUtil.RequireFix(o, "moraleLowPct", c),
                 MoraleWaverPct = JsonUtil.RequireFix(o, "moraleWaverPct", c),
                 DesertSeconds = JsonUtil.RequireFix(o, "desertSeconds", c),
+                InspireSeconds = JsonUtil.RequireFix(o, "inspireSeconds", c),
+                InspirePp = JsonUtil.RequireFix(o, "inspirePp", c),
+                ConfuseSeconds = JsonUtil.RequireFix(o, "confuseSeconds", c),
+                ConfusePp = JsonUtil.RequireFix(o, "confusePp", c),
                 DesertMinPct = JsonUtil.RequireFix(o, "desertMinPct", c),
                 DesertMaxPct = JsonUtil.RequireFix(o, "desertMaxPct", c),
                 WaverSpeed = JsonUtil.RequireFix(o, "waverSpeed", c),

@@ -201,6 +201,8 @@ namespace Game.Battle.Model.Crowd
         public int LastSkillTick = -9999;
         public Fix AttackBuffPp, DefenseBuffPp, MoraleLossPct, MoveBuffPct, MarchEndMorale;
         public int AttackBuffUntil = -1, FortifyUntil = -1, MarchUntil = -1;
+        /// <summary>사기 충만 · 함성 혼란이 끝나는 틱 (R-152, 이 틱 전까지).</summary>
+        public int InspiredUntil = -1, ConfusedUntil = -1;
         /// <summary>이번 틱 시작 때 살아 있는 병사 가운데 (옆 · 뒤 판정의 기준).</summary>
         public Vec TickCentroid;
         public int LastHitTick = -9999;
@@ -664,6 +666,30 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>그 부대가 스킬을 다시 쓰기까지 틱 (R-144): skillGap × (100 − (지력 − 50) × skillGapIntellectPct)%, skillGapMinPct ~ skillGapMaxPct.</summary>
+        /// <summary>병사 머리 위 상태 (R-152, 2026-11-25 사용자): 한 병사에 하나, 위가 먼저.</summary>
+        public static class Marks
+        {
+            public const int None = 0, Panic = 1, Confused = 2, Inspired = 3, AttackUp = 4, DefenseUp = 5, March = 6, MoraleDown = 7;
+        }
+
+        /// <summary>
+        /// 병사 상태 표시 (R-152): 패닉(이탈 · 퇴각) &gt; 혼란(함성 혼란 · 흔들림) &gt; 사기 충만 &gt; 공격 강화(돌격 함성) &gt; 방어 강화(진형 고수) &gt; 강행군 &gt; 사기 저하(moraleLowAt 아래) &gt; 없음.
+        /// 장수 · 쓰러진 병사는 없음. 겉모습만 — 판정은 위 규칙 그대로.
+        /// </summary>
+        public int MarkOf(CrowdSoldier s)
+        {
+            if (s == null || !s.Alive || s.IsGeneral) return Marks.None;
+            var a = Armies[s.Army];
+            if (s.Deserting || a.Routed) return Marks.Panic;
+            if (Tick < a.ConfusedUntil || a.Wavering) return Marks.Confused;
+            if (Tick < a.InspiredUntil) return Marks.Inspired;
+            if (a.AttackBuffUntil > Tick) return Marks.AttackUp;
+            if (a.FortifyUntil > Tick) return Marks.DefenseUp;
+            if (a.MarchUntil > Tick) return Marks.March;
+            if (a.Morale < Rules.MoraleLowAt) return Marks.MoraleDown;
+            return Marks.None;
+        }
+
         /// <summary>
         /// 장수 책략 게이지 (2026-11-25 사용자 "장수 위 게이지 = 장수 체력 + 스킬에 쓸 지력"): 지난 스킬부터 다시 쓰기 간격(지력이 높을수록 짧음)까지 0 → 1.
         /// 1이면 스킬을 쓸 수 있음. 남은 횟수가 하나도 없거나 장수가 지휘하지 못하면 0.
@@ -774,6 +800,13 @@ namespace Game.Battle.Model.Crowd
         /// 치는 쪽은 그만큼 덜 아프게(공격 −), 맞는 쪽은 그만큼 더 아프게(방어 −).
         /// </summary>
         public Fix MoralePenaltyPp(CrowdArmy a)
+        {
+            var r = Rules;
+            Fix state = (Tick < a.ConfusedUntil ? r.ConfusePp : Fix.Zero) - (Tick < a.InspiredUntil ? r.InspirePp : Fix.Zero); // 혼란 · 사기 충만 (R-152)
+            return state + MoraleOnlyPp(a);
+        }
+
+        private Fix MoraleOnlyPp(CrowdArmy a)
         {
             var r = Rules;
             Fix m = a.Morale;
@@ -1410,7 +1443,7 @@ namespace Game.Battle.Model.Crowd
             if (Tick % desertTicks == 0)
                 foreach (var a in Armies)
                 {
-                    if (a.Routed || !a.Wavering || !Standing(a)) continue;
+                    if (a.Routed || !a.Wavering || !Standing(a) || Tick < a.InspiredUntil) continue; // 사기 충만이면 이탈 없음 (R-152)
                     Fix low = r.WaverAt > Fix.Zero ? Fix.Clamp((r.WaverAt - a.Morale) / r.WaverAt, Fix.Zero, Fix.OneValue) : Fix.OneValue;
                     Fix pct = r.DesertMinPct + (r.DesertMaxPct - r.DesertMinPct) * low;
                     int n = System.Math.Max(1, (int)(Fix.FromInt(a.FightingCount) * pct / 100).RoundToLong());

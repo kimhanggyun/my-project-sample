@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using Game.Battle.Model.Crowd;
 using Game.Battle.Model.Geometry;
@@ -1626,6 +1627,71 @@ namespace Game.Tests.Battle
             for (int t = 0; t < 40; t++) b.Step();
             Assert.True(b.UseSkill(a.Id, CrowdBattle.WarCry));
             Assert.Equal(uses - 1, a.SkillUses[CrowdBattle.Rally]);
+        }
+
+        /// <summary>R-152 사기 충만: 격려를 받은 부대는 inspireSeconds 동안 공격 · 방어 +inspirePp (약화 %p가 그만큼 −), 흔들려도 이탈 없음, 표시 = 사기 충만.</summary>
+        [Fact]
+        public void RallyInspires()
+        {
+            var b = WithSkills(new CrowdSetup { AllyTroops = new[] { "infantry" }, AllyAdvance = false, EnemyAdvance = false });
+            var a = b.Commander(CrowdBattle.Ally);
+            var someone = a.Soldiers.First(s => !s.IsGeneral);
+            Assert.Equal(CrowdBattle.Marks.None, b.MarkOf(someone));
+            Assert.True(b.UseSkill(a.Id, CrowdBattle.Rally));
+            Assert.True(a.InspiredUntil > b.Tick);
+            Assert.Equal(CrowdBattle.Marks.Inspired, b.MarkOf(someone));
+            Assert.Equal(-b.Rules.InspirePp, b.MoralePenaltyPp(a));
+            // 흔들려도 (사기 0) 사기 충만 동안은 이탈 없음 → 끝나면 이탈 · 혼란 표시
+            int ticks = (int)(b.Rules.InspireSeconds / b.Rules.TickSeconds).RoundToLong();
+            for (int t = 0; t < ticks - 2; t++) { a.Morale = Fix.Zero; b.Step(); }
+            Assert.Equal(0, a.Soldiers.Count(s => s.Deserting));
+            for (int t = 0; t < 200; t++) { a.Morale = Fix.Zero; b.Step(); }
+            Assert.True(a.Soldiers.Count(s => s.Deserting) > 0);
+            Assert.Equal(CrowdBattle.Marks.Panic, b.MarkOf(a.Soldiers.First(s => s.Deserting && s.Alive)));
+            Assert.Equal(CrowdBattle.Marks.Confused, b.MarkOf(a.Soldiers.First(s => !s.Deserting && s.Alive && !s.IsGeneral)));
+        }
+
+        /// <summary>R-152 함성 혼란: 돌격 함성이 닿은 적 부대는 confuseSeconds 동안 혼란 (공격 · 방어 −confusePp), 표시 = 혼란. 쓴 쪽은 공격 강화 표시.</summary>
+        [Fact]
+        public void WarCryConfusesFoes()
+        {
+            var b = WithSkills(new CrowdSetup { AllyAdvance = false, EnemyAdvance = false });
+            var me = b.Commander(CrowdBattle.Ally);
+            var foe = b.Commander(CrowdBattle.Enemy);
+            var shift = me.Centroid() - foe.Centroid() + new Vec(Fix.Zero, Fix.FromInt(2));
+            foreach (var s in foe.Soldiers) s.Pos = s.Pos + shift; // 함성이 닿는 거리로
+            Fix before = b.MoralePenaltyPp(foe);
+            Assert.True(b.UseSkill(me.Id, CrowdBattle.WarCry));
+            Assert.True(foe.ConfusedUntil > b.Tick);
+            Assert.Equal(CrowdBattle.Marks.Confused, b.MarkOf(foe.Soldiers.First(s => !s.IsGeneral)));
+            Assert.Equal(CrowdBattle.Marks.AttackUp, b.MarkOf(me.Soldiers.First(s => !s.IsGeneral)));
+            Assert.True(b.MoralePenaltyPp(foe) >= before + b.Rules.ConfusePp);
+            int ticks = (int)(b.Rules.ConfuseSeconds / b.Rules.TickSeconds).RoundToLong();
+            Assert.Equal(b.Tick + ticks, foe.ConfusedUntil); // confuseSeconds 뒤에 끝남 (붙어 있어 맞붙으면 다시 함성을 맞을 수 있어 걸음으로는 재지 않음)
+        }
+
+        /// <summary>R-152 표시 우선순위: 진형 고수 = 방어 강화, 강행군 = 강행군, 사기 moraleLowAt 아래 = 사기 저하, 장수는 없음.</summary>
+        [Fact]
+        public void SoldierMarks()
+        {
+            var b = WithSkills(new CrowdSetup { AllyTroops = new[] { "infantry" }, AllyAdvance = false, EnemyAdvance = false });
+            var a = b.Commander(CrowdBattle.Ally);
+            var s0 = a.Soldiers.First(s => !s.IsGeneral);
+            Assert.Equal(CrowdBattle.Marks.None, b.MarkOf(a.General));
+            a.Morale = b.Rules.MoraleLowAt - Fix.OneValue;
+            Assert.Equal(CrowdBattle.Marks.MoraleDown, b.MarkOf(s0));
+            a.MarchUntil = b.Tick + 10;
+            Assert.Equal(CrowdBattle.Marks.March, b.MarkOf(s0));
+            a.FortifyUntil = b.Tick + 10;
+            Assert.Equal(CrowdBattle.Marks.DefenseUp, b.MarkOf(s0));
+            a.AttackBuffUntil = b.Tick + 10;
+            Assert.Equal(CrowdBattle.Marks.AttackUp, b.MarkOf(s0));
+            a.InspiredUntil = b.Tick + 10;
+            Assert.Equal(CrowdBattle.Marks.Inspired, b.MarkOf(s0));
+            a.ConfusedUntil = b.Tick + 10;
+            Assert.Equal(CrowdBattle.Marks.Confused, b.MarkOf(s0));
+            s0.Deserting = true;
+            Assert.Equal(CrowdBattle.Marks.Panic, b.MarkOf(s0));
         }
 
         /// <summary>책략 게이지 (2026-11-25): 처음 가득, 쓰면 0, 간격만큼 차서 다시 가득 (그때 쓸 수 있음), 횟수를 다 쓰면 0.</summary>

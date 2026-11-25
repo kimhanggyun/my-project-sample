@@ -258,6 +258,20 @@ namespace Game.Unity.Boot
             s8.QueueForTour("left", new[] { 8f, 26f, 8f, 34f, 18f, 38f });
             s8.StepForTour(20);
             yield return Shot("36c_sample2_ui_queue", null, 0.3f);
+            // 병사 머리 위 상태 표시 (R-152): 우리 = 사기 충만 ↑ · 공격 강화 칼 · 방어 강화 방패, 적 = 혼란 동그라미 · 사기 저하 ↓ + 패닉 ‼ · 강행군 »
+            var smk = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, EnemyAdvance = false, Seed = 13,
+                AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = SampleBattle2Screen.Preset("mixed") });
+            yield return Shot("37m_marks_setup", () => smk, 0.2f);
+            smk.MarksForTour();
+            smk.StepForTour(2);
+            smk.FocusArmyForTour(0, 20f);
+            yield return Shot("37m_marks_ally", null, 0.3f);
+            foreach (var (team, idx, tag, des) in new[] { (0, 0, "ally0_inspired", false), (0, 1, "ally1_attack", false), (0, 2, "ally2_defense", false),
+                (1, 0, "enemy0_confused", false), (1, 1, "enemy1_moraledown", false), (1, 1, "enemy1_panic", true), (1, 2, "enemy2_march", false) })
+            {
+                smk.FocusArmyIndexForTour(team, idx, 11f, des);
+                yield return Shot("37m_marks_" + tag, null, 0.4f);
+            }
             // 스킬 (R-130): 우군 궁병 화살비 (전조 · 떨어짐), 중군 돌격 함성
             var s9 = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyCorps = 3, EnemyCorps = 3, AllyAdvance = false, EnemyAdvance = true, Seed = 11,
                 AllyTroops = SampleBattle2Screen.Preset("mixed"), EnemyTroops = SampleBattle2Screen.Preset("mixed") });
