@@ -96,7 +96,7 @@ namespace Game.Battle.Model.Crowd
         /// <summary>그 병종이 그 칸에 못 들어감 (강 · 절벽 = 모두, 산 = 기병 …, 물 = 수군 아니면 모두).</summary>
         public bool Blocks(CrowdTroop troop, int col, int row)
         {
-            if (_closed.Count > 0 && _closed.Contains(row * Map.Width + col)) return true; // 닫힌 성문
+            if (_closed.Count > 0 && !troop.GatePass && _closed.Contains(row * Map.Width + col)) return true; // 닫힌 성문 (지키는 쪽은 지나감, R-153)
             if (!_rules.TryGetValue(Map.TerrainAt(col, row), out var rule)) return false;
             if (rule.Water) return !troop.Has(TerrainRuleDef.NavalTag);
             foreach (var t in rule.Impassable)
@@ -157,7 +157,7 @@ namespace Game.Battle.Model.Crowd
             int w = Map.Width;
             string ft = Map.TerrainAt(fc % w, fc / w), tt = Map.TerrainAt(tc % w, tc / w);
             if (ft == tt) return target;
-            string key = "R|" + troop.Id + "|" + tc;
+            string key = "R|" + troop.Key + "|" + tc;
             if (_snapCache.TryGetValue(key, out var hit)) return hit;
             int c0 = tc % w, r0 = tc / w, best = -1;
             long bestD = long.MaxValue;
@@ -186,7 +186,7 @@ namespace Game.Battle.Model.Crowd
             int w = Map.Width;
             string ft = Map.TerrainAt(fc % w, fc / w), tt = Map.TerrainAt(tc % w, tc / w);
             if (ft == tt || (Allows(ft, tt) && Allows(tt, ft))) return target;
-            string key = "L|" + troop.Id + "|" + ft + "|" + tc;
+            string key = "L|" + troop.Key + "|" + ft + "|" + tc;
             if (_snapCache.TryGetValue(key, out var hit)) return hit;
             int c0 = tc % w, r0 = tc / w, best = -1;
             long bestD = long.MaxValue;
@@ -319,7 +319,7 @@ namespace Game.Battle.Model.Crowd
         {
             if (!Blocks(troop, p)) return p;
             CellOf(p, out int c0, out int r0);
-            string key = troop.Id + "|" + c0 + "|" + r0;
+            string key = troop.Key + "|" + c0 + "|" + r0;
             if (_snapCache.TryGetValue(key, out var hit)) return hit;
             int best = -1;
             long bestD = long.MaxValue;

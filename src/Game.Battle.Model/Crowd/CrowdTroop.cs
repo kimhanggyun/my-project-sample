@@ -17,6 +17,23 @@ namespace Game.Battle.Model.Crowd
         public IReadOnlyList<string> Tags = new[] { "infantry", "melee" };
         public Fix Attack = Fix.FromInt(50), Defense = Fix.FromInt(50), Speed = Fix.FromInt(45);
         public Fix AttackRange = Fix.OneValue;
+        /// <summary>
+        /// 자기 편 닫힌 성문을 지나감 (R-153, 2026-11-26 사용자 "성문이 열리기 전에 모든 병과가 미리 나가서 복병 등"): 지키는 쪽 부대만 (쪽문처럼).
+        /// 공격 쪽은 그대로 막힘. 맞붙기 판정(성문 너머로 치기)은 <see cref="Plain"/>으로 — 문을 사이에 두고 치지는 못함.
+        /// </summary>
+        public bool GatePass;
+        /// <summary>성문을 지나가지 않는 원래 병종 (GatePass면 복사 전 것, 아니면 자기).</summary>
+        public CrowdTroop Plain => _plain ?? this;
+        private CrowdTroop _plain;
+        /// <summary>길 · 칸 캐시 열쇠 (성문 통과 여부까지).</summary>
+        public string Key => GatePass ? Id + "#gate" : Id;
+
+        /// <summary>자기 편 성문을 지나가는 복사본 (R-153).</summary>
+        public CrowdTroop WithGatePass() => new CrowdTroop
+        {
+            Id = Id, BaseId = BaseId, Tags = Tags, Attack = Attack, Defense = Defense, Speed = Speed, AttackRange = AttackRange,
+            GatePass = true, _plain = this,
+        };
 
         public bool Has(string tag) { foreach (var t in Tags) if (t == tag) return true; return false; }
         public bool Ranged => Has("ranged");

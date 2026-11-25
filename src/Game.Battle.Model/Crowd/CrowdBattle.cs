@@ -375,12 +375,17 @@ namespace Game.Battle.Model.Crowd
             if (setup.EnemyUnits != null && setup.EnemyUnits.Count > 0) MakeGrid(Enemy, setup.EnemyUnits, troops, enemyAt, new Vec(Fix.Zero, -Fix.OneValue));
             else MakeTeam(Enemy, setup.EnemyCorps, setup.EnemyCount, setup.EnemyFormation, setup.EnemyTroops, troops, enemyAt.Y, new Vec(Fix.Zero, -Fix.OneValue));
             if (Terrain != null) MakeGates(allyAt, enemyAt);
+            // 지키는 쪽은 자기 성문을 지나감 (R-153): 부대를 골라 성 밖을 누르면 나감 · [출격]
+            if (SiegeDefender >= 0)
+                foreach (var a in Armies) if (a.Team == SiegeDefender) a.Troop = a.Troop.WithGatePass();
             if (Terrain != null)
                 foreach (var a in Armies)
                 {
                     // 못 가는 땅에 놓였으면 가까운 땅으로 (부대 가운데 기준)
                     var at = Terrain.Snap(a.Troop, a.Center);
                     if (!at.Equals(a.Center)) { a.Center = at; foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot); }
+                    // 병사 하나하나도: 못 가는 칸(성벽 위의 기병 …)에 놓였으면 부대 가운데로 (2026-11-26 캡처 48g: 성벽에 걸친 자리의 기병이 성벽 위에 갇힘)
+                    foreach (var s in a.Soldiers) if (Terrain.Blocks(a.Troop, s.Pos)) s.Pos = a.Center;
                 }
             foreach (var a in Armies) a.Aim = a.Center;
             if (setup.AllyAdvance)
@@ -1199,7 +1204,7 @@ namespace Game.Battle.Model.Crowd
                 }
                 else foe = NearestEnemy(s, engage2, r.EngageRange);
                 // 성벽 · 닫힌 성문 너머 적과는 맞붙지 않음 (R-145, 2026-11-23 캡처 47: 문 막는 적 보병 · 창병이 닫힌 문 너머로 쳐서 충차 부대가 녹음) — 화살 · 돌은 넘어감
-                if (foe >= 0 && Gates.Count > 0 && !Terrain.Clear(troop, s.Pos, Soldiers[foe].Pos)) foe = -1;
+                if (foe >= 0 && Gates.Count > 0 && !Terrain.Clear(troop.Plain, s.Pos, Soldiers[foe].Pos)) foe = -1; // 지키는 쪽도 문 너머로는 못 침 (R-153)
                 // 성벽 위 지키는 보병 · 창병: 아래 적에게 돌 (R-145)
                 if (foe < 0 && !troop.Ranged && s.Team == SiegeDefender && SiegeActive && TryDropStone(s))
                 {
@@ -1685,7 +1690,7 @@ namespace Game.Battle.Model.Crowd
             var dir = a.Order == CrowdOrders.Advance && !detour ? a.Facing : dl > Fix.Zero ? dv * (Fix.OneValue / dl) : Vec.Zero;
             var nextCenter = a.Center + dir * Fix.Min(detour ? dl : dist, baseSpeed * dt * slow);
             // 닫힌 성문 앞에서는 기다린다 (R-140: 병사들이 문을 부술 때까지 — 가운데만 성 안으로 들어가지 않게)
-            if (Gates.Count > 0 && Terrain.IsClosed(Terrain.CellIndex(nextCenter)) && !Terrain.IsClosed(Terrain.CellIndex(a.Center))) return; // 닫힌 성문만 (강 모서리를 스치는 건 그대로)
+            if (Gates.Count > 0 && !a.Troop.GatePass && Terrain.IsClosed(Terrain.CellIndex(nextCenter)) && !Terrain.IsClosed(Terrain.CellIndex(a.Center))) return; // 닫힌 성문만 (강 모서리를 스치는 건 그대로), 지키는 쪽은 지나감 (R-153)
             a.Center = nextCenter;
         }
 
