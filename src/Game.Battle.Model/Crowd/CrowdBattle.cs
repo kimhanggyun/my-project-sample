@@ -148,6 +148,8 @@ namespace Game.Battle.Model.Crowd
         public Vec GeneralBaseSlot, GeneralRoleSlot, GeneralCommandSlot, GeneralWoundedSlot;
         /// <summary>장수가 마지막으로 맞은 틱 (R-144 회복: 맞지 않은 지 generalRegenCalmSeconds 지나야 회복). 처음 -1.</summary>
         public int GeneralHitTick = -1;
+        /// <summary>장수 피해 나누기 나머지를 받을 차례 (R-155).</summary>
+        public int GuardTurn;
         /// <summary>공성 명령 (R-145, SiegeTasks), 없으면 null.</summary>
         public string SiegeTask;
         /// <summary>시작 행동 (CrowdUnitSpec.Behavior), 없으면 null.</summary>
@@ -201,6 +203,13 @@ namespace Game.Battle.Model.Crowd
         public int LastSkillTick = -9999;
         public Fix AttackBuffPp, DefenseBuffPp, MoraleLossPct, MoveBuffPct, MarchEndMorale;
         public int AttackBuffUntil = -1, FortifyUntil = -1, MarchUntil = -1;
+        /// <summary>
+        /// 기병 반복 돌격 (R-156, 2026-11-26 사용자 "기병은 기동력으로"): 맞붙은 지 cavalryContactSeconds 지나면 WheelUntil까지 WheelPoint로 빠졌다가 다시 돌격.
+        /// ContactSince = 이번 맞붙음이 시작된 틱 (-1 = 안 붙음).
+        /// </summary>
+        public int ContactSince = -1, WheelUntil = -1;
+        public Vec WheelPoint;
+        public bool Wheeling;
         /// <summary>사기 충만 · 함성 혼란이 끝나는 틱 (R-152, 이 틱 전까지).</summary>
         public int InspiredUntil = -1, ConfusedUntil = -1;
         /// <summary>이번 틱 시작 때 살아 있는 병사 가운데 (옆 · 뒤 판정의 기준).</summary>
@@ -533,7 +542,7 @@ namespace Game.Battle.Model.Crowd
                 int row = System.Math.Max(0, System.Math.Min(2, u.Row)), col = System.Math.Max(0, System.Math.Min(2, u.Col));
                 int count = System.Math.Max(1, System.Math.Min(Rules.GridMaxCount, u.Count));
                 var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
-                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops), u.General);
+                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops, Rules.TroopTuning), u.General);
                 a.StartBehavior = u.Behavior;
                 Fix back = Rules.GridRowPitch * row;
                 a.Center = new Vec(mid + Rules.GridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
@@ -553,7 +562,7 @@ namespace Game.Battle.Model.Crowd
                 int pi = corps == 1 ? 1 : team == Ally ? k : 2 - k;
                 string place = corps == 1 ? "center" : Places3[pi];
                 string tid = troopIds != null && troopIds.Length > 0 ? troopIds[System.Math.Min(corps == 1 ? 0 : pi, troopIds.Length - 1)] : "infantry"; // 병종도 좌 · 중 · 우 이름 순서대로
-                made.Add(MakeArmy(team, place, place == "center", form, share, facing, CrowdTroop.Of(tid, troops)));
+                made.Add(MakeArmy(team, place, place == "center", form, share, facing, CrowdTroop.Of(tid, troops, Rules.TroopTuning)));
             }
             // 좌 · 중 · 우로 나란히 (사이 CorpsGap), 편의 가운데가 전장 가운데. 오른쪽 = 부대의 Right (적은 좌우가 뒤집힘)
             Fix total = Fix.Zero;
@@ -608,6 +617,7 @@ namespace Game.Battle.Model.Crowd
             Fix back = CrowdFormations.BackOf(more);
             Vec want = formation == CrowdFormations.Circle ? Vec.Zero
                 : formation != CrowdFormations.Column && a.GeneralInfo.Role == "front" ? new Vec(Fix.Zero, front)
+                : formation == CrowdFormations.Wedge ? new Vec(Fix.Zero, back + (front - back) / 3) // 쐐기는 앞이 좁아 가운데도 꼭짓점 가까움 → 뒤쪽 1/3 (R-155, 2026-11-26 영상: 지장이 꼭짓점 바로 뒤에서 화살을 다 맞음)
                 : new Vec(Fix.Zero, (front + back) / 2);
             int best = -1;
             Fix bestD = sp * Fix.FromRatio(3, 4);
@@ -718,8 +728,9 @@ namespace Game.Battle.Model.Crowd
 
         /// <summary>지금 장수가 설 자리: 부상 → 물러나 지휘 → 만났으면 성향 자리 → 아니면 장수 자리.</summary>
         /// 공성으로 성문 · 사다리 앞에 선 동안은 맹장도 앞으로 나서지 않음 (R-145 — 성문 앞에서 돌 · 화살을 다 맞음).
+        /// 성문 부수기 · 충차 · 사다리 부대의 장수는 대열 뒤 지휘 자리 (R-155: 장수 피해를 부대가 나눠 받으니, 성문 밑에서 돌 · 화살을 맞으면 부대가 녹음 — 2026-11-26 FullAssault 테스트).
         private static Vec GeneralSlotNow(CrowdArmy a) =>
-            a.GeneralPulledBack ? a.GeneralCommandSlot
+            a.GeneralPulledBack || a.SiegeTask == SiegeTasks.Bash || a.SiegeTask == SiegeTasks.Ram || a.SiegeTask == SiegeTasks.Ladder ? a.GeneralCommandSlot
             : a.GeneralEngaged && a.SiegeTask == null ? a.GeneralRoleSlot : a.GeneralBaseSlot;
 
         /// <summary>장수 자리를 바꾼다 (바뀌면 멈춤을 풀어 새 자리로 가게).</summary>
@@ -733,31 +744,38 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>
-        /// 장수 호위 (R-139): 장수가 이번 틱 맞은 피해의 generalGuardSharePct%를, 장수에게서 generalGuardRange칸 안의 자기 병사가
-        /// generalGuardMin명 이상이면 가장 가까운 병사들(최대 3명, 같으면 id)이 나눠 받는다 — 병사가 많으면 장수가 잘 안 죽고, 부대가 녹으면 위험해짐.
+        /// 장수 피해 나누기 (R-155, 2026-11-26 사용자 영상 20261125_3 "장수가 화살을 다 맞아 병사 145/150인데 패배 — 장수 피해를 전체 병사에게 배분"):
+        /// 장수가 이번 틱 맞은 피해의 generalGuardSharePct%를 부대의 살아 있는 병사 전체(이탈자 빼고)가 고르게 나눠 받는다
+        /// (나머지는 돌아가며 1씩). 부대가 버티는 동안 장수는 잘 안 쓰러지고, 병사가 줄수록 위험 — 병사가 없으면 장수가 다 받음.
         /// </summary>
+        /// <summary>장수가 받는 피해 % (R-138): 100 − (무력 − 30) × generalGuardPerMight ÷ 100, generalGuardMinPct ~ 100.</summary>
+        private int GeneralTakePct(CrowdArmy a)
+        {
+            int pct = 100 - (a.GeneralInfo.Might - 30) * Rules.GeneralGuardPerMight / 100;
+            return System.Math.Max(Rules.GeneralGuardMinPct, System.Math.Min(100, pct));
+        }
+
         private void GuardGenerals()
         {
             var r = Rules;
-            Fix range2 = r.GeneralGuardRange * r.GeneralGuardRange;
             foreach (var a in Armies)
             {
                 var g = a.General;
                 if (!g.Alive || _damage[g.Id] <= 0 || a.GeneralEscaping) continue;
-                var guards = new List<(Fix d, CrowdSoldier s)>();
-                foreach (var s in a.Soldiers)
-                {
-                    if (!s.Alive || s.IsGeneral) continue;
-                    Fix d2 = Vec.DistanceSquared(s.Pos, g.Pos);
-                    if (d2 <= range2) guards.Add((d2, s));
-                }
-                if (guards.Count < r.GeneralGuardMin) continue;
-                guards.Sort((p, q) => { int c = p.d.CompareTo(q.d); return c != 0 ? c : p.s.Id.CompareTo(q.s.Id); });
+                var guards = new List<CrowdSoldier>();
+                foreach (var s in a.Soldiers) if (s.Alive && !s.IsGeneral && !s.Deserting) guards.Add(s);
+                if (guards.Count == 0) continue;
                 int share = _damage[g.Id] * r.GeneralGuardSharePct / 100;
                 if (share <= 0) continue;
                 _damage[g.Id] -= share;
-                int n = System.Math.Min(3, guards.Count);
-                for (int k = 0; k < n; k++) _damage[guards[k].s.Id] += share / n + (k < share % n ? 1 : 0);
+                share = share * GeneralTakePct(a) / 100; // 나눠 받는 몫도 장수가 덜 다치는 만큼 덜 (무력, R-138) — 장수 대신 맞은 만큼 부대가 더 녹지 않게
+                int n = guards.Count, each = share / n, rest = share % n;
+                for (int k = 0; k < n; k++)
+                {
+                    int extra = ((k - a.GuardTurn) % n + n) % n < rest ? 1 : 0; // 나머지는 돌아가며 (같은 병사만 맞지 않게)
+                    if (each + extra > 0) _damage[guards[k].Id] += each + extra;
+                }
+                a.GuardTurn = (a.GuardTurn + rest) % n;
             }
         }
 
@@ -848,7 +866,7 @@ namespace Game.Battle.Model.Crowd
             foreach (var slot in slots)
             {
                 var s = new CrowdSoldier { Id = Soldiers.Count, Team = team, Army = a.Id, Slot = slot, Hp = Rules.SoldierHp, MaxHp = Rules.SoldierHp, Radius = radius };
-                s.Cooldown = _rng.NextInt(Rules.AttackTicks);
+                s.Cooldown = _rng.NextInt(AttackTicksOf(troop));
                 a.Soldiers.Add(s);
                 Soldiers.Add(s);
             }
@@ -1118,13 +1136,53 @@ namespace Game.Battle.Model.Crowd
         public int HitDamage(CrowdTroop atk, CrowdTroop def, Fix extraPp)
         {
             Fix pp = (atk.Attack - def.Defense) * Rules.StatPpPerPoint + extraPp;
-            foreach (var c in _counters)
-                if (atk.Has(c.AttackerTag) && def.Has(c.DefenderTag)) pp += c.Pp;
+            pp += CounterPpOf(atk, def);
             Fix mult = Fix.OneValue + pp / 100;
             if (mult < Fix.FromRatio(1, 10)) mult = Fix.FromRatio(1, 10);
             long d = (Fix.FromInt(Rules.HitDamage) * mult).RoundToLong();
             return d < 1 ? 1 : (int)d;
         }
+
+        /// <summary>
+        /// 상성 %p (R-154): crowd.json counterPp가 있으면 그것 ("공격태그>방어태그", 방어 "#id" = 그 병종만), 없으면 troopCounters.json (태그 → 태그).
+        /// </summary>
+        public Fix CounterPpOf(CrowdTroop atk, CrowdTroop def)
+        {
+            Fix pp = Fix.Zero;
+            if (Rules.CounterPp.Count > 0)
+            {
+                foreach (var kv in Rules.CounterPp)
+                {
+                    int gt = kv.Key.IndexOf('>');
+                    if (gt <= 0) continue;
+                    string a = kv.Key.Substring(0, gt), d = kv.Key.Substring(gt + 1);
+                    bool defMatch = d.StartsWith("#") ? def.Id == d.Substring(1) : def.Has(d);
+                    if (atk.Has(a) && defMatch) pp += kv.Value;
+                }
+                return pp;
+            }
+            foreach (var c in _counters)
+                if (atk.Has(c.AttackerTag) && def.Has(c.DefenderTag)) pp += c.Pp;
+            return pp;
+        }
+
+        /// <summary>
+        /// 한 방 피해 흔들림 (R-154): × (100 ± damageSpreadPct)% 고르게, 1 이상. 체력 ÷ 피해 타수가 같으면 공격력을 조금 바꿔도 결과가 같던 것 (2026-11-26 비율 맞추기)
+        /// — 평균은 그대로, 조금 센 쪽이 그만큼 조금 빨리 쓰러뜨림.
+        /// </summary>
+        private int Spread(int dmg)
+        {
+            int sp = Rules.DamageSpreadPct;
+            if (sp <= 0 || dmg <= 0) return dmg;
+            int roll = _rng.NextInt(sp * 2 + 1) - sp;
+            return System.Math.Max(1, (int)((long)dmg * (100 + roll) / 100));
+        }
+
+        /// <summary>병종별 근접 공격 간격 (틱, R-154) — 정하지 않았으면 공통 attackSeconds.</summary>
+        public int AttackTicksOf(CrowdTroop t) => t.AttackSeconds.HasValue ? System.Math.Max(1, (int)(t.AttackSeconds.Value / Rules.TickSeconds).RoundToLong()) : Rules.AttackTicks;
+
+        /// <summary>병종별 쏘기 간격 (틱, R-154) — 정하지 않았으면 공통 shootSeconds.</summary>
+        public int ShootTicksOf(CrowdTroop t) => t.ShootSeconds.HasValue ? System.Math.Max(1, (int)(t.ShootSeconds.Value / Rules.TickSeconds).RoundToLong()) : Rules.ShootTicks;
 
         // ---- 한 틱 ----
 
@@ -1202,6 +1260,7 @@ namespace Game.Battle.Model.Crowd
                     foe = s.Cooldown == 0 ? NearestEnemy(s, r.GeneralRoamRange * r.GeneralRoamRange, r.GeneralRoamRange) : -1;
                     if (foe >= 0 && (Soldiers[foe].Pos - army.SlotWorld(s.Slot)).Length > r.GeneralRoamRange) foe = -1;
                 }
+                else if (army.Wheeling) foe = -1; // 빠지는 기병은 치지 않고 물러남 (R-156)
                 else foe = NearestEnemy(s, engage2, r.EngageRange);
                 // 성벽 · 닫힌 성문 너머 적과는 맞붙지 않음 (R-145, 2026-11-23 캡처 47: 문 막는 적 보병 · 창병이 닫힌 문 너머로 쳐서 충차 부대가 녹음) — 화살 · 돌은 넘어감
                 if (foe >= 0 && Gates.Count > 0 && !Terrain.Clear(troop.Plain, s.Pos, Soldiers[foe].Pos)) foe = -1; // 지키는 쪽도 문 너머로는 못 침 (R-153)
@@ -1337,9 +1396,7 @@ namespace Game.Battle.Model.Crowd
                 {
                     Armies[s.Army].GeneralHitTick = Tick; // 회복은 맞지 않은 동안만 (R-144)
                     // 장수는 맞아도 덜 다친다 (R-138): 받는 피해 % = 100 − (무력 − 30) × generalGuardPerMight (generalGuardMinPct ~ 100)
-                    int pct = 100 - (Armies[s.Army].GeneralInfo.Might - 30) * r.GeneralGuardPerMight / 100;
-                    pct = System.Math.Max(r.GeneralGuardMinPct, System.Math.Min(100, pct));
-                    _damage[i] = System.Math.Max(1, _damage[i] * pct / 100);
+                    _damage[i] = System.Math.Max(1, _damage[i] * GeneralTakePct(Armies[s.Army]) / 100);
                 }
                 if (_damage[i] > 0)
                 {
@@ -1527,6 +1584,7 @@ namespace Game.Battle.Model.Crowd
             int dmg = HitDamage(troop, foeTroop, SidePp(side) + BuffPp(army, foeArmy) + TerrainPp(troop, s.Pos) + mightPp + AptitudePp(army) - AptitudePp(foeArmy) + FormationCounterPp(army, foeArmy)
                 - MoralePenaltyPp(army) + MoralePenaltyPp(foeArmy) // 사기가 낮으면 덜 아프게 치고 더 아프게 맞음 (R-148)
                 + HeightDiff(s.Pos, e.Pos) * Rules.HeightMeleePpPerLevel); // 내려치면 세고 올려치면 약함 (R-143)
+            dmg = Spread(dmg); // 한 방마다 흔들림 (R-154)
             _damage[e.Id] += dmg;
             NoteHit(foeArmy, side);
             Fix fast = walkStep * Fix.FromRatio(11, 10);
@@ -1556,7 +1614,7 @@ namespace Game.Battle.Model.Crowd
             s.LastAttackTick = Tick;
             s.LastTargetId = e.Id;
             s.HitStructure = false;
-            s.Cooldown = r.AttackTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks + 1) : 0);
+            s.Cooldown = AttackTicksOf(troop) + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks + 1) : 0); // 병종별 공격 간격 (R-154)
             if (army.Wavering) s.Cooldown = (int)(Fix.FromInt(s.Cooldown) * r.WaverAttack).RoundToLong(); // 흔들리면 덜 친다
         }
 
@@ -1567,12 +1625,12 @@ namespace Game.Battle.Model.Crowd
             var e = Soldiers[target];
             Fix dist = (e.Pos - s.Pos).Length;
             int flight = System.Math.Max(1, (int)(dist / (r.ArrowSpeed * r.TickSeconds)).RoundToLong());
-            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]) - MoralePenaltyPp(Armies[s.Army]) + MoralePenaltyPp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong()),
+            Arrows.Add(new CrowdArrow { ShooterId = s.Id, TargetId = target, From = s.Pos, To = e.Pos, FireTick = Tick, ArriveTick = Tick + flight, Damage = Spread(System.Math.Max(1, (int)(Fix.FromInt(HitDamage(troop, Armies[e.Army].Troop, BuffPp(Armies[s.Army], Armies[e.Army]) + TerrainPp(troop, s.Pos) + AptitudePp(Armies[s.Army]) - AptitudePp(Armies[e.Army]) - MoralePenaltyPp(Armies[s.Army]) + MoralePenaltyPp(Armies[e.Army]))) * r.ArrowDamageScale).RoundToLong())),
                 HitPct = Fix.Max(Fix.Zero, Fix.FromInt(100) + HeightDiff(s.Pos, e.Pos) * r.HeightArrowHitPctPerLevel) }); // 위에서 쏘면 잘 맞음 (R-143)
             s.LastAttackTick = Tick;
             s.LastTargetId = target;
             s.HitStructure = false;
-            s.Cooldown = r.ShootTicks + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0);
+            s.Cooldown = ShootTicksOf(troop) + (r.AttackJitterTicks > 0 ? _rng.NextInt(r.AttackJitterTicks * 2 + 1) : 0); // 병종별 쏘기 간격 (R-154)
         }
 
         /// <summary>AI 부대 (적 전진 · 우리 위임, R-132): 공격 대상이 없거나 무너졌으면 가장 가까운 상대 부대를 공격.</summary>
@@ -1593,7 +1651,8 @@ namespace Game.Battle.Model.Crowd
         {
             var r = Rules;
             Fix dt = r.TickSeconds;
-            if (a.Order == CrowdOrders.Hold || a.Routed) { a.Charging = false; return; }
+            if (a.Order == CrowdOrders.Hold || a.Routed) { a.Charging = false; a.Wheeling = false; a.ContactSince = -1; return; }
+            if (CavalryCycle(a, engagedSoldiers)) return;
             Vec goal;
             Fix ahead = a.Team == Ally ? Fix.OneValue : -Fix.OneValue;
             if (a.Order == CrowdOrders.Move) goal = a.OrderPoint;
@@ -1692,6 +1751,42 @@ namespace Game.Battle.Model.Crowd
             // 닫힌 성문 앞에서는 기다린다 (R-140: 병사들이 문을 부술 때까지 — 가운데만 성 안으로 들어가지 않게)
             if (Gates.Count > 0 && !a.Troop.GatePass && Terrain.IsClosed(Terrain.CellIndex(nextCenter)) && !Terrain.IsClosed(Terrain.CellIndex(a.Center))) return; // 닫힌 성문만 (강 모서리를 스치는 건 그대로), 지키는 쪽은 지나감 (R-153)
             a.Center = nextCenter;
+        }
+
+        /// <summary>
+        /// 기병 반복 돌격 (R-156, 2026-11-26 사용자 "말은 기동력으로만 — 반복 돌격"): 말 탄 부대가 공격 · 진군으로 맞붙은 지(병사 10% 넘게) cavalryContactSeconds 지나면
+        /// 앞 방향 반대로 cavalryWithdrawCells칸 빠진다 (cavalryWithdrawSeconds 동안, 치지 않음, 대열 방향은 그대로). 다 빠지면 다시 돌격 — 달려와 처음 친 한 방이 또 부딪침.
+        /// 빠지는 동안이면 true (부대 가운데를 여기서 움직임).
+        /// </summary>
+        private bool CavalryCycle(CrowdArmy a, int engagedSoldiers)
+        {
+            var r = Rules;
+            if (!a.Troop.Mounted || r.CavalryContactSeconds <= Fix.Zero || (a.Order != CrowdOrders.Attack && a.Order != CrowdOrders.Advance)) { a.Wheeling = false; a.ContactSince = -1; return false; }
+            Fix dt = r.TickSeconds;
+            if (a.Wheeling)
+            {
+                if (Tick >= a.WheelUntil) { a.Wheeling = false; a.ContactSince = -1; return false; }
+                var d = a.WheelPoint - a.Center;
+                Fix step = r.AdvanceSpeed * a.SpeedFactor * MoveMult(a) * TerrainSpeed(a.Troop, a.Center) * dt;
+                if (d.Length <= step) a.Center = a.WheelPoint;
+                else a.Center = a.Center + d.Normalized() * step;
+                return true;
+            }
+            int alive = System.Math.Max(1, a.AliveCount);
+            bool contact = engagedSoldiers * 10 >= alive;
+            if (!contact) { a.ContactSince = -1; return false; }
+            // 창병에게는 다시 달려들지 않음 (창끝에 또 걸림) — 붙은 채 싸움
+            int foeArmy = a.Order == CrowdOrders.Attack ? a.OrderTarget : NearestEnemyArmy(a.Id);
+            if (foeArmy >= 0 && Armies[foeArmy].Troop.Polearm) { a.ContactSince = -1; return false; }
+            if (a.ContactSince < 0) a.ContactSince = Tick;
+            int contactTicks = System.Math.Max(1, (int)(r.CavalryContactSeconds / dt).RoundToLong());
+            if (Tick - a.ContactSince < contactTicks) return false;
+            a.Wheeling = true;
+            a.Charging = false;
+            a.WheelUntil = Tick + System.Math.Max(1, (int)(r.CavalryWithdrawSeconds / dt).RoundToLong());
+            a.WheelPoint = Open(a, a.Center - a.Facing * r.CavalryWithdrawCells);
+            a.ContactSince = -1;
+            return true;
         }
 
         private const int RelaxPasses = 2;
