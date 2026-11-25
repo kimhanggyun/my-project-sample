@@ -22,10 +22,11 @@ namespace Game.Unity.Battle3D
         private float[] _yaw = new float[0];
         private int _seenTick = -1;
 
-        private static readonly Color AllyColor = new Color(0.22f, 0.42f, 0.86f);
-        private static readonly Color AllyDark = new Color(0.14f, 0.24f, 0.52f);
-        private static readonly Color EnemyColor = new Color(0.86f, 0.22f, 0.18f);
-        private static readonly Color EnemyDark = new Color(0.50f, 0.13f, 0.11f);
+        /// <summary>편 색 (꾸미기 미리보기도 이 색 — 2026-11-25 사용자 "미리보기 색을 전투와 똑같이").</summary>
+        public static readonly Color AllyColor = new Color(0.22f, 0.42f, 0.86f);
+        public static readonly Color AllyDark = new Color(0.14f, 0.24f, 0.52f);
+        public static readonly Color EnemyColor = new Color(0.86f, 0.22f, 0.18f);
+        public static readonly Color EnemyDark = new Color(0.50f, 0.13f, 0.11f);
         private static readonly Color DeadWhite = new Color(0.97f, 0.97f, 0.94f);
         private readonly InstanceBatch _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch;
         /// <summary>병종(1단계 뿌리) · 편 · 모양(0 다리 뺀 몸, 1 통째, 2 하얀 통째)마다 묶음 (R-127).</summary>

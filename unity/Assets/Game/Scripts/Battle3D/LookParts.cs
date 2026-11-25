@@ -52,6 +52,8 @@ namespace Game.Unity.Battle3D
         public readonly Dictionary<string, Dictionary<string, string>> Generals = new Dictionary<string, Dictionary<string, string>>();
         /// <summary>총대장이면 더 붙는 부품 (군기).</summary>
         public string CommanderExtra;
+        /// <summary>편 (ally · enemy) → 색 자리 → 색 이름: 고른 색 · 세트 색이 없을 때의 기본 (2026-11-25 사용자 사진: 적 = 진홍 몸 · 검은 테).</summary>
+        public readonly Dictionary<string, Dictionary<string, string>> TeamColors = new Dictionary<string, Dictionary<string, string>>();
         /// <summary>옛 모양 이름 → 부품 (세트 look의 "helmet:crimson" 같은 값).</summary>
         public readonly Dictionary<string, string> LegacyHat = new Dictionary<string, string>(), LegacyShield = new Dictionary<string, string>();
 
@@ -136,6 +138,14 @@ namespace Game.Unity.Battle3D
             ReadOutfits(doc["troops"] as JObject, Troops);
             ReadOutfits(doc["generals"] as JObject, Generals);
             CommanderExtra = (string)doc["commanderExtra"];
+            if (doc["teamColors"] is JObject tc)
+                foreach (var p in tc.Properties())
+                {
+                    if (!(p.Value is JObject cols)) continue;
+                    var d = new Dictionary<string, string>();
+                    foreach (var kv in cols.Properties()) if (kv.Value.Type == JTokenType.String) d[kv.Name] = (string)kv.Value;
+                    TeamColors[p.Name] = d;
+                }
             if (doc["legacy"]?["hat"] is JObject lh) foreach (var p in lh.Properties()) LegacyHat[p.Name] = (string)p.Value;
             if (doc["legacy"]?["shield"] is JObject ls) foreach (var p in ls.Properties()) LegacyShield[p.Name] = (string)p.Value;
         }

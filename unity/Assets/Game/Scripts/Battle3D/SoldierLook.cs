@@ -95,6 +95,15 @@ namespace Game.Unity.Battle3D
             return look;
         }
 
+        /// <summary>편 기본 색 (lookParts.json teamColors — ally · enemy): 아직 색이 없는 자리만 채움. 자기를 돌려줌.</summary>
+        public SoldierLook WithTeamColors(string side)
+        {
+            if (Library == null || side == null || !Library.TeamColors.TryGetValue(side, out var cols)) return this;
+            foreach (var kv in cols)
+                if (!Colors.ContainsKey(kv.Key) && CosmeticLooks.TryNamed(kv.Value, out var c)) Colors[kv.Key] = c;
+            return this;
+        }
+
         /// <summary>장수 겉모습: 성향(warrior · standard · strategist)의 기본 차림, 늘 말을 탐.</summary>
         public static SoldierLook ForGeneral(GameContext ctx, string preset, bool commander)
         {

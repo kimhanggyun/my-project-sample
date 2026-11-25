@@ -15,8 +15,9 @@ namespace Game.Unity.UI
     public static class TroopPictureRenderer
     {
         private const int Size = 256;
-        private static readonly Color AllyColor = new Color(0.20f, 0.36f, 0.62f);
-        private static readonly Color AllyDark = new Color(0.13f, 0.22f, 0.4f);
+        // 전투(샘플전투2)의 아군 색 그대로 (2026-11-25 사용자: 미리보기 = 전투)
+        private static Color AllyColor => CrowdField3D.AllyColor;
+        private static Color AllyDark => CrowdField3D.AllyDark;
         private static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
         private static Material _template;
 
