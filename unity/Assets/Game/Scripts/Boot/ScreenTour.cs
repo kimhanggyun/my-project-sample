@@ -82,6 +82,19 @@ namespace Game.Unity.Boot
             shots.Add(("29_loading", () => { endLoading = Game.Unity.UI.Loading.Begin(); return new MainScreen("territory"); }, 0.6f)); // 공통 로딩 표시 (H5): 0.25초 뒤 보임
             foreach (var s in shots) yield return Shot(s.name, s.make, s.wait);
             endLoading?.Invoke();
+            // 가진 세트 목록 (2026-11-25, 로딩 표시를 끈 뒤 — 캡처 06e에 로딩 고리가 덮임): 세트 둘을 가진 · 하나를 입은 모습 — 찍고 나서 세이브를 되돌림
+            {
+                var keepOwned = new List<string>(Ctx.State.OwnedCosmetics);
+                var keepArmor = new Dictionary<string, string>(Ctx.State.EquippedArmor);
+                foreach (var id in new[] { "armor_coin_white", "armor_gem_red" }) if (!Ctx.State.OwnedCosmetics.Contains(id)) Ctx.State.OwnedCosmetics.Add(id);
+                Ctx.State.EquippedArmor["infantry"] = "armor_coin_white";
+                yield return Shot("06e_cosmetic_owned", () => new Game.Unity.Screens.CosmeticScreen("infantry"), 0.5f);
+                yield return Shot("06f_cosmetic_owned_archer", () => new Game.Unity.Screens.CosmeticScreen("archer"), 0.5f);
+                Ctx.State.OwnedCosmetics.Clear();
+                Ctx.State.OwnedCosmetics.AddRange(keepOwned);
+                Ctx.State.EquippedArmor.Clear();
+                foreach (var kv in keepArmor) Ctx.State.EquippedArmor[kv.Key] = kv.Value;
+            }
             CodexScreen.Tab = "secrets";
             ReplayListScreen.Tab = "mine";
 

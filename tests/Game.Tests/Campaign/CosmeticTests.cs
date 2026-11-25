@@ -53,6 +53,27 @@ namespace Game.Tests.Campaign
             Assert.False(svc.Equip(s, "infantry", CosmeticKinds.Armor, null));          // 벗을 것 없음
         }
 
+        [Fact(DisplayName = "R-108 가진 세트 목록 (2026-11-25): 산 세트는 모두 가진 목록에 (데이터 차례, 입을 수 있는 모든 계열), 언제든 바꿔 입기 · 벗기, 안 가진 것은 더 얻기 목록")]
+        public void OwnedList()
+        {
+            var svc = Svc();
+            var s = StartingKitService.CreateNewGame(Kit.D);
+            new Wallet(s.Wallet).Add(ResourceIds.Gold, 100000);
+            Assert.Empty(svc.OwnedFor(s, "infantry", CosmeticKinds.Armor));
+            Assert.Contains(svc.NotOwnedFor(s, "infantry", CosmeticKinds.Armor), d => d.Id == "armor_coin_white");
+            Assert.True(svc.Buy(s, "armor_coin_red"));
+            Assert.True(svc.Buy(s, "armor_coin_white"));
+            Assert.Equal(new[] { "armor_coin_white", "armor_coin_red" }, svc.OwnedFor(s, "infantry", CosmeticKinds.Armor).Select(d => d.Id)); // 데이터 차례
+            Assert.Equal(new[] { "armor_coin_white", "armor_coin_red" }, svc.OwnedFor(s, "archer", CosmeticKinds.Armor).Select(d => d.Id));   // 다른 계열에도
+            Assert.DoesNotContain(svc.NotOwnedFor(s, "infantry", CosmeticKinds.Armor), d => d.Id == "armor_coin_white");
+            Assert.True(svc.Equip(s, "infantry", CosmeticKinds.Armor, "armor_coin_white"));
+            Assert.True(svc.Equip(s, "infantry", CosmeticKinds.Armor, "armor_coin_red"));   // 바꿔 입기
+            Assert.Equal("armor_coin_red", CosmeticService.Worn(s, "infantry", CosmeticKinds.Armor));
+            Assert.Null(CosmeticService.Worn(s, "archer", CosmeticKinds.Armor));             // 계열마다 따로
+            Assert.True(svc.Equip(s, "infantry", CosmeticKinds.Armor, null));                // 기본으로
+            Assert.Equal(2, svc.OwnedFor(s, "infantry", CosmeticKinds.Armor).Count);          // 벗어도 가진 것은 그대로
+        }
+
         [Fact(DisplayName = "R-108 행동: cosmetic.buy · cosmetic.equip을 기기 · 서버가 같은 처리기로 적용 (세이브에 남음)")]
         public void Actions()
         {
