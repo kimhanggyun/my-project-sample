@@ -12,6 +12,8 @@ namespace Game.Battle.Model.Crowd
     public static class SiegeTasks
     {
         public const string Wall = "wall", Brace = "brace", Bash = "bash", Ram = "ram", Ladder = "ladder", ShootWall = "shootWall", WaitBreach = "waitBreach";
+        /// <summary>출격 (R-153): 지키는 쪽 부대가 자기 성문으로 나가 성문 앞 바깥에서 대기 (그 뒤로는 야전처럼 움직임 · 복병).</summary>
+        public const string Sortie = "sortie";
     }
 
     /// <summary>사다리 (R-145): 성벽(wall) 칸 하나에 걸침. 발 = 성 밖 칸, 꼭대기 = 성벽 안쪽 성벽 위 칸.</summary>
@@ -43,9 +45,10 @@ namespace Game.Battle.Model.Crowd
             var t = a.Troop;
             if (a.Team == SiegeDefender)
             {
+                // 기병은 문 막기 없음 (2026-11-26 사용자), 모든 병과 출격 (R-153)
                 if (t.Ranged) list.Add(SiegeTasks.Wall);
-                else if (t.Mounted) list.Add(SiegeTasks.Brace);
-                else { list.Add(SiegeTasks.Brace); list.Add(SiegeTasks.Wall); }
+                else if (!t.Mounted) { list.Add(SiegeTasks.Brace); list.Add(SiegeTasks.Wall); }
+                list.Add(SiegeTasks.Sortie);
             }
             else
             {
@@ -56,11 +59,14 @@ namespace Game.Battle.Model.Crowd
             return list;
         }
 
-        /// <summary>AI · 위임이 고르는 공성 명령: 지키는 쪽 궁병 · 창병 = 성벽, 보병 · 기병 = 문 막기 / 치는 쪽 궁병 = 성벽 쏘기, 기병 = 돌입 대기, 창병 = 사다리, 보병 = 성문 부수기.</summary>
+        /// <summary>
+        /// AI · 위임이 고르는 공성 명령: 지키는 쪽 궁병 · 창병 = 성벽, 보병 = 문 막기, 기병 = 없음 (성 안에서 대기 — 출격은 사람이 정함, R-153) /
+        /// 치는 쪽 궁병 = 성벽 쏘기, 기병 = 돌입 대기, 창병 = 사다리, 보병 = 성문 부수기.
+        /// </summary>
         public string DefaultSiegeTask(CrowdArmy a)
         {
             var t = a.Troop;
-            if (a.Team == SiegeDefender) return t.Ranged || t.Polearm ? SiegeTasks.Wall : SiegeTasks.Brace;
+            if (a.Team == SiegeDefender) return t.Ranged || t.Polearm ? SiegeTasks.Wall : t.Mounted ? null : SiegeTasks.Brace;
             return t.Ranged ? SiegeTasks.ShootWall : t.Mounted ? SiegeTasks.WaitBreach : t.Polearm ? SiegeTasks.Ladder : SiegeTasks.Bash;
         }
 
@@ -84,6 +90,9 @@ namespace Game.Battle.Model.Crowd
                     break;
                 case SiegeTasks.Brace:
                     OrderMove(army, Open(a, g.Center + g.Inward * (cell * 2)));
+                    break;
+                case SiegeTasks.Sortie:
+                    OrderMove(army, Open(a, g.Center - g.Inward * (cell * 7))); // 성문 밖 일곱 칸 앞에서 대기 (넓은 횡대가 성벽에 걸리지 않게)
                     break;
                 case SiegeTasks.Bash:
                 case SiegeTasks.Ram:

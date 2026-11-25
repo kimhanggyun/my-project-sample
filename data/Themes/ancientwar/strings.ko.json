@@ -889,6 +889,7 @@
   "ui.sample2.siege.ladder": "사다리",
   "ui.sample2.siege.shootWall": "성벽 쏘기",
   "ui.sample2.siege.waitBreach": "돌입 대기",
+  "ui.sample2.siege.sortie": "출격",
   "ui.test.speed": "시작 배속",
   "ui.test.speedN": "{0}배속",
   "ui.test.behavior": "행동",

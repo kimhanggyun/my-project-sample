@@ -722,11 +722,37 @@ namespace Game.Tests.Battle
             Assert.Equal("bash,ladder,ram", Tasks(0));
             Assert.Equal("shootWall", Tasks(1));
             Assert.Equal("waitBreach", Tasks(2));
-            Assert.Equal("brace,wall", Tasks(3));
-            Assert.Equal("wall", Tasks(4));
-            Assert.Equal("brace", Tasks(5));
+            Assert.Equal("brace,wall,sortie", Tasks(3));
+            Assert.Equal("wall,sortie", Tasks(4));
+            Assert.Equal("sortie", Tasks(5)); // 기병은 문 막기 없음, 모든 병과 출격 (R-153)
+            Assert.Null(b.DefaultSiegeTask(b.Armies[5])); // AI 지키는 쪽 기병은 성 안에서 대기
             b.OrderSiege(0, SiegeTasks.Wall); // 고를 수 없는 명령은 무시
             Assert.Null(b.Armies[0].SiegeTask);
+        }
+
+        /// <summary>R-153 출격: 지키는 쪽은 자기 닫힌 성문을 지나 성 밖으로 나가고 (공격 쪽은 그대로 막힘), 성문은 닫힌 채, 문 너머로는 치지 못함.</summary>
+        [Fact]
+        public void DefendersSortieThroughOwnGate()
+        {
+            var b = Siege("crowd_siege", new[] { "infantry" }, new[] { "infantry", "cavalry" });
+            var g = b.Gates[0];
+            int w = b.Terrain.Map.Width;
+            int cell = g.Cells[0];
+            var def = b.Armies[1];
+            var att = b.Armies[0];
+            Assert.True(def.Troop.GatePass);
+            Assert.False(b.Terrain.Blocks(def.Troop, cell % w, cell / w));
+            Assert.True(b.Terrain.Blocks(att.Troop, cell % w, cell / w));
+            Assert.True(b.Terrain.Blocks(def.Troop.Plain, cell % w, cell / w));
+            var cav = b.Armies[2];
+            b.OrderSiege(cav.Id, SiegeTasks.Sortie);
+            Assert.Equal(SiegeTasks.Sortie, cav.SiegeTask);
+            for (int t = 0; t < 900; t++) b.Step();
+            // 기병이 성문 바깥쪽(안쪽 방향의 반대)에 나가 있음, 성문은 그대로 닫힘
+            var outward = Vec.Zero - g.Inward;
+            Assert.True((cav.Centroid() - g.Center).Dot(outward) > b.Terrain.CellSize * 2, "sortied outside");
+            Assert.False(g.Open);
+            Assert.True(b.SiegeActive);
         }
 
         [Fact]
