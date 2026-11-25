@@ -664,6 +664,20 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>그 부대가 스킬을 다시 쓰기까지 틱 (R-144): skillGap × (100 − (지력 − 50) × skillGapIntellectPct)%, skillGapMinPct ~ skillGapMaxPct.</summary>
+        /// <summary>
+        /// 장수 책략 게이지 (2026-11-25 사용자 "장수 위 게이지 = 장수 체력 + 스킬에 쓸 지력"): 지난 스킬부터 다시 쓰기 간격(지력이 높을수록 짧음)까지 0 → 1.
+        /// 1이면 스킬을 쓸 수 있음. 남은 횟수가 하나도 없거나 장수가 지휘하지 못하면 0.
+        /// </summary>
+        public Fix SkillReadiness(CrowdArmy a)
+        {
+            if (a == null || !a.Leading) return Fix.Zero;
+            int left = 0;
+            foreach (var v in a.SkillUses.Values) if (v > 0) left += v;
+            if (left == 0) return Fix.Zero;
+            int gap = SkillGapTicksFor(a), since = Tick - a.LastSkillTick;
+            return since >= gap ? Fix.OneValue : Fix.FromInt(since) / gap;
+        }
+
         public int SkillGapTicksFor(CrowdArmy a)
         {
             var r = Rules;
