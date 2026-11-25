@@ -21,8 +21,9 @@ namespace Game.Unity.Screens
         /// <summary>이름표 · 미니맵을 담는 판 (전장 영역을 채움, 지우면 함께 사라짐).</summary>
         private readonly RectTransform _root;
         private readonly Func<CrowdArmy, string> _name;
-        private readonly Dictionary<int, (RectTransform root, Text label, RectTransform morale, Image moraleImg, RectTransform troops, RectTransform hp)> _tags =
-            new Dictionary<int, (RectTransform, Text, RectTransform, Image, RectTransform, RectTransform)>();
+        private readonly Dictionary<int, (RectTransform root, Text label, RectTransform morale, Image moraleImg, RectTransform skill, Image skillImg, RectTransform hp)> _tags =
+            new Dictionary<int, (RectTransform, Text, RectTransform, Image, RectTransform, Image, RectTransform)>();
+        private static readonly Color SkillFilling = new Color(0.3f, 0.5f, 0.85f), SkillReady = new Color(0.4f, 0.85f, 1f);
 
         // 미니맵
         private const int MapPixels = 64;
@@ -81,8 +82,11 @@ namespace Game.Unity.Screens
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
         }
 
-        /// <summary>이름표: 이름 · 장수 체력(빨강, R-147) · 사기(주황) · 남은 병사(초록).</summary>
-        private (RectTransform, Text, RectTransform, Image, RectTransform, RectTransform) Tag(CrowdArmy a)
+        /// <summary>
+        /// 이름표 (2026-11-25 사용자 "장수 위주 — 장수 체력 · 스킬에 쓸 지력, 병사 수는 줄어드는 게 보이니 뺌"):
+        /// 이름 · 장수 체력(빨강, 굵게) · 책략(파랑 — 다시 쓰기 간격만큼 차고, 다 차면 밝은 하늘색 = 스킬 가능) · 사기(주황, 가늘게 — 사기 표현을 정할 때까지).
+        /// </summary>
+        private (RectTransform, Text, RectTransform, Image, RectTransform, Image, RectTransform) Tag(CrowdArmy a)
         {
             var root = Ui.Rect(_root, "Tag " + a.Id);
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0.5f);
@@ -96,17 +100,17 @@ namespace Game.Unity.Screens
             var lr = label.rectTransform;
             lr.anchorMin = new Vector2(0f, 0.52f); lr.anchorMax = new Vector2(1f, 1f);
             lr.offsetMin = lr.offsetMax = Vector2.zero;
-            var hp = Bar(root, "GeneralHp", 0.36f, new Color(0.88f, 0.22f, 0.2f), out _);
-            var morale = Bar(root, "Morale", 0.18f, new Color(0.97f, 0.66f, 0.2f), out var mImg);
-            var troops = Bar(root, "Troops", 0f, new Color(0.3f, 0.78f, 0.36f), out _);
-            return (root, label, morale, mImg, troops, hp);
+            var hp = Bar(root, "GeneralHp", 0.3f, 0.2f, new Color(0.88f, 0.22f, 0.2f), out _);
+            var skill = Bar(root, "Skill", 0.13f, 0.14f, SkillFilling, out var sImg);
+            var morale = Bar(root, "Morale", 0.02f, 0.08f, new Color(0.97f, 0.66f, 0.2f), out var mImg);
+            return (root, label, morale, mImg, skill, sImg, hp);
         }
 
         /// <summary>가는 막대 (뒤 어두운 판 + 채움), 이름표 아래쪽 bottom 높이에.</summary>
-        private static RectTransform Bar(RectTransform parent, string name, float bottom, Color fillColor, out Image fillImg)
+        private static RectTransform Bar(RectTransform parent, string name, float bottom, float height, Color fillColor, out Image fillImg)
         {
             var bar = Ui.Rect(parent, name);
-            bar.anchorMin = new Vector2(0.2f, bottom); bar.anchorMax = new Vector2(0.8f, bottom + 0.14f);
+            bar.anchorMin = new Vector2(0.2f, bottom); bar.anchorMax = new Vector2(0.8f, bottom + height);
             bar.offsetMin = bar.offsetMax = Vector2.zero;
             Ui.Background(bar, new Color(0.12f, 0.12f, 0.11f, 0.85f)).raycastTarget = false;
             var fill = Ui.Rect(bar, "Fill");
@@ -138,7 +142,9 @@ namespace Game.Unity.Screens
                 float m = Mathf.Clamp01((float)(a.Morale / _battle.Rules.MoraleStart).ToDisplayDouble());
                 t.morale.anchorMax = new Vector2(m, 1f);
                 t.moraleImg.color = a.Routed || a.Wavering ? new Color(0.85f, 0.3f, 0.22f) : new Color(0.97f, 0.66f, 0.2f);
-                t.troops.anchorMax = new Vector2(a.StartCount > 0 ? Mathf.Clamp01(a.AliveCount / (float)a.StartCount) : 0f, 1f);
+                float sk = Mathf.Clamp01((float)_battle.SkillReadiness(a).ToDisplayDouble());
+                t.skill.anchorMax = new Vector2(sk, 1f);
+                t.skillImg.color = sk >= 1f ? SkillReady : SkillFilling;
                 t.hp.anchorMax = new Vector2(a.General.Alive && a.General.MaxHp > 0 ? Mathf.Clamp01(a.General.Hp / (float)a.General.MaxHp) : 0f, 1f);
             }
             _mapTimer -= dt;

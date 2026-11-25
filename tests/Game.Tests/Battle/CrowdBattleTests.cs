@@ -1628,6 +1628,26 @@ namespace Game.Tests.Battle
             Assert.Equal(uses - 1, a.SkillUses[CrowdBattle.Rally]);
         }
 
+        /// <summary>책략 게이지 (2026-11-25): 처음 가득, 쓰면 0, 간격만큼 차서 다시 가득 (그때 쓸 수 있음), 횟수를 다 쓰면 0.</summary>
+        [Fact]
+        public void SkillReadinessFillsOverGap()
+        {
+            var b = WithSkills(new CrowdSetup { AllyTroops = new[] { "infantry" }, AllyAdvance = false });
+            var a = b.Commander(CrowdBattle.Ally);
+            Assert.Equal(Fix.OneValue, b.SkillReadiness(a));
+            Assert.True(b.UseSkill(a.Id, CrowdBattle.Rally));
+            Assert.Equal(Fix.Zero, b.SkillReadiness(a));
+            int gap = b.SkillGapTicksFor(a);
+            for (int t = 0; t < gap / 2; t++) b.Step();
+            Assert.True(b.SkillReadiness(a) > Fix.Zero && b.SkillReadiness(a) < Fix.OneValue);
+            Assert.False(b.CanUseSkill(a.Id, CrowdBattle.WarCry));
+            for (int t = gap / 2; t < gap; t++) b.Step();
+            Assert.Equal(Fix.OneValue, b.SkillReadiness(a));
+            Assert.True(b.CanUseSkill(a.Id, CrowdBattle.WarCry));
+            foreach (var k in new System.Collections.Generic.List<string>(a.SkillUses.Keys)) a.SkillUses[k] = 0;
+            Assert.Equal(Fix.Zero, b.SkillReadiness(a));
+        }
+
         [Fact]
         public void WarCryHitsHarderAndHoldTheLineTakesLess()
         {
