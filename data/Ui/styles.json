@@ -1,6 +1,6 @@
 {
-  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로 / parts = 부품 역할(또는 스타일 이름) → 모양 (color·textColor·height·fontSize, 정한 것만 — 공통부품.md 0장), pages = 페이지 id → (역할 → 스타일 이름) 덮어쓰기. 2026-11-14 07에서 시작",
-  "default": "ink",
+  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로 / parts = 부품 역할(또는 스타일 이름) → 모양 (color·textColor·height·fontSize, 정한 것만 — 공통부품.md 0장), pages = 페이지 id → (역할 → 스타일 이름) 덮어쓰기. 2026-11-14 07에서 시작. 2026-11-26 기본을 jaju(먹 바탕 · 자주 강조)로 — 자주는 맵(초록 · 회색 · 갈색 · 물색) · 팀(파랑 · 빨강) · 갑옷 · 말 색과 겹치지 않는 색. accentLight = 밝은 강조(고른 칸 테두리 · 밑줄), line = 판 가장자리 선",
+  "default": "jaju",
   "styles": {
     "basic": {
       "nameKey": "style.basic",
@@ -67,6 +67,32 @@
       },
       "paper": true,
       "inkBorder": true
+    },
+    "jaju": {
+      "nameKey": "style.jaju",
+      "cornerRadius": 14,
+      "fontScale": 0.95,
+      "colors": {
+        "background": "#151318",
+        "bar": "#1B181F",
+        "card": "#211E25",
+        "button": "#2C2733",
+        "buttonActive": "#5B2A86",
+        "buttonDisabled": "#26232B",
+        "text": "#E8E2EE",
+        "textDim": "#9A92A6",
+        "ally": "#7FB2E6",
+        "enemy": "#E67A66",
+        "good": "#8CCF7A",
+        "bad": "#E0614F",
+        "overlay": "#000000AA",
+        "promptBack": "#151318E6",
+        "promptText": "#E8E2EE",
+        "danger": "#7A2E2A",
+        "seal": "#B3382B",
+        "accentLight": "#C9A5EF",
+        "line": "#3A3442"
+      }
     }
   },
   "parts": {

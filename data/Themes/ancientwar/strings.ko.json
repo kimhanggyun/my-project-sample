@@ -1768,6 +1768,7 @@
   "product.gold_pack_medium": "엽전 꾸러미 (중)",
   "product.gem_pack_medium": "금괴 꾸러미 (중)",
   "style.ink": "임시 스타일2(수묵)",
+  "style.jaju": "자주 (먹 바탕)",
   "ui.contest.roundOf": "{0}라운드 / 최대 {1}",
   "ui.contest.pick": "다음 행동을 고르세요.",
   "ui.contest.chosen": "고름: {0}  (카운트가 끝나기 전까지 바꿀 수 있습니다)",

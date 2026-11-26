@@ -105,6 +105,8 @@ namespace Game.Unity.UI
                 Palette.PromptText = Read(c, "promptText", Palette.PromptText);
                 Palette.Danger = Read(c, "danger", Palette.Danger);
                 Palette.Seal = Read(c, "seal", Palette.Seal);
+                Palette.AccentLight = Read(c, "accentLight", Palette.AccentLight);
+                Palette.Line = Read(c, "line", Palette.Line);
             }
         }
 
