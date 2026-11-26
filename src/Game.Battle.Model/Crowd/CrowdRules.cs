@@ -126,6 +126,19 @@ namespace Game.Battle.Model.Crowd
         public IReadOnlyDictionary<string, Fix> FormationEncircleDrainPct { get; private set; } = new Dictionary<string, Fix>();
         public IReadOnlyDictionary<string, Fix> FormationSpeedPct { get; private set; } = new Dictionary<string, Fix>();
         public IReadOnlyDictionary<string, Fix> FormationCounterPp { get; private set; } = new Dictionary<string, Fix>();
+        /// <summary>샘플전투2 전용 병종 조정 (R-154, 병종 id → 값). 비면 병종 데이터 그대로.</summary>
+        public IReadOnlyDictionary<string, CrowdTroopTuning> TroopTuning { get; private set; } = new Dictionary<string, CrowdTroopTuning>();
+        /// <summary>기병 반복 돌격 (R-156): 맞붙은 뒤 빠지기까지 초 (0이면 끔) · 빠지는 시간 · 빠지는 칸.</summary>
+        public Fix CavalryContactSeconds { get; private set; }
+        public Fix CavalryWithdrawSeconds { get; private set; }
+        public Fix CavalryWithdrawCells { get; private set; }
+        /// <summary>한 방 피해 흔들림 ± % (R-154, 없으면 0).</summary>
+        public int DamageSpreadPct { get; private set; }
+        /// <summary>
+        /// 샘플전투2 전용 상성 (R-154, "공격태그>방어태그" → %p, 방어 쪽이 "#병종id"면 그 병종만 — 예 "ranged>#infantry" = 1단계 보병만).
+        /// 있으면 troopCounters.json 대신 이것 (옛 전투는 troopCounters.json 그대로). 비면 troopCounters.json.
+        /// </summary>
+        public IReadOnlyDictionary<string, Fix> CounterPp { get; private set; } = new Dictionary<string, Fix>();
         // 공성 (R-140)
         public int GateHp { get; private set; }
         public int GateHitDamage { get; private set; }
@@ -173,8 +186,6 @@ namespace Game.Battle.Model.Crowd
         public Fix SkillGapIntellectPct { get; private set; }
         public Fix SkillGapMinPct { get; private set; }
         public Fix SkillGapMaxPct { get; private set; }
-        public Fix GeneralGuardRange { get; private set; }
-        public int GeneralGuardMin { get; private set; }
         public int GeneralGuardSharePct { get; private set; }
         // 행군 대열 (R-136)
         public int MarchWidth { get; private set; }
@@ -342,8 +353,6 @@ namespace Game.Battle.Model.Crowd
                 SkillGapIntellectPct = JsonUtil.RequireFix(o, "skillGapIntellectPct", c),
                 SkillGapMinPct = JsonUtil.RequireFix(o, "skillGapMinPct", c),
                 SkillGapMaxPct = JsonUtil.RequireFix(o, "skillGapMaxPct", c),
-                GeneralGuardRange = JsonUtil.RequireFix(o, "generalGuardRange", c),
-                GeneralGuardMin = (int)JsonUtil.RequireLong(o, "generalGuardMin", c),
                 GeneralGuardSharePct = (int)JsonUtil.RequireLong(o, "generalGuardSharePct", c),
                 RetreatMargin = JsonUtil.RequireFix(o, "retreatMargin", c),
                 GridColPitch = JsonUtil.RequireFix(o, "gridColPitch", c),
@@ -396,6 +405,26 @@ namespace Game.Battle.Model.Crowd
             rules.FormationSpeedPct = FixMap("formationSpeedPct");
             rules.FormationCounterPp = FixMap("formationCounterPp");
             rules.GateBraceWeight = FixMap("gateBraceWeight");
+            if (o["counterPp"] is Newtonsoft.Json.Linq.JObject) rules.CounterPp = FixMap("counterPp");
+            if (o["damageSpreadPct"] != null) rules.DamageSpreadPct = (int)JsonUtil.RequireLong(o, "damageSpreadPct", c);
+            if (o["cavalryContactSeconds"] != null)
+            {
+                rules.CavalryContactSeconds = JsonUtil.RequireFix(o, "cavalryContactSeconds", c);
+                rules.CavalryWithdrawSeconds = JsonUtil.RequireFix(o, "cavalryWithdrawSeconds", c);
+                rules.CavalryWithdrawCells = JsonUtil.RequireFix(o, "cavalryWithdrawCells", c);
+            }
+            if (o["troopTuning"] is Newtonsoft.Json.Linq.JObject tt)
+            {
+                var tun = new Dictionary<string, CrowdTroopTuning>();
+                Fix? Opt(Newtonsoft.Json.Linq.JObject x, string k, string where) => x[k] == null ? (Fix?)null : JsonUtil.ToFix(x[k], where + "." + k);
+                foreach (var p in tt.Properties())
+                {
+                    if (p.Name.StartsWith("_") || !(p.Value is Newtonsoft.Json.Linq.JObject x)) continue;
+                    string w = c + ".troopTuning." + p.Name;
+                    tun[p.Name] = new CrowdTroopTuning { Attack = Opt(x, "attack", w), Defense = Opt(x, "defense", w), AttackSeconds = Opt(x, "attackSeconds", w), ShootSeconds = Opt(x, "shootSeconds", w) };
+                }
+                rules.TroopTuning = tun;
+            }
             return rules;
         }
 
