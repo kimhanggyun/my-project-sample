@@ -850,6 +850,70 @@ namespace Game.Unity.UI
             return row;
         }
 
+        /// <summary>
+        /// 그림 세그먼트 탭 (역할 tabs.segment.art, 2026-11-26 시안 B): 칸마다 흐린 뒷배경 그림(<see cref="SegmentArt"/>, 영역에 맞게 줄임 — 자르지 않음),
+        /// 가운데 굵은 글자 + 글자 뒤 둥근 그림자 + 글자 테두리. 고른 칸 = 강조색 바탕 · 밝은 강조 테두리 · 밑줄. 그림이 없는 id는 글자만.
+        /// </summary>
+        public static RectTransform ArtSegmentTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, float height = 96, float width = 300)
+        {
+            var row = Row(parent, "ArtSegmentTabs", height, 18);
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            h.childForceExpandWidth = false;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            foreach (var it in items)
+            {
+                var item = it;
+                bool on = item.id == selected;
+                var rt = Rect(row, "Seg_" + item.id);
+                Size(rt, height, width).flexibleWidth = 0;
+                var border = Round(Background(rt, on ? Palette.AccentLight : Palette.Line));
+                var b = rt.gameObject.AddComponent<Button>();
+                b.targetGraphic = border;
+                b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onSelect?.Invoke(item.id); });
+                var fill = Fill(Rect(rt, "Fill"));
+                fill.offsetMin = new Vector2(4, 4);
+                fill.offsetMax = new Vector2(-4, -4);
+                Round(Background(fill, on ? Palette.ButtonActive : Palette.Card)).raycastTarget = false;
+                var art = SegmentArt.Get(item.id, on);
+                if (art != null)
+                {
+                    var pic = Fill(Rect(fill, "Art"));
+                    pic.offsetMin = new Vector2(6, 2);
+                    pic.offsetMax = new Vector2(-6, -2);
+                    var img = pic.gameObject.AddComponent<Image>();
+                    img.sprite = art;
+                    img.preserveAspect = true; // 영역에 맞게 줄임 (자르지 않음)
+                    img.color = Color.white;
+                    img.raycastTarget = false;
+                }
+                var shade = on ? Color.Lerp(Color.black, Palette.ButtonActive, 0.45f) : Color.Lerp(Color.black, Palette.Card, 0.6f);
+                var glow = Rect(fill, "Glow");
+                glow.anchorMin = new Vector2(0.3f, 0.22f);
+                glow.anchorMax = new Vector2(0.7f, 0.78f);
+                glow.offsetMin = glow.offsetMax = Vector2.zero;
+                var gi = glow.gameObject.AddComponent<Image>();
+                gi.sprite = SegmentArt.Glow;
+                gi.color = new Color(shade.r, shade.g, shade.b, 0.45f);
+                gi.raycastTarget = false;
+                var t = Label(fill, item.label, Mathf.RoundToInt(34 * UiStyle.FontScale), TextAnchor.MiddleCenter, on ? Color.white : Color.Lerp(Palette.Text, Palette.TextDim, 0.35f));
+                Fill(t.rectTransform);
+                t.fontStyle = FontStyle.Bold;
+                var o = t.gameObject.AddComponent<Outline>();
+                o.effectColor = new Color(shade.r, shade.g, shade.b, 0.9f);
+                o.effectDistance = new Vector2(2f, -2f);
+                if (on)
+                {
+                    var bar = Rect(fill, "Under");
+                    bar.anchorMin = bar.anchorMax = new Vector2(0.5f, 0f);
+                    bar.pivot = new Vector2(0.5f, 0f);
+                    bar.sizeDelta = new Vector2(40, 5);
+                    bar.anchoredPosition = new Vector2(0, 8);
+                    Background(bar, Palette.AccentLight).raycastTarget = false;
+                }
+            }
+            return row;
+        }
+
         /// <summary>미니 카드 상태: 보통 / 흐림(다 씀·놓임) / 경고(넘침).</summary>
         public enum MiniState { Normal, Dim, Warn }
 

@@ -254,18 +254,18 @@ namespace Game.Unity.Screens
             if (!Selected.TryGetValue(_id, out var seg) || System.Array.FindIndex(_segments, s => s.id == seg) < 0) seg = _segments[0].id;
             Ui.Column(root, 0, 0);
             var bar = Ui.Rect(root, "Segments");
-            Ui.Size(bar, 84);
+            Ui.Size(bar, 116);
             Ui.Background(bar, Palette.Bar);
             var barCol = Ui.Column(bar, 0, 10);
             var items = new List<(string, string)>();
             foreach (var s in _segments) items.Add((s.id, ctx.T(s.labelKey)));
-            float w = (GameApp.ReferenceWidth - 40f) / _segments.Length - 8f;
-            Ui.SegmentTabs(bar, items, seg, id =>
+            float w = (GameApp.ReferenceWidth - 40f) / _segments.Length - 18f;
+            Ui.ArtSegmentTabs(bar, items, seg, id =>
             {
                 if (id == seg) return;
                 void Go() { Selected[_id] = id; app.ShowMain(_id); }
                 if (_child is ILeaveGuard g && g.HasUnsaved(app)) MainScreen.AskLeave(app, g, Go); else Go();
-            }, 64, w);
+            }, 96, w);
             var body = Ui.Rect(root, "Body");
             Ui.Size(body, flexibleHeight: 1);
             var panel = Ui.Panel(body, seg);

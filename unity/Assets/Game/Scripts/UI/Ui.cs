@@ -27,6 +27,10 @@ namespace Game.Unity.UI
         public static Color Danger = new Color(0.45f, 0.22f, 0.20f);
         /// <summary>낙관(도장) 붉은색: 자원 표식·제목 도장.</summary>
         public static Color Seal = new Color(0.72f, 0.2f, 0.16f);
+        /// <summary>밝은 강조색 (자주 테마의 연보라): 고른 칸 테두리 · 밑줄 · 그림의 깃 · 창날.</summary>
+        public static Color AccentLight = new Color(0.79f, 0.65f, 0.94f);
+        /// <summary>판 가장자리 선 (안 고른 칸 테두리).</summary>
+        public static Color Line = new Color(0.23f, 0.20f, 0.26f);
         /// <summary>바탕이 밝은 스타일인가 (글자·작은 색을 짙게 골라야 한다).</summary>
         public static bool IsLight => UiArt.Luma(Background) > 0.5f;
         /// <summary>그 바탕 위에서 읽히는 글자 색 (밝은 판이면 먹색, 어두운 판이면 종이색).</summary>
