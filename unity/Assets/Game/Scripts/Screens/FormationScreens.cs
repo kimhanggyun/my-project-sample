@@ -207,7 +207,8 @@ namespace Game.Unity.Screens
             long most = System.Math.Max(0, System.Math.Min(free, room));
             var card = Ui.Rect(parent, "Pick");
             Ui.Size(card, 136);
-            Ui.Round(Ui.Background(card, new Color(0.98f, 0.965f, 0.925f)));
+            Ui.Round(Ui.Background(card, Palette.Card));
+            Ui.Strip(card);
             Ui.Place(Ui.TroopPicture(ctx, card, u?.TroopType ?? unitId, 104), 12, 16, 104, 104);
             // 빼기: 병종 그림 위 반투명 "−" (2026-11-15, [빼기] 버튼 대신)
             var off = Ui.Place(Ui.Rect(card, "Remove"), 76, 10, 46, 46);

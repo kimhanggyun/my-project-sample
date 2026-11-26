@@ -22,6 +22,8 @@ namespace Game.Unity.UI
         public static bool Paper { get; private set; }
         /// <summary>버튼·카드에 먹선 테두리 (UiArt.Frame).</summary>
         public static bool InkBorder { get; private set; }
+        /// <summary>목록 카드 왼쪽 강조 띠 (Ui.Strip).</summary>
+        public static bool CardStrip { get; private set; }
         /// <summary>(id, 이름 키) 차례대로.</summary>
         public static List<KeyValuePair<string, string>> Available { get; } = new List<KeyValuePair<string, string>>();
 
@@ -86,6 +88,7 @@ namespace Game.Unity.UI
             FontScale = Mathf.Clamp(s.Value<float?>("fontScale") ?? 1f, 0.5f, 2f);
             Paper = s.Value<bool?>("paper") ?? false;
             InkBorder = s.Value<bool?>("inkBorder") ?? false;
+            CardStrip = s.Value<bool?>("cardStrip") ?? false;
             if (s["colors"] is JObject c)
             {
                 Palette.Background = Read(c, "background", Palette.Background);
@@ -107,6 +110,10 @@ namespace Game.Unity.UI
                 Palette.Seal = Read(c, "seal", Palette.Seal);
                 Palette.AccentLight = Read(c, "accentLight", Palette.AccentLight);
                 Palette.Line = Read(c, "line", Palette.Line);
+                Palette.PictureBack = Read(c, "pictureBack", Palette.PictureBack);
+                Palette.Track = Read(c, "track", Palette.Track);
+                Palette.Board = Read(c, "board", Palette.Board);
+                Palette.CellOn = Read(c, "cellOn", Palette.CellOn);
             }
         }
 

@@ -54,7 +54,7 @@ namespace Game.Unity.Screens
                 string recover = u.Wounded <= 0 ? "" : u.WoundedRecoverAtUnixSeconds <= 0
                     ? ctx.T("ui.care.noRecover")
                     : ctx.T("ui.care.recoverIn", System.Math.Max(1, (u.WoundedRecoverAtUnixSeconds - now + 59) / 60));
-                var card = Ui.Card(list, u.UnitId, 16, 4);
+                var card = Ui.Strip(Ui.Card(list, u.UnitId, 16, 4));
                 Ui.Label(card, ctx.T("ui.care.unitLine", ctx.UnitLabel(u.UnitId), FormationTabView.TroopName(ctx, u.TroopType), u.Troops.ToString("N0"),
                     Ui.Colored(u.Wounded.ToString("N0"), u.Wounded > 0 ? Palette.Bad : Palette.TextDim), recover), 26);
             }

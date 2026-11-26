@@ -291,7 +291,7 @@ namespace Game.Unity.Screens
             if (PanM != Vector2.zero)
             {
                 // 옮긴 지도를 내 위치로 되돌리기
-                var back = Ui.Button(map, ctx.T("ui.terr.recenter"), () => { PanM = Vector2.zero; app.ShowMain("territory"); }, 56, new Color(0.98f, 0.96f, 0.93f), 22);
+                var back = Ui.Button(map, ctx.T("ui.terr.recenter"), () => { PanM = Vector2.zero; app.ShowMain("territory"); }, 56, Palette.Card, 22);
                 var bt = (RectTransform)back.transform;
                 bt.anchorMin = bt.anchorMax = bt.pivot = new Vector2(1f, 0f);
                 bt.sizeDelta = new Vector2(170, 56);
@@ -305,7 +305,7 @@ namespace Game.Unity.Screens
             Ui.Column(filters, 6, 0);
             void Filter(string label, bool on, Color col, System.Action toggle)
             {
-                var b = Ui.Button(filters, (on ? "☑ " : "☐ ") + label, () => { toggle(); app.ShowMain("territory"); }, 50, on ? new Color(0.98f, 0.96f, 0.93f) : new Color(0.98f, 0.96f, 0.93f, 0.7f), 20);
+                var b = Ui.Button(filters, (on ? "☑ " : "☐ ") + label, () => { toggle(); app.ShowMain("territory"); }, 50, on ? Palette.Card : new Color(Palette.Card.r, Palette.Card.g, Palette.Card.b, 0.7f), 20);
                 var t = b.GetComponentInChildren<Text>();
                 t.color = on ? col : Palette.TextDim;
                 t.alignment = TextAnchor.MiddleLeft;
@@ -333,7 +333,7 @@ namespace Game.Unity.Screens
             Ui.Column(zoomCol, 12, 0);
             Ui.SetEnabled(Ui.Button(zoomCol, "+", () => { Zoom = Mathf.Max(0, Zoom - 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom > 0);
             Ui.SetEnabled(Ui.Button(zoomCol, "−", () => { Zoom = Mathf.Min(ViewMeters.Length - 1, Zoom + 1); app.ShowMain("territory"); }, 70, fontSize: 34), Zoom < ViewMeters.Length - 1);
-            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Mode, ViewMeters[Zoom] / 1000) + " · " + ctx.T("ui.terr.rankRadius", ctx.T("rank." + ctx.Defs.Campaign.RankFor(ctx.State.LordLevel).Id), FormatKm(myRadius)), new Color(0.98f, 0.96f, 0.93f), Palette.Text);
+            var chip = Chip(map, Vector2.zero, ctx.T("ui.terr.zoom." + Mode, ViewMeters[Zoom] / 1000) + " · " + ctx.T("ui.terr.rankRadius", ctx.T("rank." + ctx.Defs.Campaign.RankFor(ctx.State.LordLevel).Id), FormatKm(myRadius)), Palette.Card, Palette.Text);
             chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(0, 0);
             chip.anchoredPosition = new Vector2(14, 14);
 

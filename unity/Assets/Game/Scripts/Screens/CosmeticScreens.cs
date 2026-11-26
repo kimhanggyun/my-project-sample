@@ -74,7 +74,7 @@ namespace Game.Unity.Screens
         private Image Picture(Transform parent, float size, string armor, string horse)
         {
             var box = Ui.Rect(parent, "Picture");
-            var bg = Ui.Background(box, new Color(0.894f, 0.859f, 0.776f));
+            var bg = Ui.Background(box, Palette.PictureBack);
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             var img = Ui.Background(Ui.Rect(box, "Image"), Color.white);
@@ -109,7 +109,7 @@ namespace Game.Unity.Screens
             bool shown = (kind == CosmeticKinds.Armor ? showArmor : showHorse) == id;
             var cell = Ui.Rect(row, "Cell_" + (id ?? "default"));
             Ui.Size(cell, 400, flexibleWidth: 1);
-            var bg = Ui.Background(cell, shown ? new Color(0.98f, 0.93f, 0.82f) : Palette.Card);
+            var bg = Ui.Background(cell, shown ? Palette.CellOn : Palette.Card);
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             Ui.Column(cell, 4, 8);
