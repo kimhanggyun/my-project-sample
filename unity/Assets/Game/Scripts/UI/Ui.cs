@@ -31,6 +31,14 @@ namespace Game.Unity.UI
         public static Color AccentLight = new Color(0.79f, 0.65f, 0.94f);
         /// <summary>판 가장자리 선 (안 고른 칸 테두리).</summary>
         public static Color Line = new Color(0.23f, 0.20f, 0.26f);
+        /// <summary>병종 · 장수 그림 뒤 판.</summary>
+        public static Color PictureBack = new Color(0.894f, 0.859f, 0.776f);
+        /// <summary>막대(능력치 · 진행) 빈 바탕.</summary>
+        public static Color Track = new Color(0.839f, 0.808f, 0.745f);
+        /// <summary>놓기 판 (진형 칸 판).</summary>
+        public static Color Board = new Color(0.84f, 0.8f, 0.7f);
+        /// <summary>고른 칸 (꾸미기 격자 등).</summary>
+        public static Color CellOn = new Color(0.98f, 0.93f, 0.82f);
         /// <summary>바탕이 밝은 스타일인가 (글자·작은 색을 짙게 골라야 한다).</summary>
         public static bool IsLight => UiArt.Luma(Background) > 0.5f;
         /// <summary>그 바탕 위에서 읽히는 글자 색 (밝은 판이면 먹색, 어두운 판이면 종이색).</summary>
@@ -317,6 +325,21 @@ namespace Game.Unity.UI
             Round(Background(rt, Palette.Card));
             Column(rt, spacing, padding);
             return rt;
+        }
+
+        /// <summary>목록 카드 왼쪽 강조 띠 (스타일 cardStrip일 때만, 자주 테마). 레이아웃에 끼지 않음.</summary>
+        public static RectTransform Strip(RectTransform card)
+        {
+            if (!UiStyle.CardStrip) return card;
+            var s = Rect(card, "Strip");
+            s.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            s.anchorMin = new Vector2(0f, 0f);
+            s.anchorMax = new Vector2(0f, 1f);
+            s.pivot = new Vector2(0f, 0.5f);
+            s.offsetMin = new Vector2(0f, 18f);
+            s.offsetMax = new Vector2(7f, -18f);
+            Background(s, Palette.ButtonActive).raycastTarget = false;
+            return card;
         }
 
         /// <summary>스타일에 둥글기가 있으면 둥근 모서리 판으로 (UiStyle).</summary>

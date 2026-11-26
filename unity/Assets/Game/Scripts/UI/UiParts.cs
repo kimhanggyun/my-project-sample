@@ -560,7 +560,7 @@ namespace Game.Unity.UI
         /// </summary>
         public static RectTransform GeneralCard(GameContext ctx, Transform parent, GeneralCardData d, Action onOpen, Action<RectTransform> onInfo)
         {
-            const float W = 505f, B = 6f;
+            const float W = 505f, B = 4f;
             var card = Rect(parent, "General_" + d.Id);
             var gradeColor = GradeLabel.ColorOf(d.Grade);
             var border = Background(card, gradeColor);
@@ -581,7 +581,7 @@ namespace Game.Unity.UI
 
             // 초상 자리
             var pic = Place(Rect(card, "PortraitBox"), 14, 14, W - 28, 250);
-            var picBg = Background(pic, new Color(0.894f, 0.859f, 0.776f));
+            var picBg = Background(pic, Palette.PictureBack);
             picBg.sprite = UiShapes.Rounded(12);
             picBg.type = Image.Type.Sliced;
             picBg.raycastTarget = false;
@@ -655,7 +655,7 @@ namespace Game.Unity.UI
         {
             var box = Rect(parent, "TroopPicture");
             Size(box, size, size).flexibleWidth = 0;
-            var bg = Background(box, new Color(0.894f, 0.859f, 0.776f));
+            var bg = Background(box, Palette.PictureBack);
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             bg.raycastTarget = false;
@@ -708,7 +708,7 @@ namespace Game.Unity.UI
 
             var bar = Rect(row, "Bar");
             Size(bar, 18, barWidth).flexibleWidth = 0;
-            var back = Background(bar, new Color(0.839f, 0.808f, 0.745f));
+            var back = Background(bar, Palette.Track);
             back.sprite = UiShapes.Rounded(9);
             back.type = Image.Type.Sliced;
             back.raycastTarget = false;
@@ -1138,7 +1138,7 @@ namespace Game.Unity.UI
         {
             var box = Rect(parent, "FormationPreview");
             Size(box, h, w).flexibleWidth = 0;
-            var bg = Background(box, new Color(0.894f, 0.859f, 0.776f));
+            var bg = Background(box, Palette.PictureBack);
             bg.sprite = UiShapes.Rounded(12);
             bg.type = Image.Type.Sliced;
             var b = box.gameObject.AddComponent<Button>();
@@ -1250,7 +1250,7 @@ namespace Game.Unity.UI
             var board = Rect(parent, "DropGrid");
             float hh = header == null ? 0 : 50;
             Size(board, rows * cellH + hh + 20, cols * cellW + 20).flexibleWidth = 0;
-            var bg = Background(board, new Color(0.84f, 0.8f, 0.7f));
+            var bg = Background(board, Palette.Board);
             Round(bg);
             if (header != null)
             {

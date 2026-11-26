@@ -37,7 +37,7 @@ namespace Game.Unity.Screens
             {
                 string id = p.GeneralId;
                 if (!ctx.Defs.Generals.TryGetValue(id, out var def)) continue;
-                var card = Ui.Card(list, id, 16, 6);
+                var card = Ui.Strip(Ui.Card(list, id, 16, 6));
                 Ui.Label(card, Ui.Colored(ctx.GeneralName(id), Palette.Enemy) + "   " + ctx.T("ui.prisoner.temperament", ctx.T("temperament." + def.Temperament)), 32);
                 Icons.Stats(ctx, card, def.Stats.Get("leadership").FloorToLong(), def.Stats.Get("might").FloorToLong(), def.Stats.Get("intellect").FloorToLong(), 34, 24);
 

@@ -52,7 +52,7 @@ namespace Game.Unity.Screens
             foreach (var p in ctx.Shop.Listed())
             {
                 string id = p.Id;
-                var card = Ui.Card(list, id, 16, 6);
+                var card = Ui.Strip(Ui.Card(list, id, 16, 6));
                 var row = Ui.Row(card, "Row", 96, 8);
                 string what = "";
                 foreach (var kv in p.Grants) what += ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0") + "  ";
@@ -77,7 +77,7 @@ namespace Game.Unity.Screens
             Ui.Label(list, ctx.T("ui.shop.cosmetics"), 28).fontStyle = FontStyle.Bold;
             foreach (var d in items)
             {
-                var card = Ui.Card(list, d.Id, 16, 6);
+                var card = Ui.Strip(Ui.Card(list, d.Id, 16, 6));
                 var row = Ui.Row(card, "Row", 84, 8);
                 string kind = ctx.T(d.Kind == CosmeticKinds.Horse ? "ui.cos.horse" : "ui.cos.armor");
                 Ui.Size(Ui.Label(row, ctx.T(d.NameKey) + "\n" + Ui.Colored(kind, Palette.TextDim), 26), flexibleWidth: 3);
@@ -111,7 +111,7 @@ namespace Game.Unity.Screens
             long now = ctx.Clock.UtcNow.ToUnixTimeSeconds();
             foreach (var rate in rates)
             {
-                var card = Ui.Card(list, rate.Key, 16, 6);
+                var card = Ui.Strip(Ui.Card(list, rate.Key, 16, 6));
                 long left = econ.LeftToday(ctx.State, rate, now);
                 string info = ctx.T("ui.shop.exchangeLine", ctx.T("resource." + rate.From), ctx.T("resource." + rate.To), rate.Give.ToString("N0"), DailyEconomy.Output(rate, rate.Give).ToString("N0"))
                     + (rate.LossPct > 0 ? "  " + ctx.T("ui.shop.exchangeLoss", rate.LossPct) : "")

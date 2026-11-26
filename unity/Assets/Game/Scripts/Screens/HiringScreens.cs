@@ -517,7 +517,7 @@ namespace Game.Unity.Screens
                         continue;
                     }
                     var item = m;
-                    var card = Ui.Card(list, m.Id, 20, 6);
+                    var card = Ui.Strip(Ui.Card(list, m.Id, 20, 6));
                     // 종류별 줄 (R-112 출석 · R-113 공성전 알림, 영토 수입, 그 밖 = 고용 보상)
                     string line = m.Kind == MailKinds.SiegeAlert ? T("ui.mail.siegeAlert", T("ui.mail.myFlag"))
                         : m.Kind == MailKinds.Attendance ? T("ui.mail.attendance", m.Amount.ToString("N0"), T("resource." + m.Resource))
@@ -577,7 +577,7 @@ namespace Game.Unity.Screens
                     if (l.Kind == HireKinds.General && Ctx.State.FindGeneral(l.GeneralId) != null) continue; // 이미 가진 장수
                     shown++;
                     var listing = l;
-                    var card = Ui.Card(list, l.Id, 20, 6);
+                    var card = Ui.Strip(Ui.Card(list, l.Id, 20, 6));
                     Ui.Label(card, HireText.Line(Ctx, l), Ui.FontSmall);
                     Ui.Label(card, HireText.Price(Ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);
                     Ui.Label(card, HireText.Stats(Ctx, l), 26, TextAnchor.MiddleLeft, Palette.TextDim);

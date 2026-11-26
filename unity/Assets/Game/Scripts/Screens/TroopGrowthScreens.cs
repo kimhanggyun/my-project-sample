@@ -96,6 +96,7 @@ namespace Game.Unity.Screens
             Ui.Fill(card);
             card.offsetMin = new Vector2(dx, 0);
             Ui.Round(Ui.Background(card, Palette.Card));
+            Ui.Strip(card);
 
             float pic = depth > 0 ? 166f : 196f;
             Ui.Place(Ui.TroopPicture(ctx, card, u.TroopType, pic), 15, (CardHeight - pic) / 2f, pic, pic);
