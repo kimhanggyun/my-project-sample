@@ -766,6 +766,7 @@
   "ui.sample2.f.thick": "두툼",
   "ui.sample2.f.wedge": "쐐기",
   "ui.sample2.f.vee": "V자",
+  "ui.sample2.f.thicker": "더 두툼",
   "ui.sample2.count": "우리 {0} · 적 {1} · 아장 {4}/{5} · 적장 {2}/{3}",
   "ui.sample2.win": "승리",
   "ui.sample2.lose": "패배",

@@ -746,6 +746,23 @@ namespace Game.Unity.Boot
                 }, startNow: true);
                 yield return Shot("43d_single_corps", () => one, 0.4f);
             }
+            // 진형 길이 (R-157): 진형 6종 200명씩 · 1000명 부대 (평지 전장이 넓어짐)
+            {
+                var shapes = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+                {
+                    AllyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Count = 200, Formation = "line", Commander = true }, new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Count = 200, Formation = "thick" }, new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Count = 200, Formation = "thicker" } },
+                    EnemyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Count = 200, Formation = "wedge", Commander = true }, new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Count = 200, Formation = "vee" }, new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Count = 200, Formation = "circle" } },
+                    AllyAdvance = false, Seed = 5,
+                }, startNow: false);
+                yield return Shot("43e_formation_shapes", () => shapes, 0.5f);
+                var big = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+                {
+                    AllyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 0, Count = 1000, Formation = "line", Commander = true }, new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Count = 1000, Formation = "line" }, new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 2, Count = 1000, Formation = "line" } },
+                    EnemyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 0, Col = 1, Count = 1000, Formation = "thick", Commander = true } },
+                    AllyAdvance = false, Seed = 6,
+                }, startNow: false);
+                yield return Shot("43f_formation_1000", () => big, 1.0f);
+            }
 
             // 화면 스타일 비교 (2026-11-27 사용자: 한지 기본 · 어두움 · 나전칠기 · 백자) — 개발 값은 빼고 데이터 값으로
             {
