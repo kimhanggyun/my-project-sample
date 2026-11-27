@@ -193,6 +193,7 @@ namespace Game.Unity.UI
             var b = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
             b.targetGraphic = img;
             if (onClick != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onClick(); });
+            UiKit.AddPress(rt.gameObject); // 누름 효과 (anim.press)
             var label = Label(rt, text, fontSize, TextAnchor.MiddleCenter, Palette.TextOn(img.color));
             Fill(label.rectTransform);
             label.rectTransform.offsetMin = new Vector2(8, 4);

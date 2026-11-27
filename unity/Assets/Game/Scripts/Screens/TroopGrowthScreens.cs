@@ -95,8 +95,8 @@ namespace Game.Unity.Screens
             var card = Ui.Rect(holder, "Card");
             Ui.Fill(card);
             card.offsetMin = new Vector2(dx, 0);
-            Ui.Round(Ui.Background(card, Palette.Card));
-            Ui.Strip(card);
+            var cardBg = Ui.Round(Ui.Background(card, Palette.Card));
+            UiKit.DressCard(card, cardBg, "card.troop.standard", null); // 카드 체계: 병종 · 보통 (ui-kit.md 4.4)
 
             float pic = depth > 0 ? 166f : 196f;
             Ui.Place(Ui.TroopPicture(ctx, card, u.TroopType, pic), 15, (CardHeight - pic) / 2f, pic, pic);

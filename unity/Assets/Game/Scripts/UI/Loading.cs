@@ -65,40 +65,106 @@ namespace Game.Unity.UI
     {
         private readonly System.Collections.Generic.Dictionary<int, float> _started = new System.Collections.Generic.Dictionary<int, float>();
         private int _next;
-        private RectTransform _ring;
         private Image _dim;
         public bool Shown { get; private set; }
         /// <summary>카드 색 = 밝은 한지 (2026-11-20 캡처: Palette.Card는 어두워 다른 화면과 안 맞음).</summary>
         private static readonly Color Paper = new Color(0.96f, 0.93f, 0.86f);
 
+        private int _builtVersion = -1;
+
         public void Build()
         {
             _dim = GetComponent<Image>();
             _dim.raycastTarget = true; // 보이는 동안 뒤 화면 누름 막기
-            var card = Ui.Rect(transform, "Card");
+            Show(false);
+        }
+
+        /// <summary>
+        /// 로딩 카드 (anim.loading, ui-kit.md 4.9): ring (도는 고리) · swordClash (검과 검이 맞부딪쳐 불꽃) · horseRun (말이 달림) · flagWave (깃발 펄럭).
+        /// 부품 꾸미기 미리보기도 이것을 그대로 쓴다.
+        /// </summary>
+        public static RectTransform BuildCard(Transform parent)
+        {
+            var spec = UiKit.Spec("anim.loading");
+            string v = spec.Variant ?? "ring";
+            Color back = spec.Col("color", Palette.IsLight ? Paper : Palette.Card);
+            Color fx = spec.Col("accent", v == "ring" ? Palette.Seal : Palette.AccentLight);
+            var card = Ui.Rect(parent, "Card");
             card.anchorMin = card.anchorMax = card.pivot = new Vector2(0.5f, 0.5f);
             card.sizeDelta = new Vector2(180f, 180f);
-            var bg = Ui.Background(card, Paper);
+            var bg = Ui.Background(card, back);
             bg.sprite = UiShapes.Rounded(24);
             bg.type = Image.Type.Sliced;
             bg.raycastTarget = false;
-            // 도는 고리: 둥근 판을 3/4만 채우고(방사형) 안쪽을 카드 색으로 덮어 고리처럼
-            _ring = Ui.Rect(card, "Ring");
-            _ring.anchorMin = _ring.anchorMax = _ring.pivot = new Vector2(0.5f, 0.5f);
-            _ring.sizeDelta = new Vector2(96f, 96f);
-            var arc = Ui.Background(_ring, Palette.Seal);
-            arc.sprite = UiShapes.Circle;
-            arc.type = Image.Type.Filled;
-            arc.fillMethod = Image.FillMethod.Radial360;
-            arc.fillAmount = 0.75f;
-            arc.raycastTarget = false;
-            var hole = Ui.Rect(_ring, "Hole");
-            hole.anchorMin = hole.anchorMax = hole.pivot = new Vector2(0.5f, 0.5f);
-            hole.sizeDelta = new Vector2(70f, 70f);
-            var hb = Ui.Background(hole, Paper);
-            hb.sprite = UiShapes.Circle;
-            hb.raycastTarget = false;
-            Show(false);
+            card.gameObject.AddComponent<RectMask2D>();
+            var anim = card.gameObject.AddComponent<KitAnim>();
+            anim.Speed = spec.Num("speed", 1f);
+            RectTransform Pic(string name, string icon, float size, Vector2 pos, Vector2 pivot)
+            {
+                var r = Ui.Rect(card, name);
+                r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+                r.pivot = pivot;
+                r.sizeDelta = new Vector2(size, size);
+                r.anchoredPosition = pos;
+                var im = r.gameObject.AddComponent<Image>();
+                im.sprite = SegmentArt.Icon(icon); im.preserveAspect = true; im.color = fx; im.raycastTarget = false;
+                return r;
+            }
+            switch (v)
+            {
+                case "swordClash":
+                    anim.SwordL = Pic("SwordL", "ico.sword", 110, new Vector2(-46, -60), new Vector2(0.5f, 0.05f));
+                    anim.SwordR = Pic("SwordR", "ico.sword", 110, new Vector2(46, -60), new Vector2(0.5f, 0.05f));
+                    var spark = Ui.Rect(card, "Spark");
+                    spark.anchorMin = spark.anchorMax = new Vector2(0.5f, 0.5f);
+                    spark.sizeDelta = new Vector2(110, 110);
+                    spark.anchoredPosition = new Vector2(0, 18);
+                    anim.Spark = spark.gameObject.AddComponent<Image>();
+                    anim.Spark.sprite = SegmentArt.Glow; anim.Spark.color = new Color(fx.r, fx.g, fx.b, 0f); anim.Spark.raycastTarget = false;
+                    break;
+                case "horseRun":
+                    {
+                        var road = Ui.Rect(card, "Road");
+                        road.anchorMin = new Vector2(0f, 0f); road.anchorMax = new Vector2(1f, 0f);
+                        road.pivot = new Vector2(0f, 0f);
+                        road.offsetMin = new Vector2(0f, 34f); road.offsetMax = new Vector2(56f, 38f);
+                        var ri = road.gameObject.AddComponent<Image>();
+                        ri.sprite = UiKit.Dash; ri.type = Image.Type.Tiled; ri.color = new Color(fx.r, fx.g, fx.b, 0.5f); ri.raycastTarget = false;
+                        anim.Road = road;
+                        var horse = Ui.Rect(card, "Horse");
+                        horse.anchorMin = horse.anchorMax = new Vector2(0f, 0.5f);
+                        horse.sizeDelta = new Vector2(96, 96);
+                        var hi = horse.gameObject.AddComponent<Image>();
+                        hi.sprite = SegmentArt.Icon("ico.horse"); hi.preserveAspect = true; hi.color = fx; hi.raycastTarget = false;
+                        anim.Runner = horse;
+                        break;
+                    }
+                case "flagWave":
+                    anim.Flag = Pic("Flag", "ico.army", 110, Vector2.zero, new Vector2(0.15f, 0.5f));
+                    break;
+                default:
+                    {
+                        // 도는 고리: 둥근 판을 3/4만 채우고(방사형) 안쪽을 카드 색으로 덮어 고리처럼
+                        var ring = Ui.Rect(card, "Ring");
+                        ring.anchorMin = ring.anchorMax = ring.pivot = new Vector2(0.5f, 0.5f);
+                        ring.sizeDelta = new Vector2(96f, 96f);
+                        var arc = Ui.Background(ring, fx);
+                        arc.sprite = UiShapes.Circle;
+                        arc.type = Image.Type.Filled;
+                        arc.fillMethod = Image.FillMethod.Radial360;
+                        arc.fillAmount = 0.75f;
+                        arc.raycastTarget = false;
+                        var hole = Ui.Rect(ring, "Hole");
+                        hole.anchorMin = hole.anchorMax = hole.pivot = new Vector2(0.5f, 0.5f);
+                        hole.sizeDelta = new Vector2(70f, 70f);
+                        var hb = Ui.Background(hole, back);
+                        hb.sprite = UiShapes.Circle;
+                        hb.raycastTarget = false;
+                        anim.Spin = ring;
+                        break;
+                    }
+            }
+            return card;
         }
 
         public int Add()
@@ -112,6 +178,13 @@ namespace Game.Unity.UI
 
         private void Show(bool on)
         {
+            if (on && _builtVersion != UiKit.Version)
+            {
+                // 부품 꾸미기 값이 바뀌었으면 카드를 다시 만든다 (처음 보일 때 · 꾸미기 화면에서 바꾼 뒤)
+                for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
+                BuildCard(transform);
+                _builtVersion = UiKit.Version;
+            }
             Shown = on;
             _dim.enabled = on;
             for (int i = 0; i < transform.childCount; i++) transform.GetChild(i).gameObject.SetActive(on);
@@ -130,7 +203,6 @@ namespace Game.Unity.UI
             foreach (var id in expired) _started.Remove(id);
             bool want = _started.Count > 0 && now - oldest >= Loading.ShowAfter;
             if (want != Shown) Show(want);
-            if (Shown && _ring != null) _ring.Rotate(0f, 0f, -360f * Time.unscaledDeltaTime);
             transform.SetAsLastSibling(); // 확인 창 등 뒤에 붙는 것보다 늘 위
         }
     }

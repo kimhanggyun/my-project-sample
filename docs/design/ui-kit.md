@@ -1,6 +1,6 @@
 # 부품 꾸미기 (UI 키트)
 
-> 상태: 2026-11-27 제안 → **PR 1 구현** (틀 + 바탕 · 버튼 · 탭). 목록 = `data/Ui/uiKit.json`, 값 = `styles.json` parts, 코드 = `UiKit.cs` (값 읽기 · 개발 값 · 내보내기 · 바탕 · 버튼 · 뒤로가기 · 출진 · 탭 줄), `SegmentArt.cs` (코드 그림), 화면 = `PartsKitView.cs` (개발 줄 [부품]). 카드 체계(PR 2) · 움직임 · 머리 · 창(PR 3)은 아직.
+> 상태: 2026-11-27 제안 → **PR 1 구현** (틀 + 바탕 · 버튼 · 탭). 목록 = `data/Ui/uiKit.json`, 값 = `styles.json` parts, 코드 = `UiKit.cs` (값 읽기 · 개발 값 · 내보내기 · 바탕 · 버튼 · 뒤로가기 · 출진 · 탭 줄), `SegmentArt.cs` (코드 그림), 화면 = `PartsKitView.cs` (개발 줄 [부품]). **PR 2 카드 체계** (2026-11-27): `UiCards.cs` `Cards.General/Troop/Corps/Item(ctx, 부모, 내용, 밀도)`, 틀 = `UiKit.DressCard` (역할 card.<내용>.<밀도>, 변형 plain · strip · grade · framed · scene). 지금 화면: 장수 탭 = 장수 · 보통, 편성 줄 = 미니, 병력 목록 = 병종 · 보통, 꾸미기 칸 = 아이템 · 보통. 간편 · 세밀 · 군단은 새로 그림 (전투 부대 고르기 등에서 씀). **PR 3 움직임 · 머리 · 창** (2026-11-27, PR 2와 한 번에): 로딩 anim.loading (ring · swordClash · horseRun · flagWave, `LoadingView.BuildCard`), 누름 anim.press (none · shrink), 위 자원 바 head.top (plain · kit 코드 아이콘 — 어두운 바탕의 가방 · 톱니가 안 보이던 것), 화면 제목 head.title (plain · brush · underline), 창 pop.confirm · pop.sheet · pop.toast (solid · framed · ring · scene, 뒤 어둡게, 나타남 none · rise · pop). 꾸미기 화면 [머리] · [창] · [움직임] 칸.
 > 관련: [mockups/공통부품.md](mockups/공통부품.md) (역할 목록 · 쓰는 페이지), [art-direction.md](art-direction.md), `data/Ui/styles.json`, 메인 세그먼트 그림 탭 (#302) · 자주 테마 (#302 · #303).
 
 ## 0. 왜

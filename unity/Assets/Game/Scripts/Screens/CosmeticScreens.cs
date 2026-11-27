@@ -112,6 +112,7 @@ namespace Game.Unity.Screens
             var bg = Ui.Background(cell, shown ? Palette.CellOn : Palette.Card);
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
+            UiKit.DressCard(cell, bg, "card.item.standard", null); // 카드 체계: 아이템 · 보통 (ui-kit.md 4.4)
             Ui.Column(cell, 4, 8);
             // 칸 그림: 그 갑옷(또는 말)을 입힌 모습
             string a = kind == CosmeticKinds.Armor ? id : showArmor, h = kind == CosmeticKinds.Horse ? id : showHorse;
