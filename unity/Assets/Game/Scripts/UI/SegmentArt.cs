@@ -67,6 +67,26 @@ namespace Game.Unity.UI
             return Art(art, k, m, x);
         }
 
+        /// <summary>그림 id로 세그먼트 칸 그림 (대분류 세그먼트가 칸마다 그림을 고를 때, 2026-11-27). on = 고른 칸 색.</summary>
+        public static Sprite GetArt(string art, bool on, Color onBack)
+        {
+            if (art == null) return null;
+            Color k, m, x;
+            if (on)
+            {
+                k = Color.Lerp(Color.black, onBack, 0.5f);
+                m = Color.Lerp(onBack, Palette.AccentLight, 0.3f);
+                x = Palette.AccentLight;
+            }
+            else
+            {
+                k = Color.Lerp(Palette.Card, Palette.TextDim, 0.3f);
+                m = Color.Lerp(Palette.Card, Palette.TextDim, 0.5f);
+                x = Color.Lerp(Palette.Card, Palette.TextDim, 0.65f);
+            }
+            return Art(art, k, m, x);
+        }
+
         /// <summary>그림 (fig · scene · ico) 을 세 색으로. blur 0~1 = 흐림 (0이면 또렷). 없는 id면 null.</summary>
         public static Sprite Art(string artId, Color k, Color m, Color x, float blur = 0f)
         {
@@ -156,6 +176,90 @@ namespace Game.Unity.UI
                         Soldier(s, 91 * q, 35 * q, q);
                         return s;
                     }
+                // ---- 대분류 세그먼트 그림 (2026-11-27: 모집 · 영토 · 도감 · 상점 · 녹화도 그림 세그먼트) ----
+                case "fig.merc": // 용병: 병사 + 엽전 두 닢
+                    s.W = 84;
+                    Soldier(s, 26, 14, 1.05f);
+                    AddEllipse(s, Ink.K, 56, 27, 10, 10);
+                    AddRect(s, Ink.M, 53, 24, 6, 6);
+                    AddEllipse(s, Ink.X, 70, 33, 8, 8);
+                    AddRect(s, Ink.K, 67.6f, 30.6f, 4.8f, 4.8f);
+                    return s;
+                case "fig.globe": // 지도: 지구본
+                    s.W = 80;
+                    AddEllipse(s, Ink.M, 40, 22, 19, 19);
+                    Add(s, Ink.K, "M28 10 Q34 8 37 12 Q36 17 31 18 Q27 21 29 26 Q25 24 23 19 Q24 13 28 10Z");
+                    Add(s, Ink.K, "M44 14 Q51 12 55 18 Q56 25 51 30 Q47 34 45 29 Q47 24 43 21 Q42 17 44 14Z");
+                    Add(s, Ink.K, "M33 31 Q38 30 39 35 Q36 39 32 37Z");
+                    AddRing(s, Ink.K, 40, 22, 19, 19, 2.2f);
+                    AddRing(s, Ink.X, 40, 22, 7.5f, 19, 1.3f);
+                    AddRect(s, Ink.X, 21, 21.4f, 38, 1.3f);
+                    AddRect(s, Ink.X, 24.5f, 13.4f, 31, 1.1f);
+                    AddRect(s, Ink.X, 24.5f, 29.6f, 31, 1.1f);
+                    AddRect(s, Ink.K, 39, 41, 2, 3);
+                    AddRect(s, Ink.K, 32, 43, 16, 1.5f);
+                    return s;
+                case "fig.flags": // 내 깃발: 땅 위 깃발 셋
+                    s.W = 84;
+                    Add(s, Ink.M, "M0 40 Q42 32 84 40 L84 44 L0 44Z");
+                    foreach (var (fx, fy, fh) in new[] { (16f, 12f, 26f), (40f, 4f, 32f), (64f, 12f, 26f) })
+                    {
+                        AddRect(s, Ink.K, fx, fy, 1.8f, fh);
+                        Add(s, fx == 40f ? Ink.K : Ink.X, "M" + F(fx + 1.8f) + " " + F(fy) + " L" + F(fx + 16) + " " + F(fy + 2.5f) + " L" + F(fx + 11) + " " + F(fy + 6)
+                            + " L" + F(fx + 16) + " " + F(fy + 9.5f) + " L" + F(fx + 1.8f) + " " + F(fy + 11) + "Z");
+                    }
+                    return s;
+                case "fig.scroll": // 비결: 두루마리
+                    s.W = 84;
+                    AddRect(s, Ink.M, 22, 10, 40, 24);
+                    AddRect(s, Ink.K, 16, 7, 6, 30);
+                    AddRect(s, Ink.K, 62, 7, 6, 30);
+                    AddEllipse(s, Ink.X, 19, 6.5f, 3, 2);
+                    AddEllipse(s, Ink.X, 65, 6.5f, 3, 2);
+                    for (int i = 0; i < 4; i++) AddRect(s, Ink.K, 27, 14 + i * 5, i == 3 ? 18 : 30, 1.6f);
+                    return s;
+                case "fig.coins": // 엽전 더미
+                    s.W = 84;
+                    foreach (var (cx, cy, r) in new[] { (30f, 28f, 12f), (54f, 28f, 12f), (42f, 16f, 12f) })
+                    {
+                        AddEllipse(s, Ink.K, cx, cy, r, r);
+                        AddRing(s, Ink.X, cx, cy, r - 2.2f, r - 2.2f, 1f);
+                        AddRect(s, Ink.M, cx - 3.2f, cy - 3.2f, 6.4f, 6.4f);
+                    }
+                    return s;
+                case "fig.gold": // 금괴
+                    s.W = 84;
+                    Add(s, Ink.K, "M18 40 L24 28 L42 28 L48 40Z");
+                    Add(s, Ink.K, "M38 40 L44 28 L62 28 L68 40Z");
+                    Add(s, Ink.M, "M28 26 L34 14 L52 14 L58 26Z");
+                    AddRect(s, Ink.X, 36, 15.5f, 14, 1.4f);
+                    AddRect(s, Ink.X, 26, 29.5f, 14, 1.4f);
+                    AddRect(s, Ink.X, 46, 29.5f, 14, 1.4f);
+                    return s;
+                case "fig.cash": // 현금: 돈주머니
+                    s.W = 84;
+                    Add(s, Ink.K, "M34 6 L50 6 L46 13 Q60 17 60 30 Q60 42 42 42 Q24 42 24 30 Q24 17 38 13Z");
+                    AddRect(s, Ink.M, 36, 11, 12, 2.6f);
+                    AddEllipse(s, Ink.X, 42, 29, 6.5f, 6.5f);
+                    AddRect(s, Ink.K, 40, 27, 4, 4);
+                    return s;
+                case "fig.film": // 녹화 (내 것): 필름
+                    s.W = 84;
+                    AddRect(s, Ink.K, 12, 9, 60, 26);
+                    for (int i = 0; i < 8; i++) { AddRect(s, Ink.M, 15 + i * 7.3f, 11, 3.4f, 3); AddRect(s, Ink.M, 15 + i * 7.3f, 30, 3.4f, 3); }
+                    AddRect(s, Ink.X, 16, 16, 16, 12);
+                    AddRect(s, Ink.X, 34, 16, 16, 12);
+                    AddRect(s, Ink.X, 52, 16, 16, 12);
+                    return s;
+                case "fig.share": // 녹화 (공유): 이어진 세 사람
+                    s.W = 84;
+                    Add(s, Ink.M, "M41 13 L25 30 L27 32 L43 15Z M43 13 L59 30 L57 32 L41 15Z M28 32 L56 32 L56 34.5 L28 34.5Z");
+                    foreach (var (hx, hy) in new[] { (42f, 9f), (24f, 30f), (60f, 30f) })
+                    {
+                        AddEllipse(s, Ink.K, hx, hy - 2, 4.2f, 4.2f);
+                        Add(s, Ink.K, "M" + F(hx - 7) + " " + F(hy + 10) + " Q" + F(hx) + " " + F(hy - 1) + " " + F(hx + 7) + " " + F(hy + 10) + "Z");
+                    }
+                    return s;
                 case "scene.castle":
                     s.W = 200; s.H = 90;
                     Add(s, Ink.M, "M0 70 L25 40 L45 55 L70 25 L95 50 L120 30 L150 52 L175 35 L200 50 L200 90 L0 90Z");
@@ -298,6 +402,65 @@ namespace Game.Unity.UI
                     Add(s, Ink.K, "M8 4.5 L16 4.5 L14 8 Q20.5 10 20.5 16 Q20.5 21.5 12 21.5 Q3.5 21.5 3.5 16 Q3.5 10 10 8Z");
                     AddRect(s, Ink.M, 9, 7.2f, 6, 1.6f);
                     return s;
+                // ---- 전투 명령 · 병종 아이콘 (2026-11-27: 명령 버튼 · 부대 칸 뒤 바탕) ----
+                case "ico.march": // 진군: 위로 겹 화살
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M12 2 L21 11 L17.5 11 L12 5.5 L6.5 11 L3 11Z");
+                    Add(s, Ink.K, "M12 10 L21 19 L17.5 19 L12 13.5 L6.5 19 L3 19Z");
+                    return s;
+                case "ico.move": // 이동: 네 방향 화살
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M12 1 L16 5.5 L13.2 5.5 L13.2 10.8 L18.5 10.8 L18.5 8 L23 12 L18.5 16 L18.5 13.2 L13.2 13.2 L13.2 18.5 L16 18.5 L12 23 L8 18.5 L10.8 18.5 L10.8 13.2 L5.5 13.2 L5.5 16 L1 12 L5.5 8 L5.5 10.8 L10.8 10.8 L10.8 5.5 L8 5.5Z");
+                    return s;
+                case "ico.skill": // 스킬: 별
+                    {
+                        s.W = 24; s.H = 24; s.Scale = 6;
+                        var star = new List<Vector2>();
+                        for (int i = 0; i < 10; i++)
+                        {
+                            float a = -Mathf.PI / 2f + i * Mathf.PI / 5f;
+                            float r = i % 2 == 0 ? 11f : 4.6f;
+                            star.Add(new Vector2(12 + Mathf.Cos(a) * r, 12.8f + Mathf.Sin(a) * r));
+                        }
+                        s.Shapes.Add(new Shape(Ink.K, new List<List<Vector2>> { star }));
+                        return s;
+                    }
+                case "ico.formation": // 진형: 3 × 3 점
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    for (int r = 0; r < 3; r++)
+                        for (int c = 0; c < 3; c++) AddEllipse(s, r == 0 ? Ink.K : Ink.M, 5 + c * 7, 5 + r * 7, 2.6f, 2.6f);
+                    return s;
+                case "ico.hold": // 대기: 방패
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M12 2 L21 5 L21 11 Q21 18.5 12 22.5 Q3 18.5 3 11 L3 5Z");
+                    Add(s, Ink.M, "M12 5 L18 7 L18 11 Q18 16.5 12 19.5Z");
+                    return s;
+                case "ico.retreat": // 후퇴: 아래로 겹 화살
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M12 22 L21 13 L17.5 13 L12 18.5 L6.5 13 L3 13Z");
+                    Add(s, Ink.M, "M12 14 L21 5 L17.5 5 L12 10.5 L6.5 5 L3 5Z");
+                    return s;
+                case "ico.spear": // 창병: 창
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M12 1 L15 7.5 L12.9 7.5 L12.9 23 L11.1 23 L11.1 7.5 L9 7.5Z");
+                    AddRect(s, Ink.M, 9.5f, 8.5f, 5, 1.6f);
+                    return s;
+                case "ico.group": // 전체: 병사 셋
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    foreach (var (gx, gy, ink) in new[] { (6f, 9f, Ink.M), (18f, 9f, Ink.M), (12f, 7f, Ink.K) })
+                    {
+                        AddEllipse(s, ink, gx, gy, 3.2f, 3.2f);
+                        Add(s, ink, "M" + F(gx - 5) + " " + F(gy + 13) + " Q" + F(gx) + " " + F(gy + 2) + " " + F(gx + 5) + " " + F(gy + 13) + "Z");
+                    }
+                    return s;
+                case "ico.globe": // 지도 (작은 지구본)
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    AddRing(s, Ink.K, 12, 12, 10, 10, 1.8f);
+                    AddRing(s, Ink.K, 12, 12, 4, 10, 1.4f);
+                    AddRect(s, Ink.K, 2.5f, 11.3f, 19, 1.4f);
+                    AddRect(s, Ink.M, 4.5f, 6.5f, 15, 1.1f);
+                    AddRect(s, Ink.M, 4.5f, 16.4f, 15, 1.1f);
+                    return s;
             }
             return null;
         }
@@ -318,6 +481,20 @@ namespace Game.Unity.UI
 
         private static void AddRect(Scene s, Ink ink, float x, float y, float w, float h) =>
             s.Shapes.Add(new Shape(ink, new List<List<Vector2>> { new List<Vector2> { new Vector2(x, y), new Vector2(x + w, y), new Vector2(x + w, y + h), new Vector2(x, y + h) } }));
+
+        /// <summary>테두리만 있는 타원 (바깥 · 안 두 고리, 짝홀 칠하기라 가운데는 빔).</summary>
+        private static void AddRing(Scene s, Ink ink, float cx, float cy, float rx, float ry, float t)
+        {
+            var outer = new List<Vector2>();
+            var inner = new List<Vector2>();
+            for (int i = 0; i < 48; i++)
+            {
+                float a = i * Mathf.PI * 2f / 48;
+                outer.Add(new Vector2(cx + Mathf.Cos(a) * rx, cy + Mathf.Sin(a) * ry));
+                inner.Add(new Vector2(cx + Mathf.Cos(a) * Mathf.Max(0.1f, rx - t), cy + Mathf.Sin(a) * Mathf.Max(0.1f, ry - t)));
+            }
+            s.Shapes.Add(new Shape(ink, new List<List<Vector2>> { outer, inner }));
+        }
 
         private static void AddEllipse(Scene s, Ink ink, float cx, float cy, float rx, float ry)
         {

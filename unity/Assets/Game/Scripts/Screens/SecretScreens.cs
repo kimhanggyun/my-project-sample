@@ -94,7 +94,7 @@ namespace Game.Unity.Screens
             bool sec = _tab == "secrets";
             Ring(top, sec ? found : owned, sec ? codex.Count : gens.Count);
             InfoButton.Add(Root, T(sec ? "ui.codex.note" : "ui.codex.noteGenerals"));
-            Ui.SegmentTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets")), ("generals", T("ui.codex.tab.generals")) }, _tab, id => { _tab = id; Replace(new CodexScreen()); }, 70, 500);
+            Ui.MajorTabs(header, new[] { ("secrets", T("ui.codex.tab.secrets"), "fig.scroll"), ("generals", T("ui.codex.tab.generals"), "fig.general") }, _tab, id => { _tab = id; Replace(new CodexScreen()); }, band: false);
 
             if (!sec) BuildGenerals(header, body, gens);
             else if (_detail != null) BuildDetail(body, codex);
@@ -147,7 +147,7 @@ namespace Game.Unity.Screens
                 foreach (var e in codex) if (e.Category == c) { n++; if (e.Found) f++; }
                 chips.Add((c, T("ui.codex.cat." + c) + " " + f + "/" + n));
             }
-            Ui.SegmentTabs(header, chips, _cat, id => { _cat = id; Replace(new CodexScreen()); }, 62, 150);
+            Ui.MinorTabs(header, chips, _cat, id => { _cat = id; Replace(new CodexScreen()); });
 
             var defs = Ctx.Defs.Secrets;
             RectTransform row = null;
@@ -246,7 +246,7 @@ namespace Game.Unity.Screens
         {
             var chips = new List<(string, string)> { ("all", T("ui.codex.cat.all")) };
             foreach (var gr in Ctx.Defs.Gacha.Grades) chips.Add((gr.Id, T("grade." + gr.Id)));
-            Ui.SegmentTabs(header, chips, _grade, id => { _grade = id; Replace(new CodexScreen()); }, 58, 150);
+            Ui.MinorTabs(header, chips, _grade, id => { _grade = id; Replace(new CodexScreen()); });
             gens.Sort((a, b) =>
             {
                 int ra = Ctx.Defs.Gacha.Grade(a.Grade)?.Rank ?? -1, rb = Ctx.Defs.Gacha.Grade(b.Grade)?.Rank ?? -1;

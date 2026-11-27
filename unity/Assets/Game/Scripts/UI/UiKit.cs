@@ -662,6 +662,31 @@ namespace Game.Unity.UI
         }
 
         /// <summary>
+        /// 화면 틀 바탕 (위 바 · 대분류 세그먼트 띠 · 아래 탭 바, 2026-11-27 사용자 "위쪽 색이 세 군데 달라, 통일"):
+        /// 모두 bg.header 한 가지로 칠하고, 화면 끝(상태바 · 홈 표시줄 안전 영역)까지 bleedUp · bleedDown 만큼 바탕을 늘려 칠한다.
+        /// </summary>
+        public static void Chrome(RectTransform target, float bleedUp, float bleedDown, string role = "bg.header")
+        {
+            Backdrop(target, role, Palette.Bar);
+            RectTransform layer = target.Find("KitBg") as RectTransform;
+            if (layer == null)
+            {
+                // 꾸밈 값이 없는 스타일: 자기 바탕 색을 같은 모양 층으로 옮겨 늘림
+                var own = target.GetComponent<Image>();
+                layer = Ui.Fill(Ui.Rect(target, "KitBg"));
+                layer.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                layer.SetAsFirstSibling();
+                var li = layer.gameObject.AddComponent<Image>();
+                li.raycastTarget = false;
+                li.color = own != null ? own.color : Palette.Bar;
+                if (UiStyle.Paper) { li.sprite = UiArt.Paper; li.type = Image.Type.Tiled; }
+                if (own != null) own.color = new Color(0, 0, 0, 0);
+            }
+            layer.offsetMin = new Vector2(0f, -bleedDown);
+            layer.offsetMax = new Vector2(0f, bleedUp);
+        }
+
+        /// <summary>
         /// 버튼 모양 입히기 (역할 button.* · 예전 Styled 역할): 색 · 글자색 · 높이 · 글자 크기, 변형 square · round · pill · icon · iconText · framed · scene, 테두리.
         /// 값이 없으면 그대로.
         /// </summary>
@@ -913,11 +938,17 @@ namespace Game.Unity.UI
         /// 칸마다 Button과 고름 표시 함수를 돌려준다 (메인 아래 탭이 고름을 바꿀 때).
         /// </summary>
         public static Dictionary<string, (Button button, Action<bool> mark)> TabStrip(Transform parent, IList<(string id, string label)> items, string selected,
-            Action<string> onSelect, string role, string defVariant, float height, float width, int spacing = 18, Func<string, string> iconOf = null)
+            Action<string> onSelect, string role, string defVariant, float height, float width, int spacing = 18, Func<string, string> iconOf = null,
+            Func<string, string> artOf = null, bool keepHeight = false)
         {
             var spec = Spec(role);
             string v = spec.Variant ?? defVariant;
-            float h = spec.Num("height", height);
+            // 아래 탭 바(iconText)는 바 높이를 부르는 쪽이 정함 — 칸이 바보다 커서 글자가 바닥에 붙던 것 (2026-11-27 사용자)
+            float h = keepHeight || v == "iconText" ? height : spec.Num("height", height);
+            bool fillRow = width <= 0f; // 폭 0 이하 = 줄 폭을 칸 수로 나눠 꽉 채움 (세그먼트 대 · 중분류, 2026-11-27 사용자 "꽉 채워줘")
+            // 그림: 부르는 쪽이 칸 id → 그림 id를 줌. 없으면 메인 그림 세그먼트(tabs.art)만 예전처럼 장수 · 병력 · 편성 그림
+            // (예전엔 id만 맞으면 어느 세그먼트든 그림이 붙어 모집 "장수만 · 부대만"에 그림이 끼었음)
+            if (artOf == null && role == "tabs.art") artOf = SegmentArt.FigureOf;
             int font = Mathf.RoundToInt(spec.Num("fontSize", v == "art" ? 34 : v == "iconText" ? 22 : 28) * UiStyle.FontScale);
             Color back = spec.Col("color", v == "underline" || v == "iconText" ? new Color(0, 0, 0, 0) : v == "art" || v == "group" ? Palette.Card : Palette.Button);
             Color onBack = spec.Col("onColor", v == "underline" || v == "iconText" ? new Color(0, 0, 0, 0) : Palette.ButtonActive);
@@ -933,6 +964,11 @@ namespace Game.Unity.UI
                 hl.childForceExpandWidth = false;
                 hl.childAlignment = TextAnchor.MiddleCenter;
             }
+            if (fillRow)
+            {
+                var fl = row.GetComponent<HorizontalLayoutGroup>();
+                if (fl != null) { fl.childControlWidth = true; fl.childForceExpandWidth = false; }
+            }
             float ch = h;
             KitSlide slide = null;
             int index = 0;
@@ -941,7 +977,8 @@ namespace Game.Unity.UI
                 // 묶음: 칸들을 감싸는 둥근 띠 (바탕 + 테두리), 칸 사이 틈 없음
                 const int pad = 5;
                 var group = Ui.Rect(row, "Group");
-                Ui.Size(group, h, items.Count * width + pad * 2).flexibleWidth = 0;
+                if (fillRow) Ui.Size(group, h, 0).flexibleWidth = 1;
+                else Ui.Size(group, h, items.Count * width + pad * 2).flexibleWidth = 0;
                 var gi = group.gameObject.AddComponent<Image>();
                 gi.sprite = UiShapes.Rounded(Mathf.RoundToInt(h / 2f)); gi.type = Image.Type.Sliced; gi.color = back; gi.raycastTarget = false;
                 var ring = Layer(group, "KitRing", Ring(Mathf.RoundToInt(h / 2f), Mathf.RoundToInt(spec.Num("borderWidth", 3))), line, Image.Type.Sliced);
@@ -969,7 +1006,8 @@ namespace Game.Unity.UI
             {
                 var item = it;
                 var cell = Ui.Rect(row, "Tab_" + item.id);
-                Ui.Size(cell, ch, width).flexibleWidth = 0;
+                if (fillRow) Ui.Size(cell, ch, 0).flexibleWidth = 1;
+                else Ui.Size(cell, ch, width).flexibleWidth = 0;
                 int r = Mathf.Max(2, Mathf.RoundToInt(UiStyle.CornerRadius > 0 ? UiStyle.CornerRadius : 12));
                 var frame = Ui.Background(cell, back);
                 if (v == "art" || v == "button") { frame.sprite = UiShapes.Rounded(r); frame.type = Image.Type.Sliced; }
@@ -995,7 +1033,8 @@ namespace Game.Unity.UI
                 if (v == "art" || v == "button") { fillImg.sprite = UiShapes.Rounded(r); fillImg.type = Image.Type.Sliced; }
                 if (v == "group") { fillImg.sprite = UiShapes.Rounded(Mathf.Max(2, Mathf.RoundToInt(ch / 2f))); fillImg.type = Image.Type.Sliced; }
                 Image art = null, glow = null, icon = null;
-                if ((v == "art" || v == "group") && SegmentArt.Has(item.id))
+                string artId = (v == "art" || v == "group") ? artOf?.Invoke(item.id) : null;
+                if (artId != null && SegmentArt.Knows(artId))
                 {
                     var pic = Ui.Fill(Ui.Rect(fill, "Art"));
                     pic.offsetMin = new Vector2(6, 2); pic.offsetMax = new Vector2(-6, -2);
@@ -1011,17 +1050,21 @@ namespace Game.Unity.UI
                 var iconSprite = iconId != null ? SegmentArt.Icon(iconId) : null;
                 if (iconSprite != null)
                 {
+                    // 아이콘 + 글자 한 묶음을 칸 가운데로 (아이콘 0.40h · 글자 0.30h, 위아래 여백 같게)
                     var ic = Ui.Rect(fill, "Icon");
                     ic.anchorMin = ic.anchorMax = new Vector2(0.5f, 1f);
                     ic.pivot = new Vector2(0.5f, 1f);
-                    ic.sizeDelta = new Vector2(h * 0.44f, h * 0.44f);
-                    ic.anchoredPosition = new Vector2(0, -h * 0.1f);
+                    ic.sizeDelta = new Vector2(ch * 0.40f, ch * 0.40f);
+                    ic.anchoredPosition = new Vector2(0, -ch * 0.15f);
                     icon = ic.gameObject.AddComponent<Image>();
                     icon.sprite = iconSprite; icon.preserveAspect = true; icon.raycastTarget = false;
                 }
                 var t = Ui.Label(fill, item.label, font, TextAnchor.MiddleCenter, offText);
                 Ui.Fill(t.rectTransform);
-                if (iconSprite != null) { t.rectTransform.anchorMax = new Vector2(1f, 0.45f); t.alignment = TextAnchor.MiddleCenter; }
+                t.resizeTextForBestFit = true; // 칸보다 긴 글자는 줄여서 (칸 밖으로 넘치지 않게)
+                t.resizeTextMinSize = Mathf.Min(font, 16);
+                t.resizeTextMaxSize = font;
+                if (iconSprite != null) { t.rectTransform.anchorMin = new Vector2(0f, 0.15f); t.rectTransform.anchorMax = new Vector2(1f, 0.45f); t.alignment = TextAnchor.MiddleCenter; }
                 Outline o = null;
                 if (v == "group") t.fontStyle = FontStyle.Bold;
                 if (art != null || v == "art") { t.fontStyle = FontStyle.Bold; o = t.gameObject.AddComponent<Outline>(); o.effectDistance = new Vector2(2f, -2f); }
@@ -1041,7 +1084,7 @@ namespace Game.Unity.UI
                     under.gameObject.SetActive(on && v != "button" && v != "group");
                     if (art != null)
                     {
-                        art.sprite = SegmentArt.Get(id, on, onBack);
+                        art.sprite = SegmentArt.GetArt(artId, on, onBack);
                         art.color = new Color(1, 1, 1, spec.Num("artAlpha", 1f));
                     }
                     var shade = on ? Color.Lerp(Color.black, onBack, 0.45f) : Color.Lerp(Color.black, back, 0.6f);
@@ -1175,13 +1218,21 @@ namespace Game.Unity.UI
             _from = Index; Index = i; _t0 = Time.unscaledTime; _done = done;
         }
 
+        private int _settled;
+
         private void LateUpdate()
         {
             if (Pill == null || Index < 0 || Index >= Cells.Count) return;
             var to = Cells[Index];
             if (to.rect.width <= 0f) return;
-            if (!_placed) { Place(to.localPosition, to.rect.size); Pill.gameObject.SetActive(true); _placed = true; return; }
-            if (_from < 0) return;
+            // 처음 화면: 레이아웃이 끝나기 전 칸 크기 · 자리(기본 100 × 100)로 알약을 놓아 다른 칸 위에 작은 동그라미로 남던 버그
+            // (2026-11-27 사용자 "처음 들어가면 선택이 안 되어 있어") → 움직이지 않는 동안은 매 프레임 고른 칸에 붙이고, 두 프레임 지나 보이게
+            if (_from < 0)
+            {
+                Place(to.localPosition, to.rect.size);
+                if (_settled < 2 && ++_settled == 2) { Pill.gameObject.SetActive(true); _placed = true; }
+                return;
+            }
             float k = Mathf.Clamp01((Time.unscaledTime - _t0) / 0.18f);
             float e = 1f - (1f - k) * (1f - k);
             var a = Cells[_from];

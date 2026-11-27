@@ -791,6 +791,12 @@
     "tabs.segment.on": {
       "height": 58,
       "fontSize": 24
+    },
+    "tabs.minor": {
+      "variant": "group",
+      "height": 60,
+      "fontSize": 26,
+      "border": "line"
     }
   },
   "pages": {

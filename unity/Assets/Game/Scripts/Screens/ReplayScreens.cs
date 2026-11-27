@@ -36,7 +36,7 @@ namespace Game.Unity.Screens
             InfoButton.Add(Root, T("ui.replay.note"));
             if (!Ctx.OnlineEnabled) _tab = "mine";
             if (Ctx.OnlineEnabled)
-                Ui.SegmentTabs(header, new[] { ("mine", T("ui.replay.tab.mine")), ("shared", T("ui.replay.tab.shared")) }, _tab, id => { _tab = id; Replace(new ReplayListScreen()); }, 70, 500);
+                Ui.MajorTabs(header, new[] { ("mine", T("ui.replay.tab.mine"), "fig.film"), ("shared", T("ui.replay.tab.shared"), "fig.share") }, _tab, id => { _tab = id; Replace(new ReplayListScreen()); }, band: false);
             if (_message != null) Ui.Label(header, _message, 24, TextAnchor.MiddleLeft, Palette.Good);
 
             if (_tab == "shared") BuildShared(header, body);
@@ -221,7 +221,7 @@ namespace Game.Unity.Screens
                 foreach (var s in steps) { string id = s; items.Add((StepName(id), "", true, () => { _sharedStep = id; Replace(new ReplayListScreen()); })); }
                 if (items.Count > 0) Ui.PickMenu(Root, (RectTransform)stepBtn.transform, 520, items.ToArray());
             }, 64, fontSize: 24);
-            Ui.SegmentTabs(header, new[] { ("won", T("ui.replay.sort.won")), ("losses", T("ui.replay.sort.losses")), ("fast", T("ui.replay.sort.fast")), ("new", T("ui.replay.sort.new")) }, _sort, id => { _sort = id; Replace(new ReplayListScreen()); }, 56, 200);
+            Ui.MinorTabs(header, new[] { ("won", T("ui.replay.sort.won")), ("losses", T("ui.replay.sort.losses")), ("fast", T("ui.replay.sort.fast")), ("new", T("ui.replay.sort.new")) }, _sort, id => { _sort = id; Replace(new ReplayListScreen()); });
             if (_sharedStep == null) { Ui.Label(body, T("ui.replay.noCleared"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim); return; }
             var loading = Ui.Label(body, T("ui.shared.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
             string step = _sharedStep;

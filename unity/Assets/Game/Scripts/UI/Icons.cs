@@ -80,6 +80,48 @@ namespace Game.Unity.UI
     /// 화면 오른쪽 위 ⓘ 버튼 (2026-11-13): 화면 설명 글은 평소에 숨기고 누르면 카드로 보인다 (다시 누르거나 카드를 누르면 닫힘).
     /// root는 화면(또는 탭) 전체 영역. 레이아웃에 끼지 않는다.
     /// </summary>
+    /// <summary>
+    /// ⓘ를 그 화면의 "InfoGap" 칸(제목 줄 · 세그먼트 줄 오른쪽 끝 빈칸) 가운데에 맞춘다 (2026-11-27 사용자 "i 아이콘이 위로 치우쳤어").
+    /// 칸이 없으면 그대로 (오른쪽 위 구석).
+    /// </summary>
+    public sealed class InfoAlign : MonoBehaviour
+    {
+        public RectTransform Root;
+        private RectTransform _gap;
+        private int _tries;
+
+        private void LateUpdate()
+        {
+            if (Root == null) return;
+            if (_gap == null)
+            {
+                if (_tries++ > 30) { enabled = false; return; }
+                _gap = Find(Root);
+                if (_gap == null) return;
+            }
+            if (_gap.rect.width <= 0f || !_gap.gameObject.activeInHierarchy) return;
+            var me = (RectTransform)transform;
+            var parent = (RectTransform)me.parent;
+            Vector3 c = parent.InverseTransformPoint(_gap.TransformPoint(_gap.rect.center));
+            // 앵커가 오른쪽 위(1,1)라 anchoredPosition = 부모 오른쪽 위에서 잰 값, 피벗(1,1) → 가운데로 옮김
+            var pr = parent.rect;
+            float x = c.x - pr.xMax + me.sizeDelta.x / 2f;
+            float y = c.y - pr.yMax + me.sizeDelta.y / 2f;
+            me.anchoredPosition = new Vector2(x, y);
+        }
+
+        private static RectTransform Find(Transform t)
+        {
+            foreach (Transform ch in t)
+            {
+                if (ch.name == "InfoGap" && ch.gameObject.activeInHierarchy) return (RectTransform)ch;
+                var r = Find(ch);
+                if (r != null) return r;
+            }
+            return null;
+        }
+    }
+
     public static class InfoButton
     {
         public const float Size = 64f;
@@ -102,6 +144,7 @@ namespace Game.Unity.UI
             var button = holder.gameObject.AddComponent<Button>();
             button.targetGraphic = img;
             RectTransform card = null;
+            holder.gameObject.AddComponent<InfoAlign>().Root = root;
             button.onClick.AddListener(() =>
             {
                 if (card != null) { Object.Destroy(card.gameObject); card = null; return; }

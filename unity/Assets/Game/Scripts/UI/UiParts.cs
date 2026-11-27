@@ -643,6 +643,170 @@ namespace Game.Unity.UI
             return card;
         }
 
+        /// <summary>장수 상세 카드에 더 그릴 값 (경험 막대 · 꼬리표 · 레벨마다 성장).</summary>
+        public sealed class GeneralDetailExtra
+        {
+            public float ExpRatio;
+            public string ExpText;
+            public readonly List<(string text, Color color)> Tags = new List<(string, Color)>();
+            /// <summary>능력치마다 "+0.4/Lv" (leadership · might · intellect 순서, 없으면 null).</summary>
+            public string[] Growth = new string[3];
+        }
+
+        /// <summary>
+        /// 장수 상세 카드 (2026-11-27 사용자 "이미 장수 카드가 있는데 있는 걸 활용해"): 목록 장수 카드와 같은 말 — 등급 색 테두리 · 왼쪽 위 등급 꼬리표 ·
+        /// 움푹한 그림 칸(초상) · 이름 · Lv · 능력치 아이콘 줄 — 을 화면 폭으로 펼치고 경험 막대 · 꼬리표 · 레벨마다 성장을 더함.
+        /// </summary>
+        public static RectTransform GeneralDetailCard(GameContext ctx, Transform parent, GeneralCardData d, GeneralDetailExtra x, float height = 340f)
+        {
+            const float B = 4f, Pic = 300f;
+            var card = Rect(parent, "GeneralDetail_" + d.Id);
+            Size(card, height);
+            var gradeColor = GradeLabel.ColorOf(d.Grade);
+            var border = Background(card, gradeColor);
+            border.sprite = UiShapes.Rounded(18);
+            border.type = Image.Type.Sliced;
+            border.raycastTarget = false;
+            var inner = Rect(card, "Inner");
+            Fill(inner);
+            inner.offsetMin = new Vector2(B, B);
+            inner.offsetMax = new Vector2(-B, -B);
+            var innerImg = Background(inner, Palette.Card);
+            innerImg.sprite = UiShapes.Rounded(13);
+            innerImg.type = Image.Type.Sliced;
+            innerImg.raycastTarget = false;
+            bool dim = d.StatusText != null;
+
+            float picH = height - 28f;
+            var pic = Place(Rect(card, "PortraitBox"), 14, 14, Pic, picH);
+            var picBg = Background(pic, Palette.PictureBack);
+            picBg.sprite = UiShapes.Rounded(12);
+            picBg.type = Image.Type.Sliced;
+            picBg.raycastTarget = false;
+            UiKit.PictureWell(picBg);
+            var portrait = new Portrait(pic, 220);
+            portrait.Rect.anchorMin = portrait.Rect.anchorMax = new Vector2(0.5f, 0.5f);
+            portrait.Rect.sizeDelta = new Vector2(220, 220);
+            portrait.Show(d.Id, d.Name, Palette.Ally);
+            foreach (var g in portrait.Rect.GetComponentsInChildren<Graphic>()) g.raycastTarget = false;
+            if (!string.IsNullOrEmpty(d.GradeName))
+            {
+                var tag = Place(Rect(card, "Grade"), 14, 14, 96, 44);
+                var tagImg = Background(tag, gradeColor);
+                tagImg.sprite = UiShapes.Rounded(10);
+                tagImg.type = Image.Type.Sliced;
+                tagImg.raycastTarget = false;
+                var tt = Label(tag, d.GradeName, 24, TextAnchor.MiddleCenter, OnAccent);
+                tt.fontStyle = FontStyle.Bold;
+                Fill(tt.rectTransform);
+            }
+            if (dim)
+            {
+                var strip = Place(Rect(card, "Status"), 14, 14 + picH - 50, Pic, 50);
+                Background(strip, d.StatusColor).raycastTarget = false;
+                var st = Label(strip, d.StatusText, 26, TextAnchor.MiddleCenter, OnAccent);
+                st.fontStyle = FontStyle.Bold;
+                Fill(st.rectTransform);
+            }
+
+            // 오른쪽: 이름 · Lv / 꼬리표 / 경험 막대 / 능력치 (아이콘 + 값 + 성장)
+            float tx = 14 + Pic + 24;
+            var right = Rect(card, "Right");
+            right.anchorMin = new Vector2(0, 0); right.anchorMax = new Vector2(1, 1);
+            right.offsetMin = new Vector2(tx, 18); right.offsetMax = new Vector2(-22, -18);
+            var col = Column(right, 10, 0);
+            col.childForceExpandWidth = true;
+            var top = Row(right, "Name", 56, 10);
+            top.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            var name = Label(top, d.Name, 40, TextAnchor.MiddleLeft, dim ? Palette.TextDim : Palette.Text);
+            name.fontStyle = FontStyle.Bold;
+            name.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Size(name, 56, -1, -1, 1);
+            Size(Label(top, "Lv." + d.Level, 30, TextAnchor.MiddleRight, Palette.TextDim), 56, 120).flexibleWidth = 0;
+            if (x != null && x.Tags.Count > 0)
+            {
+                var tags = Row(right, "Tags", 40, 8);
+                tags.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+                foreach (var (text, color) in x.Tags) Size(Tag(tags, text, color, 20, 38), 38, Mathf.Max(80, text.Length * 22 + 30)).flexibleWidth = 0;
+                Size(Rect(tags, "Gap"), 38, -1, -1, 1);
+            }
+            if (x != null)
+            {
+                var exp = Gauge(right, Palette.Ally, 18);
+                SetGauge(exp, Mathf.Clamp01(x.ExpRatio));
+                Label(right, x.ExpText ?? "", 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            }
+            var stats = Row(right, "Stats", 56, 18);
+            stats.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            int i = 0;
+            foreach (var (id, v) in new[] { ("leadership", d.Leadership), ("might", d.Might), ("intellect", d.Intellect) })
+            {
+                string grow = x?.Growth != null && i < x.Growth.Length ? x.Growth[i] : null;
+                i++;
+                var cell = Row(stats, "Stat_" + id, 56, 6);
+                cell.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+                Icons.Make(ctx, cell, id, 42);
+                var t = Label(cell, v + (grow != null ? "  " + Colored(grow, Palette.Good) : ""), 30, TextAnchor.MiddleLeft, Palette.Text);
+                t.horizontalOverflow = HorizontalWrapMode.Overflow;
+                Size(t, 56, -1, -1, 1);
+                Size(cell, 56, -1, -1, 1);
+            }
+            UiKit.DressCard(card, innerImg, "card.general.detail", gradeColor); // 카드 체계 (ui-kit.md 4.4)
+            return card;
+        }
+
+        /// <summary>좌우 넘기기 둥근 버튼 (먹색 원 + 가는 화살, 2026-11-27 사용자 "◀ ▶ 촌스러워"). dir = -1 이전 · +1 다음.</summary>
+        public static Button PagerArrow(Transform parent, int dir, Action onClick, float size = 68f)
+        {
+            var rt = Rect(parent, dir < 0 ? "Prev" : "Next");
+            rt.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            rt.anchorMin = rt.anchorMax = new Vector2(dir < 0 ? 0f : 1f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(size, size);
+            rt.anchoredPosition = Vector2.zero;
+            var img = Background(rt, new Color(Palette.Text.r, Palette.Text.g, Palette.Text.b, 0.88f));
+            img.sprite = UiShapes.Circle;
+            var ring = Rect(rt, "Ring");
+            Fill(ring);
+            var ri = ring.gameObject.AddComponent<Image>();
+            ri.sprite = UiKit.Ring(Mathf.RoundToInt(size / 2f), 2); ri.type = Image.Type.Sliced; ri.fillCenter = false; ri.raycastTarget = false;
+            ri.color = new Color(Palette.Card.r, Palette.Card.g, Palette.Card.b, 0.6f);
+            // 가는 화살 (‹ ›를 두 획으로)
+            for (int k = 0; k < 2; k++)
+            {
+                var stroke = Rect(rt, "Stroke");
+                stroke.anchorMin = stroke.anchorMax = new Vector2(0.5f, 0.5f);
+                stroke.sizeDelta = new Vector2(size * 0.32f, 4f);
+                stroke.anchoredPosition = new Vector2(-dir * size * 0.02f, (k == 0 ? 1 : -1) * size * 0.11f);
+                stroke.localRotation = Quaternion.Euler(0, 0, (k == 0 ? 1 : -1) * (dir < 0 ? 45f : -45f));
+                var si = stroke.gameObject.AddComponent<Image>();
+                si.color = Palette.Card; si.raycastTarget = false;
+            }
+            var b = rt.gameObject.AddComponent<Button>();
+            b.targetGraphic = img;
+            b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onClick?.Invoke(); });
+            UiKit.AddPress(rt.gameObject);
+            return b;
+        }
+
+        /// <summary>쪽 점 (지금 쪽 = 초록 긴 점). 15쪽이 넘으면 "3 / 20" 글자.</summary>
+        public static RectTransform PageDots(Transform parent, int at, int count)
+        {
+            var row = Row(parent, "PageDots", 28, 10);
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childForceExpandWidth = false;
+            if (count > 15) { Label(row, (at + 1) + " / " + count, 22, TextAnchor.MiddleCenter, Palette.TextDim); return row; }
+            for (int i = 0; i < count; i++)
+            {
+                var dot = Rect(row, "Dot");
+                Size(dot, 14, i == at ? 34 : 14).flexibleWidth = 0;
+                var di = Background(dot, i == at ? Palette.Good : new Color(Palette.TextDim.r, Palette.TextDim.g, Palette.TextDim.b, 0.4f));
+                di.sprite = UiShapes.Rounded(7); di.type = Image.Type.Sliced; di.raycastTarget = false;
+            }
+            return row;
+        }
+
         // ---------------- 부대 관리 (시안 06) ----------------
 
         /// <summary>
@@ -820,8 +984,110 @@ namespace Game.Unity.UI
             if (scroll != null) scroll.onValueChanged.AddListener(v => hint.gameObject.SetActive(v.x < 0.98f));
         }
 
-        /// <summary>세그먼트 탭: 나란한 보조 버튼, 고른 것은 주홍·밝은 글자 (역할 tabs.segment).</summary>
+        // ================= 세그먼트 세 단계 (2026-11-27 사용자 "전체적으로 틀은 맞춰야 해, 전수 검사") =================
+        // 화면마다 높이 · 폭 숫자를 넣어 부르던 것을 없애고 단계로만 부른다 (ui-kit.md 4.3):
+        //   대분류 MajorTabs = 그림 세그먼트 (tabs.art), 위 바와 같은 바탕 띠, 꽉 참
+        //   중분류 MidTabs   = 묶음 알약 (tabs.segment), 위아래 여백, 꽉 참
+        //   소분류 MinorTabs = 작은 묶음 (tabs.minor), 그림 없음, 글자에 맞는 폭
+
+        /// <summary>
+        /// 대분류 세그먼트: 위 바와 같은 바탕 띠 위 그림 세그먼트. items = (id, 글자, 그림 id — 없으면 null). infoGap = 오른쪽 끝 ⓘ 자리.
+        /// band = 띠 바탕 (탭 맨 위, 화면 폭 전체일 때). 제목 줄 아래(여백 있는 머리 안)면 false — 그림 세그먼트만.
+        /// </summary>
+        public static RectTransform MajorTabs(Transform parent, IList<(string id, string label, string art)> items, string selected, Action<string> onSelect, bool infoGap = false, bool band = true)
+        {
+            float h = UiKit.Spec("tabs.art").Num("height", 96);
+            var strip = Rect(parent, "MajorTabs");
+            Size(strip, h + 20);
+            if (band)
+            {
+                Background(strip, Palette.Bar);
+                UiKit.Chrome(strip, 0f, 0f);
+            }
+            var row = strip.gameObject.AddComponent<HorizontalLayoutGroup>();
+            row.padding = band ? new RectOffset(20, 20, 10, 10) : new RectOffset(0, 0, 10, 10);
+            row.spacing = 12;
+            row.childAlignment = TextAnchor.MiddleCenter;
+            row.childControlWidth = row.childControlHeight = true;
+            row.childForceExpandWidth = row.childForceExpandHeight = false;
+            var arts = new Dictionary<string, string>();
+            var list = new List<(string, string)>();
+            foreach (var it in items) { list.Add((it.id, it.label)); if (it.art != null) arts[it.id] = it.art; }
+            UiKit.TabStrip(strip, list, selected, onSelect, "tabs.art", "art", h, 0f, 18, null, id => arts.TryGetValue(id, out var a) ? a : null, true);
+            if (infoGap) Size(Rect(strip, "InfoGap"), h, TitleInfoGap).flexibleWidth = 0;
+            return strip;
+        }
+
+        /// <summary>중분류 세그먼트: 묶음 알약, 화면 폭 꽉, 위아래 여백 (바탕과 구분). infoGap = 오른쪽 끝 ⓘ 자리.</summary>
+        public static RectTransform MidTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, bool infoGap = false)
+        {
+            var spec = UiKit.Spec("tabs.segment");
+            float h = spec.Num("height", 72);
+            var band = Rect(parent, "MidTabs");
+            Size(band, h + 24);
+            var row = band.gameObject.AddComponent<HorizontalLayoutGroup>();
+            row.padding = new RectOffset(0, 0, 12, 12);
+            row.spacing = 12;
+            row.childAlignment = TextAnchor.MiddleCenter;
+            row.childControlWidth = row.childControlHeight = true;
+            row.childForceExpandWidth = row.childForceExpandHeight = false;
+            string v = spec.Variant;
+            UiKit.TabStrip(band, items, selected, onSelect, "tabs.segment", v == null || v == "button" ? "group" : v, h, 0f, 8, null, null, true);
+            if (infoGap) Size(Rect(band, "InfoGap"), h, TitleInfoGap).flexibleWidth = 0;
+            return band;
+        }
+
+        /// <summary>소분류 세그먼트: 작은 묶음 (그림 없음), 칸 폭은 글자에 맞춤, 왼쪽 정렬. 정렬 · 걸러보기 · 등급 같은 것.</summary>
+        public static RectTransform MinorTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect)
+        {
+            var spec = UiKit.Spec("tabs.minor");
+            float h = spec.Num("height", 60);
+            int font = Mathf.RoundToInt(spec.Num("fontSize", 26));
+            float w = 0;
+            foreach (var it in items) w = Mathf.Max(w, (it.label?.Length ?? 0) * font * 0.95f * UiStyle.FontScale + 44f);
+            if (w * items.Count + 10f > GameApp.ReferenceWidth - 60f) w = 0f; // 한 줄에 안 들어가면 줄 폭을 나눠 꽉 (글자는 칸에 맞게 줄어듦)
+            var band = Rect(parent, "MinorTabs");
+            Size(band, h + 12);
+            var row = band.gameObject.AddComponent<HorizontalLayoutGroup>();
+            row.padding = new RectOffset(0, 0, 6, 6);
+            row.childAlignment = TextAnchor.MiddleLeft;
+            row.childControlWidth = row.childControlHeight = true;
+            row.childForceExpandWidth = row.childForceExpandHeight = false;
+            UiKit.TabStrip(band, items, selected, onSelect, "tabs.minor", "group", h, w, 8, null, null, true);
+            return band;
+        }
+
+        /// <summary>
+        /// 정렬 · 걸러보기 단추 (2026-11-27 사용자: 군대 · 장수의 "정렬: 등급 ▾"과 같은 모양으로 통일). 누르면 고르기 목록, ✓ = 지금 것.
+        /// </summary>
+        public static Button PickButton(Transform parent, RectTransform overlayRoot, string label, IList<(string id, string label)> options, string current, Action<string> onPick, float width = 230)
+        {
+            var b = SecondaryButton(parent, label + " ▾", null, 70, 26);
+            Size(b, 70, width).flexibleWidth = 0;
+            var rt = (RectTransform)b.transform;
+            b.onClick.AddListener(() =>
+            {
+                var menu = new List<(string, string, bool, Action)>();
+                foreach (var o in options) { var id = o.id; menu.Add((o.label, id == current ? "✓" : null, true, () => onPick?.Invoke(id))); }
+                PickMenu(overlayRoot, rt, Mathf.Max(300, width), menu.ToArray());
+            });
+            return b;
+        }
+
+        /// <summary>빈 목록 표시 (목록 영역 가운데, 다른 줄과 겹치지 않게 자기 높이를 가짐).</summary>
+        public static Text EmptyNote(Transform parent, string text, float height = 320)
+        {
+            var t = Label(parent, text, FontBody, TextAnchor.MiddleCenter, Palette.TextDim);
+            Size(t, height);
+            return t;
+        }
+
+        /// <summary>세그먼트 탭 (예전 이름, 2026-11-27부터 = 중분류 <see cref="MidTabs"/>). height · width는 쓰지 않음 (단계 값으로).</summary>
         public static RectTransform SegmentTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, float height = 58, float width = 150)
+            => MidTabs(parent, items, selected, onSelect);
+
+        /// <summary>예전 세그먼트 (판 버튼 줄) — 꾸미기 화면에서 variant "button"을 고를 때만.</summary>
+        private static RectTransform OldSegmentTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, float height = 58, float width = 150)
         {
             string sv = UiKit.Spec("tabs.segment").Variant;
             if (sv != null && sv != "button")
@@ -1055,7 +1321,7 @@ namespace Game.Unity.UI
             dim.SetAsLastSibling();
             var box = Rect(dim, "Confirm");
             box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
-            box.sizeDelta = new Vector2(900, 470);
+            box.sizeDelta = new Vector2(900, 400);
             var bi = Background(box, Palette.Background);
             bi.sprite = UiArt.Frame(20f);
             bi.type = Image.Type.Sliced;
@@ -1064,11 +1330,16 @@ namespace Game.Unity.UI
             var t = Label(box, title, 44, TextAnchor.MiddleCenter);
             t.font = TitleFont;
             Size(t, 80);
-            Size(Label(box, body, 26, TextAnchor.MiddleCenter, Palette.TextDim), 70);
+            var bodyText = Label(box, body, 26, TextAnchor.MiddleCenter, Palette.TextDim);
+            Size(bodyText, -1, -1, 1);
             void Close() { if (dim != null) UnityEngine.Object.Destroy(dim.gameObject); }
-            PrimaryButton(box, primary, () => { Close(); onPrimary?.Invoke(); }, 92, 32);
-            var row = Row(box, "Others", 92, 16);
-            foreach (var o in others) { var x = o; SecondaryButton(row, x.label, () => { Close(); x.act?.Invoke(); }, 92, 28); }
+            // 버튼은 한 줄 좌우 (2026-11-27 사용자 "2버튼은 좌우야"): 왼쪽 보조(취소 등) · 오른쪽 주요 버튼
+            var row = Row(box, "Buttons", 92, 16);
+            var rh = row.GetComponent<HorizontalLayoutGroup>();
+            rh.childControlWidth = true;
+            rh.childForceExpandWidth = true;
+            foreach (var o in others) { var x = o; Size(SecondaryButton(row, x.label, () => { Close(); x.act?.Invoke(); }, 92, 28), 92, 0).flexibleWidth = 1; }
+            Size(PrimaryButton(row, primary, () => { Close(); onPrimary?.Invoke(); }, 92, 32), 92, 0).flexibleWidth = 1;
             return box;
         }
 
@@ -1185,7 +1456,8 @@ namespace Game.Unity.UI
             var header = Rect(root, "PageHeader");
             var hc = Column(header, 10, 0);
             hc.padding = new RectOffset(25, 25, 12, 12);
-            Background(header, Palette.Background).raycastTarget = false;
+            // 머리 · 아래 줄 바탕은 비움 → 화면 바탕(한지 무늬)이 그대로 보임. 예전엔 무늬 없는 단색이라 여백 · 위 띠 색이 달라 보였음 (2026-11-27 사용자)
+            Background(header, new Color(0, 0, 0, 0)).raycastTarget = false;
             var shadow = Rect(root, "HeaderShadow");
             Size(shadow, 8);
             Background(shadow, new Color(0.16f, 0.13f, 0.1f, 0.12f)).raycastTarget = false;
@@ -1193,7 +1465,7 @@ namespace Game.Unity.UI
             Size(body.parent.parent, flexibleHeight: 1);
             var footer = Row(root, "PageFooter", footerHeight, 12);
             footer.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset(25, 25, 14, 14);
-            Background(footer, Palette.Background).raycastTarget = false;
+            Background(footer, new Color(0, 0, 0, 0)).raycastTarget = false;
             return (header, body, footer);
         }
 
