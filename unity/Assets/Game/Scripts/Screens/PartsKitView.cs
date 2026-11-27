@@ -68,7 +68,7 @@ namespace Game.Unity.Screens
             if (RoleId == null || !roles.Exists(r => r.Id == RoleId)) RoleId = roles[0].Id;
             var chips = new List<(string, string)>();
             foreach (var r in roles) chips.Add((r.Id, r.Label + (UiKit.HasDev(r.Id) ? " ●" : "")));
-            Chips(list, chips, RoleId, id => { RoleId = id; Redraw(); }, 3);
+            Chips(list, chips, RoleId, id => { RoleId = id; Redraw(); }, Category == "card" ? 4 : 3);
 
             var role = UiKit.RoleOf(RoleId);
             if (!UiKit.Kinds.TryGetValue(role.Kind, out var kind)) return;
@@ -184,6 +184,70 @@ namespace Game.Unity.Screens
                 r.GetComponent<HorizontalLayoutGroup>().childForceExpandWidth = false;
                 return r;
             }
+            if (role.StartsWith("card.")) { CardPreview(list, role); return warn; }
+            switch (role)
+            {
+                case "head.top":
+                    {
+                        var r = Line(110);
+                        Ui.ResourceChip(ctx, r, Game.Economy.ResourceIds.Supply, 1100000, null);
+                        Ui.ResourceChip(ctx, r, Game.Economy.ResourceIds.Gem, 300, null);
+                        Ui.IconButton(r, "bell", "우편", null);
+                        Ui.IconButton(r, "shop", "상점", null);
+                        Ui.IconButton(r, "settings", "설정", null);
+                        return warn;
+                    }
+                case "head.title":
+                    {
+                        var hdr = Ui.Rect(list, "TitlePreview");
+                        Ui.Size(hdr, Ui.TitleHeight);
+                        Ui.Column(hdr, 0, 0);
+                        Ui.TitleBar(hdr, "꾸미기 · 보병", () => { });
+                        Ui.HeaderRow(list, "부대 관리", "5종");
+                        return warn;
+                    }
+                case "pop.confirm":
+                case "pop.sheet":
+                case "pop.toast":
+                    {
+                        // 화면 위에 뜨는 판을 이 자리에 그대로 한 번 (캡처용) + [실제로 띄우기]
+                        var box = Ui.Rect(list, "PanelPreview");
+                        Ui.Size(box, role == "pop.toast" ? 90 : 300);
+                        var bi = Ui.Background(box, role == "pop.toast" ? new Color(0.16f, 0.13f, 0.1f, 0.88f) : Palette.Background);
+                        bi.sprite = UiArt.Frame(20f); bi.type = Image.Type.Sliced;
+                        UiKit.DressPanel(box, bi, null, role);
+                        foreach (var ap in box.GetComponents<KitAppear>()) UnityEngine.Object.Destroy(ap);
+                        Ui.Column(box, 12, 28);
+                        if (role == "pop.toast") Ui.Label(box, "알림 한 줄 — 저장했습니다", 24, TextAnchor.MiddleCenter, Color.white);
+                        else
+                        {
+                            Ui.Label(box, role == "pop.confirm" ? "저장하지 않고 나갈까요?" : "진형 고르기", 36, TextAnchor.MiddleCenter);
+                            Ui.Label(box, "설명 한 줄", 24, TextAnchor.MiddleCenter, Palette.TextDim);
+                            Ui.PrimaryButton(box, "확인", null, 90, 30);
+                        }
+                        Ui.SecondaryButton(list, "실제로 띄우기", () =>
+                        {
+                            if (role == "pop.confirm") Ui.Confirm(_root, "확인 창", "설명 한 줄", "확인", null, ("취소", null));
+                            else if (role == "pop.sheet") { var (c, close) = Ui.BottomSheet(_root, "아래에서 올라오는 판", 420); Ui.Column(c, 10, 0); Ui.SecondaryButton(c, "닫기", close, 80, 26); }
+                            else Toast.Show("알림 한 줄 — 저장했습니다");
+                        }, 90, 28);
+                        return warn;
+                    }
+                case "anim.loading":
+                    {
+                        var holder = Ui.Rect(list, "LoadingPreview");
+                        Ui.Size(holder, 220);
+                        LoadingView.BuildCard(holder);
+                        return warn;
+                    }
+                case "anim.press":
+                    {
+                        var r = Line(130);
+                        Ui.Size(Ui.PrimaryButton(r, "눌러 보기", null, 120), 120, 420);
+                        Ui.Size(Ui.SecondaryButton(r, "보조 버튼", null, 110), 110, 300);
+                        return warn;
+                    }
+            }
             switch (role)
             {
                 case "bg.page":
@@ -282,6 +346,77 @@ namespace Game.Unity.Screens
                     }
             }
             return warn;
+        }
+
+        /// <summary>카드 미리보기: 고른 밀도를 크게, 아래에 같은 내용의 다른 밀도 셋 (ui-kit.md 4.4).</summary>
+        private void CardPreview(RectTransform list, string role)
+        {
+            var parts = role.Split('.');
+            string content = parts.Length > 1 ? parts[1] : "troop";
+            Cards.Density DensityOf(string s) => s == "mini" ? Cards.Density.Mini : s == "compact" ? Cards.Density.Compact : s == "standard" ? Cards.Density.Standard : Cards.Density.Detail;
+            var chosen = DensityOf(parts.Length > 2 ? parts[2] : "standard");
+            OneCard(list, content, chosen);
+            Ui.SectionHeader(list, "같은 내용 · 다른 밀도");
+            foreach (var d in new[] { Cards.Density.Mini, Cards.Density.Compact, Cards.Density.Standard, Cards.Density.Detail })
+            {
+                if (d == chosen) continue;
+                Ui.Hint(list, Cards.Role(content, d), 36);
+                OneCard(list, content, d);
+            }
+        }
+
+        private void OneCard(RectTransform list, string content, Cards.Density d)
+        {
+            var ctx = _app.Context;
+            Transform host = list;
+            if (d == Cards.Density.Mini)
+            {
+                var r = Ui.Row(list, "MiniRow", 190, 12);
+                r.GetComponent<HorizontalLayoutGroup>().childForceExpandWidth = false;
+                host = r;
+            }
+            else if ((content == "general" && d == Cards.Density.Standard) || (content == "item" && d == Cards.Density.Standard))
+            {
+                var grid = Ui.Rect(list, "Grid");
+                var g = grid.gameObject.AddComponent<GridLayoutGroup>();
+                g.cellSize = content == "general" ? new Vector2(505, 470) : new Vector2(320, 380);
+                g.spacing = new Vector2(20, 20);
+                g.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                g.constraintCount = 2;
+                Ui.Size(grid, content == "general" ? 470 : 380);
+                host = grid;
+            }
+            switch (content)
+            {
+                case "general":
+                    {
+                        if (ctx.State.Generals.Count == 0) { Ui.Hint(list, "장수 없음", 40); return; }
+                        Cards.General(ctx, host, Cards.InfoOf(ctx, ctx.State.Generals[0]), d);
+                        break;
+                    }
+                case "troop":
+                    {
+                        if (ctx.State.Units.Count == 0) { Ui.Hint(list, "병력 없음", 40); return; }
+                        var u = ctx.State.Units[0];
+                        Cards.Troop(ctx, host, Cards.InfoOf(ctx, u, u.Troops + 3000), d);
+                        break;
+                    }
+                case "corps":
+                    {
+                        var comp = ctx.State.Compositions.Find(c => c.Picks.Count > 0);
+                        if (comp == null && ctx.State.Generals.Count > 0)
+                        {
+                            comp = new Game.Campaign.Roster.CorpsComposition { GeneralId = ctx.State.Generals[0].GeneralId, Formation = "square", Commander = true };
+                            for (int i = 0; i < ctx.State.Units.Count && i < 3; i++) comp.Picks.Add(new Game.Campaign.Roster.TroopPick { UnitId = ctx.State.Units[i].UnitId, Troops = 1000 * (i + 1) });
+                        }
+                        if (comp == null) { Ui.Hint(list, "군단 없음", 40); return; }
+                        Cards.Corps(ctx, host, Cards.InfoOf(ctx, comp), d);
+                        break;
+                    }
+                default:
+                    Cards.Item(ctx, host, new Cards.ItemInfo { TroopType = "infantry", Name = "갈색 가죽 갑옷", Sub = "갑옷", Price = "엽전 500", State = d == Cards.Density.Mini || d == Cards.Density.Compact ? null : "입음" }, d);
+                    break;
+            }
         }
 
         // ---------------- 테마 ----------------

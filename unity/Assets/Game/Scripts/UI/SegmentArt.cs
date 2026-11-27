@@ -270,6 +270,29 @@ namespace Game.Unity.UI
                     Add(s, Ink.M, "M5.5 9 Q1.5 8.6 0.8 13.4 Q2.6 11 5.6 10.6Z");
                     Add(s, Ink.M, "M18.6 4.4 L16 8.6 L17 9 L19.6 5Z");
                     return s;
+                case "ico.settings":
+                    {
+                        s.W = 24; s.H = 24; s.Scale = 6;
+                        var teeth = new List<Vector2>();
+                        for (int i = 0; i < 32; i++)
+                        {
+                            float a = i * Mathf.PI * 2f / 32f;
+                            float r = (i / 2) % 2 == 0 ? 10.5f : 8f;
+                            teeth.Add(new Vector2(12 + Mathf.Cos(a) * r, 12 + Mathf.Sin(a) * r));
+                        }
+                        s.Shapes.Add(new Shape(Ink.K, new List<List<Vector2>> { teeth }));
+                        AddEllipse(s, Ink.M, 12, 12, 3.6f, 3.6f);
+                        return s;
+                    }
+                case "ico.bell":
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M12 2.5 Q5.5 3 5.5 10 L5.5 15 L3.5 18.5 L20.5 18.5 L18.5 15 L18.5 10 Q18.5 3 12 2.5Z");
+                    AddEllipse(s, Ink.K, 12, 20.5f, 2.4f, 2.2f);
+                    return s;
+                case "ico.flag":
+                    s.W = 24; s.H = 24; s.Scale = 6;
+                    Add(s, Ink.K, "M5 4 L21 6 L16.5 10 L21 14 L5 14Z");
+                    return s;
                 case "ico.shop":
                     s.W = 24; s.H = 24; s.Scale = 6;
                     Add(s, Ink.K, "M8 4.5 L16 4.5 L14 8 Q20.5 10 20.5 16 Q20.5 21.5 12 21.5 Q3.5 21.5 3.5 16 Q3.5 10 10 8Z");

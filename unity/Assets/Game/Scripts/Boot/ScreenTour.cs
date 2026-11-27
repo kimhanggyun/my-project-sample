@@ -52,6 +52,13 @@ namespace Game.Unity.Boot
                 ("07n_kit_back", () => { Game.Unity.Screens.PartsTabView.Pick("button", "button.back"); return new MainScreen("parts"); }, 0f),
                 ("07o_kit_tabs", () => { Game.Unity.Screens.PartsTabView.Pick("tabs", "tabs.bottom"); return new MainScreen("parts"); }, 0f),
                 ("07p_kit_list", () => { Game.Unity.Screens.PartsTabView.Pick("list", null); return new MainScreen("parts"); }, 0f),
+                ("07q_kit_card_general", () => { Game.Unity.Screens.PartsTabView.Pick("card", "card.general.detail"); return new MainScreen("parts"); }, 0f), // 카드 체계 (ui-kit.md 4.4)
+                ("07r_kit_card_troop", () => { Game.Unity.Screens.PartsTabView.Pick("card", "card.troop.compact"); return new MainScreen("parts"); }, 0f),
+                ("07s_kit_card_corps", () => { Game.Unity.Screens.PartsTabView.Pick("card", "card.corps.standard"); return new MainScreen("parts"); }, 0f),
+                ("07t_kit_card_item", () => { Game.Unity.Screens.PartsTabView.Pick("card", "card.item.standard"); return new MainScreen("parts"); }, 0f),
+                ("07u_kit_head", () => { Game.Unity.Screens.PartsTabView.Pick("head", "head.title"); return new MainScreen("parts"); }, 0f), // 머리 · 창 · 움직임 (ui-kit.md 4.7 ~ 4.9)
+                ("07v_kit_pop", () => { Game.Unity.Screens.PartsTabView.Pick("pop", "pop.confirm"); return new MainScreen("parts"); }, 0f),
+                ("07w_kit_loading", () => { Game.Unity.Screens.PartsTabView.Pick("motion", "anim.loading"); return new MainScreen("parts"); }, 0.5f),
                 ("08_main_territory", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; Game.Unity.Screens.TerritoryTabView.PanM = Vector2.zero; return new MainScreen("territory"); }, 0f),
                 ("08b_territory_mid", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 3; return new MainScreen("territory"); }, 0f), // 지도 바탕: 중간 줌 (한강)
                 ("08c_territory_far", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 6; return new MainScreen("territory"); }, 0f), // 멀리 줌 (서해 · 반도)

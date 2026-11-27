@@ -89,6 +89,7 @@ namespace Game.Unity.UI
                 }
                 catch (Exception e) { Debug.LogWarning("uiKit.json: " + e.Message); }
             }
+            Changed();
             DataColors.Clear();
             foreach (var n in ThemeColors) DataColors[n] = ThemeColor(n, Color.magenta);
             LoadDev();
@@ -101,7 +102,21 @@ namespace Game.Unity.UI
         public static Kind KindOf(string roleId) { var r = RoleOf(roleId); return r != null && Kinds.TryGetValue(r.Kind, out var k) ? k : null; }
 
         /// <summary>그 역할의 값 (페이지 덮어쓰기 → 데이터 → 개발 값). 없으면 빈 값.</summary>
+        /// <summary>목록 · 값이 바뀔 때마다 1씩 (로딩 판처럼 한 번 만든 것이 다시 만들지 판단).</summary>
+        public static int Version { get; private set; }
+        private static readonly Dictionary<string, PartSpec> SpecCache = new Dictionary<string, PartSpec>();
+        private static void Changed() { SpecCache.Clear(); Version++; }
+
         public static PartSpec Spec(string role)
+        {
+            string ck = role + "|" + UiStyle.Page + "|" + DataOnly;
+            if (SpecCache.TryGetValue(ck, out var cached)) return cached;
+            var made = MakeSpec(role);
+            SpecCache[ck] = made;
+            return made;
+        }
+
+        private static PartSpec MakeSpec(string role)
         {
             string name = role;
             if (UiStyle.Page != null && UiStyle.Pages.TryGetValue(UiStyle.Page, out var map) && map.TryGetValue(role, out var over)) name = over;
@@ -230,15 +245,17 @@ namespace Game.Unity.UI
             if (value == null) o.Remove(key); else o[key] = value;
             if (o.Count == 0) _devParts.Remove(role);
             SaveDev();
+            Changed();
         }
 
-        public static void ResetDev(string role) { _devParts.Remove(role); SaveDev(); }
+        public static void ResetDev(string role) { _devParts.Remove(role); SaveDev(); Changed(); }
 
         public static void SetDevColor(string name, Color c)
         {
             _devColors[name] = "#" + ColorUtility.ToHtmlStringRGBA(c);
             SetThemeColor(name, c);
             SaveDev();
+            Changed();
         }
 
         public static void ResetDevColor(string name)
@@ -246,6 +263,7 @@ namespace Game.Unity.UI
             _devColors.Remove(name);
             if (DataColors.TryGetValue(name, out var c)) SetThemeColor(name, c);
             SaveDev();
+            Changed();
         }
 
         public static Color DataColor(string name) => DataColors.TryGetValue(name, out var c) ? c : ThemeColor(name, Color.magenta);
@@ -256,6 +274,7 @@ namespace Game.Unity.UI
             _devParts = new JObject();
             _devColors = new JObject();
             SaveDev();
+            Changed();
         }
 
         /// <summary>
@@ -296,6 +315,100 @@ namespace Game.Unity.UI
             GUIUtility.systemCopyBuffer = change.ToString(Newtonsoft.Json.Formatting.Indented);
             return false;
 #endif
+        }
+
+        // ---------------- 창 · 머리 · 움직임 (PR 3) ----------------
+
+        /// <summary>
+        /// 창 판 (pop.confirm · pop.sheet · pop.toast): solid · framed (먹선) · ring (둥근 + 테두리) · scene (흐린 그림). 뒤 어둡게(dim) · 나타남(appear none · rise · pop).
+        /// 값이 없으면 그대로 (fallbackFramed = 예전 먹선 판).
+        /// </summary>
+        public static void DressPanel(RectTransform box, Image bg, Image dim, string role)
+        {
+            var spec = Spec(role);
+            if (spec.IsEmpty || bg == null) return;
+            string v = spec.Variant ?? "solid";
+            bg.color = spec.Col("color", bg.color);
+            int radius = Mathf.RoundToInt(spec.Num("radius", 24));
+            if (v == "framed") { bg.sprite = UiArt.Frame(Mathf.Max(6, radius)); bg.type = Image.Type.Sliced; }
+            else { bg.sprite = UiShapes.Rounded(Mathf.Max(2, radius)); bg.type = Image.Type.Sliced; }
+            if (v == "scene")
+            {
+                var art = SceneOn(spec.Str("art", "scene.castle"), bg.color, 0.5f);
+                if (art != null)
+                {
+                    var layer = Layer(box, "KitArt", art, new Color(1, 1, 1, spec.Num("artAlpha", 0.3f)));
+                    layer.preserveAspect = true;
+                    layer.GetComponent<LayoutElement>().ignoreLayout = true;
+                }
+            }
+            float bw = spec.Num("borderWidth", v == "ring" ? 3 : 0);
+            if (bw > 0 && v != "framed")
+            {
+                var ring = Layer(box, "KitRing", Ring(radius, Mathf.RoundToInt(bw)), spec.Col("border", Palette.AccentLight), Image.Type.Sliced, box.childCount);
+                ring.fillCenter = true;
+            }
+            if (dim != null && spec.Has("dim")) { var c = dim.color; c.a = spec.Num("dim", c.a); dim.color = c; }
+            string appear = spec.Str("appear", "none");
+            if (appear != "none") box.gameObject.AddComponent<KitAppear>().Mode = appear;
+        }
+
+        /// <summary>화면 제목 꾸밈 (head.title): plain · brush (붓 획 바탕) · underline (강조 밑줄). 제목 색 · 강조 색.</summary>
+        public static void DressTitle(Text title)
+        {
+            if (title == null) return;
+            var spec = Spec("head.title");
+            if (spec.IsEmpty) return;
+            title.color = spec.Col("color", title.color);
+            string v = spec.Variant ?? "plain";
+            if (v == "plain") return;
+            Color accent = spec.Col("accent", Palette.ButtonActive);
+            var rt = title.rectTransform;
+            var deco = Ui.Rect(rt, "KitTitle");
+            deco.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            float w = Mathf.Max(80f, title.preferredWidth);
+            var img = deco.gameObject.AddComponent<Image>();
+            img.raycastTarget = false;
+            if (v == "brush")
+            {
+                deco.anchorMin = deco.anchorMax = new Vector2(0f, 0.5f);
+                deco.pivot = new Vector2(0f, 0.5f);
+                deco.sizeDelta = new Vector2(w + 60f, title.fontSize * 1.25f);
+                deco.anchoredPosition = new Vector2(-24f, -4f);
+                img.sprite = UiArt.Brush;
+                img.color = new Color(accent.r, accent.g, accent.b, spec.Num("alpha", 0.55f));
+                deco.SetAsFirstSibling();
+                // 글자 뒤로: 제목 Text는 자기 자식보다 먼저 그려지므로, 붓 획을 제목의 형제로 옮겨 앞에 둔다
+                deco.SetParent(rt.parent, true);
+                deco.SetSiblingIndex(rt.GetSiblingIndex());
+            }
+            else
+            {
+                deco.anchorMin = deco.anchorMax = new Vector2(0f, 0f);
+                deco.pivot = new Vector2(0f, 0f);
+                deco.sizeDelta = new Vector2(Mathf.Min(w, 160f), 6f);
+                deco.anchoredPosition = new Vector2(2f, 2f);
+                img.color = accent;
+            }
+        }
+
+        /// <summary>위 자원 바 (head.top): plain (예전 그림) · kit (코드 아이콘 — 어두운 바탕에서도 보이는 색). 아이콘 id → 그림 · 색.</summary>
+        public static Sprite TopIcon(string iconId, out Color tint)
+        {
+            tint = Color.white;
+            var spec = Spec("head.top");
+            if (spec.Variant != "kit") return null;
+            var s = SegmentArt.Icon("ico." + iconId);
+            tint = spec.Col("iconColor", Palette.Text);
+            return s;
+        }
+
+        /// <summary>누름 효과 (anim.press): none · shrink (살짝 작아짐) · darken (어두워짐, 기본 버튼 색 바꿈과 같음).</summary>
+        public static void AddPress(GameObject go)
+        {
+            var spec = Spec("anim.press");
+            if (spec.Variant != "shrink") return;
+            go.AddComponent<KitPress>().Amount = spec.Num("amount", 0.94f);
         }
 
         // ---------------- 그림 (테두리 · 고리 · 번짐 · 점선) ----------------
@@ -658,6 +771,63 @@ namespace Game.Unity.UI
         }
 
         /// <summary>
+        /// 카드 틀 (card.*, ui-kit.md 4.4): plain · strip (왼쪽 강조 띠) · grade (등급 색 테두리) · framed (장식 테두리) · scene (흐린 그림 바탕).
+        /// 값 색 · 둥글기 · 테두리 · 그림 뒤 판 색. 값이 없으면 그대로.
+        /// </summary>
+        public static void DressCard(RectTransform card, Image bg, string role, Color? grade)
+        {
+            if (card == null) return;
+            var spec = Spec(role);
+            if (spec.IsEmpty) return;
+            if (bg != null && spec.Has("color")) bg.color = spec.Col("color", bg.color);
+            int radius = Mathf.RoundToInt(spec.Num("radius", Mathf.Max(UiStyle.CornerRadius, 12)));
+            if (bg != null && spec.Has("radius")) { bg.sprite = UiShapes.Rounded(Mathf.Max(2, radius)); bg.type = Image.Type.Sliced; }
+            if (spec.Has("pictureBack"))
+            {
+                var pb = spec.Col("pictureBack", Palette.PictureBack);
+                foreach (var img in card.GetComponentsInChildren<Image>(true))
+                    if (img.transform.parent != null && (img.name == "PicBack" || img.transform.name == "TroopPicture")) img.color = pb;
+            }
+            string v = spec.Variant ?? "plain";
+            Color border = spec.Col("border", v == "grade" && grade.HasValue ? grade.Value : v == "strip" ? Palette.ButtonActive : Palette.AccentLight);
+            float bw = spec.Num("borderWidth", v == "grade" ? 4 : 0);
+            Remove(card, "KitStrip");
+            if (v == "scene")
+            {
+                var art = SceneOn(spec.Str("art", "scene.army"), bg != null ? bg.color : Palette.Card, 0.4f);
+                if (art != null)
+                {
+                    var layer = Layer(card, "KitArt", art, new Color(1, 1, 1, spec.Num("artAlpha", 0.35f)));
+                    layer.preserveAspect = true;
+                }
+            }
+            if (v == "framed")
+            {
+                var f = Layer(card, "KitFrame", FrameTile(spec.Str("frame", "frame.arrowTwist")), border, Image.Type.Tiled, card.childCount);
+                f.fillCenter = false;
+                f.pixelsPerUnitMultiplier = Mathf.Clamp(4f / Mathf.Max(1f, spec.Num("borderWidth", 4)), 0.4f, 2f);
+            }
+            else if (bw > 0)
+            {
+                var ring = Layer(card, "KitRing", Ring(radius, Mathf.RoundToInt(bw)), border, Image.Type.Sliced, card.childCount);
+                ring.fillCenter = true;
+            }
+            if (v == "strip")
+            {
+                var s = Ui.Rect(card, "KitStrip");
+                s.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                s.anchorMin = new Vector2(0f, 0f);
+                s.anchorMax = new Vector2(0f, 1f);
+                s.pivot = new Vector2(0f, 0.5f);
+                s.offsetMin = new Vector2(0f, 18f);
+                s.offsetMax = new Vector2(spec.Num("strip", 7), -18f);
+                var si = s.gameObject.AddComponent<Image>();
+                si.color = border;
+                si.raycastTarget = false;
+            }
+        }
+
+        /// <summary>
         /// 탭 줄 (tabs.*): button (판 버튼) · underline (밑줄) · art (흐린 그림 + 가운데 글자, 메인 세그먼트) · iconText (아이콘 위 · 글자 아래)
         /// · group (묶음: 둥근 테두리 하나 안에서 고른 칸만 알약으로 채움, 2026-11-27 사용자 참고 그림 — 그림이 있는 칸은 그림도).
         /// 칸마다 Button과 고름 표시 함수를 돌려준다 (메인 아래 탭이 고름을 바꿀 때).
@@ -803,7 +973,7 @@ namespace Game.Unity.UI
         public string Mode;
         public float Speed = 1f;
         public bool OnPress;
-        public RectTransform Runner, Road, SwordL, SwordR;
+        public RectTransform Runner, Road, SwordL, SwordR, Spin, Flag;
         public Image Spark;
         private float _pressed = -99f;
 
@@ -821,6 +991,12 @@ namespace Game.Unity.UI
                 float u = (t * 0.4f) % 1f;
                 Runner.anchoredPosition = new Vector2(-60f + u * (w + 120f), Mathf.Abs(Mathf.Sin(t * 9f)) * 6f);
             }
+            if (Spin != null) Spin.Rotate(0f, 0f, -360f * Time.unscaledDeltaTime * Speed);
+            if (Flag != null)
+            {
+                Flag.localScale = new Vector3(1f + 0.12f * Mathf.Sin(t * 6f), 1f, 1f);
+                Flag.localRotation = Quaternion.Euler(0, 0, 4f * Mathf.Sin(t * 3f));
+            }
             if (SwordL != null && SwordR != null)
             {
                 float c = (t * 0.7f) % 1f;
@@ -835,6 +1011,46 @@ namespace Game.Unity.UI
                     Spark.rectTransform.localScale = Vector3.one * (0.6f + hit * 0.6f);
                 }
             }
+        }
+    }
+    /// <summary>누르는 동안 살짝 작아짐 (anim.press shrink).</summary>
+    public sealed class KitPress : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+    {
+        public float Amount = 0.94f;
+        public void OnPointerDown(PointerEventData e) { transform.localScale = Vector3.one * Amount; }
+        public void OnPointerUp(PointerEventData e) { transform.localScale = Vector3.one; }
+        public void OnPointerExit(PointerEventData e) { transform.localScale = Vector3.one; }
+    }
+
+    /// <summary>창이 나타나는 움직임 (pop.* appear): rise = 아래에서 올라옴, pop = 작게 시작해 커짐. 0.2초, 화면 시간.</summary>
+    public sealed class KitAppear : MonoBehaviour
+    {
+        public string Mode = "pop";
+        private float _t0;
+        private Vector2 _pos;
+        private CanvasGroup _group;
+
+        private void Start()
+        {
+            _t0 = Time.unscaledTime;
+            _pos = ((RectTransform)transform).anchoredPosition;
+            _group = gameObject.GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
+            Apply(0f);
+        }
+
+        private void Update()
+        {
+            float k = Mathf.Clamp01((Time.unscaledTime - _t0) / 0.2f);
+            Apply(1f - (1f - k) * (1f - k));
+            if (k >= 1f) enabled = false;
+        }
+
+        private void Apply(float e)
+        {
+            var rt = (RectTransform)transform;
+            if (Mode == "rise") rt.anchoredPosition = _pos + new Vector2(0f, -(1f - e) * 160f);
+            else rt.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, e);
+            if (_group != null) _group.alpha = e;
         }
     }
 }

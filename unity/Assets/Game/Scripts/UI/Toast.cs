@@ -52,7 +52,9 @@ namespace Game.Unity.UI
                 _view.Background = bg;
                 _view.Text = l;
             }
-            _view.Background.color = bad ? Red : Dark;
+            var spec = UiKit.Spec("pop.toast"); // 창 꾸밈 (ui-kit.md 4.7)
+            _view.Background.color = bad ? Red : spec.Col("color", Dark);
+            if (spec.Has("radius")) { _view.Background.sprite = UiShapes.Rounded(Mathf.Max(2, Mathf.RoundToInt(spec.Num("radius", 14)))); _view.Background.type = Image.Type.Sliced; }
             _view.Text.text = text;
             _view.Restart(Seconds);
         }

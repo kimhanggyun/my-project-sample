@@ -53,13 +53,15 @@ namespace Game.Unity.UI
             var pic = Resources.Load<Sprite>("Ui/icons/" + iconId);
             var label = b.GetComponentInChildren<Text>();
             UiKit.DressButton(b, "button.icon");
+            var kitIcon = UiKit.TopIcon(iconId, out var tint); // 머리 kit: 어두운 바탕에서도 보이는 코드 아이콘
+            if (kitIcon != null) pic = kitIcon;
             if (pic == null) { label.text = fallback; return b; }
             label.gameObject.SetActive(false);
             var icon = Rect(b.transform, "Icon");
             icon.anchorMin = new Vector2(0.5f, 0.5f);
             icon.anchorMax = new Vector2(0.5f, 0.5f);
             icon.sizeDelta = new Vector2(height - 18, height - 18);
-            var img = Background(icon, Color.white);
+            var img = Background(icon, kitIcon != null ? tint : Color.white);
             img.sprite = pic;
             img.preserveAspect = true;
             img.raycastTarget = false;
@@ -231,7 +233,7 @@ namespace Game.Unity.UI
             var le = Size(chip, height, width);
             le.minWidth = width;
             le.flexibleWidth = 0;
-            var bg = Background(chip, Palette.Card);
+            var bg = Background(chip, UiKit.Spec("head.top").Col("chipColor", Palette.Card));
             bg.sprite = UiShapes.Rounded(Mathf.RoundToInt(height / 2));
             bg.type = Image.Type.Sliced;
             var tapChip = chip.gameObject.AddComponent<Button>();
@@ -381,6 +383,7 @@ namespace Game.Unity.UI
             t.font = TitleFont;
             t.horizontalOverflow = HorizontalWrapMode.Overflow;
             Size(t, height).flexibleWidth = 0;
+            UiKit.DressTitle(t); // 머리 꾸밈 (ui-kit.md 4.8)
             if (!string.IsNullOrEmpty(sub))
             {
                 var s = Label(row, sub, FontSmall, TextAnchor.MiddleLeft, Palette.TextDim);
@@ -635,6 +638,7 @@ namespace Game.Unity.UI
             var gap = Rect(stats, "Gap");
             Size(gap, 44, -1, -1, 1);
             SmallInfo(stats, onInfo);
+            UiKit.DressCard(card, innerImg, "card.general.standard", gradeColor); // 카드 체계 (ui-kit.md 4.4)
             return card;
         }
 
@@ -915,6 +919,7 @@ namespace Game.Unity.UI
                 var tt = Label(tg, tag, 17, TextAnchor.MiddleCenter, OnAccent);
                 Fill(tt.rectTransform);
             }
+            UiKit.DressCard(card, bg, troopType != null ? "card.troop.mini" : "card.general.mini", null); // 카드 체계 (ui-kit.md 4.4)
             return b;
         }
 
@@ -1028,6 +1033,7 @@ namespace Game.Unity.UI
             pi.sprite = UiArt.Frame(22f);
             pi.type = Image.Type.Sliced;
             panel.gameObject.AddComponent<Button>().transition = Selectable.Transition.None; // 판 누름이 뒤로 새지 않게
+            UiKit.DressPanel(panel, pi, di, "pop.sheet"); // 창 꾸밈 (ui-kit.md 4.7)
             Column(panel, 12, 28);
             var t = Label(panel, title, 30, TextAnchor.MiddleLeft);
             t.fontStyle = FontStyle.Bold;
@@ -1043,7 +1049,7 @@ namespace Game.Unity.UI
             var dim = Rect(overlayRoot, "ConfirmDim");
             dim.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             Fill(dim);
-            Background(dim, new Color(0.08f, 0.06f, 0.05f, 0.55f));
+            var cdim = Background(dim, new Color(0.08f, 0.06f, 0.05f, 0.55f));
             dim.SetAsLastSibling();
             var box = Rect(dim, "Confirm");
             box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1051,6 +1057,7 @@ namespace Game.Unity.UI
             var bi = Background(box, Palette.Background);
             bi.sprite = UiArt.Frame(20f);
             bi.type = Image.Type.Sliced;
+            UiKit.DressPanel(box, bi, cdim, "pop.confirm"); // 창 꾸밈 (ui-kit.md 4.7)
             Column(box, 16, 34);
             var t = Label(box, title, 44, TextAnchor.MiddleCenter);
             t.font = TitleFont;
@@ -1134,6 +1141,7 @@ namespace Game.Unity.UI
             var t = Label(row, title ?? "", TitleFontSize, TextAnchor.MiddleLeft);
             t.horizontalOverflow = HorizontalWrapMode.Overflow;
             Size(t, TitleHeight, -1, -1, 1);
+            UiKit.DressTitle(t); // 머리 꾸밈 (ui-kit.md 4.8)
             var right = Rect(row, "Right");
             var rh = right.gameObject.AddComponent<HorizontalLayoutGroup>();
             rh.spacing = 10;
