@@ -278,6 +278,50 @@ namespace Game.Tests.Battle
             _out.WriteLine(detail.ToString());
         }
 
+        // ---- 진형 (R-157 진형 길이 뒤) ----
+
+        private static readonly string[] EnemyFormations = { CrowdFormations.Line, CrowdFormations.Thick, CrowdFormations.Thicker, CrowdFormations.Wedge, CrowdFormations.Vee };
+
+        /// <summary>VeeHurtsThickBlockMoreThanLine과 같은 판 (맵 없는 평지 · 기본 설정 = 보병 200 대 200, 우리 진군 · 적 대기): 500틱에 적 손실, 끝까지 돌려 승패.</summary>
+        private static (int enemyLost500, int allyLost500, int winner) FormationOne(string ally, string enemy, ulong seed)
+        {
+            var b = new CrowdBattle(Rules, new CrowdSetup { AllyFormation = ally, EnemyFormation = enemy, Seed = seed });
+            int t = 0;
+            for (; t < 500 && !b.IsOver; t++) b.Step();
+            int e500 = 200 - b.AliveCount(CrowdBattle.Enemy), a500 = 200 - b.AliveCount(CrowdBattle.Ally);
+            for (; t < 20000 && !b.IsOver; t++) b.Step();
+            return (e500, a500, b.Winner);
+        }
+
+        [ReportFact(DisplayName = "측정: 진형 × 적 진형 (보병 200 대 200 평지, 500틱 손실 · 끝까지 승리, 시드 12판, 단언 없음)")]
+        public void FormationMatrix()
+        {
+            // VeeHurtsThickBlockMoreThanLine과 같은 시드 1~3 합 (테스트 출력과 맞춰 보기)
+            int vee = 0, line = 0;
+            for (ulong seed = 1; seed <= 3; seed++) { vee += FormationOne(CrowdFormations.Vee, CrowdFormations.Thick, seed).enemyLost500; line += FormationOne(CrowdFormations.Line, CrowdFormations.Thick, seed).enemyLost500; }
+            _out.WriteLine($"CHECK vee→thick {vee}, line→thick {line} (seeds 1-3, 500 ticks)");
+            var sb = new StringBuilder();
+            sb.Append("| 우리 진형 (진군) \\ 적 진형 (대기) |");
+            foreach (var e in EnemyFormations) sb.Append(' ').Append(e).Append(" |");
+            sb.AppendLine();
+            sb.Append("|---|").Append(string.Concat(Enumerable.Repeat("---|", EnemyFormations.Length))).AppendLine();
+            foreach (var a in CrowdFormations.All)
+            {
+                sb.Append("| ").Append(a).Append(" |");
+                foreach (var e in EnemyFormations)
+                {
+                    var r = new (int enemyLost500, int allyLost500, int winner)[Seeds];
+                    Parallel.For(0, Seeds, k => r[k] = FormationOne(a, e, (ulong)(1 + k)));
+                    double el = r.Average(x => x.enemyLost500), al = r.Average(x => x.allyLost500);
+                    int wins = r.Count(x => x.winner == CrowdBattle.Ally), draws = r.Count(x => x.winner < 0);
+                    sb.Append($" {el:0} / {al:0} · {wins}").Append(draws > 0 ? $" 무{draws}" : "").Append(" |");
+                }
+                sb.AppendLine();
+                _out.WriteLine("FORMATION ROW " + a + " done");
+            }
+            _out.WriteLine("FORMATION TABLE\n" + sb);
+        }
+
         [ReportFact(DisplayName = "측정: 병렬로 돌려도 같은 결과 (판끼리 나눠 쓰는 것이 없음)")]
         public void ParallelMatchesSequential()
         {
