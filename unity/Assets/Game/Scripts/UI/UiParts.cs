@@ -581,6 +581,7 @@ namespace Game.Unity.UI
             picBg.sprite = UiShapes.Rounded(12);
             picBg.type = Image.Type.Sliced;
             picBg.raycastTarget = false;
+            UiKit.PictureWell(picBg);
             var portrait = new Portrait(pic, 180);
             portrait.Rect.anchorMin = portrait.Rect.anchorMax = new Vector2(0.5f, 0.5f);
             portrait.Rect.sizeDelta = new Vector2(180, 180);
@@ -656,6 +657,7 @@ namespace Game.Unity.UI
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             bg.raycastTarget = false;
+            UiKit.PictureWell(bg); // 움푹 들어간 그림 칸 (card.picture)
             // 치장 1단계 (cosmetics.md 9장 4): 전투 병사 인형을 찍은 그림 (입은 갑옷 · 말 그대로), 못 찍으면 미리 그린 PNG
             Sprite pic = TroopPictureRenderer.For(ctx, troopType);
             string id = troopType;

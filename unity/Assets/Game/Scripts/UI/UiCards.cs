@@ -143,6 +143,7 @@ namespace Game.Unity.UI
                         var pic = Box(card, "PicBack", 18, 18, 240, 240);
                         var pb = pic.gameObject.AddComponent<Image>();
                         pb.color = Palette.PictureBack; pb.sprite = UiShapes.Rounded(14); pb.type = Image.Type.Sliced; pb.raycastTarget = false;
+                        UiKit.PictureWell(pb);
                         Portrait(pic, d.Id, d.Name, 190, 25);
                         Text(card, d.Name, 44, 280, 22, -20, 56, FontStyle.Bold);
                         Text(card, "Lv." + d.Level + (d.GradeName != null ? "  ·  " + d.GradeName : ""), 28, 280, 84, -20, 40, FontStyle.Normal, grade);
@@ -323,6 +324,7 @@ namespace Game.Unity.UI
                         var pic = Box(card, "PicBack", 14, 14, -14, detail ? 400 : 240, true);
                         var pb = pic.gameObject.AddComponent<Image>();
                         pb.color = Palette.PictureBack; pb.sprite = UiShapes.Rounded(12); pb.type = Image.Type.Sliced; pb.raycastTarget = false;
+                        UiKit.PictureWell(pb);
                         var inner = Box(pic, "Pic", 0, 0, 0, 0, true, true);
                         var tp = Ui.TroopPicture(ctx, inner, it.TroopType, detail ? 380 : 220);
                         tp.anchorMin = tp.anchorMax = new Vector2(0.5f, 0.5f);

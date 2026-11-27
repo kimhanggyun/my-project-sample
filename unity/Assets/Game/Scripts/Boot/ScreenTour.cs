@@ -5,6 +5,7 @@ using System.IO;
 using Game.Battle.Model.Simulation;
 using Game.Flow;
 using Game.Unity.Screens;
+using Game.Unity.UI;
 using UnityEngine;
 
 namespace Game.Unity.Boot
@@ -744,6 +745,28 @@ namespace Game.Unity.Boot
                     AllyAdvance = false, Seed = 3, Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain"),
                 }, startNow: true);
                 yield return Shot("43d_single_corps", () => one, 0.4f);
+            }
+
+            // 화면 스타일 비교 (2026-11-27 사용자: 한지 기본 · 어두움 · 나전칠기 · 백자) — 개발 값은 빼고 데이터 값으로
+            {
+                string keepStyle = UiStyle.Current;
+                var data = GameDataPaths.Data();
+                UiKit.DataOnly = true;
+                foreach (var st in new[] { "hanji", "hanjiDark", "najeon", "baekja" })
+                {
+                    UiStyle.Apply(data, st);
+                    UiKit.Load(data);
+                    _app.ApplyBackdrop();
+                    yield return Shot("60_style_" + st + "_general", () => new MainScreen("general"), 0.3f);
+                    yield return Shot("60_style_" + st + "_troop", () => new MainScreen("troop"), 0.2f);
+                    yield return Shot("60_style_" + st + "_formation", () => { Game.Unity.Screens.FormationTabView.BoardOpen = false; return new MainScreen("formation"); }, 0.2f);
+                    yield return Shot("60_style_" + st + "_cosmetic", () => new Game.Unity.Screens.CosmeticScreen("infantry"), 0.3f);
+                    yield return Shot("60_style_" + st + "_sortie", () => { Game.Unity.Screens.PartsTabView.Pick("button", "button.sortie"); return new MainScreen("parts"); }, 0.4f);
+                }
+                UiKit.DataOnly = false;
+                UiStyle.Apply(data, keepStyle);
+                UiKit.Load(data);
+                _app.ApplyBackdrop();
             }
 
             _app.ShowMain("story");

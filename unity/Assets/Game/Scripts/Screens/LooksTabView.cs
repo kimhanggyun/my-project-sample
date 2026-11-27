@@ -149,6 +149,7 @@ namespace Game.Unity.Screens
         {
             var box = Ui.Rect(parent, "Picture");
             var bg = Ui.Background(box, Palette.PictureBack);
+            UiKit.PictureWell(bg); // 움푹 들어간 그림 칸 (card.picture)
             bg.sprite = UiShapes.Rounded(14);
             bg.type = Image.Type.Sliced;
             var img = Ui.Background(Ui.Rect(box, "Image"), Color.white);

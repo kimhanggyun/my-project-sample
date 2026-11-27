@@ -60,6 +60,7 @@ namespace Game.Unity.UI
         public static void Apply(IDataSource data, string choice)
         {
             Available.Clear();
+            UiKit.RestorePalette(); // 스타일을 바꿔도 앞 스타일 색이 남지 않게
             Parts.Clear();
             RawParts.Clear();
             Pages.Clear();
@@ -88,6 +89,15 @@ namespace Game.Unity.UI
             string id = choice != null && styles[choice] is JObject ? choice : root.Value<string>("default");
             if (id == null || !(styles[id] is JObject s)) return;
             Current = id;
+            // 스타일마다 자기 부품 값 (styles.<id>.parts) — 공통 parts 위에 덮는다 (2026-11-27)
+            if (s["parts"] is JObject sparts)
+                foreach (var p in sparts.Properties())
+                {
+                    if (!(p.Value is JObject po)) continue;
+                    var merged = RawParts.TryGetValue(p.Name, out var g) ? (JObject)g.DeepClone() : new JObject();
+                    foreach (var kv in po.Properties()) merged[kv.Name] = kv.Value.DeepClone();
+                    RawParts[p.Name] = merged;
+                }
             CornerRadius = Mathf.Max(0f, s.Value<float?>("cornerRadius") ?? 0f);
             FontScale = Mathf.Clamp(s.Value<float?>("fontScale") ?? 1f, 0.5f, 2f);
             Paper = s.Value<bool?>("paper") ?? false;
