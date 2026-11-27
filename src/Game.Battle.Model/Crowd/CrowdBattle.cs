@@ -354,6 +354,16 @@ namespace Game.Battle.Model.Crowd
             Terrain = setup.Terrain;
             Rules = Terrain != null ? rules.WithField(Terrain.Width, Terrain.Depth) : rules;
             rules = Rules;
+            if ((setup.AllyUnits != null && setup.AllyUnits.Count > 0) || (setup.EnemyUnits != null && setup.EnemyUnits.Count > 0))
+            {
+                // 3×3 칸 간격 · 평지 전장 크기를 부대 크기에 맞춤 (R-157: 진형 길이 50명 · 테스트 병사 수 1000)
+                var (needW, needD) = GridNeeds(rules, setup, troops);
+                if (Terrain == null && (needW > rules.FieldWidth || needD > rules.FieldDepth))
+                {
+                    Rules = rules.WithField(Fix.Max(needW, rules.FieldWidth), Fix.Max(needD, rules.FieldDepth));
+                    rules = Rules;
+                }
+            }
             _counters = counters ?? new TroopCounterRule[0];
             if (Terrain != null)
             {
@@ -528,6 +538,43 @@ namespace Game.Battle.Model.Crowd
         private Vec SpawnPoint(SpawnDef sp) => new Vec(Terrain.CellSize * sp.X + Terrain.CellSize / 2,
             Terrain.Flipped ? Terrain.CellSize * sp.Y + Terrain.CellSize / 2 : Terrain.CellSize * (Fix.FromInt(Terrain.Map.Height) - sp.Y) - Terrain.CellSize / 2);
 
+        private Fix _gridColPitch, _gridRowPitch;
+
+        /// <summary>
+        /// 3×3 칸 배치에 필요한 칸 간격 · 평지 전장 크기 (R-157): 칸 간격 = 데이터 간격과 (가장 넓은 부대 폭 + 3칸) 중 큰 것,
+        /// 줄 간격 = 데이터 간격과 (가장 깊은 부대 깊이 + 2칸) 중 큰 것. 전장 폭 = 옆 칸을 쓰면 칸 간격 × 2 + 부대 폭 + 8칸,
+        /// 깊이 = 앞줄이 전장 30% 자리이므로 (줄 간격 × 맨 뒤 줄 + 부대 깊이 + 4칸) ÷ 0.3.
+        /// </summary>
+        private (Fix width, Fix depth) GridNeeds(CrowdRules r, CrowdSetup setup, IReadOnlyDictionary<string, TroopTypeDef> troops)
+        {
+            Fix maxW = Fix.Zero, maxD = Fix.Zero;
+            bool side = false;
+            int maxRow = 0;
+            foreach (var list in new[] { setup.AllyUnits, setup.EnemyUnits })
+            {
+                if (list == null) continue;
+                foreach (var u in list)
+                {
+                    int count = System.Math.Max(1, System.Math.Min(r.GridMaxCount, u.Count));
+                    var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
+                    var troop = CrowdTroop.Of(u.Troop, troops, r.TroopTuning);
+                    Fix sp = SpacingOf(troop);
+                    var slots = CrowdFormations.Slots(form, count, sp, r.FormationFront, r.FormationRows);
+                    Fix minX = Fix.Zero, maxX = Fix.Zero, minY = Fix.Zero, maxY = Fix.Zero;
+                    foreach (var p in slots) { minX = Fix.Min(minX, p.X); maxX = Fix.Max(maxX, p.X); minY = Fix.Min(minY, p.Y); maxY = Fix.Max(maxY, p.Y); }
+                    maxW = Fix.Max(maxW, maxX - minX + sp);
+                    maxD = Fix.Max(maxD, maxY - minY + sp);
+                    if (u.Col != 1) side = true;
+                    maxRow = System.Math.Max(maxRow, System.Math.Max(0, System.Math.Min(2, u.Row)));
+                }
+            }
+            _gridColPitch = Fix.Max(r.GridColPitch, maxW + Fix.FromInt(3));
+            _gridRowPitch = Fix.Max(r.GridRowPitch, maxD + Fix.FromInt(2));
+            Fix needW = (side ? _gridColPitch * 2 : Fix.Zero) + maxW + Fix.FromInt(8);
+            Fix needD = (_gridRowPitch * maxRow + maxD + Fix.FromInt(4)) * 10 / 3;
+            return (needW, needD);
+        }
+
         private void MakeGrid(int team, List<CrowdUnitSpec> units, IReadOnlyDictionary<string, TroopTypeDef> troops, Vec front, Vec facing)
         {
             Fix frontY = front.Y;
@@ -544,8 +591,8 @@ namespace Game.Battle.Model.Crowd
                 var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
                 var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops, Rules.TroopTuning), u.General);
                 a.StartBehavior = u.Behavior;
-                Fix back = Rules.GridRowPitch * row;
-                a.Center = new Vec(mid + Rules.GridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
+                Fix back = _gridRowPitch * row;
+                a.Center = new Vec(mid + _gridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
                 foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
             }
         }
@@ -607,11 +654,11 @@ namespace Game.Battle.Model.Crowd
             hole = null;
             Fix sp = SpacingOf(a.Troop);
             bool inside = a.GeneralInfo.Role != "rear" || formation == CrowdFormations.Circle || formation == CrowdFormations.Column;
-            if (!inside || count <= 0) return CrowdFormations.Slots(formation, count, sp);
+            if (!inside || count <= 0) return CrowdFormations.Slots(formation, count, sp, Rules.FormationFront, Rules.FormationRows);
             // 지장(중위)은 대열이 3줄 넘게 두꺼울 때만 가운데 빈자리 — 1 · 2줄이면 가운데가 곧 앞줄이라 뒤에 선다 (R-147)
-            if (a.GeneralInfo.Role != "front" && formation != CrowdFormations.Circle && formation != CrowdFormations.Column && !ThickEnough(CrowdFormations.Slots(formation, count, sp), sp))
-                return CrowdFormations.Slots(formation, count, sp);
-            var more = CrowdFormations.Slots(formation, count + 1, sp);
+            if (a.GeneralInfo.Role != "front" && formation != CrowdFormations.Circle && formation != CrowdFormations.Column && !ThickEnough(CrowdFormations.Slots(formation, count, sp, Rules.FormationFront, Rules.FormationRows), sp))
+                return CrowdFormations.Slots(formation, count, sp, Rules.FormationFront, Rules.FormationRows);
+            var more = CrowdFormations.Slots(formation, count + 1, sp, Rules.FormationFront, Rules.FormationRows);
             Fix front = Fix.FromInt(-999);
             foreach (var s in more) if (s.Y > front) front = s.Y;
             Fix back = CrowdFormations.BackOf(more);
@@ -627,7 +674,7 @@ namespace Game.Battle.Model.Crowd
                 Fix d2 = Vec.DistanceSquared(more[i], want);
                 if (d2 < bestD || (d2 == bestD && best >= 0 && i < best)) { bestD = d2; best = i; }
             }
-            if (best < 0) return CrowdFormations.Slots(formation, count, sp);
+            if (best < 0) return CrowdFormations.Slots(formation, count, sp, Rules.FormationFront, Rules.FormationRows);
             hole = more[best];
             more.RemoveAt(best);
             return more;

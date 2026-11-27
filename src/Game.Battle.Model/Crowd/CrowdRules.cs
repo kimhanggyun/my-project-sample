@@ -215,6 +215,10 @@ namespace Game.Battle.Model.Crowd
         public Fix GridRowPitch { get; private set; }
         public int GridDefaultCount { get; private set; }
         public int GridMaxCount { get; private set; }
+        /// <summary>진형 기준 앞줄 사람 수 (R-157): 50명. 사람이 늘면 뒤로 두꺼워진다.</summary>
+        public int FormationFront { get; private set; }
+        /// <summary>일자가 두꺼워지는 최대 줄 수 (R-157): 두툼 2배 · 더 두툼 3배, 넘으면 옆으로 넓어짐.</summary>
+        public int FormationRows { get; private set; }
         public int SkillGapTicks => System.Math.Max(1, (int)(SkillGapSeconds / TickSeconds).RoundToLong());
         public int RoutEndTicks => System.Math.Max(1, (int)(RoutEndSeconds / TickSeconds).RoundToLong());
         public int EncircleTicks => System.Math.Max(1, (int)(EncircleSeconds / TickSeconds).RoundToLong());
@@ -359,6 +363,8 @@ namespace Game.Battle.Model.Crowd
                 GridRowPitch = JsonUtil.RequireFix(o, "gridRowPitch", c),
                 GridDefaultCount = (int)JsonUtil.RequireLong(o, "gridDefaultCount", c),
                 GridMaxCount = (int)JsonUtil.RequireLong(o, "gridMaxCount", c),
+                FormationFront = (int)JsonUtil.RequireLong(o, "formationFront", c),
+                FormationRows = (int)JsonUtil.RequireLong(o, "formationRows", c),
             };
             var rec = new System.Collections.Generic.Dictionary<string, string>();
             foreach (var p in JsonUtil.RequireObject(o, "recommendedFormation", c).Properties())

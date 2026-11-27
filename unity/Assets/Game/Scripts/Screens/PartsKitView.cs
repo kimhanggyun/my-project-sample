@@ -19,6 +19,9 @@ namespace Game.Unity.Screens
         public static string Category = "button";
         public static string RoleId;
         private static float _scroll = 1f;
+        /// <summary>가로 칩 줄의 스크롤 위치 (부품.값 → 0~1): 칩을 눌러 다시 그려도 그 자리 그대로 (2026-11-27 사용자).</summary>
+        private static readonly Dictionary<string, float> HScroll = new Dictionary<string, float>();
+        private readonly List<(ScrollRect sr, string key)> _hRows = new List<(ScrollRect, string)>();
 
         private GameApp _app;
         private RectTransform _root;
@@ -45,9 +48,18 @@ namespace Game.Unity.Screens
                 else RolePanel(list);
                 Actions(list);
             }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(list);
+            Canvas.ForceUpdateCanvases();
+            foreach (var (sr, key) in _hRows)
+            {
+                if (sr == null) continue;
+                if (HScroll.TryGetValue(key, out var x)) sr.horizontalNormalizedPosition = x;
+                string k = key;
+                sr.onValueChanged.AddListener(v => HScroll[k] = v.x);
+            }
+            _hRows.Clear();
             if (scroll != null)
             {
-                Canvas.ForceUpdateCanvases();
                 scroll.verticalNormalizedPosition = _scroll;
                 scroll.onValueChanged.AddListener(v => _scroll = v.y);
             }
@@ -114,6 +126,7 @@ namespace Game.Unity.Screens
                             var c = UiKit.ThemeColor(n, Color.magenta);
                             Chip(row, n, c.a < 0.1f ? Palette.Card : c, raw != null && (string)raw == n, () => Set(role, f.Name, new JValue(name)), 150);
                         }
+                        _hRows.Add((row.GetComponentInParent<ScrollRect>(), role + "." + f.Name));
                         var hexRow = Ui.Row(list, "Hex_" + f.Name, 60, 10);
                         hexRow.GetComponent<HorizontalLayoutGroup>().childForceExpandWidth = false;
                         Ui.Size(Ui.Label(hexRow, "직접 #RRGGBB", 24, TextAnchor.MiddleLeft, Palette.TextDim), 60, 220);
@@ -158,7 +171,13 @@ namespace Game.Unity.Screens
                     {
                         var items = new List<(string, string)> { ("", "기본") };
                         foreach (var a in UiKit.Arts) if (a.Group == f.Group) items.Add((a.Id, a.Label));
-                        Chips(list, items, raw == null ? "" : (string)raw, v => Set(role, f.Name, v == "" ? null : new JValue(v)), 3);
+                        Chips(list, items, raw == null ? "" : (string)raw, v =>
+                        {
+                            // 그림을 고르면 모양도 그림(scene)으로 — 모양이 단색이면 그림이 안 보여서 (2026-11-27 사용자)
+                            var kind = UiKit.KindOf(role);
+                            if (v != "" && f.Group == "scene" && kind != null && kind.Variants.Contains("scene") && cur.Variant != "scene") UiKit.SetDev(role, "variant", new JValue("scene"));
+                            Set(role, f.Name, v == "" ? null : new JValue(v));
+                        }, 3);
                         break;
                     }
             }

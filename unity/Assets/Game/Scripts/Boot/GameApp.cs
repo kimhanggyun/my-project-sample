@@ -219,7 +219,13 @@ namespace Game.Unity.Boot
         }
 
         /// <summary>화면 전체 배경. 3D 전장처럼 카메라 화면을 보여줄 때 끈다 (화면을 닫을 때 다시 켠다).</summary>
-        public void SetBackdrop(bool on) { if (_backdrop != null) _backdrop.enabled = on; }
+        public void SetBackdrop(bool on)
+        {
+            if (_backdrop == null) return;
+            _backdrop.enabled = on;
+            var kit = _backdrop.transform.Find("KitBg"); // 부품 꾸미기 바탕 그림도 (전투 화면에서 끔)
+            if (kit != null) kit.gameObject.SetActive(on);
+        }
 
         /// <summary>화면 바탕: 스타일 색 (한지 무늬) 위에 부품 꾸미기 bg.page. 꾸미기 화면에서 값을 바꾸면 다시 부른다.</summary>
         public void ApplyBackdrop()

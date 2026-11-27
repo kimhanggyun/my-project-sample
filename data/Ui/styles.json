@@ -1,7 +1,593 @@
 {
-  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로 / parts = 부품 역할(또는 스타일 이름) → 모양 (color·textColor·height·fontSize, 정한 것만 — 공통부품.md 0장), pages = 페이지 id → (역할 → 스타일 이름) 덮어쓰기. 2026-11-14 07에서 시작. 2026-11-26 기본을 jaju(먹 바탕 · 자주 강조)로 — 자주는 맵(초록 · 회색 · 갈색 · 물색) · 팀(파랑 · 빨강) · 갑옷 · 말 색과 겹치지 않는 색. accentLight = 밝은 강조(고른 칸 테두리 · 밑줄), line = 판 가장자리 선, pictureBack = 병종 · 장수 그림 뒤 판, track = 막대 빈 바탕, board = 진형 놓기 판, cellOn = 고른 칸, cardStrip = 목록 카드 왼쪽 강조 띠. 2026-11-27 parts에 부품 꾸미기 값 (variant · 테마 색 이름 · 조절값, 목록 = uiKit.json, ui-kit.md)",
-  "default": "jaju",
+  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로 / parts = 부품 역할(또는 스타일 이름) → 모양 (color·textColor·height·fontSize, 정한 것만 — 공통부품.md 0장), pages = 페이지 id → (역할 → 스타일 이름) 덮어쓰기. 2026-11-14 07에서 시작. 2026-11-26 기본을 jaju(먹 바탕 · 자주 강조)로 — 자주는 맵(초록 · 회색 · 갈색 · 물색) · 팀(파랑 · 빨강) · 갑옷 · 말 색과 겹치지 않는 색. accentLight = 밝은 강조(고른 칸 테두리 · 밑줄), line = 판 가장자리 선, pictureBack = 병종 · 장수 그림 뒤 판, track = 막대 빈 바탕, board = 진형 놓기 판, cellOn = 고른 칸, cardStrip = 목록 카드 왼쪽 강조 띠. 2026-11-27 parts에 부품 꾸미기 값 (variant · 테마 색 이름 · 조절값, 목록 = uiKit.json, ui-kit.md) 2026-11-27 기본을 hanji(사용자가 꾸미기 화면에서 고른 한지 · 먹 · 초록)로, hanjiDark = 그 어두운 판(임시), najeon(나전칠기) · baekja(백자) = 데스크탑 제안. 스타일마다 parts (공통 parts 위에 덮음).",
+  "default": "hanji",
   "styles": {
+    "hanji": {
+      "nameKey": "style.hanji",
+      "cornerRadius": 12,
+      "fontScale": 0.95,
+      "colors": {
+        "background": "#E8DFCB",
+        "bar": "#D8CCB0",
+        "card": "#F2EBDA",
+        "button": "#E2D5B8",
+        "buttonActive": "#2F6B3A",
+        "buttonDisabled": "#D6CFC0",
+        "text": "#2A2520",
+        "textDim": "#6B6256",
+        "ally": "#2D5A88",
+        "enemy": "#A3302A",
+        "good": "#3B7536",
+        "bad": "#A8372B",
+        "seal": "#B3382B",
+        "danger": "#9E3A2E",
+        "overlay": "#2A252099",
+        "promptBack": "#2A2520E6",
+        "promptText": "#F3ECDC",
+        "accentLight": "#5E9A5F",
+        "line": "#3A3630",
+        "pictureBack": "#E6DCC6",
+        "track": "#D6CEBE",
+        "board": "#DCD0B5",
+        "cellOn": "#D7E4CC"
+      },
+      "paper": true,
+      "inkBorder": true,
+      "parts": {
+        "bg.page": {
+          "variant": "texture",
+          "color": "track",
+          "art": "scene.army",
+          "alpha": 0.85,
+          "blur": 0,
+          "fit": "fit",
+          "align": "bottom"
+        },
+        "bg.header": {
+          "variant": "texture"
+        },
+        "bg.tabbar": {
+          "variant": "texture"
+        },
+        "button.primary": {
+          "variant": "round",
+          "radius": 20,
+          "color": "black",
+          "border": "black",
+          "borderWidth": 3
+        },
+        "button.secondary": {
+          "variant": "round",
+          "radius": 20,
+          "color": "button",
+          "textColor": "good",
+          "border": "good",
+          "borderWidth": 3
+        },
+        "button.back": {
+          "variant": "bare",
+          "size": 92,
+          "textColor": "text"
+        },
+        "button.sortie": {
+          "variant": "run",
+          "when": "press",
+          "speed": 1.5,
+          "color": "line",
+          "border": "card",
+          "radius": 36
+        },
+        "tabs.art": {
+          "variant": "group",
+          "height": 100,
+          "fontSize": 42,
+          "color": "card",
+          "border": "card"
+        },
+        "tabs.segment": {
+          "variant": "group",
+          "height": 84,
+          "fontSize": 34,
+          "color": "card",
+          "border": "card"
+        },
+        "tabs.bottom": {
+          "variant": "iconText",
+          "height": 120,
+          "fontSize": 36,
+          "color": "clear",
+          "onColor": "clear",
+          "onText": "good",
+          "border": "button"
+        },
+        "head.top": {
+          "variant": "plain",
+          "chipColor": "bar"
+        },
+        "head.title": {
+          "variant": "brush",
+          "color": "text",
+          "accent": "good",
+          "alpha": 0.3
+        },
+        "pop.confirm": {
+          "variant": "ring",
+          "color": "card",
+          "border": "text"
+        },
+        "pop.sheet": {
+          "variant": "ring",
+          "color": "promptText",
+          "border": "good",
+          "borderWidth": 6,
+          "radius": 10,
+          "dim": 0,
+          "appear": "rise",
+          "art": "scene.castle",
+          "artAlpha": 1
+        },
+        "anim.loading": {
+          "variant": "swordClash",
+          "color": "card",
+          "accent": "danger"
+        },
+        "anim.press": {
+          "variant": "shrink",
+          "amount": 0.93
+        },
+        "card.picture": {
+          "variant": "inset",
+          "depth": 0.6
+        }
+      }
+    },
+    "hanjiDark": {
+      "nameKey": "style.hanjiDark",
+      "cornerRadius": 14,
+      "fontScale": 0.95,
+      "colors": {
+        "background": "#161513",
+        "bar": "#1E1C19",
+        "card": "#24211D",
+        "button": "#2E2A25",
+        "buttonActive": "#3F7F4A",
+        "buttonDisabled": "#2A2723",
+        "text": "#ECE6DA",
+        "textDim": "#9C9486",
+        "ally": "#7FB2E6",
+        "enemy": "#E67A66",
+        "good": "#6FB36F",
+        "bad": "#E0614F",
+        "seal": "#B3382B",
+        "danger": "#8A3A30",
+        "overlay": "#000000AA",
+        "promptBack": "#161513E6",
+        "promptText": "#ECE6DA",
+        "accentLight": "#7DBE84",
+        "line": "#3A3630",
+        "pictureBack": "#2B2723",
+        "track": "#34302A",
+        "board": "#2A2622",
+        "cellOn": "#2E3B2C"
+      },
+      "parts": {
+        "bg.page": {
+          "variant": "texture",
+          "color": "background",
+          "art": "scene.army",
+          "alpha": 0.35,
+          "blur": 0.2,
+          "fit": "fit",
+          "align": "bottom"
+        },
+        "bg.header": {
+          "variant": "texture"
+        },
+        "bg.tabbar": {
+          "variant": "texture"
+        },
+        "button.primary": {
+          "variant": "round",
+          "radius": 20,
+          "color": "black",
+          "border": "accentLight",
+          "borderWidth": 2
+        },
+        "button.secondary": {
+          "variant": "round",
+          "radius": 20,
+          "color": "button",
+          "textColor": "good",
+          "border": "good",
+          "borderWidth": 3
+        },
+        "button.back": {
+          "variant": "bare",
+          "size": 92,
+          "textColor": "text"
+        },
+        "button.sortie": {
+          "variant": "run",
+          "when": "press",
+          "speed": 1.5,
+          "color": "black",
+          "border": "accentLight",
+          "borderWidth": 2,
+          "radius": 36
+        },
+        "tabs.art": {
+          "variant": "group",
+          "height": 100,
+          "fontSize": 42,
+          "color": "card",
+          "border": "card"
+        },
+        "tabs.segment": {
+          "variant": "group",
+          "height": 84,
+          "fontSize": 34,
+          "color": "card",
+          "border": "card"
+        },
+        "tabs.bottom": {
+          "variant": "iconText",
+          "height": 120,
+          "fontSize": 36,
+          "color": "clear",
+          "onColor": "clear",
+          "onText": "good",
+          "border": "button"
+        },
+        "head.top": {
+          "variant": "kit",
+          "iconColor": "text",
+          "chipColor": "bar"
+        },
+        "head.title": {
+          "variant": "brush",
+          "color": "text",
+          "accent": "good",
+          "alpha": 0.35
+        },
+        "pop.confirm": {
+          "variant": "ring",
+          "color": "card",
+          "border": "text"
+        },
+        "pop.sheet": {
+          "variant": "ring",
+          "color": "card",
+          "border": "good",
+          "borderWidth": 4,
+          "radius": 10,
+          "dim": 0.4,
+          "appear": "rise",
+          "art": "scene.castle",
+          "artAlpha": 0.5
+        },
+        "anim.loading": {
+          "variant": "swordClash",
+          "color": "card",
+          "accent": "danger"
+        },
+        "anim.press": {
+          "variant": "shrink",
+          "amount": 0.93
+        },
+        "card.picture": {
+          "variant": "inset",
+          "depth": 0.8
+        }
+      }
+    },
+    "najeon": {
+      "nameKey": "style.najeon",
+      "cornerRadius": 10,
+      "fontScale": 0.95,
+      "colors": {
+        "background": "#100E0C",
+        "bar": "#17140F",
+        "card": "#1D1913",
+        "button": "#28221A",
+        "buttonActive": "#8C6A2F",
+        "buttonDisabled": "#221D17",
+        "text": "#F1E7D3",
+        "textDim": "#A39780",
+        "ally": "#7FB2E6",
+        "enemy": "#E67A66",
+        "good": "#8CCF7A",
+        "bad": "#E0614F",
+        "seal": "#B3382B",
+        "danger": "#7A2E2A",
+        "overlay": "#000000B0",
+        "promptBack": "#100E0CE8",
+        "promptText": "#F1E7D3",
+        "accentLight": "#D9C08A",
+        "line": "#4A3E2A",
+        "pictureBack": "#241F18",
+        "track": "#2E2820",
+        "board": "#221D16",
+        "cellOn": "#3A3020"
+      },
+      "parts": {
+        "bg.page": {
+          "variant": "gradient",
+          "color": "background",
+          "color2": "#060504"
+        },
+        "bg.header": {
+          "variant": "gradient",
+          "color": "bar",
+          "color2": "background"
+        },
+        "bg.tabbar": {
+          "variant": "gradient",
+          "color": "background",
+          "color2": "bar"
+        },
+        "button.primary": {
+          "variant": "framed",
+          "frame": "frame.knot",
+          "radius": 10,
+          "color": "buttonActive",
+          "border": "accentLight",
+          "borderWidth": 4
+        },
+        "button.secondary": {
+          "variant": "round",
+          "radius": 10,
+          "color": "button",
+          "textColor": "accentLight",
+          "border": "line",
+          "borderWidth": 2
+        },
+        "button.back": {
+          "variant": "bare",
+          "textColor": "accentLight"
+        },
+        "button.sortie": {
+          "variant": "clash",
+          "when": "always",
+          "speed": 1,
+          "color": "buttonActive",
+          "border": "accentLight",
+          "borderWidth": 2,
+          "radius": 10
+        },
+        "tabs.art": {
+          "variant": "group",
+          "height": 96,
+          "color": "card",
+          "border": "accentLight"
+        },
+        "tabs.segment": {
+          "variant": "group",
+          "height": 64,
+          "color": "card",
+          "border": "line"
+        },
+        "tabs.bottom": {
+          "variant": "iconText",
+          "height": 112,
+          "color": "clear",
+          "onColor": "clear",
+          "onText": "accentLight",
+          "border": "accentLight"
+        },
+        "head.top": {
+          "variant": "kit",
+          "iconColor": "accentLight",
+          "chipColor": "card"
+        },
+        "head.title": {
+          "variant": "underline",
+          "color": "text",
+          "accent": "accentLight"
+        },
+        "pop.confirm": {
+          "variant": "ring",
+          "radius": 12,
+          "color": "card",
+          "border": "accentLight",
+          "borderWidth": 2,
+          "appear": "pop"
+        },
+        "pop.sheet": {
+          "variant": "ring",
+          "radius": 12,
+          "color": "card",
+          "border": "line",
+          "borderWidth": 2,
+          "appear": "rise"
+        },
+        "pop.toast": {
+          "variant": "solid",
+          "color": "#1D1913F0",
+          "radius": 12
+        },
+        "anim.loading": {
+          "variant": "flagWave",
+          "color": "card",
+          "accent": "accentLight"
+        },
+        "anim.press": {
+          "variant": "shrink",
+          "amount": 0.95
+        },
+        "card.picture": {
+          "variant": "inset",
+          "depth": 0.85
+        },
+        "card.troop.standard": {
+          "variant": "strip",
+          "strip": 4,
+          "border": "accentLight"
+        },
+        "card.troop.compact": {
+          "variant": "strip",
+          "strip": 4,
+          "border": "accentLight"
+        },
+        "card.corps.compact": {
+          "variant": "strip",
+          "strip": 4,
+          "border": "accentLight"
+        },
+        "card.corps.standard": {
+          "variant": "strip",
+          "strip": 4,
+          "border": "accentLight"
+        }
+      }
+    },
+    "baekja": {
+      "nameKey": "style.baekja",
+      "cornerRadius": 18,
+      "fontScale": 0.95,
+      "colors": {
+        "background": "#F2F1ED",
+        "bar": "#E7E5DF",
+        "card": "#FBFAF7",
+        "button": "#ECEAE4",
+        "buttonActive": "#23211F",
+        "buttonDisabled": "#DAD8D2",
+        "text": "#1F1D1B",
+        "textDim": "#75716A",
+        "ally": "#2D5A88",
+        "enemy": "#A3302A",
+        "good": "#3B7536",
+        "bad": "#A8372B",
+        "seal": "#A0503C",
+        "danger": "#9E3A2E",
+        "overlay": "#1F1D1B88",
+        "promptBack": "#1F1D1BE6",
+        "promptText": "#F7F6F2",
+        "accentLight": "#A0503C",
+        "line": "#CFCBC2",
+        "pictureBack": "#EEECE6",
+        "track": "#E2DFD8",
+        "board": "#E6E3DC",
+        "cellOn": "#E4E1DA"
+      },
+      "parts": {
+        "bg.page": {
+          "variant": "solid"
+        },
+        "bg.header": {
+          "variant": "solid",
+          "color": "bar"
+        },
+        "bg.tabbar": {
+          "variant": "solid",
+          "color": "card"
+        },
+        "button.primary": {
+          "variant": "pill",
+          "color": "buttonActive",
+          "borderWidth": 0
+        },
+        "button.secondary": {
+          "variant": "pill",
+          "color": "card",
+          "textColor": "text",
+          "border": "line",
+          "borderWidth": 2
+        },
+        "button.back": {
+          "variant": "bare",
+          "textColor": "text"
+        },
+        "button.sortie": {
+          "variant": "run",
+          "when": "always",
+          "speed": 1,
+          "color": "buttonActive",
+          "border": "accentLight",
+          "borderWidth": 0,
+          "radius": 40
+        },
+        "tabs.art": {
+          "variant": "group",
+          "height": 92,
+          "color": "card",
+          "border": "line"
+        },
+        "tabs.segment": {
+          "variant": "group",
+          "height": 60,
+          "color": "card",
+          "border": "line"
+        },
+        "tabs.bottom": {
+          "variant": "iconText",
+          "height": 112,
+          "color": "clear",
+          "onColor": "clear",
+          "onText": "buttonActive",
+          "border": "accentLight"
+        },
+        "head.top": {
+          "variant": "kit",
+          "iconColor": "text",
+          "chipColor": "card"
+        },
+        "head.title": {
+          "variant": "underline",
+          "color": "text",
+          "accent": "accentLight"
+        },
+        "pop.confirm": {
+          "variant": "ring",
+          "radius": 24,
+          "color": "card",
+          "border": "line",
+          "borderWidth": 2,
+          "appear": "pop"
+        },
+        "pop.sheet": {
+          "variant": "ring",
+          "radius": 24,
+          "color": "card",
+          "border": "line",
+          "borderWidth": 2,
+          "appear": "rise"
+        },
+        "pop.toast": {
+          "variant": "solid",
+          "color": "#1F1D1BEE",
+          "radius": 24
+        },
+        "anim.loading": {
+          "variant": "ring",
+          "color": "card",
+          "accent": "accentLight"
+        },
+        "anim.press": {
+          "variant": "shrink",
+          "amount": 0.96
+        },
+        "card.picture": {
+          "variant": "inset",
+          "depth": 0.45
+        },
+        "card.troop.standard": {
+          "variant": "plain"
+        },
+        "card.troop.compact": {
+          "variant": "plain"
+        },
+        "card.corps.compact": {
+          "variant": "plain"
+        },
+        "card.corps.standard": {
+          "variant": "plain"
+        },
+        "card.general.compact": {
+          "variant": "grade",
+          "borderWidth": 2
+        }
+      }
+    },
     "basic": {
       "nameKey": "style.basic",
       "cornerRadius": 0,
@@ -101,25 +687,94 @@
     }
   },
   "parts": {
-    "button.primary": { "variant": "round", "radius": 16, "border": "accentLight", "borderWidth": 3 },
-    "button.secondary": { "variant": "round", "radius": 14 },
-    "button.back": { "variant": "bow" },
-    "button.sortie": { "variant": "run", "when": "always", "speed": 1, "border": "accentLight", "borderWidth": 3, "radius": 16 },
-    "tabs.art": { "variant": "group", "height": 96 },
-    "tabs.bottom": { "variant": "iconText", "height": 112 },
-    "card.troop.standard": { "variant": "strip", "strip": 7 },
-    "card.troop.compact": { "variant": "strip", "strip": 6 },
-    "card.corps.compact": { "variant": "strip", "strip": 6 },
-    "card.corps.standard": { "variant": "strip", "strip": 7 },
-    "card.general.compact": { "variant": "grade", "borderWidth": 3 },
-    "card.general.detail": { "variant": "grade", "borderWidth": 4 },
-    "head.top": { "variant": "kit", "iconColor": "text" },
-    "head.title": { "variant": "underline", "accent": "buttonActive" },
-    "pop.confirm": { "variant": "ring", "radius": 28, "border": "accentLight", "borderWidth": 3, "appear": "pop" },
-    "pop.sheet": { "variant": "ring", "radius": 28, "border": "line", "borderWidth": 2, "appear": "rise" },
-    "pop.toast": { "variant": "solid", "color": "#2C2733F0", "radius": 20 },
-    "anim.loading": { "variant": "swordClash", "speed": 1 },
-    "anim.press": { "variant": "shrink", "amount": 0.95 },
+    "button.primary": {
+      "variant": "round",
+      "radius": 16,
+      "border": "accentLight",
+      "borderWidth": 3
+    },
+    "button.secondary": {
+      "variant": "round",
+      "radius": 14
+    },
+    "button.back": {
+      "variant": "bow"
+    },
+    "button.sortie": {
+      "variant": "run",
+      "when": "always",
+      "speed": 1,
+      "border": "accentLight",
+      "borderWidth": 3,
+      "radius": 16
+    },
+    "tabs.art": {
+      "variant": "group",
+      "height": 96
+    },
+    "tabs.bottom": {
+      "variant": "iconText",
+      "height": 112
+    },
+    "card.troop.standard": {
+      "variant": "strip",
+      "strip": 7
+    },
+    "card.troop.compact": {
+      "variant": "strip",
+      "strip": 6
+    },
+    "card.corps.compact": {
+      "variant": "strip",
+      "strip": 6
+    },
+    "card.corps.standard": {
+      "variant": "strip",
+      "strip": 7
+    },
+    "card.general.compact": {
+      "variant": "grade",
+      "borderWidth": 3
+    },
+    "card.general.detail": {
+      "variant": "grade",
+      "borderWidth": 4
+    },
+    "head.top": {
+      "variant": "kit",
+      "iconColor": "text"
+    },
+    "head.title": {
+      "variant": "underline",
+      "accent": "buttonActive"
+    },
+    "pop.confirm": {
+      "variant": "ring",
+      "radius": 28,
+      "border": "accentLight",
+      "borderWidth": 3,
+      "appear": "pop"
+    },
+    "pop.sheet": {
+      "variant": "ring",
+      "radius": 28,
+      "border": "line",
+      "borderWidth": 2,
+      "appear": "rise"
+    },
+    "pop.toast": {
+      "variant": "solid",
+      "color": "#2C2733F0",
+      "radius": 20
+    },
+    "anim.loading": {
+      "variant": "swordClash",
+      "speed": 1
+    },
+    "anim.press": {
+      "variant": "shrink",
+      "amount": 0.95
+    },
     "button.small": {
       "height": 56,
       "fontSize": 24

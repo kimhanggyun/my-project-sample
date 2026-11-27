@@ -294,9 +294,11 @@ namespace Game.Unity.Screens
             int max = CrowdRules.Load(_app.Context.Data).GridMaxCount;
             var cr = Ui.Row(content, "Count", 84, 8);
             Ui.Size(Ui.Label(cr, T("ui.test.count"), 26), width: 160);
+            Ui.Size(Ui.Button(cr, "−100", () => { u.Count = Mathf.Max(10, u.Count - 100); Changed(); }, 84, Palette.Button, 26), flexibleWidth: 1); // 1000명까지 (R-157)
             Ui.Size(Ui.Button(cr, "−10", () => { u.Count = Mathf.Max(10, u.Count - 10); Changed(); }, 84, Palette.Button, 26), flexibleWidth: 1);
             Ui.Size(Ui.Label(cr, u.Count.ToString(), 32, TextAnchor.MiddleCenter), flexibleWidth: 1);
             Ui.Size(Ui.Button(cr, "+10", () => { u.Count = Mathf.Min(max, u.Count + 10); Changed(); }, 84, Palette.Button, 26), flexibleWidth: 1);
+            Ui.Size(Ui.Button(cr, "+100", () => { u.Count = Mathf.Min(max, u.Count + 100); Changed(); }, 84, Palette.Button, 26), flexibleWidth: 1);
             var ar = Ui.Row(content, "Actions", 84, 8);
             var cmd = Ui.Button(ar, u.Commander ? T("ui.test.isCommander") : T("ui.test.makeCommander"), () =>
             {
