@@ -32,17 +32,12 @@ namespace Game.Unity.Screens
             var rank = Army.Rank(ctx.Defs, ctx.State);
             var (header, body, footer) = Ui.PageLayout(root);
 
-            // ---- 고정 머리 ----
-            var top = Ui.Row(header, "Top", 58, 8);
-            var th = top.GetComponent<HorizontalLayoutGroup>();
-            th.childForceExpandWidth = false;
-            th.childAlignment = TextAnchor.MiddleLeft;
+            // ---- 고정 머리: 부대 관리 · 장수처럼 제목 줄 (2026-11-27 사용자 "편성 쪽은 타이틀이 안 보여") + 상황 세그먼트 (중분류, 꽉 참) ----
+            var top = Ui.HeaderRow(header, ctx.T("ui.seg.formation"), ctx.T("ui.formation.count", ed.Draft.Count));
             var tabs = new List<(string, string)> { ("", ctx.T("ui.formation.default")) };
             foreach (var s in ctx.Defs.Campaign.FormationSituations) tabs.Add((s, ctx.T("situation." + s)));
-            Ui.SegmentTabs(top, tabs, ed.Situation ?? "", id => Leave(app, () => { ctx.SelectFormationSituation(id == "" ? null : id); app.ShowMain("formation"); }), 58, 120);
-            Ui.Size(Ui.Rect(top, "Gap"), 58, -1, -1, 1);
-            var copy = Ui.SecondaryButton(top, ctx.T("ui.formation.copy") + " ▾", null, 58, 24);
-            Ui.Size(copy, 58, 130).flexibleWidth = 0;
+            var copy = Ui.SecondaryButton(top, ctx.T("ui.formation.copy") + " ▾", null, 70, 26);
+            Ui.Size(copy, 70, 150).flexibleWidth = 0;
             var copyRt = (RectTransform)copy.transform;
             copy.onClick.AddListener(() =>
             {
@@ -55,8 +50,11 @@ namespace Game.Unity.Screens
                 }
                 Ui.PickMenu(root, copyRt, 360, items.ToArray());
             });
-            var boardBtn = Ui.SecondaryButton(top, ctx.T("ui.formation.board") + " ›", () => { BoardOpen = true; app.ShowMain("formation"); }, 58, 24);
-            Ui.Size(boardBtn, 58, 200).flexibleWidth = 0;
+            var boardBtn = Ui.SecondaryButton(top, ctx.T("ui.formation.board") + " ›", () => { BoardOpen = true; app.ShowMain("formation"); }, 70, 26);
+            Ui.Size(boardBtn, 70, 210).flexibleWidth = 0;
+            Ui.Size(Ui.Rect(top, "InfoGap"), 70, 66).flexibleWidth = 0;
+            InfoButton.Add(root, ctx.T("ui.formation.note"));
+            Ui.MidTabs(header, tabs, ed.Situation ?? "", id => Leave(app, () => { ctx.SelectFormationSituation(id == "" ? null : id); app.ShowMain("formation"); }));
 
             int usedPicks = 0;
             foreach (var c in ed.Draft) usedPicks = Mathf.Max(usedPicks, Army.OwnPicks(c));

@@ -1629,6 +1629,30 @@ namespace Game.Tests.Battle
             Assert.Equal(b.Commander(CrowdBattle.Enemy).Id, a.OrderTarget);
         }
 
+        [Fact(DisplayName = "R-158 위임을 끄면 그 자리에서 대기 (AI가 준 진군 · 공격이 남지 않음), 직접 명령은 그대로")]
+        public void DelegateOffHolds()
+        {
+            var b = new CrowdBattle(Rules(), new CrowdSetup { AllyAdvance = false, Seed = 2 }, Defs.TroopTypes, Defs.TroopCounters);
+            b.UseSkillData(Defs.Skills);
+            var a = b.Commander(CrowdBattle.Ally);
+            b.SetDelegated(a.Id, true);
+            for (int t = 0; t < 20; t++) b.Step();
+            Assert.NotEqual(CrowdOrders.Hold, a.Order); // 위임 중 AI가 움직임
+            b.SetDelegated(a.Id, false);
+            Assert.Equal(CrowdOrders.Hold, a.Order);
+            Assert.Equal(-1, a.OrderTarget);
+            for (int t = 0; t < 20; t++) b.Step();
+            Assert.Equal(CrowdOrders.Hold, a.Order); // 다시 AI가 움직이지 않음
+            // 직접 명령으로 위임이 꺼질 때: 끄기 → 명령 순서라 명령이 남는다
+            b.SetDelegated(a.Id, true);
+            b.SetDelegated(a.Id, false);
+            b.OrderAdvance(a.Id);
+            Assert.Equal(CrowdOrders.Advance, a.Order);
+            // 위임이 아니었으면 끄기는 아무것도 바꾸지 않음
+            b.SetDelegated(a.Id, false);
+            Assert.Equal(CrowdOrders.Advance, a.Order);
+        }
+
         [Fact]
         public void PathFollowsPointsThenAttacks()
         {

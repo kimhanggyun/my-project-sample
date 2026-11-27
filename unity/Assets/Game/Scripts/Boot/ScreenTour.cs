@@ -822,6 +822,41 @@ namespace Game.Unity.Boot
                 yield return Shot("70v_battle_all", null, 0.3f);
             }
 
+            // UI 수정 2차 (2026-11-27): 소분류 꽉 참 · 편성 제목 · 위임 끄면 대기 (R-158) · 고르기 안내 띠 · [✕ 취소] · [예약 끝 (n곳)] · 버튼 뒤 아이콘 가운데
+            {
+                Game.Unity.Screens.CodexScreen.Tab = "generals";
+                yield return Shot("71a_codex_generals", () => new MainScreen("codex"), 0.3f);
+                Game.Unity.Screens.CodexScreen.Tab = "secrets";
+                yield return Shot("71b_codex_secrets", () => new MainScreen("codex"), 0.3f);
+                Game.Unity.Screens.FormationTabView.BoardOpen = false;
+                yield return Shot("71c_formation_title", () => new MainScreen("formation"), 0.3f);
+                var s2b = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+                {
+                    AllyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                    {
+                        new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 0, Troop = "spearman", General = "standard" },
+                        new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "cavalry", General = "warrior", Commander = true },
+                        new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 2, Troop = "archer", General = "standard" },
+                    },
+                    EnemyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Commander = true } },
+                    AllyAdvance = false, Seed = 7,
+                }, startNow: true);
+                yield return Shot("71d_battle_start", () => s2b, 0.3f);
+                s2b.PressForTour("middle_center", "delegate"); // 위임 켬 → AI가 움직임
+                s2b.StepForTour(60);
+                s2b.SelectForTour("middle_center");
+                yield return Shot("71e_battle_delegated_moving", null, 0.2f);
+                s2b.PressForTour("middle_center", "delegate"); // 위임 끔 → 대기 (R-158)
+                s2b.StepForTour(40);
+                yield return Shot("71f_battle_delegate_off_hold", null, 0.2f);
+                s2b.PickForTour("middle_left", "move");
+                yield return Shot("71g_battle_pick_move_band", null, 0.3f); // 안내 띠 + [✕ 취소]만
+                s2b.QueueForTour("middle_right", new[] { 8f, 26f, 8f, 34f, 18f, 38f });
+                yield return Shot("71h_battle_queue_band", null, 0.3f); // [✕ 취소] · [예약 끝 (3곳)]
+                s2b.OpenCommandForTour("middle_right", "skill");
+                yield return Shot("71i_battle_icons_centered", null, 0.3f); // 버튼 뒤 아이콘 가운데
+            }
+
             // 화면 스타일 비교 (2026-11-27 사용자: 한지 기본 · 어두움 · 나전칠기 · 백자) — 개발 값은 빼고 데이터 값으로
             {
                 string keepStyle = UiStyle.Current;

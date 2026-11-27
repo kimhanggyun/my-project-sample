@@ -17,6 +17,14 @@ namespace Game.Unity.Screens
     /// 전장 지름길: 우리 부대를 누르면 고르기, 적 부대 = 공격, 땅 = 이동. 경로는 손가락으로 길을 그린다. 위쪽 [일시정지].
     /// 기존 샘플전투와 따로 (규칙 CrowdBattle, 그리기 CrowdField3D). 보상 없음, 세이브에 남지 않음.
     /// </summary>
+    /// <summary>고르는 중 안내 띠 깜빡임 (진하기 0.65 ↔ 1, 화면 시간).</summary>
+    public sealed class PickBlink : MonoBehaviour
+    {
+        private CanvasGroup _g;
+        private void Awake() { _g = GetComponent<CanvasGroup>(); }
+        private void Update() { if (_g != null) _g.alpha = 0.825f + 0.175f * Mathf.Sin(Time.unscaledTime * 5f); }
+    }
+
     public sealed class SampleBattle2Screen : GameScreen
     {
         private const float TopHeight = 76f;
@@ -250,7 +258,7 @@ namespace Game.Unity.Screens
             cmd == "advance" ? "ico.march" : cmd == "attack" ? "ico.battle" : cmd == "move" ? "ico.move" : cmd == "skill" ? "ico.skill"
             : cmd == "formation" ? "ico.formation" : cmd == "hold" ? "ico.hold" : cmd == "retreat" ? "ico.retreat" : cmd != null && cmd.StartsWith("siege_") ? "ico.sword" : null;
 
-        /// <summary>버튼 뒤 바탕에 옅은 아이콘 (글자 뒤, 버튼 높이의 80%, 오른쪽에 치우침).</summary>
+        /// <summary>버튼 뒤 바탕에 옅은 아이콘 (글자 뒤, 버튼 가운데, 높이의 80% 정사각 — 2026-11-27 사용자 "가운데 정렬").</summary>
         private static void ArtBehind(Button b, string icon, float alpha = 0.18f)
         {
             if (icon == null) return;
@@ -258,8 +266,12 @@ namespace Game.Unity.Screens
             if (sprite == null) return;
             var rt = Ui.Rect(b.transform, "ArtBehind");
             rt.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            rt.anchorMin = new Vector2(0.5f, 0.1f); rt.anchorMax = new Vector2(1f, 0.9f);
+            rt.anchorMin = new Vector2(0.5f, 0.1f); rt.anchorMax = new Vector2(0.5f, 0.9f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
             rt.offsetMin = rt.offsetMax = Vector2.zero;
+            var fit = rt.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
+            fit.aspectRatio = 1f;
             rt.SetSiblingIndex(0);
             var img = rt.gameObject.AddComponent<Image>();
             img.sprite = sprite; img.preserveAspect = true; img.raycastTarget = false;
@@ -422,11 +434,20 @@ namespace Game.Unity.Screens
             {
                 string hint = _pickMode == "attack" ? "ui.sample2.pickAttack" : _pickMode == "queue" ? "ui.sample2.queueHint"
                     : _pickMode == "path" ? "ui.sample2.pathHint" : _pickMode == "march" ? "ui.sample2.marchHint" : _pickMode.StartsWith("skill:") ? "ui.sample2.skillHint" : "ui.sample2.moveHint";
-                Ui.Size(Ui.Label(_detailRow, T(hint), 22, TextAnchor.MiddleCenter, Palette.Text), flexibleWidth: 3);
-                Ui.Size(Ui.Button(_detailRow, T(_pickMode == "queue" ? "ui.sample2.queueDone" : "ui.sample2.cancel"), () => EndPick(), RowHeight,
-                    _pickMode == "queue" ? Palette.ButtonActive : Palette.Button, 24), width: 200);
+                // 안내 = 전장 맨 아래(아래 판 바로 위) 띠, 붉은 굵은 글 · 깜빡임 (2026-11-27 사용자). 아래 줄은 버튼만 크게:
+                // [✕ 취소] = 보조 (빠져나가기), 예약 이동이면 오른쪽에 [예약 끝 (n곳)] = 검정 주 버튼 (확정)
+                ShowPickBand(T(hint));
+                var cancel = Ui.SecondaryButton(_detailRow, "✕ " + T("ui.sample2.cancel"), CancelPick, RowHeight, 26);
+                Ui.Size(cancel, RowHeight, -1, -1, 1);
+                if (_pickMode == "queue")
+                {
+                    var done = Ui.PrimaryButton(_detailRow, T("ui.sample2.queueDoneN", _queued), () => EndPick(), RowHeight, 28);
+                    Ui.Size(done, RowHeight, -1, -1, 1);
+                    Ui.SetPrimaryEnabled(done, _queued > 0);
+                }
                 return;
             }
+            HidePickBand();
             // 두 번째 선택지도 그 명령과 같은 바탕 아이콘 (2026-11-27 사용자: 어느 명령의 선택지인지 바로 알게)
             string art = CommandIcon(_cmd);
             if (one != null && _cmd == "attack")
@@ -564,9 +585,54 @@ namespace Game.Unity.Screens
             RefreshSkills();
         }
 
+        /// <summary>예약 이동으로 이번에 찍은 곳 수 ([예약 끝 (n곳)]).</summary>
+        private int _queued;
+        private RectTransform _pickBand;
+
+        /// <summary>고르는 중 안내 띠: 전장 맨 아래 가운데 (한지 바탕 · 붉은 굵은 글 · 깜빡임).</summary>
+        private void ShowPickBand(string text)
+        {
+            HidePickBand();
+            if (_fieldArea == null) return;
+            var band = Ui.Rect(_fieldArea, "PickHint");
+            band.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            band.anchorMin = new Vector2(0f, 0f); band.anchorMax = new Vector2(1f, 0f);
+            band.pivot = new Vector2(0.5f, 0f);
+            band.offsetMin = new Vector2(24f, 14f); band.offsetMax = new Vector2(-24f, 14f + 76f);
+            var bg = Ui.Background(band, new Color(Palette.Card.r, Palette.Card.g, Palette.Card.b, 0.94f));
+            bg.sprite = UiShapes.Rounded(18); bg.type = Image.Type.Sliced; bg.raycastTarget = false;
+            var ring = Ui.Fill(Ui.Rect(band, "Ring"));
+            var ri = ring.gameObject.AddComponent<Image>();
+            ri.sprite = UiKit.Ring(18, 3); ri.type = Image.Type.Sliced; ri.fillCenter = false; ri.raycastTarget = false;
+            ri.color = new Color(Palette.Seal.r, Palette.Seal.g, Palette.Seal.b, 0.8f);
+            var t = Ui.Label(band, text, 28, TextAnchor.MiddleCenter, Palette.Seal);
+            t.fontStyle = FontStyle.Bold; t.raycastTarget = false;
+            t.resizeTextForBestFit = true; t.resizeTextMinSize = 18; t.resizeTextMaxSize = 28;
+            Ui.Fill(t.rectTransform).offsetMin = new Vector2(16f, 0f);
+            t.rectTransform.offsetMax = new Vector2(-16f, 0f);
+            band.gameObject.AddComponent<CanvasGroup>();
+            band.gameObject.AddComponent<PickBlink>();
+            _pickBand = band;
+        }
+
+        private void HidePickBand()
+        {
+            if (_pickBand != null) Object.Destroy(_pickBand.gameObject);
+            _pickBand = null;
+        }
+
+        /// <summary>[✕ 취소]: 고르기를 그만둔다. 예약 이동이면 이번에 찍은 예약도 지운다 (지금 가는 곳은 그대로).</summary>
+        private void CancelPick()
+        {
+            if (_pickMode == "queue" && _queued > 0)
+                foreach (var a in Chosen()) a.Waypoints.Clear();
+            EndPick();
+        }
+
         private void BeginPick(string mode)
         {
             _pickMode = mode;
+            _queued = 0;
             _trail.Clear();
             _field.Trail.Clear();
             BuildDetail();
@@ -575,6 +641,8 @@ namespace Game.Unity.Screens
         private void EndPick(bool rebuild = true)
         {
             _pickMode = null;
+            _queued = 0;
+            HidePickBand();
             _trail.Clear();
             _field?.Trail.Clear();
             if (rebuild) BuildDetail();
@@ -719,6 +787,7 @@ namespace Game.Unity.Screens
                 foreach (var a in chosen) _battle.OrderMove(a.Id, point + (a.Center - from), queue, march);
             }
             if (!queue) { _pickMode = null; _cmd = null; }
+            else _queued++;
             RecolorCommands();
             BuildDetail();
         }
@@ -1016,6 +1085,14 @@ namespace Game.Unity.Screens
         public void ReleasePathForTour() => OnFieldDragEnd();
 
         public void PauseForTour(bool paused) { _paused = paused; UpdateTexts(); }
+
+        /// <summary>캡처 투어: 그 자리 부대를 고르고 고르기(move · path · attack …)를 시작 — 안내 띠 · [✕ 취소] 확인.</summary>
+        public void PickForTour(string place, string mode)
+        {
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);
+            OpenCommand(mode == "attack" ? "attack" : "move");
+            BeginPick(mode);
+        }
 
         public void QueueForTour(string place, float[] xy)
         {

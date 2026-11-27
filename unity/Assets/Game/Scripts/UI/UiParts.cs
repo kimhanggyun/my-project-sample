@@ -1037,15 +1037,19 @@ namespace Game.Unity.UI
             return band;
         }
 
-        /// <summary>소분류 세그먼트: 작은 묶음 (그림 없음), 칸 폭은 글자에 맞춤, 왼쪽 정렬. 정렬 · 걸러보기 · 등급 같은 것.</summary>
-        public static RectTransform MinorTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect)
+        /// <summary>
+        /// 소분류 세그먼트: 작은 묶음 (그림 없음). 정렬 · 걸러보기 · 등급 같은 것.
+        /// fill = 줄 폭 꽉 · 칸 폭 같게 (기본, 혼자 한 줄을 쓸 때 — 2026-11-27 사용자: 도감 등급 줄이 분류 줄과 모양이 달랐음).
+        /// false = 칸 폭을 글자에 맞춤 (설정 줄처럼 이름 옆에 붙을 때).
+        /// </summary>
+        public static RectTransform MinorTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, bool fill = true)
         {
             var spec = UiKit.Spec("tabs.minor");
             float h = spec.Num("height", 60);
             int font = Mathf.RoundToInt(spec.Num("fontSize", 26));
             float w = 0;
             foreach (var it in items) w = Mathf.Max(w, (it.label?.Length ?? 0) * font * 0.95f * UiStyle.FontScale + 44f);
-            if (w * items.Count + 10f > GameApp.ReferenceWidth - 60f) w = 0f; // 한 줄에 안 들어가면 줄 폭을 나눠 꽉 (글자는 칸에 맞게 줄어듦)
+            if (fill || w * items.Count + 10f > GameApp.ReferenceWidth - 60f) w = 0f; // 꽉 채움 (한 줄에 안 들어가도 꽉 — 글자는 칸에 맞게 줄어듦)
             var band = Rect(parent, "MinorTabs");
             Size(band, h + 12);
             var row = band.gameObject.AddComponent<HorizontalLayoutGroup>();
