@@ -45,7 +45,13 @@ namespace Game.Unity.Boot
                 ("06d_cosmetic_try", () => Game.Unity.Screens.CosmeticScreen.Trying("cavalry", "armor_brown", "horse_navy"), 0.3f), // 갈색 갑옷 · 진남색 말 입어 보기
                 ("07_main_formation", () => { Game.Unity.Screens.FormationTabView.BoardOpen = false; return new MainScreen("formation"); }, 0f),
                 ("07b_formation_board", () => { Game.Unity.Screens.FormationTabView.BoardOpen = true; return new MainScreen("formation"); }, 0f),
-                ("07c_parts", () => new MainScreen("parts"), 0f),
+                ("07c_parts", () => { Game.Unity.Screens.PartsTabView.Pick("button", "button.primary"); return new MainScreen("parts"); }, 0f), // 부품 꾸미기 (ui-kit.md)
+                ("07k_kit_theme", () => { Game.Unity.Screens.PartsTabView.Pick("theme", null); return new MainScreen("parts"); }, 0f),
+                ("07l_kit_bg", () => { Game.Unity.Screens.PartsTabView.Pick("bg", "bg.page"); return new MainScreen("parts"); }, 0f),
+                ("07m_kit_sortie", () => { Game.Unity.Screens.PartsTabView.Pick("button", "button.sortie"); return new MainScreen("parts"); }, 0.6f),
+                ("07n_kit_back", () => { Game.Unity.Screens.PartsTabView.Pick("button", "button.back"); return new MainScreen("parts"); }, 0f),
+                ("07o_kit_tabs", () => { Game.Unity.Screens.PartsTabView.Pick("tabs", "tabs.bottom"); return new MainScreen("parts"); }, 0f),
+                ("07p_kit_list", () => { Game.Unity.Screens.PartsTabView.Pick("list", null); return new MainScreen("parts"); }, 0f),
                 ("08_main_territory", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; Game.Unity.Screens.TerritoryTabView.PanM = Vector2.zero; return new MainScreen("territory"); }, 0f),
                 ("08b_territory_mid", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 3; return new MainScreen("territory"); }, 0f), // 지도 바탕: 중간 줌 (한강)
                 ("08c_territory_far", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 6; return new MainScreen("territory"); }, 0f), // 멀리 줌 (서해 · 반도)

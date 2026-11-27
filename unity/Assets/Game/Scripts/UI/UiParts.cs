@@ -23,21 +23,27 @@ namespace Game.Unity.UI
             var t = b.GetComponentInChildren<Text>();
             t.color = OnAccent;
             t.fontStyle = FontStyle.Bold;
-            return b;
+            return UiKit.DressButton(b, "button.primary");
         }
 
         /// <summary>주요 버튼 켜기·끄기 (꺼짐 = 회색 바탕 + 흐린 글자).</summary>
         public static void SetPrimaryEnabled(Button b, bool on)
         {
             b.interactable = on;
-            if (b.targetGraphic != null) b.targetGraphic.color = on ? Palette.ButtonActive : Palette.ButtonDisabled;
+            if (b.targetGraphic != null) b.targetGraphic.color = on ? UiKit.Spec("button.primary").Col("color", Palette.ButtonActive) : Palette.ButtonDisabled;
             var t = b.GetComponentInChildren<Text>();
             if (t != null) t.color = on ? OnAccent : Palette.TextDim;
         }
 
         /// <summary>보조 버튼: 한지색 바탕 + 먹 글자 (게스트로 시작·닫기·모집).</summary>
         public static Button SecondaryButton(Transform parent, string text, Action onClick, float height = ButtonHeight, int fontSize = FontBody) =>
-            Button(parent, text, onClick, height, Palette.Button, fontSize);
+            UiKit.DressButton(Button(parent, text, onClick, height, Palette.Button, fontSize), "button.secondary");
+
+        /// <summary>출진 버튼 (역할 button.sortie: 말 달림 · 검 부딪침, ui-kit.md 4.2).</summary>
+        public static Button SortieButton(Transform parent, string text, Action onClick, float height = 130) => UiKit.SortieButton(parent, text, onClick, height);
+
+        /// <summary>뒤로가기 버튼 (역할 button.back: ‹ · 활 · 둥근).</summary>
+        public static Button BackButton(Transform parent, Action onBack, float size = TitleBackSize) => UiKit.BackButton(parent, onBack, size);
 
         /// <summary>아이콘 버튼 (상점 가방·설정 톱니). 그림 `Resources/Ui/icons/&lt;iconId&gt;`이 없으면 글자.</summary>
         public static Button IconButton(Transform parent, string iconId, string fallback, Action onClick, float width = 80, float height = 74)
@@ -46,6 +52,7 @@ namespace Game.Unity.UI
             Size(b, height, width).flexibleWidth = 0;
             var pic = Resources.Load<Sprite>("Ui/icons/" + iconId);
             var label = b.GetComponentInChildren<Text>();
+            UiKit.DressButton(b, "button.icon");
             if (pic == null) { label.text = fallback; return b; }
             label.gameObject.SetActive(false);
             var icon = Rect(b.transform, "Icon");
@@ -217,15 +224,19 @@ namespace Game.Unity.UI
             return shown.ToString(x < 100 ? "0.#" : "0") + units[u];
         }
 
-        public static RectTransform ResourceChip(GameContext ctx, Transform parent, string id, long value, Action onPlus, float height = 66)
+        public static RectTransform ResourceChip(GameContext ctx, Transform parent, string id, long value, Action onPlus, float height = 66, float width = 190)
         {
+            // 크기 고정 (2026-11-27 사용자: 숫자 길이로 늘었다 줄었다 하지 않게) · [+] 없이 칩 전체를 누르면 상점
             var chip = Rect(parent, "Chip_" + id);
-            var le = Size(chip, height);
-            le.flexibleWidth = 1;
+            var le = Size(chip, height, width);
+            le.minWidth = width;
+            le.flexibleWidth = 0;
             var bg = Background(chip, Palette.Card);
             bg.sprite = UiShapes.Rounded(Mathf.RoundToInt(height / 2));
             bg.type = Image.Type.Sliced;
-            bg.raycastTarget = false;
+            var tapChip = chip.gameObject.AddComponent<Button>();
+            tapChip.targetGraphic = bg;
+            if (onPlus != null) tapChip.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onPlus(); });
             var h = chip.gameObject.AddComponent<HorizontalLayoutGroup>();
             h.spacing = 8;
             h.padding = new RectOffset(8, 10, 7, 7);
@@ -234,30 +245,12 @@ namespace Game.Unity.UI
             h.childForceExpandWidth = h.childForceExpandHeight = false;
             Icons.Make(ctx, chip, id, height - 14);
             var num = Label(chip, Compact(value), 28, TextAnchor.MiddleLeft); // 482K · 1.1M (누르면 정확한 수)
-            num.horizontalOverflow = HorizontalWrapMode.Overflow;
+            num.horizontalOverflow = HorizontalWrapMode.Wrap;
+            num.resizeTextForBestFit = true; // 칸이 고정이라 아주 긴 수는 글자를 줄임
+            num.resizeTextMinSize = 18;
+            num.resizeTextMaxSize = 28;
+            num.raycastTarget = false;
             Size(num, height - 14, -1, -1, 1);
-            if (value >= 10_000)
-            {
-                num.raycastTarget = true;
-                var tap = num.gameObject.AddComponent<Button>();
-                tap.targetGraphic = num;
-                tap.transition = Selectable.Transition.None;
-                tap.onClick.AddListener(() =>
-                {
-                    var overlay = chip.GetComponentInParent<Canvas>()?.rootCanvas.transform as RectTransform;
-                    if (overlay != null) StatTip(ctx, overlay, chip, (id, ctx.T("resource." + id), value.ToString("N0")));
-                });
-            }
-            var plus = Rect(chip, "Plus");
-            Size(plus, 44, 44).flexibleWidth = 0;
-            var plusImg = Background(plus, Palette.ButtonActive);
-            plusImg.sprite = UiShapes.Circle;
-            var plusText = Label(plus, "+", 34, TextAnchor.MiddleCenter, OnAccent);
-            plusText.fontStyle = FontStyle.Bold;
-            Fill(plusText.rectTransform);
-            var b = plus.gameObject.AddComponent<Button>();
-            b.targetGraphic = plusImg;
-            if (onPlus != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onPlus(); });
             return chip;
         }
 
@@ -803,17 +796,7 @@ namespace Game.Unity.UI
         // ================= 07 부대 편성에서 나온 부품 (공통부품.md 0장: 역할로 부르고 모양은 스타일 데이터) =================
 
         /// <summary>스타일 데이터의 역할 모양을 버튼에 입힌다 (색·글자색·높이·글자 크기, 정한 것만). 페이지 덮어쓰기는 <see cref="UiStyle.Page"/>.</summary>
-        public static Button Styled(Button b, string role)
-        {
-            var st = UiStyle.Part(role);
-            if (st == null) return b;
-            if (st.Color.HasValue && b.targetGraphic != null) b.targetGraphic.color = st.Color.Value;
-            var t = b.GetComponentInChildren<Text>();
-            if (t != null && st.TextColor.HasValue) t.color = st.TextColor.Value;
-            if (t != null && st.FontSize > 0) t.fontSize = Mathf.RoundToInt(st.FontSize * UiStyle.FontScale);
-            if (st.Height > 0) { var le = b.GetComponent<LayoutElement>(); if (le != null) { le.minHeight = le.preferredHeight = st.Height; } }
-            return b;
-        }
+        public static Button Styled(Button b, string role) => UiKit.DressButton(b, role);
 
         /// <summary>가로 스크롤 줄 오른쪽 끝의 "›" 표시 (끝까지 밀면 숨김). 메인 탭 바·편성 보유 병력 줄.</summary>
         public static void MoreHint(RectTransform bar, float h, Color back)
@@ -834,6 +817,16 @@ namespace Game.Unity.UI
         /// <summary>세그먼트 탭: 나란한 보조 버튼, 고른 것은 주홍·밝은 글자 (역할 tabs.segment).</summary>
         public static RectTransform SegmentTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, float height = 58, float width = 150)
         {
+            string sv = UiKit.Spec("tabs.segment").Variant;
+            if (sv != null && sv != "button")
+            {
+                var strip = Row(parent, "SegmentTabs", UiKit.Spec("tabs.segment").Num("height", height), 8);
+                var sh = strip.GetComponent<HorizontalLayoutGroup>();
+                sh.childForceExpandWidth = false;
+                sh.childAlignment = TextAnchor.MiddleLeft;
+                UiKit.TabStrip(strip, items, selected, onSelect, "tabs.segment", "button", height, width, 8);
+                return strip;
+            }
             var row = Row(parent, "SegmentTabs", height, 8);
             var h = row.GetComponent<HorizontalLayoutGroup>();
             h.childForceExpandWidth = false;
@@ -856,61 +849,11 @@ namespace Game.Unity.UI
         /// </summary>
         public static RectTransform ArtSegmentTabs(Transform parent, IList<(string id, string label)> items, string selected, Action<string> onSelect, float height = 96, float width = 300)
         {
-            var row = Row(parent, "ArtSegmentTabs", height, 18);
+            var row = Row(parent, "ArtSegmentTabs", UiKit.Spec("tabs.art").Num("height", height), 18);
             var h = row.GetComponent<HorizontalLayoutGroup>();
             h.childForceExpandWidth = false;
             h.childAlignment = TextAnchor.MiddleCenter;
-            foreach (var it in items)
-            {
-                var item = it;
-                bool on = item.id == selected;
-                var rt = Rect(row, "Seg_" + item.id);
-                Size(rt, height, width).flexibleWidth = 0;
-                var border = Round(Background(rt, on ? Palette.AccentLight : Palette.Line));
-                var b = rt.gameObject.AddComponent<Button>();
-                b.targetGraphic = border;
-                b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onSelect?.Invoke(item.id); });
-                var fill = Fill(Rect(rt, "Fill"));
-                fill.offsetMin = new Vector2(4, 4);
-                fill.offsetMax = new Vector2(-4, -4);
-                Round(Background(fill, on ? Palette.ButtonActive : Palette.Card)).raycastTarget = false;
-                var art = SegmentArt.Get(item.id, on);
-                if (art != null)
-                {
-                    var pic = Fill(Rect(fill, "Art"));
-                    pic.offsetMin = new Vector2(6, 2);
-                    pic.offsetMax = new Vector2(-6, -2);
-                    var img = pic.gameObject.AddComponent<Image>();
-                    img.sprite = art;
-                    img.preserveAspect = true; // 영역에 맞게 줄임 (자르지 않음)
-                    img.color = Color.white;
-                    img.raycastTarget = false;
-                }
-                var shade = on ? Color.Lerp(Color.black, Palette.ButtonActive, 0.45f) : Color.Lerp(Color.black, Palette.Card, 0.6f);
-                var glow = Rect(fill, "Glow");
-                glow.anchorMin = new Vector2(0.3f, 0.22f);
-                glow.anchorMax = new Vector2(0.7f, 0.78f);
-                glow.offsetMin = glow.offsetMax = Vector2.zero;
-                var gi = glow.gameObject.AddComponent<Image>();
-                gi.sprite = SegmentArt.Glow;
-                gi.color = new Color(shade.r, shade.g, shade.b, 0.45f);
-                gi.raycastTarget = false;
-                var t = Label(fill, item.label, Mathf.RoundToInt(34 * UiStyle.FontScale), TextAnchor.MiddleCenter, on ? Color.white : Color.Lerp(Palette.Text, Palette.TextDim, 0.35f));
-                Fill(t.rectTransform);
-                t.fontStyle = FontStyle.Bold;
-                var o = t.gameObject.AddComponent<Outline>();
-                o.effectColor = new Color(shade.r, shade.g, shade.b, 0.9f);
-                o.effectDistance = new Vector2(2f, -2f);
-                if (on)
-                {
-                    var bar = Rect(fill, "Under");
-                    bar.anchorMin = bar.anchorMax = new Vector2(0.5f, 0f);
-                    bar.pivot = new Vector2(0.5f, 0f);
-                    bar.sizeDelta = new Vector2(40, 5);
-                    bar.anchoredPosition = new Vector2(0, 8);
-                    Background(bar, Palette.AccentLight).raycastTarget = false;
-                }
-            }
+            UiKit.TabStrip(row, items, selected, onSelect, "tabs.art", "art", height, width);
             return row;
         }
 
@@ -1187,7 +1130,7 @@ namespace Game.Unity.UI
         {
             var row = Row(header, "TitleBar", TitleHeight, 12);
             row.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
-            if (onBack != null) Size(Button(row, "‹", onBack, TitleBackSize, fontSize: 40), TitleBackSize, TitleBackSize + 6);
+            if (onBack != null) BackButton(row, onBack, TitleBackSize);
             var t = Label(row, title ?? "", TitleFontSize, TextAnchor.MiddleLeft);
             t.horizontalOverflow = HorizontalWrapMode.Overflow;
             Size(t, TitleHeight, -1, -1, 1);

@@ -1,0 +1,119 @@
+{
+  "_comment": "부품 꾸미기 목록 (docs/design/ui-kit.md). 꾸미기 화면이 이 목록으로 세그먼트 · 부품 · 조절판을 그리고, 데이터 검사가 styles.json parts를 이것으로 확인한다. kinds = 모양 종류(변형)와 조절값, roles = 화면이 부르는 역할, arts = 공용 그림 id (코드 그림, Resources/Ui/<id> 그림이 있으면 그것 먼저), themeColors = 색 값에 쓸 수 있는 테마 색 이름 (styles.json colors 키). 색 값은 테마 색 이름 또는 #RRGGBB(AA). 개발용 화면이라 label은 한글 그대로.",
+  "themeColors": ["background", "bar", "card", "button", "buttonActive", "buttonDisabled", "text", "textDim", "accentLight", "line", "pictureBack", "track", "board", "cellOn", "good", "bad", "seal", "danger", "ally", "enemy", "overlay", "promptBack", "promptText", "white", "black", "clear"],
+  "categories": [
+    { "id": "theme", "label": "테마" },
+    { "id": "bg", "label": "바탕" },
+    { "id": "button", "label": "버튼" },
+    { "id": "tabs", "label": "탭" },
+    { "id": "list", "label": "부품 목록" }
+  ],
+  "kinds": {
+    "bg": {
+      "variants": ["none", "solid", "texture", "gradient", "scene"],
+      "fields": {
+        "color": { "type": "color", "label": "색" },
+        "color2": { "type": "color", "label": "아래 색 (번짐)" },
+        "art": { "type": "art", "group": "scene", "label": "그림" },
+        "alpha": { "type": "num", "min": 0, "max": 1, "step": 0.05, "label": "그림 진하기" },
+        "blur": { "type": "num", "min": 0, "max": 1, "step": 0.1, "label": "흐림" },
+        "fit": { "type": "choice", "options": ["fit", "fill"], "label": "맞춤 (fit 안 자름 · fill 채움)" },
+        "align": { "type": "choice", "options": ["top", "middle", "bottom"], "label": "그림 위치" }
+      }
+    },
+    "button": {
+      "variants": ["square", "round", "pill", "icon", "iconText", "framed", "scene"],
+      "fields": {
+        "radius": { "type": "num", "min": 0, "max": 60, "step": 2, "label": "둥글기" },
+        "color": { "type": "color", "label": "바탕" },
+        "textColor": { "type": "color", "label": "글자" },
+        "border": { "type": "color", "label": "테두리 색" },
+        "borderWidth": { "type": "num", "min": 0, "max": 10, "step": 1, "label": "테두리 두께" },
+        "frame": { "type": "art", "group": "frame", "label": "장식 테두리 (framed)" },
+        "icon": { "type": "art", "group": "icon", "label": "아이콘 (icon · iconText)" },
+        "art": { "type": "art", "group": "scene", "label": "뒷그림 (scene)" },
+        "artAlpha": { "type": "num", "min": 0, "max": 1, "step": 0.05, "label": "뒷그림 진하기" },
+        "height": { "type": "num", "min": 40, "max": 200, "step": 4, "label": "높이" },
+        "fontSize": { "type": "num", "min": 16, "max": 60, "step": 2, "label": "글자 크기" }
+      }
+    },
+    "back": {
+      "variants": ["chevron", "bow", "circle"],
+      "fields": {
+        "size": { "type": "num", "min": 60, "max": 120, "step": 4, "label": "크기" },
+        "color": { "type": "color", "label": "바탕" },
+        "textColor": { "type": "color", "label": "그림 · 글자 색" }
+      }
+    },
+    "sortie": {
+      "variants": ["plain", "run", "clash"],
+      "fields": {
+        "when": { "type": "choice", "options": ["always", "press"], "label": "움직임 (늘 · 누를 때)" },
+        "speed": { "type": "num", "min": 0.3, "max": 3, "step": 0.1, "label": "속도" },
+        "color": { "type": "color", "label": "바탕" },
+        "border": { "type": "color", "label": "테두리 · 그림 색" },
+        "borderWidth": { "type": "num", "min": 0, "max": 10, "step": 1, "label": "테두리 두께" },
+        "radius": { "type": "num", "min": 0, "max": 60, "step": 2, "label": "둥글기" }
+      }
+    },
+    "tabs": {
+      "variants": ["button", "underline", "art", "iconText", "group"],
+      "fields": {
+        "height": { "type": "num", "min": 40, "max": 200, "step": 4, "label": "높이" },
+        "fontSize": { "type": "num", "min": 16, "max": 48, "step": 2, "label": "글자 크기" },
+        "color": { "type": "color", "label": "칸 바탕" },
+        "onColor": { "type": "color", "label": "고른 칸 바탕" },
+        "onText": { "type": "color", "label": "고른 칸 글자" },
+        "border": { "type": "color", "label": "고른 칸 테두리 · 밑줄" },
+        "artAlpha": { "type": "num", "min": 0, "max": 1, "step": 0.05, "label": "그림 진하기 (art)" },
+        "glow": { "type": "num", "min": 0, "max": 1, "step": 0.05, "label": "글자 뒤 그림자 (art)" }
+      }
+    }
+  },
+  "roles": {
+    "bg.page": { "kind": "bg", "category": "bg", "label": "화면 바탕" },
+    "bg.header": { "kind": "bg", "category": "bg", "label": "위 자원 바 바탕" },
+    "bg.tabbar": { "kind": "bg", "category": "bg", "label": "아래 탭 바 바탕" },
+    "button.primary": { "kind": "button", "category": "button", "label": "주요 버튼" },
+    "button.secondary": { "kind": "button", "category": "button", "label": "보조 버튼" },
+    "button.small": { "kind": "button", "category": "button", "label": "작은 버튼" },
+    "button.small.compact": { "kind": "button", "category": "button", "label": "작은 버튼 (좁게)" },
+    "button.icon": { "kind": "button", "category": "button", "label": "아이콘 버튼" },
+    "button.back": { "kind": "back", "category": "button", "label": "뒤로가기" },
+    "button.sortie": { "kind": "sortie", "category": "button", "label": "출진 버튼" },
+    "tabs.art": { "kind": "tabs", "category": "tabs", "label": "그림 세그먼트 (메인)" },
+    "tabs.segment": { "kind": "tabs", "category": "tabs", "label": "세그먼트" },
+    "tabs.segment.on": { "kind": "tabs", "category": "tabs", "label": "세그먼트 (고른 칸, 예전)" },
+    "tabs.bottom": { "kind": "tabs", "category": "tabs", "label": "아래 탭 바" }
+  },
+  "arts": {
+    "scene.army": { "group": "scene", "label": "전쟁의 웅장함 (끝없는 대열)" },
+    "scene.flags": { "group": "scene", "label": "깃발 든 진군" },
+    "scene.castle": { "group": "scene", "label": "성과 산" },
+    "fig.general": { "group": "figure", "label": "투구 쓴 장군 얼굴" },
+    "fig.troop5": { "group": "figure", "label": "병사 5명" },
+    "fig.command": { "group": "figure", "label": "장군이 병사를 가리킴" },
+    "frame.arrowTwist": { "group": "frame", "label": "화살 꼬임 테두리" },
+    "frame.knot": { "group": "frame", "label": "매듭 모서리" },
+    "frame.ink": { "group": "frame", "label": "먹선" },
+    "ico.territory": { "group": "icon", "label": "영토 (지도)" },
+    "ico.army": { "group": "icon", "label": "군대 (깃발)" },
+    "ico.battle": { "group": "icon", "label": "대전 (교차 검)" },
+    "ico.recruit": { "group": "icon", "label": "모집 (사람 +)" },
+    "ico.alliance": { "group": "icon", "label": "연합 (깃발 둘)" },
+    "ico.codex": { "group": "icon", "label": "도감 (책)" },
+    "ico.bow": { "group": "icon", "label": "활 (뒤로가기)" },
+    "ico.horse": { "group": "icon", "label": "말 (출진)" },
+    "ico.shop": { "group": "icon", "label": "상점 (주머니)" }
+  },
+  "tabIcons": {
+    "territory": "ico.territory",
+    "army": "ico.army",
+    "practice": "ico.battle",
+    "pvp": "ico.battle",
+    "recruit": "ico.recruit",
+    "alliance": "ico.alliance",
+    "codex": "ico.codex",
+    "shop": "ico.shop"
+  }
+}

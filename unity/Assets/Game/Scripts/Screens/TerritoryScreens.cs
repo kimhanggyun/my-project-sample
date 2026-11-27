@@ -307,7 +307,7 @@ namespace Game.Unity.Screens
             {
                 var b = Ui.Button(filters, (on ? "☑ " : "☐ ") + label, () => { toggle(); app.ShowMain("territory"); }, 50, on ? Palette.Card : new Color(Palette.Card.r, Palette.Card.g, Palette.Card.b, 0.7f), 20);
                 var t = b.GetComponentInChildren<Text>();
-                t.color = on ? col : Palette.TextDim;
+                t.color = on ? (Palette.IsLight ? col : Color.Lerp(col, Color.white, 0.4f)) : Palette.TextDim;
                 t.alignment = TextAnchor.MiddleLeft;
             }
             Filter(ctx.T("ui.terr.tab.near"), ShowOthers, OtherRed, () => ShowOthers = !ShowOthers);

@@ -27,6 +27,7 @@
 | [theme.md](design/theme.md) | 테마 교체 원칙 (옛날 전투 → 판타지 등) |
 | [backlog.md](design/backlog.md) | **할 일 목록**: 설계 대비 미구현 전체, 진행 순서 A→F (2026-11-11) |
 | [to-be.md](design/to-be.md) | **추후 업데이트 (TO-BE)**: 출시 뒤로 미룬 것 (성장 · 치장 2·3단계 · 결제 특혜 · 대전 · AI 3차 · 녹화 영상 · 테마 …), 항목마다 왜 미뤘나 · 문서 링크 (2026-11-16) |
+| [ui-kit.md](design/ui-kit.md) | **부품 꾸미기 (UI 키트)**: 테마 · 역할 · 변형 · 값 네 층, 그림 자원, 꾸미기 화면, 카드 = 내용 × 밀도 × 틀, 만드는 순서 (2026-11-27 제안) |
 | [art-direction.md](design/art-direction.md) | 아트 방향: 수묵·한지 화면 + 단순 3D 전장 (2026-11-11 결정) |
 | [planning-notes.md](design/planning-notes.md) | 논의·결정 기록, 미결 사항, 다음 단계 |
 | [open-values.md](design/open-values.md) | **미결 수치 정리**: 지금 임시값, 측정 결과, 정하는 순서 |
