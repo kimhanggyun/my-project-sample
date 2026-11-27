@@ -690,7 +690,7 @@ namespace Game.Unity.Battle3D
                 if (a.Team != CrowdBattle.Ally || !_battle.Standing(a)) continue;
                 bool chosen = SelectAll ? a.Leading : a.Id == SelectedArmy;
                 if (!chosen) continue;
-                Circle(Pooled(_selRings, sel++, "SelectRing", new Color(1f, 0.85f, 0.25f), 0.12f), ShownCenter(a, alpha), RadiusOf(a));
+                Circle(Pooled(_selRings, sel++, "SelectRing", new Color(1f, 0.85f, 0.25f, 0.45f), 0.09f), ShownCenter(a, alpha), RadiusOf(a)); // 옅게 (2026-11-27 사용자 "색이 너무 진해")
                 // 목표: 이동 = 그 땅에 작은 고리, 공격 = 대상 부대 둘레 (같은 대상은 한 번만)
                 if (a.Order == CrowdOrders.Move)
                 {
@@ -780,6 +780,7 @@ namespace Game.Unity.Battle3D
             var mat = Own(tpl != null ? new Material(tpl) : NewMaterial(color));
             mat.color = color;
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (color.a < 0.99f) Transparent(mat);
             line.sharedMaterial = mat;
             line.widthMultiplier = width;
             line.loop = true;
@@ -789,6 +790,19 @@ namespace Game.Unity.Battle3D
             line.receiveShadows = false;
             go.SetActive(false);
             return line;
+        }
+
+        /// <summary>반투명으로 (URP Unlit · Lit 공통 값): 알파 섞기 · 깊이 쓰기 끔 · 투명 순서.</summary>
+        private static void Transparent(Material mat)
+        {
+            if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
+            if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0f);
+            if (mat.HasProperty("_SrcBlend")) mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            if (mat.HasProperty("_DstBlend")) mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)RenderQueue.Transparent;
         }
 
         /// <summary>다리 묶음: 행렬을 직접 넣는다 (모델 크기 · 엉덩이 위치 · 흔들기를 곱한 것).</summary>

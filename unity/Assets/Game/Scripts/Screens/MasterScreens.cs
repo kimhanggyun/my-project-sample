@@ -86,8 +86,9 @@ namespace Game.Unity.Screens
             Ui.IconButton(r2, "shop", "상점", null);
             Ui.IconButton(r2, "settings", "설정", null);
 
-            H("tabs.segment · text.link · check.row");
-            Ui.SegmentTabs(list, new List<(string, string)> { ("a", "기본"), ("b", "야전"), ("c", "성새전") }, "a", null, 58, 140);
+            H("tabs.segment · tabs.minor · text.link · check.row");
+            Ui.MidTabs(list, new List<(string, string)> { ("a", "기본"), ("b", "야전"), ("c", "성새전") }, "a", null);
+            Ui.MinorTabs(list, new List<(string, string)> { ("a", "승률순"), ("b", "레벨순"), ("c", "싼 순") }, "a", null);
             var lr = Ui.Row(list, "Link", 50, 10);
             Ui.Link(lr, "보기", null);
             Ui.CheckRow(list, "체크 꺼짐", false, null);

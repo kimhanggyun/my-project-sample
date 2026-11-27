@@ -18,6 +18,8 @@ namespace Game.Unity.Screens
         /// <summary>뒤로 키: 맨 위 화면이라 종료 확인 창.</summary>
         public override bool OnBack() => false;
 
+        /// <summary>위 · 아래 바 바탕을 안전 영역 밖(상태바 · 홈 표시줄)까지 늘려 칠하는 길이.</summary>
+        internal const float ChromeBleed = 400f;
         private const float TopBarHeight = 110f;
         private const float TabBarHeight = 104f;
         private const float MinTabWidth = 160f;
@@ -55,8 +57,8 @@ namespace Game.Unity.Screens
             { "generalLooks", () => new LooksTabView(general: true) }, // 장수꾸미기 탭 (R-150, 개발용) → 샘플전투2 우리 장수
             { "map", () => new MapTabView() },
             // 묶은 탭 (2026-11-15 사용자 결정): 군대 = 장수 · 병력 · 편성, 모집 = 장수 · 용병
-            { "army", () => new GroupTabView("army", ("general", "ui.seg.general"), ("troop", "ui.seg.troop"), ("formation", "ui.seg.formation")) },
-            { "recruit", () => new GroupTabView("recruit", ("gacha", "ui.seg.gacha"), ("hiring", "ui.seg.hiring")) },
+            { "army", () => new GroupTabView("army", ("general", "ui.seg.general", "fig.general"), ("troop", "ui.seg.troop", "fig.troop5"), ("formation", "ui.seg.formation", "fig.command")) },
+            { "recruit", () => new GroupTabView("recruit", ("gacha", "ui.seg.gacha", "fig.general"), ("hiring", "ui.seg.hiring", "fig.merc")) },
         };
 
         /// <summary>묶은 탭 안의 탭 id → (묶음, 세그먼트). ShowMain("troop") 같은 예전 호출도 묶음 안 그 세그먼트로 연다.</summary>
@@ -92,36 +94,7 @@ namespace Game.Unity.Screens
             Ctx.Flow.Tick(Ctx.State); // 화면을 열 때마다 시간 경과 처리 (부상 회복·구출 기한)
             Ui.Column(Root, 0);
 
-            // 위: 자원 칩 3개 + 상점·설정 아이콘 버튼 (시안 04). 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1)
-            var top = Ui.Row(Root, "TopBar", TopBarHeight, 16);
-            Ui.Background(top, Palette.Bar);
-            UiKit.Backdrop(top, "bg.header", Palette.Bar); // 부품 꾸미기 (ui-kit.md 4.1)
-            var topRow = top.GetComponent<HorizontalLayoutGroup>();
-            topRow.padding = new RectOffset(20, 20, 18, 18);
-            topRow.childForceExpandWidth = false;
-            topRow.childForceExpandHeight = false;
-            topRow.childAlignment = TextAnchor.MiddleLeft;
-            // 왼쪽: 내 사진 + 닉네임 (누르면 내 정보)
-            var me = Ui.Rect(top, "Me");
-            Ui.Size(me, 84, 92).flexibleWidth = 0;
-            var meCol = Ui.Column(me, 0, 0);
-            meCol.childAlignment = TextAnchor.UpperCenter;
-            meCol.childForceExpandWidth = false;
-            ProfilePhoto.Make(Ctx, me, 60);
-            // 닉네임이 없으면 장수 이름("나") 대신 "닉네임 정하기" (계정마다 같은 "나"로 보여 중복처럼 보이던 것, 2026-11-17)
-            var nick = Ui.Label(me, Ctx.Nickname ?? T("ui.top.setNickname"), 18, TextAnchor.MiddleCenter, Ctx.Nickname == null ? Palette.Seal : Palette.Text);
-            nick.horizontalOverflow = HorizontalWrapMode.Overflow;
-            Ui.Size(nick, 22, 92);
-            Ui.Background(me, new Color(0, 0, 0, 0));
-            me.gameObject.AddComponent<Button>().onClick.AddListener(() => App.Show(new ProfileScreen()));
-            foreach (var id in new[] { ResourceIds.Supply, ResourceIds.Gold, ResourceIds.Gem })
-                Ui.ResourceChip(Ctx, top, id, Ctx.Resource(id), () => App.ShowMain("shop"));
-            // 우편 (종): 받지 않은 우편 수
-            var mail = Ui.IconButton(top, "bell", T("ui.top.mail"), () => App.Show(new MailScreen(null, null)));
-            if (Ctx.OnlineEnabled)
-                Ctx.LoadMail(list => { if (mail != null && list != null && list.Count > 0) Badge(mail, list.Count); });
-            Ui.IconButton(top, "shop", T("ui.top.shop"), () => App.ShowMain("shop"));
-            Ui.IconButton(top, "settings", T("ui.top.settings"), () => App.Show(new SettingsScreen()));
+            TopBar(App, Root);
             // 띠 배너 광고 자리 (광고가 꺼졌거나 광고 제거 상품이면 0)
             Ui.BannerSlot(Root, Ctx);
 
@@ -146,7 +119,7 @@ namespace Game.Unity.Screens
                 float h = small ? DevTabBarHeight : TabBarHeight;
                 var barBg = Ui.Rect(Root, small ? "DevTabBar" : "TabBar");
                 Ui.Background(barBg, small ? Palette.Card : Palette.Bar);
-                if (!small) UiKit.Backdrop(barBg, "bg.tabbar", Palette.Bar);
+                if (!small) UiKit.Chrome(barBg, 0f, ChromeBleed, "bg.tabbar"); // 화면 맨 아래(홈 표시줄)까지 같은 바탕
                 string tabVariant = small ? null : UiKit.Spec("tabs.bottom").Variant;
                 if (!small && tabVariant != null && tabVariant != "button") h = UiKit.Spec("tabs.bottom").Num("height", h);
                 Ui.Size(barBg, h);
@@ -198,6 +171,45 @@ namespace Game.Unity.Screens
                 foreach (var t in Ctx.MainTabs)
                     if (t.Id == _initial && t.Status == MainTabEntry.Active) { first = t; break; }
             if (first != null) Select(first);
+        }
+
+        /// <summary>
+        /// 위 자원 바 (시안 04): 내 사진 · 닉네임 + 자원 칩 3개(누르면 상점) + 우편 · 상점 · 설정. 메인 화면과 따로 여는 화면(병종 꾸미기 등)이 같이 쓴다
+        /// (2026-11-27 사용자: 화면마다 "엽전 n" 글자를 따로 두지 말고 이 바를). 바탕은 화면 맨 위(상태바)까지.
+        /// </summary>
+        internal static RectTransform TopBar(GameApp app, RectTransform parent)
+        {
+            var ctx = app.Context;
+            var top = Ui.Row(parent, "TopBar", TopBarHeight, 16);
+            Ui.Background(top, Palette.Bar);
+            UiKit.Chrome(top, ChromeBleed, 0f); // 부품 꾸미기 bg.header, 화면 맨 위(상태바)까지 같은 바탕 (2026-11-27 사용자)
+            var topRow = top.GetComponent<HorizontalLayoutGroup>();
+            topRow.padding = new RectOffset(20, 20, 18, 18);
+            topRow.childForceExpandWidth = false;
+            topRow.childForceExpandHeight = false;
+            topRow.childAlignment = TextAnchor.MiddleLeft;
+            // 왼쪽: 내 사진 + 닉네임 (누르면 내 정보)
+            var me = Ui.Rect(top, "Me");
+            Ui.Size(me, 84, 92).flexibleWidth = 0;
+            var meCol = Ui.Column(me, 0, 0);
+            meCol.childAlignment = TextAnchor.UpperCenter;
+            meCol.childForceExpandWidth = false;
+            ProfilePhoto.Make(ctx, me, 60);
+            // 닉네임이 없으면 장수 이름("나") 대신 "닉네임 정하기" (계정마다 같은 "나"로 보여 중복처럼 보이던 것, 2026-11-17)
+            var nick = Ui.Label(me, ctx.Nickname ?? ctx.T("ui.top.setNickname"), 18, TextAnchor.MiddleCenter, ctx.Nickname == null ? Palette.Seal : Palette.Text);
+            nick.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Ui.Size(nick, 22, 92);
+            Ui.Background(me, new Color(0, 0, 0, 0));
+            me.gameObject.AddComponent<Button>().onClick.AddListener(() => app.Show(new ProfileScreen()));
+            foreach (var id in new[] { ResourceIds.Supply, ResourceIds.Gold, ResourceIds.Gem })
+                Ui.ResourceChip(ctx, top, id, ctx.Resource(id), () => app.ShowMain("shop"));
+            // 우편 (종): 받지 않은 우편 수
+            var mail = Ui.IconButton(top, "bell", ctx.T("ui.top.mail"), () => app.Show(new MailScreen(null, null)));
+            if (ctx.OnlineEnabled)
+                ctx.LoadMail(list => { if (mail != null && list != null && list.Count > 0) Badge(mail, list.Count); });
+            Ui.IconButton(top, "shop", ctx.T("ui.top.shop"), () => app.ShowMain("shop"));
+            Ui.IconButton(top, "settings", ctx.T("ui.top.settings"), () => app.Show(new SettingsScreen()));
+            return top;
         }
 
         /// <summary>아이콘 오른쪽 위 빨간 숫자 (우편 수, 99+).</summary>
@@ -270,29 +282,25 @@ namespace Game.Unity.Screens
     {
         internal static readonly Dictionary<string, string> Selected = new Dictionary<string, string>();
         private readonly string _id;
-        private readonly (string id, string labelKey)[] _segments;
+        private readonly (string id, string labelKey, string art)[] _segments;
         private ITabView _child;
 
-        public GroupTabView(string id, params (string id, string labelKey)[] segments) { _id = id; _segments = segments; }
+        public GroupTabView(string id, params (string id, string labelKey, string art)[] segments) { _id = id; _segments = segments; }
 
         public void Build(GameApp app, RectTransform root)
         {
             var ctx = app.Context;
             if (!Selected.TryGetValue(_id, out var seg) || System.Array.FindIndex(_segments, s => s.id == seg) < 0) seg = _segments[0].id;
             Ui.Column(root, 0, 0);
-            var bar = Ui.Rect(root, "Segments");
-            Ui.Size(bar, UiKit.Spec("tabs.art").Num("height", 96) + 20);
-            Ui.Background(bar, Palette.Bar);
-            var barCol = Ui.Column(bar, 0, 10);
-            var items = new List<(string, string)>();
-            foreach (var s in _segments) items.Add((s.id, ctx.T(s.labelKey)));
-            float w = (GameApp.ReferenceWidth - 40f) / _segments.Length - 18f;
-            Ui.ArtSegmentTabs(bar, items, seg, id =>
+            // 대분류 세그먼트 (위 바와 같은 바탕 띠, 칸마다 그림 — 2026-11-27 모집도 군대처럼)
+            var items = new List<(string, string, string)>();
+            foreach (var s in _segments) items.Add((s.id, ctx.T(s.labelKey), s.art));
+            Ui.MajorTabs(root, items, seg, id =>
             {
                 if (id == seg) return;
                 void Go() { Selected[_id] = id; app.ShowMain(_id); }
                 if (_child is ILeaveGuard g && g.HasUnsaved(app)) MainScreen.AskLeave(app, g, Go); else Go();
-            }, 96, w);
+            });
             var body = Ui.Rect(root, "Body");
             Ui.Size(body, flexibleHeight: 1);
             var panel = Ui.Panel(body, seg);

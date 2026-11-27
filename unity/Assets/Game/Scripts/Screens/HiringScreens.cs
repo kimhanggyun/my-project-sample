@@ -37,7 +37,7 @@ namespace Game.Unity.Screens
                 return;
             }
             var (header, body, _) = Ui.PageLayout(root, 0);
-            Ui.SegmentTabs(header, new[] { ("hire", ctx.T("ui.merc.tab.hire")), ("mine", ctx.T("ui.merc.tab.mine")) }, _tab, id => { _tab = id; app.ShowMain("hiring"); }, 70, 500);
+            Ui.MidTabs(header, new[] { ("hire", ctx.T("ui.merc.tab.hire")), ("mine", ctx.T("ui.merc.tab.mine")) }, _tab, id => { _tab = id; app.ShowMain("hiring"); }, infoGap: true);
             InfoButton.Add(root, ctx.T("ui.merc.note"));
             if (_tab == "hire") BuildHire(app, root, header, body);
             else BuildMine(app, root, body);
@@ -46,7 +46,7 @@ namespace Game.Unity.Screens
         private static void BuildHire(GameApp app, RectTransform root, RectTransform header, RectTransform body)
         {
             var ctx = app.Context;
-            Ui.SegmentTabs(header, new[] { ("both", ctx.T("ui.merc.unit.both")), ("general", ctx.T("ui.merc.unit.general")), ("troops", ctx.T("ui.merc.unit.troops")) }, _unit, id => { _unit = id; app.ShowMain("hiring"); }, 58, 220);
+            Ui.MinorTabs(header, new[] { ("both", ctx.T("ui.merc.unit.both")), ("general", ctx.T("ui.merc.unit.general")), ("troops", ctx.T("ui.merc.unit.troops")) }, _unit, id => { _unit = id; app.ShowMain("hiring"); });
             var next = ctx.NextHires;
             if (!next.IsEmpty) Ui.Label(header, ctx.T("ui.merc.queued", next.Picks.Count), 22, TextAnchor.MiddleLeft, Palette.Good);
             var loading = Ui.Label(body, ctx.T("ui.hire.loading"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
@@ -73,16 +73,15 @@ namespace Game.Unity.Screens
                 var troopTypes = new List<string>();
                 foreach (var ul0 in units.Values) foreach (var u in ul0) if (!troopTypes.Contains(u.TroopType)) troopTypes.Add(u.TroopType);
                 if (_troop != null && !troopTypes.Contains(_troop)) _troop = null;
-                var filters = Ui.Row(body, "Filters", 58, 8);
-                Ui.Size(Ui.SegmentTabs(filters, new[] { ("win", ctx.T("ui.merc.sort.win")), ("level", ctx.T("ui.merc.sort.level")), ("price", ctx.T("ui.merc.sort.price")) }, _sort,
-                    id => { _sort = id; app.ShowMain("hiring"); }, 54, 150), flexibleWidth: 1);
-                var tb = Ui.Button(filters, (_troop == null ? ctx.T("ui.merc.troopAll") : FormationTabView.TroopName(ctx, _troop)) + " ▾", () =>
-                {
-                    int i = _troop == null ? -1 : troopTypes.IndexOf(_troop);
-                    _troop = i + 1 < troopTypes.Count ? troopTypes[i + 1] : null;
-                    app.ShowMain("hiring");
-                }, 54, fontSize: 22);
-                Ui.Size(tb, width: 230);
+                // 정렬 = 소분류 세그먼트, 병종 = 공통 고르기 단추 (군대 · 장수 "정렬 ▾"과 같은 모양, 2026-11-27 사용자)
+                var filters = Ui.Row(body, "Filters", 72, 12);
+                filters.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+                Ui.Size(Ui.MinorTabs(filters, new[] { ("win", ctx.T("ui.merc.sort.win")), ("level", ctx.T("ui.merc.sort.level")), ("price", ctx.T("ui.merc.sort.price")) }, _sort,
+                    id => { _sort = id; app.ShowMain("hiring"); }), flexibleWidth: 1);
+                var troopOpts = new List<(string, string)> { ("", ctx.T("ui.merc.troopAll")) };
+                foreach (var tt in troopTypes) troopOpts.Add((tt, FormationTabView.TroopName(ctx, tt)));
+                var tb = Ui.PickButton(filters, root, _troop == null ? ctx.T("ui.merc.troopAll") : FormationTabView.TroopName(ctx, _troop), troopOpts, _troop ?? "",
+                    id => { _troop = id == "" ? null : id; app.ShowMain("hiring"); });
                 Ui.SetEnabled(tb, troopTypes.Count > 0);
                 long Win(string o) { var s = gen.TryGetValue(o, out var gg) ? gg.Stats : units.TryGetValue(o, out var uu) ? uu[0].Stats : null; return s == null || s.Hires == 0 ? -1 : s.Wins * 1000 / s.Hires; }
                 long Level(string o) => gen.TryGetValue(o, out var gg) ? gg.Level : 0;
@@ -127,7 +126,7 @@ namespace Game.Unity.Screens
                     }, 76, fontSize: 26);
                     Ui.SetEnabled(b, !queued);
                 }
-                if (shown == 0) Ui.Label(body, ctx.T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+                if (shown == 0) Ui.EmptyNote(body, ctx.T("ui.hire.empty"));
                 if (!next.IsEmpty) Ui.Button(body, ctx.T("ui.merc.clearQueued"), () => { ctx.ClearNextHires(); app.ShowMain("hiring"); }, 72, fontSize: 24);
             }));
         }
@@ -599,7 +598,7 @@ namespace Game.Unity.Screens
                         Ui.SetEnabled(b, !waiting && !full && (l.Kind == HireKinds.General || count > 0));
                     }
                 }
-                if (shown == 0) Ui.Label(list, T("ui.hire.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+                if (shown == 0) Ui.EmptyNote(list, T("ui.hire.empty"));
             });
         }
     }

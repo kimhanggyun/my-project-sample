@@ -22,8 +22,8 @@ namespace Game.Unity.Screens
             var (header, list, _, _) = Ui.TitledPage(root, ctx.T("ui.tab.shop"), null); // 공통 타이틀 (탭이라 뒤로 없음)
             InfoButton.Add(root, ctx.T("ui.shop.note"));
             // 위 탭 = 사는 수단 (economy.md 0장 세 단, 2026-11-16 사용자): 엽전구매 · 금괴 · 현금
-            Ui.SegmentTabs(header, new[] { (Gold, ctx.T("ui.shop.tab.gold")), (Gem, ctx.T("ui.shop.tab.gem")), (Cash, ctx.T("ui.shop.tab.cash")) }, Tab,
-                t => { Tab = t; app.ShowMain(TabId); }, 60, 220);
+            Ui.MajorTabs(header, new[] { (Gold, ctx.T("ui.shop.tab.gold"), "fig.coins"), (Gem, ctx.T("ui.shop.tab.gem"), "fig.gold"), (Cash, ctx.T("ui.shop.tab.cash"), "fig.cash") }, Tab,
+                t => { Tab = t; app.ShowMain(TabId); }, band: false);
             long now = ctx.Time.UtcNow.ToUnixTimeSeconds();
             if (PurchaseService.AdFree(ctx.State, now))
                 Ui.Label(list, ctx.State.AdFreeForever ? ctx.T("ui.shop.adFreeForever")
@@ -37,7 +37,7 @@ namespace Game.Unity.Screens
                 int before = list.childCount;
                 CosmeticSection(app, list, pay);
                 ExchangeSection(app, list, pay);
-                if (list.childCount == before) Ui.Label(list, ctx.T("ui.shop.empty"), Ui.FontSmall, TextAnchor.MiddleCenter, Palette.TextDim);
+                if (list.childCount == before) Ui.EmptyNote(list, ctx.T("ui.shop.empty"));
             }
         }
 

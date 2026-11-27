@@ -108,6 +108,7 @@ namespace Game.Unity.Screens
 
             _panel = Ui.Rect(Root, "Panel");
             Ui.Background(_panel, Palette.Bar);
+            UiKit.Chrome(_panel, 0f, MainScreen.ChromeBleed); // 판 · 버튼 사이 틈 = 위 · 아래 바와 같은 바탕 (2026-11-27 사용자: 틈이 어두워 칸 구분이 흐림)
             Ui.Column(_panel, 6, 8);
             BuildPanel();
             UpdateTexts();
@@ -145,6 +146,7 @@ namespace Game.Unity.Screens
         private void BuildPanel()
         {
             Ui.Clear(_panel);
+            UiKit.Chrome(_panel, 0f, MainScreen.ChromeBleed); // 판을 비우면 바탕 층도 지워지므로 다시 (안 하면 틈이 검게)
             _formationButtons.Clear();
             _corpsButtons.Clear();
             _moraleFills.Clear();
@@ -184,13 +186,31 @@ namespace Game.Unity.Screens
             Select(_selected);
         }
 
-        /// <summary>① 부대 줄의 버튼: 이름 (★ 총대장 · 병종) · 사기 숫자 · 아래 사기 막대 (병종 색 띠).</summary>
+        /// <summary>① 부대 줄의 버튼: 이름 (★ 총대장 · 장수 · 병종) · 사기 숫자 · 아래 사기 막대 (병종 색 띠) · 뒤 바탕에 병종 아이콘.</summary>
         private void CorpsButton(int id, CrowdArmy a)
         {
             var b = Ui.Button(_corpsRow, a == null ? T("ui.sample2.all") : CorpsName(a), () => Select(id), 104, Palette.Button, a == null ? 26 : 20);
-            Ui.Size(b, 104, a == null ? 150 : 200);
+            Ui.Size(b, 104, a == null ? 170 : 210);
             _corpsButtons[id] = b;
-            if (a == null) return;
+            if (a == null)
+            {
+                // [전체] = 부대 칸과 다른 모양: 무리 아이콘 + 글자 (2026-11-27 사용자 "전체 버튼도 쓸만한 걸로")
+                var label = b.GetComponentInChildren<Text>();
+                label.alignment = TextAnchor.MiddleRight;
+                label.rectTransform.offsetMax = new Vector2(-18f, label.rectTransform.offsetMax.y);
+                label.fontStyle = FontStyle.Bold;
+                var ic = Ui.Rect(b.transform, "GroupIcon");
+                ic.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                ic.anchorMin = ic.anchorMax = new Vector2(0f, 0.5f);
+                ic.pivot = new Vector2(0f, 0.5f);
+                ic.sizeDelta = new Vector2(58f, 58f);
+                ic.anchoredPosition = new Vector2(14f, 0f);
+                var ii = ic.gameObject.AddComponent<Image>();
+                ii.sprite = SegmentArt.Icon("ico.group"); ii.preserveAspect = true; ii.raycastTarget = false;
+                _allIcon = ii;
+                return;
+            }
+            ArtBehind(b, TroopIcon(a.Troop.BaseId), 0.16f); // 병종 아이콘 (2026-11-27 사용자)
             var back = Ui.Rect(b.transform, "Morale");
             back.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             back.anchorMin = new Vector2(0f, 0f);
@@ -219,14 +239,41 @@ namespace Game.Unity.Screens
             }
         }
 
+        private Image _allIcon;
+
+        /// <summary>병종 → 아이콘 (보병 칼 · 창병 창 · 궁병 활 · 기병 말).</summary>
+        private static string TroopIcon(string baseId) =>
+            baseId == "spearman" ? "ico.spear" : baseId == "archer" ? "ico.bow" : baseId == "cavalry" ? "ico.horse" : baseId == "scout" ? "ico.flag" : "ico.sword";
+
+        /// <summary>명령 → 아이콘 (명령 버튼 · 그 명령의 두 번째 선택지 뒤 바탕, 2026-11-27 사용자).</summary>
+        private static string CommandIcon(string cmd) =>
+            cmd == "advance" ? "ico.march" : cmd == "attack" ? "ico.battle" : cmd == "move" ? "ico.move" : cmd == "skill" ? "ico.skill"
+            : cmd == "formation" ? "ico.formation" : cmd == "hold" ? "ico.hold" : cmd == "retreat" ? "ico.retreat" : cmd != null && cmd.StartsWith("siege_") ? "ico.sword" : null;
+
+        /// <summary>버튼 뒤 바탕에 옅은 아이콘 (글자 뒤, 버튼 높이의 80%, 오른쪽에 치우침).</summary>
+        private static void ArtBehind(Button b, string icon, float alpha = 0.18f)
+        {
+            if (icon == null) return;
+            var sprite = SegmentArt.Icon(icon);
+            if (sprite == null) return;
+            var rt = Ui.Rect(b.transform, "ArtBehind");
+            rt.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            rt.anchorMin = new Vector2(0.5f, 0.1f); rt.anchorMax = new Vector2(1f, 0.9f);
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            rt.SetSiblingIndex(0);
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = sprite; img.preserveAspect = true; img.raycastTarget = false;
+            img.color = new Color(Palette.Text.r, Palette.Text.g, Palette.Text.b, alpha);
+        }
+
         private void Choice(RectTransform row, string text, bool on, System.Action act) =>
             Ui.Size(Ui.Button(row, text, act, 68, on ? Palette.ButtonActive : Palette.Button, 22), flexibleWidth: 1);
 
         /// <summary>장수 이름표: 우리 = "★중군 보병", 적 = "적 중군 창병", 위임이면 "· 자동".</summary>
         private string TagName(CrowdArmy a)
         {
-            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + PlaceName(a) + " " + T("troop." + a.Troop.Id)
-                + " · " + T("ui.crowd.general." + a.GeneralInfo.Preset); // 장수 성향 (R-138)
+            // 좌군 · 우군 같은 자리 이름 대신 장수 이름 (2026-11-27 사용자 "좌군 · 우군은 의미 없어")
+            string s = (a.Team == CrowdBattle.Enemy ? T("ui.sample2.enemyTag") + " " : "") + (a.IsCommander ? "★" : "") + GeneralLabel(a) + " " + T("troop." + a.Troop.Id);
             if (a.GeneralEscaping && a.General.Alive) s += " · " + T("ui.crowd.generalEscaping");
             else if (a.GeneralPulledBack && a.General.Alive && !a.Routed) s += " · " + T("ui.crowd.generalCommanding");
             if (a.SiegeTask != null) s += " · " + SiegeLabel(a, a.SiegeTask); // 공성 명령 (R-145)
@@ -249,7 +296,7 @@ namespace Game.Unity.Screens
             _commandButtons.Clear();
             bool all = _selected == AllCorps;
             int font = all ? 26 : 22;
-            CommandButton("delegate", DelegateLabel(), ToggleDelegate, font);
+            DelegateButton(font);
             _siegeShown = _battle.SiegeActive;
             if (_siegeShown)
             {
@@ -296,14 +343,37 @@ namespace Game.Unity.Screens
         {
             var b = Ui.Button(_commandRow, text, act, RowHeight, Palette.Button, font);
             Ui.Size(b, flexibleWidth: 1);
+            ArtBehind(b, CommandIcon(id));
             _commandButtons[id] = b;
         }
 
-        private string DelegateLabel()
+        private Image _delegateLamp;
+
+        /// <summary>
+        /// 위임 = 켜고 끄는 스위치 (명령 버튼과 다른 뜻, 2026-11-27 사용자): "위임" 글자 + 아래 작은 불 (켬 = 초록 불 · 밝은 판, 끔 = 회색 불 · 흐린 글자).
+        /// </summary>
+        private void DelegateButton(int font)
+        {
+            var b = Ui.Button(_commandRow, T("ui.sample2.cmd.delegate"), ToggleDelegate, RowHeight, Palette.Button, font);
+            Ui.Size(b, flexibleWidth: 1);
+            var label = b.GetComponentInChildren<Text>();
+            label.rectTransform.anchorMin = new Vector2(0f, 0.3f);
+            label.fontStyle = FontStyle.Bold;
+            var lamp = Ui.Rect(b.transform, "Lamp");
+            lamp.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            lamp.anchorMin = lamp.anchorMax = new Vector2(0.5f, 0f);
+            lamp.pivot = new Vector2(0.5f, 0f);
+            lamp.sizeDelta = new Vector2(40f, 12f);
+            lamp.anchoredPosition = new Vector2(0f, 12f);
+            _delegateLamp = lamp.gameObject.AddComponent<Image>();
+            _delegateLamp.sprite = UiShapes.Rounded(6); _delegateLamp.type = Image.Type.Sliced; _delegateLamp.raycastTarget = false;
+            _commandButtons["delegate"] = b;
+        }
+
+        private bool DelegateOn()
         {
             var c = Chosen();
-            bool on = c.Count > 0 && c.TrueForAll(a => a.Delegated);
-            return T("ui.sample2.cmd.delegate") + "\n" + T(on ? "ui.sample2.on" : "ui.sample2.off");
+            return c.Count > 0 && c.TrueForAll(a => a.Delegated);
         }
 
         /// <summary>명령 버튼 색: 펼친 명령 · 위임 켬 · 고른 부대가 모두 그 명령 중이면 밝게.</summary>
@@ -313,15 +383,22 @@ namespace Game.Unity.Screens
             bool Every(string order) => c.Count > 0 && c.TrueForAll(a => a.Order == order && !a.Delegated);
             foreach (var kv in _commandButtons)
             {
+                if (kv.Key == "delegate")
+                {
+                    // 스위치: 판 색은 그대로, 불과 글자 밝기로 (켬 = 초록 불 · 진한 글자, 끔 = 회색 불 · 흐린 글자)
+                    bool lit = DelegateOn();
+                    Ui.Recolor(kv.Value, lit ? Palette.CellOn : Palette.Button);
+                    if (_delegateLamp != null) _delegateLamp.color = lit ? new Color(0.35f, 0.85f, 0.4f) : new Color(0.55f, 0.55f, 0.55f, 0.6f);
+                    kv.Value.GetComponentInChildren<Text>().color = lit ? Palette.Text : Palette.TextDim;
+                    continue;
+                }
                 bool on = kv.Key == _cmd
-                    || (kv.Key == "delegate" && c.Count > 0 && c.TrueForAll(a => a.Delegated))
                     || (kv.Key == "advance" && Every(CrowdOrders.Advance))
                     || (kv.Key == "hold" && Every(CrowdOrders.Hold))
                     || (kv.Key == "retreat" && Every(CrowdOrders.Retreat))
                     || (kv.Key.StartsWith("siege_") && c.Count > 0 && c.TrueForAll(a => a.SiegeTask == kv.Key.Substring(6) && !a.Delegated));
                 Ui.Recolor(kv.Value, on ? Palette.ButtonActive : Palette.Button);
             }
-            if (_commandButtons.TryGetValue("delegate", out var d)) d.GetComponentInChildren<Text>().text = DelegateLabel();
         }
 
         private void OpenCommand(string cmd)
@@ -350,18 +427,20 @@ namespace Game.Unity.Screens
                     _pickMode == "queue" ? Palette.ButtonActive : Palette.Button, 24), width: 200);
                 return;
             }
+            // 두 번째 선택지도 그 명령과 같은 바탕 아이콘 (2026-11-27 사용자: 어느 명령의 선택지인지 바로 알게)
+            string art = CommandIcon(_cmd);
             if (one != null && _cmd == "attack")
             {
-                Detail(T("ui.sample2.attack.pick"), () => BeginPick("attack"));
-                Detail(T("ui.sample2.attack.nearest"), () => Order(a => _battle.OrderAttackNearest(a.Id)));
+                ArtBehind(Detail(T("ui.sample2.attack.pick"), () => BeginPick("attack")), art);
+                ArtBehind(Detail(T("ui.sample2.attack.nearest"), () => Order(a => _battle.OrderAttackNearest(a.Id))), art);
                 return;
             }
             if (one != null && _cmd == "move")
             {
-                Detail(T("ui.sample2.move.move"), () => BeginPick("move"));
-                Detail(T("ui.sample2.queue"), () => BeginPick("queue"));
-                Detail(T("ui.sample2.move.path"), () => BeginPick("path"));
-                Detail(T("ui.sample2.move.march"), () => BeginPick("march")); // 행군 이동 (R-137): 이번 이동만 줄지어 (좁은 길 · 숲)
+                ArtBehind(Detail(T("ui.sample2.move.move"), () => BeginPick("move")), art);
+                ArtBehind(Detail(T("ui.sample2.queue"), () => BeginPick("queue")), art);
+                ArtBehind(Detail(T("ui.sample2.move.path"), () => BeginPick("path")), art);
+                ArtBehind(Detail(T("ui.sample2.move.march"), () => BeginPick("march")), art); // 행군 이동 (R-137): 이번 이동만 줄지어 (좁은 길 · 숲)
                 return;
             }
             if (one != null && _cmd == "skill")
@@ -373,6 +452,7 @@ namespace Game.Unity.Screens
                     any = true;
                     string sk = id;
                     var b = Detail(T(_battle.SkillDef(id).NameKey) + "\n" + T("ui.sample2.uses", left), () => UseSkill(sk), 20);
+                    ArtBehind(b, art);
                     _skillButtons[id] = b;
                 }
                 if (!any) Ui.Label(_detailRow, T("ui.sample2.noSkill"), 22, TextAnchor.MiddleCenter, Palette.TextDim);
@@ -500,8 +580,24 @@ namespace Game.Unity.Screens
             if (rebuild) BuildDetail();
         }
 
-        private string CorpsName(CrowdArmy a) => PlaceName(a) + (a.IsCommander ? "★" : "") + " " + T("troop." + a.Troop.Id)
+        private string CorpsName(CrowdArmy a) => (a.IsCommander ? "★" : "") + GeneralLabel(a) + " " + T("troop." + a.Troop.Id)
             + (a.Delegated ? " · " + T("ui.sample2.auto") : "") + (a.Marching ? " · " + T("ui.sample2.marching") : "") + "\n" + MoraleText(a);
+
+        /// <summary>
+        /// 장수 이름 (좌군 · 우군 대신, 2026-11-27 사용자). 시험 전투 장수는 성향 이름(맹장 · 지장 · 책사)뿐이라 같은 편에 같은 이름이 여럿이면 뒤에 번호.
+        /// </summary>
+        private string GeneralLabel(CrowdArmy a)
+        {
+            string name = T("ui.crowd.general." + a.GeneralInfo.Preset);
+            int same = 0, mine = 0;
+            foreach (var o in _battle.Armies)
+            {
+                if (o.Team != a.Team || o.GeneralInfo.Preset != a.GeneralInfo.Preset) continue;
+                same++;
+                if (o.Id == a.Id) mine = same;
+            }
+            return same > 1 ? name + " " + mine : name;
+        }
 
         /// <summary>부대 자리 이름: 좌군 · 중군 · 우군, 3×3 칸이면 "앞 좌" 등 (R-131).</summary>
         private string PlaceName(CrowdArmy a)
@@ -558,7 +654,15 @@ namespace Game.Unity.Screens
             _selected = id;
             _field.SelectedArmy = id == AllCorps ? -1 : id;
             _field.SelectAll = id == AllCorps;
-            foreach (var kv in _corpsButtons) Ui.Recolor(kv.Value, kv.Key == id ? Palette.ButtonActive : Palette.Button);
+            // [전체]를 고르면 부대 칸도 모두 옅은 고름 색 (전체에 든 부대가 보이게)
+            foreach (var kv in _corpsButtons)
+                Ui.Recolor(kv.Value, kv.Key == id ? Palette.ButtonActive : id == AllCorps ? Palette.CellOn : Palette.Button);
+            if (_corpsButtons.TryGetValue(AllCorps, out var allB))
+            {
+                bool on = id == AllCorps;
+                allB.GetComponentInChildren<Text>().color = on ? Ui.OnAccent : Palette.Text;
+                if (_allIcon != null) _allIcon.color = on ? Ui.OnAccent : Palette.Text;
+            }
             if (changed || _commandRow == null || _commandRow.childCount == 0)
             {
                 _pickMode = null;
@@ -1028,6 +1132,9 @@ namespace Game.Unity.Screens
         public bool OverForTour => _battle.IsOver;
 
         /// <summary>캡처 투어: 우리 부대 고르기 · 명령 (화면 조작과 같은 길).</summary>
+        /// <summary>캡처 투어: [전체] 고르기.</summary>
+        public void SelectAllForTour() => Select(AllCorps);
+
         public void SelectForTour(string place)
         {
             foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (a.Place == place) Select(a.Id);

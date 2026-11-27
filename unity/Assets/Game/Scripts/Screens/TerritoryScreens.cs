@@ -36,6 +36,8 @@ namespace Game.Unity.Screens
         /// <summary>지도 표시 (좌상단 체크, 2026-11-15 사용자: 아래 주변 부대 · 내 깃발 · 연합 칸 대신): 다른 유저 · 내 깃발 · 연합 깃발.</summary>
         internal static bool ShowOthers = true, ShowMine = true, ShowAlly = true;
         internal static string Tab = "near";
+        /// <summary>대분류 세그먼트: map (지도) · flags (내 깃발 카드 목록).</summary>
+        internal static string Seg = "map";
         // 줌 단계 (두 손가락 · 휠 · +/−): 보이는 너비와 칸 줄. 표시 방식 = Mode (0 가까이: 깃발 원 · 1 중간: 칸 대표 · 2 멀리: 세력도)
         private static readonly long[] ViewMeters = { 4000, 8000, 20000, 60000, 200000, 600000, 1500000 };
         private static readonly long[] GridMeters = { 500, 1000, 2500, 5000, 20000, 50000, 100000 };
@@ -61,11 +63,23 @@ namespace Game.Unity.Screens
                 Ui.Label(root, ctx.T("ui.territory.off"), Ui.FontBody, TextAnchor.MiddleCenter, Palette.TextDim);
                 return;
             }
-            var (header, body, _) = Ui.PageLayout(root, 0);
-            // 캔버스 높이 (너비 1080 맞춤) − 위 막대 · 아래 탭 두 줄 · 여백
+            // 대분류 세그먼트 [지도 · 내 깃발] (2026-11-27 사용자): 내 깃발 = 흩어진 깃발을 카드 목록으로
+            Ui.Column(root, 0, 0);
+            Ui.MajorTabs(root, new[] { ("map", ctx.T("ui.terr.seg.map"), "fig.globe"), ("flags", ctx.T("ui.terr.seg.flags"), "fig.flags") }, Seg,
+                id => { if (id == Seg) return; Seg = id; app.ShowMain("territory"); }, infoGap: true);
+            var page = Ui.Rect(root, "Page");
+            Ui.Size(page, flexibleHeight: 1);
+            if (Seg == "flags")
+            {
+                InfoButton.Add(root, ctx.T("ui.terr.flagsNote"));
+                BuildFlagList(app, root, page);
+                return;
+            }
+            var (header, body, _) = Ui.PageLayout(page, 0);
+            // 캔버스 높이 (너비 1080 맞춤) − 위 막대 · 대분류 세그먼트 · 아래 탭 두 줄 · 여백
             float canvasH = Screen.width > 0 ? 1080f * Screen.height / Screen.width : 1920f;
             if (canvasH < 1920f) canvasH = 1920f;
-            MapHeight = Mathf.Max(600f, canvasH - 110f - 104f - 72f - 40f);
+            MapHeight = Mathf.Max(600f, canvasH - 110f - (UiKit.Spec("tabs.art").Num("height", 96) + 20f) - 104f - 72f - 40f);
             if (!AllianceChecked && ctx.OnlineEnabled)
             {
                 AllianceChecked = true;
@@ -477,9 +491,18 @@ namespace Game.Unity.Screens
                         (reinforceKey != null && (kv.Key == reinforceKey || kv.Value.RegionId == reinforceKey) ? hereIds : busyIds).AddRange(TerritoryFlags.GeneralsOf(kv.Value));
             _plantPick.RemoveAll(id => busyIds.Contains(id) || hereIds.Contains(id) || !comps.Exists(c => c.GeneralId == id));
             bool reinforce = reinforceKey != null;
-            var (content, close) = Ui.BottomSheet(root, ctx.T(reinforce ? "ui.terr.reinforceTitle" : "ui.terr.plantHere"), 220 + 100 * Mathf.Max(1, comps.Count) + 120);
-            Ui.Column(content, 6, 0);
+            // 2026-11-27 새로 꾸밈: 장수 = 군단 미니 카드 가로 줄, 카드마다 + (고르기) · ✓ (고름). 못 나가는 장수는 흐리게 + 까닭
+            var (content, close) = Ui.BottomSheet(root, ctx.T(reinforce ? "ui.terr.reinforceTitle" : "ui.terr.plantHere"), 600);
+            Ui.Column(content, 12, 0);
             Ui.Label(content, reinforce ? ctx.T("ui.terr.reinforceNote") : ctx.T("ui.terr.plantHereNote", FormatKm(radius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            var row = Ui.HScrollRow(content, "Generals", 236, 14, 6);
+            Button go = null;
+            void Refresh()
+            {
+                if (go == null) return;
+                go.GetComponentInChildren<Text>().text = ctx.T(reinforce ? "ui.terr.reinforceGo" : "ui.terr.plantGo", _plantPick.Count);
+                Ui.SetPrimaryEnabled(go, _plantPick.Count > 0);
+            }
             foreach (var c in comps)
             {
                 string gid = c.GeneralId;
@@ -488,19 +511,42 @@ namespace Game.Unity.Screens
                 bool elsewhere = !onThis && busyIds.Contains(gid);
                 bool cant = !onThis && !elsewhere && (g == null || !Game.Campaign.Roster.GeneralStatus.CanDeploy(g.Status));
                 bool busy = onThis || elsewhere || cant;
-                long troops = 0;
-                foreach (var p in c.Picks) troops += p.Troops;
-                string note = onThis ? ctx.T("ui.terr.onThisFlag") : elsewhere ? ctx.T(reinforce ? "ui.terr.onOtherFlag" : "ui.terr.onFlag") : cant ? ctx.T("ui.terr.cantDeploy") : ctx.T("ui.terr.troops", troops.ToString("N0"));
-                string label = ctx.GeneralName(gid) + "  " + Ui.Colored(note, Palette.TextDim);
-                var row = Ui.CheckRow(content, label, onThis || _plantPick.Contains(gid), busy ? (System.Action)null : () =>
+                var col = Ui.Rect(row, "Pick_" + gid);
+                Ui.Size(col, 226, 150).flexibleWidth = 0;
+                var cv = Ui.Column(col, 4, 0);
+                cv.childForceExpandWidth = true;
+                var card = Cards.Corps(ctx, col, Cards.InfoOf(ctx, c), Cards.Density.Mini);
+                if (busy)
+                {
+                    card.gameObject.AddComponent<CanvasGroup>().alpha = 0.45f;
+                    string why = onThis ? ctx.T("ui.terr.onThisFlag") : elsewhere ? ctx.T(reinforce ? "ui.terr.onOtherFlag" : "ui.terr.onFlag") : ctx.T("ui.terr.cantDeploy");
+                    var wl = Ui.Label(col, why, 18, TextAnchor.MiddleCenter, Palette.TextDim);
+                    Ui.Size(wl, 40);
+                    continue;
+                }
+                Ui.Size(Ui.Label(col, "", 18, TextAnchor.MiddleCenter, Palette.TextDim), 40);
+                (Text text, Image back) badge = default;
+                void Paint()
+                {
+                    bool on = _plantPick.Contains(gid);
+                    badge.text.text = on ? "✓" : "+";
+                    badge.back.color = on ? Palette.Good : Palette.TextDim;
+                    var frame = card.GetComponent<Image>();
+                    if (frame != null) frame.color = on ? Palette.CellOn : Palette.Card;
+                }
+                void Toggle()
                 {
                     if (_plantPick.Contains(gid)) _plantPick.Remove(gid); else _plantPick.Add(gid);
-                    close();
-                    OpenPlantSheet(app, root, here, target, radius, reinforceKey);
-                });
-                if (busy) row.interactable = false;
+                    Paint();
+                    Refresh();
+                }
+                badge = CornerBadge(card, "+", Palette.TextDim, Toggle);
+                var tap = card.GetComponent<Button>() ?? card.gameObject.AddComponent<Button>();
+                tap.targetGraphic = card.GetComponent<Image>();
+                tap.onClick.AddListener(() => { Sfx.Play("click", 0.5f); Toggle(); });
+                Paint();
             }
-            var go = Ui.Button(content, ctx.T(reinforce ? "ui.terr.reinforceGo" : "ui.terr.plantGo", _plantPick.Count), () =>
+            go = Ui.PrimaryButton(content, ctx.T(reinforce ? "ui.terr.reinforceGo" : "ui.terr.plantGo", _plantPick.Count), () =>
             {
                 var req = reinforce ? new PlantRequest { FlagKey = reinforceKey, GeneralIds = new List<string>(_plantPick) }
                     : new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick) };
@@ -513,11 +559,11 @@ namespace Game.Unity.Screens
                     NamesFetched = false;
                     Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
                 });
-            }, 84, Palette.ButtonActive, 28);
-            Ui.SetEnabled(go, _plantPick.Count > 0);
+            }, 88, 30);
+            Refresh();
         }
 
-        /// <summary>내 깃발 판 (R-109): 나간 장수마다 [회수], [모두 회수] = 깃발 거두기 (확인, 쌓인 수입은 우편).</summary>
+        /// <summary>내 깃발 판 (R-109, 2026-11-27 새로 꾸밈): 깃발 카드 내용과 같음 — 수입(재화 아이콘) · 나간 장수 군단 카드 가로 줄(− 복귀 · + 파견).</summary>
         private static void OpenFlagSheet(GameApp app, RectTransform root, TerritoryOwner flag, GeoPoint? plantAt = null)
         {
             var ctx = app.Context;
@@ -525,61 +571,233 @@ namespace Game.Unity.Screens
             var fd = ctx.Territory?.Flags;
             long radius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
             bool canPlant = plantAt != null && Last != null && Last.Ok && fd != null && fd.Within(Last.Point, fd.CellOf(plantAt.Value), radius) && FlagDefs.KeyOf(fd.CellOf(plantAt.Value)) != flag.RegionId;
-            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 420 + 96 * ids.Count + 120);
-            Ui.Column(content, 8, 0);
-            // 쌓인 수입 · [수입 받기]
-            var inc = Ui.Row(content, "Income", 76, 12);
-            Ui.Size(Ui.Label(inc, Pending(ctx, flag), 24, TextAnchor.MiddleLeft, Palette.Good), flexibleWidth: 1);
-            string flagKey = flag.RegionId;
-            Ui.Size(Ui.Button(inc, ctx.T("ui.terr.collectOne"), () => { close(); CollectOne(app, root, flagKey); }, 72, Palette.ButtonActive, 24), 72, 190).flexibleWidth = 0;
-            void Recall(List<string> which)
-            {
-                close();
-                var end = Loading.Begin(); // 공통 로딩 (H5): 회수 → 수입 받기 → 장부 다시 받기까지
-                ctx.RecallFlag(new RecallRequest { FlagKey = flag.RegionId, GeneralIds = which }, r =>
-                {
-                    NamesFetched = false;
-                    if (r == null || !r.Ok)
-                    {
-                        Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.recall." + r.Reason);
-                        Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
-                        return;
-                    }
-                    // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
-                    string flagKey = flag.RegionId;
-                    ctx.ClaimMailWhere(m => m.Kind == MailKinds.TerritoryIncome && m.RegionId == flagKey, sum =>
-                    {
-                        string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
-                        Notice = r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
-                        Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
-                    });
-                });
-            }
-            foreach (var gid in ids)
-            {
-                string id = gid;
-                var row = Ui.Row(content, "General", 84, 12);
-                Ui.Size(Ui.Label(row, ctx.GeneralName(id), 28, TextAnchor.MiddleLeft), flexibleWidth: 1);
-                Ui.Size(Ui.SecondaryButton(row, ctx.T("ui.terr.recall"), () => Recall(new List<string> { id }), 72, 24), 72, 170).flexibleWidth = 0;
-            }
-            // 장수 추가 파견 (R-115): 추가 파견 뒤 회수하면 장수 바꾸기
-            {
-                string key = flag.RegionId;
-                var here0 = Last != null && Last.Ok ? Last.Point : default;
-                var add = Ui.Button(content, ctx.T("ui.terr.reinforce"), () => { close(); OpenPlantSheet(app, root, here0, here0, radius, key); }, 72, fontSize: 24);
-                Ui.SetEnabled(add, flag.SiegeAttackerId == null);
-            }
+            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 500 + (canPlant ? 90 : 0));
+            Ui.Column(content, 12, 0);
+            FlagBody(app, root, content, flag, close, false);
             if (canPlant)
             {
                 // 내 땅 안의 다른 자리에 깃발 더 꽂기 (내 원과는 겹쳐도 된다, R-96)
                 var at = plantAt.Value; var me = Last.Point;
-                Ui.Button(content, ctx.T("ui.terr.plantMore"), () => { close(); OpenPlantSheet(app, root, me, at, radius); }, 72, fontSize: 24);
+                Ui.SecondaryButton(content, ctx.T("ui.terr.plantMore"), () => { close(); OpenPlantSheet(app, root, me, at, radius); }, 76, 26);
             }
-            Ui.Button(content, ctx.T("ui.terr.recallAll"), () =>
+        }
+
+        /// <summary>
+        /// 깃발 카드 내용 (판 · 내 깃발 목록 같은 모양): 머리(깃발 · 장수 수 · 반지름, 목록이면 지도 아이콘) · 쌓인 수입(재화 아이콘 + 수, [수입 받기])
+        /// · 나간 장수 = 군단 미니 카드 가로 줄, 카드마다 − (복귀), 끝에 + (장수 추가 파견). 마지막 장수 복귀 = 깃발 거두기 (확인).
+        /// </summary>
+        private static void FlagBody(GameApp app, RectTransform root, Transform parent, TerritoryOwner flag, System.Action close, bool head)
+        {
+            var ctx = app.Context;
+            var ids = TerritoryFlags.GeneralsOf(flag);
+            long radius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
+            string flagKey = flag.RegionId;
+            if (head)
             {
-                close();
-                Ui.Confirm(root, ctx.T("ui.terr.recallAll"), ctx.T("ui.terr.recallConfirm"), ctx.T("ui.terr.recallAll"), () => Recall(null), (ctx.T("ui.common.cancel"), () => { }));
-            }, 80, Palette.Bad, 26);
+                var top = Ui.Row(parent, "Head", 70, 12);
+                top.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+                var fi = Ui.Rect(top, "FlagIcon");
+                Ui.Size(fi, 52, 52).flexibleWidth = 0;
+                var fimg = Ui.Background(fi, SealRed);
+                fimg.sprite = SegmentArt.Icon("ico.flag"); fimg.preserveAspect = true; fimg.raycastTarget = false;
+                var title = Ui.Label(top, ctx.T("ui.terr.flagSheet", ids.Count), 30, TextAnchor.MiddleLeft);
+                title.fontStyle = FontStyle.Bold;
+                Ui.Size(title, 70, -1, -1, 1);
+                var sub = Ui.Label(top, ctx.T("ui.terr.flagRadius", FormatKm(flag.RadiusM)) + (flag.SiegeAttackerId != null ? "  ·  " + ctx.T("ui.siege.underAttack") : ""), 22, TextAnchor.MiddleRight, flag.SiegeAttackerId != null ? Palette.Bad : Palette.TextDim);
+                Ui.Size(sub, 70, 260).flexibleWidth = 0;
+                // 지도 아이콘: [지도] 세그먼트로 바꾸고 그 깃발 자리로 (2026-11-27 사용자)
+                var go = Ui.Button(top, "", () => ShowOnMap(app, flag), 64, Palette.Button, 22);
+                Ui.Size(go, 64, 76).flexibleWidth = 0;
+                go.GetComponentInChildren<Text>().gameObject.SetActive(false);
+                var gi = Ui.Rect(go.transform, "Icon");
+                gi.anchorMin = gi.anchorMax = new Vector2(0.5f, 0.5f);
+                gi.sizeDelta = new Vector2(44, 44);
+                var gimg = Ui.Background(gi, Palette.Text);
+                gimg.sprite = SegmentArt.Icon("ico.territory"); gimg.preserveAspect = true; gimg.raycastTarget = false;
+            }
+            // 쌓인 수입: 위 바와 같은 재화 아이콘 + 수 (2026-11-27 사용자 "엽전 · 곡식 글자 대신 아이콘")
+            var inc = Ui.Row(parent, "Income", 76, 18);
+            inc.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            bool any = false;
+            if (flag.Pending != null)
+                foreach (var kv in flag.Pending)
+                {
+                    if (kv.Value <= 0) continue;
+                    any = true;
+                    Ui.Size(Icons.Value(ctx, inc, kv.Key, Ui.Compact(kv.Value), 44f, 30, Palette.Good), 76, 180).flexibleWidth = 0;
+                }
+            if (!any) Ui.Size(Ui.Label(inc, ctx.T("ui.territory.pendingNone"), 24, TextAnchor.MiddleLeft, Palette.TextDim), 76, 300).flexibleWidth = 0;
+            Ui.Size(Ui.Rect(inc, "Gap"), 10, -1, -1, 1);
+            var collect = Ui.PrimaryButton(inc, ctx.T("ui.terr.collectOne"), () => { close?.Invoke(); CollectOne(app, root, flagKey); }, 68, 26);
+            Ui.Size(collect, 68, 210).flexibleWidth = 0;
+            Ui.SetPrimaryEnabled(collect, any);
+            // 나간 장수: 군단 카드 가로 줄, − 복귀 · + 파견 (2026-11-27 사용자 "회수 대신 + − 로 파견 · 복귀")
+            Ui.Label(parent, ctx.T("ui.terr.generalsOut"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            var row = Ui.HScrollRow(parent, "Generals", 196, 14, 6);
+            var comps = ctx.State.CompositionsFor(null);
+            foreach (var gid in ids)
+            {
+                string id = gid;
+                var comp = comps.Find(c => c.GeneralId == id);
+                var info = comp != null ? Cards.InfoOf(ctx, comp) : new Cards.CorpsInfo { GeneralId = id, GeneralName = ctx.GeneralName(id) };
+                var card = Cards.Corps(ctx, row, info, Cards.Density.Mini);
+                CornerBadge(card, "−", Palette.Bad, () =>
+                {
+                    if (ids.Count <= 1)
+                        Ui.Confirm(root, ctx.T("ui.terr.recallLastTitle"), ctx.T("ui.terr.recallConfirm"), ctx.T("ui.terr.recallLastGo"), () => { close?.Invoke(); Recall(app, root, flagKey, null); }, (ctx.T("ui.common.cancel"), () => { }));
+                    else { close?.Invoke(); Recall(app, root, flagKey, new List<string> { id }); }
+                });
+            }
+            // + 카드 (장수 추가 파견, R-115 — 보낸 뒤 원래 장수를 복귀하면 바꾸기)
+            {
+                var here0 = Last != null && Last.Ok ? Last.Point : default;
+                var plus = AddCard(row, ctx.T("ui.terr.dispatch"), flag.SiegeAttackerId == null ? (System.Action)(() => { close?.Invoke(); OpenPlantSheet(app, root, here0, here0, radius, flagKey); }) : null);
+            }
+        }
+
+        /// <summary>군단 미니 카드 크기의 + 카드 (점선 느낌 테두리 · 가운데 + · 아래 글자).</summary>
+        private static RectTransform AddCard(Transform row, string label, System.Action onTap)
+        {
+            var card = Ui.Rect(row, "AddCard");
+            Ui.Size(card, 178, 150).flexibleWidth = 0;
+            var bg = Ui.Background(card, new Color(Palette.Card.r, Palette.Card.g, Palette.Card.b, 0.55f));
+            Ui.Round(bg);
+            var ring = Ui.Fill(Ui.Rect(card, "Ring"));
+            var ri = ring.gameObject.AddComponent<Image>();
+            ri.sprite = UiKit.Ring(14, 3); ri.type = Image.Type.Sliced; ri.color = Palette.Good; ri.raycastTarget = false; ri.fillCenter = false;
+            var plus = Ui.Label(card, "+", 72, TextAnchor.MiddleCenter, Palette.Good);
+            plus.rectTransform.anchorMin = new Vector2(0, 0.3f); plus.rectTransform.anchorMax = Vector2.one;
+            plus.rectTransform.offsetMin = plus.rectTransform.offsetMax = Vector2.zero;
+            plus.raycastTarget = false;
+            var t = Ui.Label(card, label, 22, TextAnchor.MiddleCenter, Palette.Good);
+            t.rectTransform.anchorMin = Vector2.zero; t.rectTransform.anchorMax = new Vector2(1, 0.32f);
+            t.rectTransform.offsetMin = t.rectTransform.offsetMax = Vector2.zero;
+            t.fontStyle = FontStyle.Bold; t.raycastTarget = false;
+            var b = card.gameObject.AddComponent<Button>();
+            b.targetGraphic = bg;
+            if (onTap != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onTap(); });
+            else { b.interactable = false; card.gameObject.AddComponent<CanvasGroup>().alpha = 0.45f; }
+            return card;
+        }
+
+        /// <summary>카드 오른쪽 위 둥근 표 (− 복귀 · + 고르기 · ✓ 고름). 누름이 카드로 새지 않게 따로 Button. 돌려준 글 · 바탕으로 모양을 바꿀 수 있다.</summary>
+        private static (Text text, Image back) CornerBadge(RectTransform card, string mark, Color color, System.Action onTap)
+        {
+            var dot = Ui.Rect(card, "Badge");
+            dot.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            dot.anchorMin = dot.anchorMax = new Vector2(1f, 1f);
+            dot.pivot = new Vector2(0.5f, 0.5f);
+            dot.sizeDelta = new Vector2(50f, 50f);
+            dot.anchoredPosition = new Vector2(-16f, -16f);
+            var img = Ui.Background(dot, color);
+            img.sprite = UiShapes.Circle;
+            var t = Ui.Label(dot, mark, 34, TextAnchor.MiddleCenter, Color.white);
+            t.fontStyle = FontStyle.Bold; t.raycastTarget = false;
+            Ui.Fill(t.rectTransform);
+            var b = dot.gameObject.AddComponent<Button>();
+            b.targetGraphic = img;
+            if (onTap != null) b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onTap(); });
+            return (t, img);
+        }
+
+        /// <summary>장수 복귀 (which = null이면 모두 → 깃발 거둠). 거두며 나온 수입은 바로 받는다.</summary>
+        private static void Recall(GameApp app, RectTransform root, string flagKey, List<string> which)
+        {
+            var ctx = app.Context;
+            var end = Loading.Begin(); // 공통 로딩 (H5): 회수 → 수입 받기 → 장부 다시 받기까지
+            ctx.RecallFlag(new RecallRequest { FlagKey = flagKey, GeneralIds = which }, r =>
+            {
+                NamesFetched = false;
+                if (r == null || !r.Ok)
+                {
+                    Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.recall." + r.Reason);
+                    Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
+                    return;
+                }
+                // 거두며 나온 수입 우편은 바로 받는다 (2026-11-16 사용자: 수입은 우편함을 거치지 않고)
+                ctx.ClaimMailWhere(m => m.Kind == MailKinds.TerritoryIncome && m.RegionId == flagKey, sum =>
+                {
+                    string got = sum == null ? null : MailScreen.Amounts(ctx, sum);
+                    Notice = r.Flag == null ? (got != null ? ctx.T("ui.terr.recall.removedGot", got) : ctx.T("ui.terr.recall.removed")) : ctx.T("ui.terr.recall.ok");
+                    Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
+                });
+            });
+        }
+
+        /// <summary>캡처 투어: 깃발 꽂기 판 (지금 위치 자리).</summary>
+        internal static void PlantSheetForTour(GameApp app, RectTransform root)
+        {
+            GeoPoint here = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+            OpenPlantSheet(app, root, here, here, TerritoryFlags.RadiusOf(app.Context.Defs, app.Context.State));
+        }
+
+        /// <summary>캡처 투어: 내 깃발 판 — 내 깃발이 있으면 첫 깃발, 없으면 기본 편성 장수 둘로 만든 보기용 깃발 (누르면 서버가 거절, 그림 확인용).</summary>
+        internal static void FlagSheetForTour(GameApp app, RectTransform root)
+        {
+            var ctx = app.Context;
+            TerritoryOwner flag = null;
+            if (Owners != null) foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId) { flag = o; break; }
+            if (flag == null)
+            {
+                var comps = ctx.State.CompositionsFor(null);
+                var ids = new List<string>();
+                foreach (var c in comps) if (c.GeneralId != null && ids.Count < 2) ids.Add(c.GeneralId);
+                GeoPoint here = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+                flag = new TerritoryOwner
+                {
+                    RegionId = FlagDefs.KeyOf(ctx.Territory.Flags.CellOf(here)), OwnerAccountId = ctx.AccountId, GeneralIds = ids, GeneralId = ids.Count > 0 ? ids[0] : null,
+                    RadiusM = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State), Pending = new Dictionary<string, long> { { "supply", 36000 }, { "gold", 192 } },
+                };
+            }
+            OpenFlagSheet(app, root, flag);
+        }
+
+        /// <summary>[지도] 세그먼트로 바꾸고 그 깃발이 가운데 오게 (내 위치에서 옮긴 양 = 깃발 − 내 위치).</summary>
+        private static void ShowOnMap(GameApp app, TerritoryOwner flag)
+        {
+            var fd = app.Context.Territory?.Flags;
+            Seg = "map";
+            if (fd != null && FlagDefs.TryParseKey(flag.RegionId, out var cell))
+            {
+                GeoPoint here = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+                PanM = new Vector2(
+                    (cell.LonE6 - here.LonE6) * fd.MetersPerDegreeLon / (float)GeoPoint.Scale,
+                    (cell.LatE6 - here.LatE6) * fd.MetersPerDegreeLat / (float)GeoPoint.Scale);
+                Zoom = 1;
+            }
+            app.ShowMain("territory");
+        }
+
+        /// <summary>[내 깃발] 세그먼트: 내가 꽂은 깃발 카드 목록 (여러 곳에 흩어져 지도로 보기 불편해서, 2026-11-27 사용자).</summary>
+        private static void BuildFlagList(GameApp app, RectTransform root, RectTransform page)
+        {
+            var ctx = app.Context;
+            var list = Ui.ScrollList(page, "Flags", 18, 25);
+            Ui.Fill((RectTransform)list.parent.parent);
+            if (!ctx.OnlineEnabled) { Ui.EmptyNote(list, ctx.T("ui.territory.needOnline")); return; }
+            if (Owners == null)
+            {
+                var loading = Ui.EmptyNote(list, ctx.T("ui.hire.loading"));
+                ctx.LoadTerritory(res =>
+                {
+                    if (loading == null) return;
+                    var owners = new Dictionary<string, TerritoryOwner>();
+                    if (res != null) foreach (var o in res.Owners) owners[o.RegionId] = o;
+                    Owners = owners;
+                    app.ShowMain("territory");
+                });
+                return;
+            }
+            var mine = new List<TerritoryOwner>();
+            foreach (var o in Owners.Values) if (o.OwnerAccountId == ctx.AccountId) mine.Add(o);
+            mine.Sort((a, b) => a.SinceUnixSeconds.CompareTo(b.SinceUnixSeconds));
+            if (mine.Count == 0) { Ui.EmptyNote(list, ctx.T("ui.terr.flagsEmpty")); return; }
+            foreach (var o in mine)
+            {
+                var card = Ui.Card(list, "Flag_" + o.RegionId, 22, 10);
+                FlagBody(app, root, card, o, null, true);
+            }
+            if (Notice != null) { Game.Unity.UI.Toast.Show(Notice); Notice = null; }
         }
 
         /// <summary>

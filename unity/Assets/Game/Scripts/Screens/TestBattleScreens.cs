@@ -205,7 +205,7 @@ namespace Game.Unity.Screens
             for (int r = 0; r < 3; r++)
             {
                 int row = ally ? r : 2 - r;
-                var line = Ui.Row(card, "Row" + row, 116, 8);
+                var line = Ui.Row(card, "Row" + row, 116, 12);
                 for (int col = 0; col < 3; col++)
                 {
                     int c = col;
@@ -213,8 +213,19 @@ namespace Game.Unity.Screens
                     string text = u == null ? "+"
                         : (u.Commander ? "★ " : "") + T("troop." + u.Troop) + " · " + T("ui.crowd.general." + u.General) + "\n" + u.Count
                           + (!ally && u.Behavior != CrowdUnitSpec.Behaviors.Hold ? " · " + T("ui.test.behavior." + u.Behavior) : ""); // 진형은 아이콘 (R-141), 적 시작 행동
-                    var b = Ui.Button(line, text, () => OnCell(ally, row, c), 116, u == null ? Palette.Card : (ally ? new Color(0.24f, 0.36f, 0.6f) : new Color(0.58f, 0.24f, 0.2f)), u == null ? 40 : 24);
+                    var team = ally ? new Color(0.24f, 0.36f, 0.6f) : new Color(0.58f, 0.24f, 0.2f);
+                    // 빈 칸 = 팀 색을 아주 옅게 + 얇은 같은 색 테두리 (2026-11-27 사용자: 9칸 영역이 구분 안 됨)
+                    var b = Ui.Button(line, text, () => OnCell(ally, row, c), 116, u == null ? new Color(team.r, team.g, team.b, 0.14f) : team, u == null ? 40 : 24);
                     Ui.Size(b, flexibleWidth: 1);
+                    if (u == null)
+                    {
+                        b.GetComponentInChildren<Text>().color = new Color(team.r, team.g, team.b, 0.75f);
+                        var ring = Ui.Fill(Ui.Rect(b.transform, "Ring"));
+                        var ri = ring.gameObject.AddComponent<Image>();
+                        ri.sprite = UiKit.Ring(Mathf.Max(4, Mathf.RoundToInt(UiStyle.CornerRadius)), 3);
+                        ri.type = Image.Type.Sliced; ri.fillCenter = false; ri.raycastTarget = false;
+                        ri.color = new Color(team.r, team.g, team.b, 0.38f);
+                    }
                     if (u != null)
                     {
                         // 칸 오른쪽에 진형 아이콘 (R-141)

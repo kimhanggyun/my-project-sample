@@ -598,12 +598,17 @@
     "tabs.art": {
       "kind": "tabs",
       "category": "tabs",
-      "label": "그림 세그먼트 (메인)"
+      "label": "대분류 세그먼트 (그림)"
     },
     "tabs.segment": {
       "kind": "tabs",
       "category": "tabs",
-      "label": "세그먼트"
+      "label": "중분류 세그먼트"
+    },
+    "tabs.minor": {
+      "kind": "tabs",
+      "category": "tabs",
+      "label": "소분류 세그먼트 (정렬 · 거르기)"
     },
     "tabs.segment.on": {
       "kind": "tabs",

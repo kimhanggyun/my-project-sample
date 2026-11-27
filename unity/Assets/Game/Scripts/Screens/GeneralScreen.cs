@@ -58,45 +58,39 @@ namespace Game.Unity.Screens
             // 목록에서 고른 정렬 순서 그대로 (2026-11-20 사용자: 좌우로 갈 때 정렬이 안 맞던 것)
             var gs = Game.Flow.GeneralRoster.Sorted(Ctx.Defs, Ctx.State.Generals, GeneralsTabView.Sort);
             int at = gs.FindIndex(x => x.GeneralId == _generalId);
-            var right = Ui.TitleBar(header, T("ui.general.cardTitle"), () => App.ShowMain("general"));
-            Ui.Label(right, (at + 1) + " / " + gs.Count, 24, TextAnchor.MiddleRight, Palette.TextDim);
+            Ui.TitleBar(header, T("ui.general.cardTitle"), () => App.ShowMain("general"));
 
-            var who = Ui.Row(header, "Who", 200, 14);
-            Ui.Size(Ui.Button(who, "◀", () => App.Show(new GeneralScreen(gs[(at - 1 + gs.Count) % gs.Count].GeneralId)), 200, fontSize: 30), 200, 64);
-            var pic = Ui.Rect(who, "Portrait");
-            Ui.Size(pic, 190, 190);
-            new Portrait(pic, 190, true).Show(_generalId, Ctx.GeneralName(_generalId), GradeColor(gdef?.Grade));
-            var id = Ui.Rect(who, "Id");
-            Ui.Size(id, flexibleWidth: 1);
-            Ui.Column(id, 6, 0);
-            Ui.Label(id, Ctx.GeneralName(_generalId), Ui.FontTitle - 10);
-            var tags = Ui.Row(id, "Tags", 44, 8);
-            if (_generalId == AvatarGeneral.GeneralId) Ui.Size(Ui.Tag(tags, T("ui.general.me"), Palette.Seal, 22, 40), width: 80);
-            if (gdef != null) Ui.Size(Ui.Tag(tags, T("grade." + gdef.Grade), GradeColor(gdef.Grade), 22, 40), width: 120);
-            Ui.Size(Ui.Tag(tags, "Lv." + g.Level, new Color(0.16f, 0.13f, 0.1f), 22, 40), width: 120);
+            // 장수 카드 (목록과 같은 장수 카드를 화면 폭으로, 2026-11-27 사용자) + 양옆 둥근 넘기기 · 아래 쪽 점 · 밀어서 넘기기
+            var who = Ui.Rect(header, "Who");
+            Ui.Size(who, 340);
+            var cardHolder = Ui.Rect(who, "CardHolder");
+            Ui.Fill(cardHolder);
+            cardHolder.offsetMin = new Vector2(30, 0);
+            cardHolder.offsetMax = new Vector2(-30, 0);
+            var cardData = Cards.InfoOf(Ctx, g);
+            var extra = new Ui.GeneralDetailExtra();
             long need = Ctx.Defs.Levels.ExpToNext(g.Level);
-            var exp = Ui.Gauge(id, Palette.Ally, 22);
-            Ui.SetGauge(exp, need <= 0 ? 1f : Mathf.Clamp01((float)g.Exp / need));
-            Ui.Label(id, g.Exp.ToString("N0") + " / " + need.ToString("N0") + "   " + T("ui.generals." + g.Status), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            Ui.Size(Ui.Button(who, "▶", () => App.Show(new GeneralScreen(gs[(at + 1) % gs.Count].GeneralId)), 200, fontSize: 30), 200, 64);
-            AddSwipe(who, gs, at);
-
-            // 능력치 타일 (아이콘 + 큰 숫자 + 레벨마다 성장)
-            var statRow = Ui.Row(header, "Stats", 100, 10);
-            foreach (var s in MainStats)
-            {
-                var tile = Ui.Card(statRow, s, 10, 2);
-                long v = CorpsValidator.EffectiveStat(Ctx.Defs, g, s).FloorToLong();
-                string grow = gdef != null && gdef.GrowthRates.TryGetValue(s, out var gr) ? "+" + gr.ToDisplayDouble().ToString("0.#") + "/Lv" : "";
-                Icons.Value(Ctx, tile, s, v.ToString() + "  " + Ui.Colored(grow, Palette.Good), 44, 34);
-            }
-            // 성향 · 특성 꼬리표
-            var traitRow = Ui.Row(header, "Traits", 48, 8);
-            if (gdef != null) Ui.Size(Ui.Tag(traitRow, T("temperament." + gdef.Temperament), Palette.TextDim, 20, 44), width: 140);
+            extra.ExpRatio = need <= 0 ? 1f : Mathf.Clamp01((float)g.Exp / need);
+            extra.ExpText = g.Exp.ToString("N0") + " / " + need.ToString("N0") + "   " + T("ui.generals." + g.Status);
+            if (_generalId == AvatarGeneral.GeneralId) extra.Tags.Add((T("ui.general.me"), Palette.Seal));
+            if (gdef != null) extra.Tags.Add((T("temperament." + gdef.Temperament), Palette.TextDim));
             foreach (var t in g.LearnedTraits)
-                Ui.Size(Ui.Tag(traitRow, Ctx.Defs.Traits.Traits.TryGetValue(t, out var td) ? T(td.NameKey) : t, Palette.Good, 20, 44), width: 140);
+                extra.Tags.Add((Ctx.Defs.Traits.Traits.TryGetValue(t, out var td) ? T(td.NameKey) : t, Palette.Good));
+            for (int i = 0; i < MainStats.Length; i++)
+                extra.Growth[i] = gdef != null && gdef.GrowthRates.TryGetValue(MainStats[i], out var gr) ? "+" + gr.ToDisplayDouble().ToString("0.#") + "/Lv" : null;
+            var detail = Ui.GeneralDetailCard(Ctx, cardHolder, cardData, extra);
+            Ui.Fill(detail);
+            if (gs.Count > 1)
+            {
+                Ui.PagerArrow(who, -1, () => App.Show(new GeneralScreen(gs[(at - 1 + gs.Count) % gs.Count].GeneralId)));
+                Ui.PagerArrow(who, 1, () => App.Show(new GeneralScreen(gs[(at + 1) % gs.Count].GeneralId)));
+                ((RectTransform)who.Find("Prev")).anchoredPosition = new Vector2(30, 0);
+                ((RectTransform)who.Find("Next")).anchoredPosition = new Vector2(-30, 0);
+            }
+            AddSwipe(cardHolder, gs, at);
+            Ui.PageDots(header, at, gs.Count);
             InfoButton.Add(Root, T("ui.general.note"));
-            Ui.SegmentTabs(header, new[] { ("grow", T("ui.general.tab.grow")), ("skill", T("ui.general.tab.skill")), ("record", T("ui.general.tab.record")) }, _tab, t => { _tab = t; App.Show(new GeneralScreen(_generalId)); }, 58, 300);
+            Ui.MidTabs(header, new[] { ("grow", T("ui.general.tab.grow")), ("skill", T("ui.general.tab.skill")), ("record", T("ui.general.tab.record")) }, _tab, t => { _tab = t; App.Show(new GeneralScreen(_generalId)); });
 
             if (_tab == "grow")
             {

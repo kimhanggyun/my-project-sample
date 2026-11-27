@@ -764,6 +764,64 @@ namespace Game.Unity.Boot
                 yield return Shot("43f_formation_1000", () => big, 1.0f);
             }
 
+            // UI 수정 묶음 (2026-11-27 사용자 캡처 10건): 확인 창 좌우 · 영토 [지도 · 내 깃발] · 위아래 바 색 · ⓘ · 테스트 칸 · 장수 상세 · 전투 조작판 · 꾸미기 · 세그먼트 대 · 중 · 소
+            {
+                Game.Unity.Screens.GroupTabView.Selected["army"] = "general";
+                yield return Shot("70a_army_first_entry", () => new MainScreen("general"), 0.05f); // 처음 들어간 직후 고름 표시 (10)
+                yield return Shot("70b_army_troop", () => new MainScreen("troop"), 0.3f); // ⓘ 그림 칸 모서리 · 위 세 영역 색 (4)
+                _app.Show(new MainScreen("general"));
+                yield return null;
+                Ui.Confirm(_app.CurrentRoot, Ctx.T("ui.quit.title"), Ctx.T("ui.quit.body"), Ctx.T("ui.quit.yes"), null, (Ctx.T("ui.common.cancel"), null));
+                yield return Shot("70c_confirm_two_buttons", null, 0.3f); // 버튼 좌우 (1)
+                yield return Shot("70d_recruit_gacha", () => new MainScreen("gacha"), 0.3f);
+                yield return Shot("70e_recruit_hiring", () => new MainScreen("hiring"), 0.6f); // 대 · 중 · 소 세그먼트 · 정렬 단추 · 빈 목록 (9)
+                Game.Unity.Screens.TerritoryTabView.Seg = "map";
+                yield return Shot("70f_territory_map", () => new MainScreen("territory"), 0.8f); // [지도 · 내 깃발] · 오른쪽 띠 (2a · 2b)
+                Game.Unity.Screens.TerritoryTabView.Seg = "flags";
+                yield return Shot("70g_territory_flags", () => new MainScreen("territory"), 0.8f); // 깃발 카드 목록 (2c)
+                Game.Unity.Screens.TerritoryTabView.Seg = "map";
+                _app.Show(new MainScreen("territory"));
+                yield return null;
+                Game.Unity.Screens.TerritoryTabView.FlagSheetForTour(_app, _app.CurrentRoot);
+                yield return Shot("70h_territory_flag_sheet", null, 0.4f); // 내 땅 판 (2d)
+                _app.Show(new MainScreen("territory"));
+                yield return null;
+                Game.Unity.Screens.TerritoryTabView.PlantSheetForTour(_app, _app.CurrentRoot);
+                yield return Shot("70i_territory_plant_sheet", null, 0.4f); // 깃발 꽂기 판 (2d)
+                yield return Shot("70j_test_grid", () => new MainScreen("test"), 0.3f); // 3×3 칸 구분 (5)
+                string firstGeneral = Ctx.State.Generals.Count > 0 ? Ctx.State.Generals[0].GeneralId : null;
+                if (firstGeneral != null) yield return Shot("70k_general_detail", () => new GeneralScreen(firstGeneral), 0.3f); // 장수 카드 · 넘기기 · 세그먼트 폭 (6)
+                var cos = new Game.Unity.Screens.CosmeticScreen("infantry");
+                yield return Shot("70l_cosmetic_top", () => cos, 0.4f); // 공통 자원 바 · ⓘ · 아이콘 (8)
+                cos.ScrollAndTryForTour(0.35f, 4);
+                yield return Shot("70m_cosmetic_scrolled_try", null, 0.4f); // 내려서 입어 보기 → 스크롤 · 미리보기 그대로 (8a)
+                yield return Shot("70n_shop", () => new MainScreen("shop"), 0.3f);
+                yield return Shot("70o_codex", () => new MainScreen("codex"), 0.3f);
+                yield return Shot("70p_settings", () => new SettingsScreen(), 0.3f);
+                yield return Shot("70q_parts_tabs", () => { Game.Unity.Screens.PartsTabView.Pick("tabs", "tabs.art"); return new MainScreen("parts"); }, 0.4f);
+                yield return Shot("70r_parts_minor", () => { Game.Unity.Screens.PartsTabView.Pick("tabs", "tabs.minor"); return new MainScreen("parts"); }, 0.4f);
+                // 전투 조작판 (7): 부대 셋 (장수 이름 · 병종 아이콘) · 위임 불 · [전체] · 명령 아이콘 · 스킬 선택지
+                var fight = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup
+                {
+                    AllyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec>
+                    {
+                        new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 0, Troop = "spearman", General = "standard" },
+                        new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Troop = "cavalry", General = "warrior", Commander = true },
+                        new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 2, Troop = "archer", General = "standard" },
+                    },
+                    EnemyUnits = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = 1, Col = 1, Commander = true } },
+                    AllyAdvance = false, Seed = 7,
+                }, startNow: true);
+                yield return Shot("70s_battle_panel", () => fight, 0.4f);
+                fight.OpenCommandForTour("middle_left", "skill");
+                yield return Shot("70t_battle_skill", null, 0.3f);
+                fight.PressForTour("middle_left", "delegate");
+                fight.OpenCommandForTour("middle_left", "move");
+                yield return Shot("70u_battle_delegate_move", null, 0.3f);
+                fight.SelectAllForTour();
+                yield return Shot("70v_battle_all", null, 0.3f);
+            }
+
             // 화면 스타일 비교 (2026-11-27 사용자: 한지 기본 · 어두움 · 나전칠기 · 백자) — 개발 값은 빼고 데이터 값으로
             {
                 string keepStyle = UiStyle.Current;

@@ -239,10 +239,10 @@ namespace Game.Unity.Screens
             string current = Ctx.State.Difficulty ?? "normal";
             var levels = new List<(string, string)>();
             foreach (var id in Ctx.Defs.Ai.SettingShift.Keys) levels.Add((id, T("ui.difficulty." + id)));
-            Ui.Size(Ui.SegmentTabs(diff, levels, current, id => { Ctx.Do(Game.Flow.PlayerActionRunner.SetDifficulty(id)); Replace(new SettingsScreen()); }, 56, 120), width: 420);
+            Ui.MinorTabs(diff, levels, current, id => { Ctx.Do(Game.Flow.PlayerActionRunner.SetDifficulty(id)); Replace(new SettingsScreen()); });
             Ui.Label(card, T("ui.settings.difficultyNote." + current), 20, TextAnchor.MiddleLeft, Palette.TextDim);
             var speed = Line(card, "速", T("ui.settings.battleSpeed"));
-            Ui.Size(Ui.SegmentTabs(speed, new[] { ("1", "×1"), ("2", "×2"), ("4", "×4") }, Ctx.DefaultBattleSpeed.ToString(), id => { Ctx.SetDefaultBattleSpeed(int.Parse(id)); Replace(new SettingsScreen()); }, 56, 110), width: 380);
+            Ui.MinorTabs(speed, new[] { ("1", "×1"), ("2", "×2"), ("4", "×4") }, Ctx.DefaultBattleSpeed.ToString(), id => { Ctx.SetDefaultBattleSpeed(int.Parse(id)); Replace(new SettingsScreen()); });
         }
 
         // ---- 소리 ----

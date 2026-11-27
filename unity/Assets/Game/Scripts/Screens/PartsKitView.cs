@@ -340,11 +340,16 @@ namespace Game.Unity.Screens
                     Check(Ui.SortieButton(list, "출진", null, 130), true);
                     break;
                 case "tabs.art":
-                    Ui.ArtSegmentTabs(list, new List<(string, string)> { ("general", "장수"), ("troop", "병력"), ("formation", "편성") }, "general", null, 96, (GameApp.ReferenceWidth - 90f) / 3f - 18f);
+                    Ui.MajorTabs(list, new List<(string, string, string)> { ("general", "장수", "fig.general"), ("troop", "병력", "fig.troop5"), ("formation", "편성", "fig.command") }, "general", null);
+                    Ui.MajorTabs(list, new List<(string, string, string)> { ("map", "지도", "fig.globe"), ("flags", "내 깃발", "fig.flags") }, "map", null);
                     break;
                 case "tabs.segment":
                 case "tabs.segment.on":
-                    Ui.SegmentTabs(list, new List<(string, string)> { ("a", "기본"), ("b", "야전"), ("c", "성새전"), ("d", "수상전") }, "a", null, 58, 180);
+                    Ui.MidTabs(list, new List<(string, string)> { ("a", "기본"), ("b", "야전"), ("c", "성새전"), ("d", "수상전") }, "a", null);
+                    break;
+                case "tabs.minor":
+                    Ui.MinorTabs(list, new List<(string, string)> { ("a", "승률순"), ("b", "레벨순"), ("c", "싼 순") }, "a", null);
+                    Ui.MinorTabs(list, new List<(string, string)> { ("a", "장수+부대"), ("b", "장수만"), ("c", "부대만") }, "b", null);
                     break;
                 case "tabs.bottom":
                     {

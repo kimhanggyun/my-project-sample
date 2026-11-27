@@ -117,7 +117,8 @@ namespace Game.Unity.Screens
             name.fontStyle = FontStyle.Bold;
             name.horizontalOverflow = HorizontalWrapMode.Overflow;
             Ui.Fill(name.rectTransform);
-            var infoBox = PlaceRight(Ui.Rect(card, "InfoBox"), 249, 18, 46, 46);
+            // ⓘ = 병사 그림 칸 오른쪽 위 모서리 (2026-11-27 사용자, 이름 줄 끝 → 그림 칸)
+            var infoBox = Ui.Place(Ui.Rect(card, "InfoBox"), 15 + pic - 46 - 8, (CardHeight - pic) / 2f + 8, 46, 46);
             string troopType = u.TroopType;
             Ui.Fill((RectTransform)Ui.SmallInfo(infoBox, anchor => TroopTip(ctx, root, anchor, troopType)).transform);
 
