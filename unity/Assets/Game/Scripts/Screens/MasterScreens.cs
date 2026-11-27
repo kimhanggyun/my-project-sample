@@ -61,17 +61,14 @@ namespace Game.Unity.Screens
         }
     }
     /// <summary>
-    /// 부품 미리보기 탭 (개발 줄, 공통부품.md 0장 4): 공통 부품을 상태별로 늘어놓는다. 스타일 데이터(styles.json parts·pages)를 바꾸면 여기서 한 번에 확인.
+    /// 부품 목록 (부품 꾸미기 화면의 [부품 목록] 칸, 공통부품.md 0장 4): 공통 부품을 상태별로 늘어놓는다. 스타일 데이터(styles.json parts·pages)를 바꾸면 여기서 한 번에 확인.
     /// 화면 문구 없이 부품 이름만 (개발용).
     /// </summary>
-    public sealed class PartsTabView : ITabView
+    public static class PartsListView
     {
-        public void Build(GameApp app, RectTransform root)
+        public static void Fill(GameApp app, RectTransform root, RectTransform list)
         {
             var ctx = app.Context;
-            UiStyle.Page = null;
-            var list = Ui.ScrollList(root, "Parts", 14, 25);
-            Ui.Fill((RectTransform)list.parent.parent);
             void H(string t) => Ui.SectionHeader(list, t);
 
             H("1. 버튼 — button.primary / secondary / small / twoLine / icon");

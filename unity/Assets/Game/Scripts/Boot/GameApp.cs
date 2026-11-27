@@ -42,11 +42,8 @@ namespace Game.Unity.Boot
                 var store = new FileSaveStore(Application.persistentDataPath);
                 // 화면 스타일 (UI 1단계 임시): 개발 빌드는 설정에서 고른 것, 아니면 데이터의 기본
                 UiStyle.Apply(GameDataPaths.Data(), Debug.isDebugBuild && store.Exists(UiStyle.OverrideKey) ? store.Read(UiStyle.OverrideKey) : null);
-                if (_backdrop != null)
-                {
-                    _backdrop.color = Palette.Background;
-                    if (UiStyle.Paper) { _backdrop.sprite = UiArt.Paper; _backdrop.type = Image.Type.Tiled; } // 한지 바탕
-                }
+                UiKit.Load(GameDataPaths.Data()); // 부품 꾸미기 목록 + 개발 값 (ui-kit.md)
+                ApplyBackdrop();
                 Context = GameContext.Create(
                     GameDataPaths.Data(),
                     GameDataPaths.Config(),
@@ -223,6 +220,17 @@ namespace Game.Unity.Boot
 
         /// <summary>화면 전체 배경. 3D 전장처럼 카메라 화면을 보여줄 때 끈다 (화면을 닫을 때 다시 켠다).</summary>
         public void SetBackdrop(bool on) { if (_backdrop != null) _backdrop.enabled = on; }
+
+        /// <summary>화면 바탕: 스타일 색 (한지 무늬) 위에 부품 꾸미기 bg.page. 꾸미기 화면에서 값을 바꾸면 다시 부른다.</summary>
+        public void ApplyBackdrop()
+        {
+            if (_backdrop == null) return;
+            _backdrop.color = Palette.Background;
+            _backdrop.sprite = null;
+            _backdrop.type = Image.Type.Simple;
+            if (UiStyle.Paper) { _backdrop.sprite = UiArt.Paper; _backdrop.type = Image.Type.Tiled; } // 한지 바탕
+            UiKit.Backdrop((RectTransform)_backdrop.transform, "bg.page", Palette.Background);
+        }
 
         /// <summary>지금 보이는 화면 (개발 도구용).</summary>
         public GameScreen CurrentScreen => _current;

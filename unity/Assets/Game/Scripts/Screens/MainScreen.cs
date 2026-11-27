@@ -75,6 +75,8 @@ namespace Game.Unity.Screens
         private readonly string _initial;
         private RectTransform _content;
         private readonly Dictionary<string, Button> _tabButtons = new Dictionary<string, Button>();
+        /// <summary>그림 · 아이콘 탭 칸의 고름 표시 (부품 꾸미기 tabs.bottom).</summary>
+        private readonly Dictionary<string, System.Action<bool>> _tabMarks = new Dictionary<string, System.Action<bool>>();
 
         /// <param name="initialTab">처음 열 탭 id (없으면 첫 번째 사용 탭).</param>
         public MainScreen(string initialTab = null)
@@ -93,6 +95,7 @@ namespace Game.Unity.Screens
             // 위: 자원 칩 3개 + 상점·설정 아이콘 버튼 (시안 04). 자원마다 [+] → 상점 (main-screen.md 1장, economy.md 3.1)
             var top = Ui.Row(Root, "TopBar", TopBarHeight, 16);
             Ui.Background(top, Palette.Bar);
+            UiKit.Backdrop(top, "bg.header", Palette.Bar); // 부품 꾸미기 (ui-kit.md 4.1)
             var topRow = top.GetComponent<HorizontalLayoutGroup>();
             topRow.padding = new RectOffset(20, 20, 18, 18);
             topRow.childForceExpandWidth = false;
@@ -143,11 +146,33 @@ namespace Game.Unity.Screens
                 float h = small ? DevTabBarHeight : TabBarHeight;
                 var barBg = Ui.Rect(Root, small ? "DevTabBar" : "TabBar");
                 Ui.Background(barBg, small ? Palette.Card : Palette.Bar);
+                if (!small) UiKit.Backdrop(barBg, "bg.tabbar", Palette.Bar);
+                string tabVariant = small ? null : UiKit.Spec("tabs.bottom").Variant;
+                if (!small && tabVariant != null && tabVariant != "button") h = UiKit.Spec("tabs.bottom").Num("height", h);
                 Ui.Size(barBg, h);
                 var bar = Ui.HScrollRow(barBg, small ? "DevTabs" : "Tabs", h, 6, 8);
                 Ui.Fill((RectTransform)bar.parent.parent);
                 int visible = small ? VisibleDevTabs : VisibleTabs;
                 float width = Mathf.Max(small ? MinDevTabWidth : MinTabWidth, (GameApp.ReferenceWidth - 16f) / Mathf.Min(visible, rowTabs.Count) - 6f);
+                if (tabVariant != null && tabVariant != "button")
+                {
+                    // 아이콘 · 밑줄 탭 (부품 꾸미기 tabs.bottom, ui-kit.md 4.3)
+                    var items = new List<(string, string)>();
+                    foreach (var t in rowTabs) items.Add((t.Id, T(t.NameKey)));
+                    var cells = UiKit.TabStrip(bar, items, null, id => { Toast.Hide(); var e = rowTabs.Find(x => x.Id == id); if (e != null) Select(e); }, "tabs.bottom", "iconText", h - 16, width, 6,
+                        id => UiKit.TabIcons.TryGetValue(id, out var ic) ? ic : null);
+                    foreach (var t in rowTabs)
+                    {
+                        var c = cells[t.Id];
+                        _tabButtons[t.Id] = c.button;
+                        _tabMarks[t.Id] = c.mark;
+                        bool alert = alerts.Contains(t.Id);
+                        foreach (var kv in Grouped) if (kv.Value.group == t.Id && alerts.Contains(kv.Key)) alert = true;
+                        if (alert && t.Status == MainTabEntry.Active) Dot(c.button);
+                    }
+                    if (rowTabs.Count > visible) Ui.MoreHint(barBg, h, Palette.Bar);
+                    continue;
+                }
                 foreach (var t in rowTabs)
                 {
                     var tab = t;
@@ -225,7 +250,9 @@ namespace Game.Unity.Screens
             if (_view is ILeaveGuard g && _viewId != tab.Id && g.HasUnsaved(App)) { AskLeave(App, g, () => { _view = null; Select(tab); }); return; }
             UiStyle.Page = null;
             Ui.Clear(_content);
-            foreach (var kv in _tabButtons) Ui.Recolor(kv.Value, kv.Key == tab.Id ? Palette.ButtonActive : Palette.Button);
+            foreach (var kv in _tabButtons)
+                if (_tabMarks.TryGetValue(kv.Key, out var mark)) mark(kv.Key == tab.Id);
+                else Ui.Recolor(kv.Value, kv.Key == tab.Id ? Palette.ButtonActive : Palette.Button);
             var root = Ui.Panel(_content, tab.Id);
             ITabView view = tab.Status == MainTabEntry.Active && Views.TryGetValue(tab.Id, out var make) ? make() : new ComingSoonTabView(tab);
             _view = view;
@@ -254,7 +281,7 @@ namespace Game.Unity.Screens
             if (!Selected.TryGetValue(_id, out var seg) || System.Array.FindIndex(_segments, s => s.id == seg) < 0) seg = _segments[0].id;
             Ui.Column(root, 0, 0);
             var bar = Ui.Rect(root, "Segments");
-            Ui.Size(bar, 116);
+            Ui.Size(bar, UiKit.Spec("tabs.art").Num("height", 96) + 20);
             Ui.Background(bar, Palette.Bar);
             var barCol = Ui.Column(bar, 0, 10);
             var items = new List<(string, string)>();

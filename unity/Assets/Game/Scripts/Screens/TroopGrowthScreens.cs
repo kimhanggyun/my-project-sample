@@ -259,7 +259,7 @@ namespace Game.Unity.Screens
             var hh = head.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
             hh.childForceExpandWidth = false;
             hh.childAlignment = TextAnchor.MiddleLeft;
-            Ui.Size(Ui.SecondaryButton(head, "‹", () => app.ShowMain("troop"), 80, 44), 80, 80).flexibleWidth = 0;
+            Ui.Size(Ui.BackButton(head, () => app.ShowMain("troop"), 80), 80, 80).flexibleWidth = 0;
             Ui.TroopPicture(ctx, head, u.TroopType, 80);
             var title = Ui.Label(head, ctx.T("ui.troops.promoteTitle", FormationTabView.TroopName(ctx, u.TroopType)), 48);
             title.font = Ui.TitleFont;

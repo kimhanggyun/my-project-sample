@@ -1,5 +1,5 @@
 {
-  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로 / parts = 부품 역할(또는 스타일 이름) → 모양 (color·textColor·height·fontSize, 정한 것만 — 공통부품.md 0장), pages = 페이지 id → (역할 → 스타일 이름) 덮어쓰기. 2026-11-14 07에서 시작. 2026-11-26 기본을 jaju(먹 바탕 · 자주 강조)로 — 자주는 맵(초록 · 회색 · 갈색 · 물색) · 팀(파랑 · 빨강) · 갑옷 · 말 색과 겹치지 않는 색. accentLight = 밝은 강조(고른 칸 테두리 · 밑줄), line = 판 가장자리 선, pictureBack = 병종 · 장수 그림 뒤 판, track = 막대 빈 바탕, board = 진형 놓기 판, cellOn = 고른 칸, cardStrip = 목록 카드 왼쪽 강조 띠",
+  "_comment": "화면 스타일 (UI 1단계 임시, main-screen.md 2.2). default = 처음 쓰는 스타일. 개발 빌드는 설정 화면에서 바꿔 비교한다 (다시 시작). 색은 #RRGGBB 또는 #RRGGBBAA, cornerRadius = 버튼·카드 모서리(px, 0 = 각진), fontScale = 글자 크기 배율. 아트 방향: 수묵·한지 + 단순 3D 전장 (2026-11-11 결정, ink가 그 시안). paper = 한지 바탕(코드로 만든 질감), inkBorder = 버튼·카드 먹선 테두리, promptBack/promptText = 전장 위 알림판, danger = 지우기·해산 버튼, seal = 낙관 붉은색. 2026-11-13 기본을 ink(수묵·한지)로 / parts = 부품 역할(또는 스타일 이름) → 모양 (color·textColor·height·fontSize, 정한 것만 — 공통부품.md 0장), pages = 페이지 id → (역할 → 스타일 이름) 덮어쓰기. 2026-11-14 07에서 시작. 2026-11-26 기본을 jaju(먹 바탕 · 자주 강조)로 — 자주는 맵(초록 · 회색 · 갈색 · 물색) · 팀(파랑 · 빨강) · 갑옷 · 말 색과 겹치지 않는 색. accentLight = 밝은 강조(고른 칸 테두리 · 밑줄), line = 판 가장자리 선, pictureBack = 병종 · 장수 그림 뒤 판, track = 막대 빈 바탕, board = 진형 놓기 판, cellOn = 고른 칸, cardStrip = 목록 카드 왼쪽 강조 띠. 2026-11-27 parts에 부품 꾸미기 값 (variant · 테마 색 이름 · 조절값, 목록 = uiKit.json, ui-kit.md)",
   "default": "jaju",
   "styles": {
     "basic": {
@@ -101,6 +101,12 @@
     }
   },
   "parts": {
+    "button.primary": { "variant": "round", "radius": 16, "border": "accentLight", "borderWidth": 3 },
+    "button.secondary": { "variant": "round", "radius": 14 },
+    "button.back": { "variant": "bow" },
+    "button.sortie": { "variant": "run", "when": "always", "speed": 1, "border": "accentLight", "borderWidth": 3, "radius": 16 },
+    "tabs.art": { "variant": "group", "height": 96 },
+    "tabs.bottom": { "variant": "iconText", "height": 112 },
     "button.small": {
       "height": 56,
       "fontSize": 24
@@ -110,6 +116,7 @@
       "fontSize": 22
     },
     "tabs.segment": {
+      "variant": "group",
       "height": 58,
       "fontSize": 24
     },

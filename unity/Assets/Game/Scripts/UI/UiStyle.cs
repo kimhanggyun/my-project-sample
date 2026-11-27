@@ -38,6 +38,8 @@ namespace Game.Unity.UI
 
         /// <summary>스타일 이름 → 모양 (styles.json "parts").</summary>
         public static Dictionary<string, PartStyle> Parts { get; } = new Dictionary<string, PartStyle>();
+        /// <summary>스타일 이름 → 값 그대로 (부품 꾸미기 UiKit.Spec: variant · 테마 색 이름 · 조절값).</summary>
+        public static Dictionary<string, JObject> RawParts { get; } = new Dictionary<string, JObject>();
         /// <summary>페이지 → (역할 → 스타일 이름) (styles.json "pages"). 없으면 역할 이름 그대로.</summary>
         public static Dictionary<string, Dictionary<string, string>> Pages { get; } = new Dictionary<string, Dictionary<string, string>>();
         /// <summary>지금 그리는 페이지 id (화면이 그리기 전에 정한다, 예: "formation").</summary>
@@ -59,6 +61,7 @@ namespace Game.Unity.UI
         {
             Available.Clear();
             Parts.Clear();
+            RawParts.Clear();
             Pages.Clear();
             if (data == null || !data.Exists(File)) return;
             var root = JObject.Parse(data.ReadText(File));
@@ -66,6 +69,7 @@ namespace Game.Unity.UI
                 foreach (var p in parts.Properties())
                 {
                     if (!(p.Value is JObject po)) continue;
+                    RawParts[p.Name] = po;
                     var ps = new PartStyle { Height = po.Value<float?>("height") ?? 0, FontSize = po.Value<int?>("fontSize") ?? 0 };
                     if (po.Value<string>("color") is string ch && ColorUtility.TryParseHtmlString(ch, out var cc)) ps.Color = cc;
                     if (po.Value<string>("textColor") is string th && ColorUtility.TryParseHtmlString(th, out var tc)) ps.TextColor = tc;

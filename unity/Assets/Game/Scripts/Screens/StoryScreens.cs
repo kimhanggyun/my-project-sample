@@ -80,7 +80,7 @@ namespace Game.Unity.Screens
             rh.fontStyle = FontStyle.Bold;
             Ui.Label(card, Rewards(ctx, c), 30);
             string id = c.Id;
-            Ui.PrimaryButton(card, ctx.T("ui.story.sortie"), () => app.Show(new StepScreen(id)), 130);
+            Ui.SortieButton(card, ctx.T("ui.story.sortie"), () => app.Show(new StepScreen(id)), 130);
         }
 
         /// <summary>구출: 빨간 테두리 카드 — 이름, 갇힌 장수·남은 기한, [출진].</summary>
@@ -94,7 +94,7 @@ namespace Game.Unity.Screens
                 : ctx.T("ui.rescue.none");
             Ui.Label(card, line, 30, TextAnchor.MiddleLeft, Palette.Bad);
             string id = c.Id;
-            Ui.PrimaryButton(card, ctx.T("ui.story.sortie"), () => app.Show(new StepScreen(id)), 130);
+            Ui.SortieButton(card, ctx.T("ui.story.sortie"), () => app.Show(new StepScreen(id)), 130);
         }
 
         private static void Name(RectTransform card, string text)
@@ -336,7 +336,7 @@ namespace Game.Unity.Screens
 
             var delegated = Ui.Button(footer, T("ui.sortie.delegate"), () => Sortie(step, true), 100);
             Ui.Size(delegated, width: 240);
-            var direct = Ui.PrimaryButton(footer, T("ui.sortie.go"), () => Sortie(step, false), 100);
+            var direct = Ui.SortieButton(footer, T("ui.sortie.go"), () => Sortie(step, false), 100);
             Ui.Size(direct, flexibleWidth: 1);
             Ui.SetEnabled(direct, plan.Ok && hireError == null);
             Ui.SetEnabled(delegated, plan.Ok && hireError == null);
