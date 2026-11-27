@@ -58,7 +58,10 @@ namespace Game.Tests
             var kinds = (JObject)kit["kinds"];
             var arts = (JObject)kit["arts"];
             var bad = new List<string>();
-            foreach (var p in ((JObject)styles["parts"]).Properties())
+            // 공통 parts + 스타일마다 parts (styles.<id>.parts)
+            var all = new List<JProperty>(((JObject)styles["parts"]).Properties());
+            foreach (var st in ((JObject)styles["styles"]).Properties()) if (st.Value["parts"] is JObject sp) all.AddRange(sp.Properties());
+            foreach (var p in all)
             {
                 if (roles[p.Name] == null) continue; // 페이지 덮어쓰기용 스타일 이름 등
                 var kind = (JObject)kinds[(string)roles[p.Name]["kind"]];

@@ -168,6 +168,22 @@ namespace Game.Unity.UI
             return fallback;
         }
 
+        private static readonly string[] AllThemeNames = { "background", "bar", "card", "button", "buttonActive", "buttonDisabled", "text", "textDim", "accentLight", "line",
+            "pictureBack", "track", "board", "cellOn", "good", "bad", "seal", "danger", "ally", "enemy", "overlay", "promptBack", "promptText" };
+        private static Dictionary<string, Color> _initialPalette;
+
+        /// <summary>테마 색을 코드 기본값으로 (처음 부를 때 기본값을 기억). 스타일을 바꿀 때 앞 스타일 색이 남지 않게.</summary>
+        public static void RestorePalette()
+        {
+            if (_initialPalette == null)
+            {
+                _initialPalette = new Dictionary<string, Color>();
+                foreach (var n in AllThemeNames) _initialPalette[n] = ThemeColor(n, Color.magenta);
+                return;
+            }
+            foreach (var kv in _initialPalette) SetThemeColor(kv.Key, kv.Value);
+        }
+
         private static void SetThemeColor(string name, Color c)
         {
             switch (name)
@@ -290,7 +306,9 @@ namespace Game.Unity.UI
             string text = File.ReadAllText(path);
             string nl = text.Contains("\r\n") ? "\r\n" : "\n";
             var root = JObject.Parse(text);
-            if (!(root["parts"] is JObject parts)) { parts = new JObject(); root["parts"] = parts; }
+            // 지금 스타일의 parts에 (스타일마다 자기 부품 값)
+            var styleObj = root["styles"]?[UiStyle.Current] as JObject;
+            if (!(styleObj?["parts"] is JObject parts)) { parts = new JObject(); if (styleObj != null) styleObj["parts"] = parts; else root["parts"] = parts; }
             foreach (var p in _devParts.Properties())
             {
                 if (!(parts[p.Name] is JObject target)) { target = new JObject(); parts[p.Name] = target; }
@@ -327,12 +345,12 @@ namespace Game.Unity.UI
         {
             var spec = Spec(role);
             if (spec.IsEmpty || bg == null) return;
-            string v = spec.Variant ?? "solid";
+            string v = spec.Variant ?? (spec.Has("art") ? "scene" : "solid");
             bg.color = spec.Col("color", bg.color);
             int radius = Mathf.RoundToInt(spec.Num("radius", 24));
             if (v == "framed") { bg.sprite = UiArt.Frame(Mathf.Max(6, radius)); bg.type = Image.Type.Sliced; }
             else { bg.sprite = UiShapes.Rounded(Mathf.Max(2, radius)); bg.type = Image.Type.Sliced; }
-            if (v == "scene")
+            if (v == "scene" || spec.Has("art"))
             {
                 var art = SceneOn(spec.Str("art", "scene.castle"), bg.color, 0.5f);
                 if (art != null)
@@ -353,7 +371,10 @@ namespace Game.Unity.UI
             if (appear != "none") box.gameObject.AddComponent<KitAppear>().Mode = appear;
         }
 
-        /// <summary>화면 제목 꾸밈 (head.title): plain · brush (붓 획 바탕) · underline (강조 밑줄). 제목 색 · 강조 색.</summary>
+        /// <summary>
+        /// 화면 제목 꾸밈 (head.title): plain · brush (붓 획 바탕) · underline (강조 밑줄). 제목 색 · 강조 색.
+        /// 제목을 상자로 감싸 [꾸밈 → 글자] 차례로 그린다 — 붓 획이 글자에서 시작하고 글자 뒤에 깔린다 (뒤로가기를 덮지 않게, 2026-11-27 사용자).
+        /// </summary>
         public static void DressTitle(Text title)
         {
             if (title == null) return;
@@ -364,23 +385,32 @@ namespace Game.Unity.UI
             if (v == "plain") return;
             Color accent = spec.Col("accent", Palette.ButtonActive);
             var rt = title.rectTransform;
-            var deco = Ui.Rect(rt, "KitTitle");
-            deco.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             float w = Mathf.Max(80f, title.preferredWidth);
+            var box = Ui.Rect(rt.parent, "TitleBox");
+            box.SetSiblingIndex(rt.GetSiblingIndex());
+            var tle = title.GetComponent<LayoutElement>();
+            var ble = box.gameObject.AddComponent<LayoutElement>();
+            if (tle != null)
+            {
+                ble.minHeight = tle.minHeight; ble.preferredHeight = tle.preferredHeight; ble.flexibleHeight = tle.flexibleHeight;
+                ble.minWidth = tle.minWidth; ble.flexibleWidth = tle.flexibleWidth; ble.preferredWidth = tle.preferredWidth;
+                tle.ignoreLayout = true;
+            }
+            if (ble.preferredWidth <= 0) ble.preferredWidth = w;
+            rt.SetParent(box, false);
+            Ui.Fill(rt);
+            var deco = Ui.Rect(box, "KitTitle");
+            deco.SetAsFirstSibling();
             var img = deco.gameObject.AddComponent<Image>();
             img.raycastTarget = false;
             if (v == "brush")
             {
                 deco.anchorMin = deco.anchorMax = new Vector2(0f, 0.5f);
                 deco.pivot = new Vector2(0f, 0.5f);
-                deco.sizeDelta = new Vector2(w + 60f, title.fontSize * 1.25f);
-                deco.anchoredPosition = new Vector2(-24f, -4f);
+                deco.sizeDelta = new Vector2(w + 36f, title.fontSize * 1.15f);
+                deco.anchoredPosition = new Vector2(-6f, -4f);
                 img.sprite = UiArt.Brush;
                 img.color = new Color(accent.r, accent.g, accent.b, spec.Num("alpha", 0.55f));
-                deco.SetAsFirstSibling();
-                // 글자 뒤로: 제목 Text는 자기 자식보다 먼저 그려지므로, 붓 획을 제목의 형제로 옮겨 앞에 둔다
-                deco.SetParent(rt.parent, true);
-                deco.SetSiblingIndex(rt.GetSiblingIndex());
             }
             else
             {
@@ -389,6 +419,48 @@ namespace Game.Unity.UI
                 deco.sizeDelta = new Vector2(Mathf.Min(w, 160f), 6f);
                 deco.anchoredPosition = new Vector2(2f, 2f);
                 img.color = accent;
+            }
+        }
+
+        /// <summary>
+        /// 그림 칸 (card.picture): flat · inset (안으로 움푹 — 위 · 왼쪽 안쪽 그림자 + 아래 · 오른쪽 밝은 테, 병사가 카드 안에 서 있는 듯, 2026-11-27 사용자).
+        /// 병종 그림 · 장수 초상 · 꾸미기 그림 뒤 판에 쓴다.
+        /// </summary>
+        public static void PictureWell(Image back)
+        {
+            if (back == null) return;
+            var spec = Spec("card.picture");
+            if (spec.Variant != "inset") return;
+            if (spec.Has("color")) back.color = spec.Col("color", back.color);
+            Layer(back.transform, "KitWell", InsetSprite, new Color(1, 1, 1, Mathf.Clamp01(spec.Num("depth", 0.6f))), Image.Type.Sliced, 0);
+        }
+
+        private static Sprite _inset;
+        private static Sprite InsetSprite
+        {
+            get
+            {
+                if (_inset != null) return _inset;
+                const int n = 48, r = 12;
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                var px = new Color32[n * n];
+                for (int y = 0; y < n; y++)
+                    for (int x = 0; x < n; x++)
+                    {
+                        float cx = x < r ? r : (x >= n - r ? n - r - 1 : x);
+                        float cy = y < r ? r : (y >= n - r ? n - r - 1 : y);
+                        float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+                        float mask = Mathf.Clamp01(r - d + 0.5f);
+                        float top = n - 1 - y, left = x, bottom = y, right = n - 1 - x;
+                        float shadow = Mathf.Pow(Mathf.Max(Mathf.Clamp01(1f - top / 13f), Mathf.Clamp01(1f - left / 13f)), 1.6f) * 0.7f;
+                        float light = Mathf.Max(Mathf.Clamp01(1f - bottom / 5f), Mathf.Clamp01(1f - right / 5f)) * 0.45f;
+                        bool white = light > shadow;
+                        byte c = (byte)(white ? 255 : 0);
+                        px[y * n + x] = new Color32(c, c, c, (byte)(255 * mask * Mathf.Max(shadow, light)));
+                    }
+                tex.SetPixels32(px);
+                tex.Apply();
+                return _inset = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(16, 16, 16, 16));
             }
         }
 
@@ -556,7 +628,7 @@ namespace Game.Unity.UI
             if (spec.IsEmpty) return;
             var own = target.GetComponent<Image>();
             if (own != null) { own.color = new Color(0, 0, 0, 0); own.sprite = null; }
-            string v = spec.Variant ?? "solid";
+            string v = spec.Variant ?? (spec.Has("art") ? "scene" : "solid"); // 그림만 골라도 그림 바탕
             Color c = spec.Col("color", fallback);
             var layer = Ui.Fill(Ui.Rect(target, "KitBg"));
             layer.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
@@ -567,7 +639,7 @@ namespace Game.Unity.UI
             img.color = c;
             if (v == "texture") { img.sprite = UiArt.Paper; img.type = Image.Type.Tiled; }
             else if (v == "gradient") { img.color = Color.white; img.sprite = Gradient(c, spec.Col("color2", Color.Lerp(c, Color.black, 0.35f))); }
-            else if (v == "scene")
+            if (v == "scene" || spec.Has("art")) // 그림은 어느 모양에도 얹는다 (한지 무늬 + 그림 등)
             {
                 layer.gameObject.AddComponent<RectMask2D>();
                 var art = SceneOn(spec.Str("art", "scene.army"), c, spec.Num("blur", 0.4f));
@@ -581,7 +653,7 @@ namespace Game.Unity.UI
                 pic.offsetMin = pic.offsetMax = Vector2.zero;
                 var pi = pic.gameObject.AddComponent<Image>();
                 pi.sprite = art;
-                pi.color = new Color(1, 1, 1, spec.Num("alpha", 0.35f));
+                pi.color = new Color(1, 1, 1, spec.Num("alpha", 0.5f));
                 pi.raycastTarget = false;
                 var fit = pic.gameObject.AddComponent<AspectRatioFitter>();
                 fit.aspectRatio = art.rect.width / art.rect.height;
@@ -633,15 +705,22 @@ namespace Game.Unity.UI
                         break;
                     }
             }
+            if (v != "framed" && spec.Has("frame") && spec.Str("frame", "") != "frame.ink")
+            {
+                // 장식 테두리도 어느 모양에나 (둥근 버튼 + 매듭 등)
+                var f = Layer(b.transform, "KitFrame", FrameTile(spec.Str("frame", "frame.knot")), spec.Col("border", Palette.AccentLight), Image.Type.Tiled);
+                f.fillCenter = false;
+                f.pixelsPerUnitMultiplier = Mathf.Clamp(4f / Mathf.Max(1f, spec.Num("borderWidth", 4)), 0.4f, 2f);
+            }
             float border = spec.Num("borderWidth", 0);
-            if (border > 0 && v != "framed")
+            if (border > 0 && v != "framed" && !spec.Has("frame"))
             {
                 var ring = Layer(b.transform, "KitRing", Ring(v == "square" ? 2 : radius, Mathf.RoundToInt(border)), spec.Col("border", Palette.AccentLight), Image.Type.Sliced);
                 ring.fillCenter = true;
             }
             else Remove(b.transform, "KitRing");
             Color fore = label != null ? label.color : Palette.Text;
-            if (v == "icon" || v == "iconText")
+            if (v == "icon" || (v == "iconText" && spec.Has("icon"))) // 아이콘을 안 고른 iconText는 글자만
             {
                 var sprite = SegmentArt.Icon(spec.Str("icon", "ico.battle"));
                 Remove(b.transform, "KitIcon");
@@ -663,7 +742,7 @@ namespace Game.Unity.UI
                     }
                 }
             }
-            if (v == "scene")
+            if (v == "scene" || spec.Has("art"))
             {
                 var art = SceneOn(spec.Str("art", "scene.flags"), img.color, 0.3f);
                 if (art != null)
@@ -683,7 +762,7 @@ namespace Game.Unity.UI
             var spec = Spec("button.back");
             string v = spec.Variant ?? "chevron";
             float s = spec.Num("size", size);
-            var b = Ui.Button(parent, v == "bow" ? "" : "‹", onBack, s, spec.Col("color", Palette.Button), 40);
+            var b = Ui.Button(parent, v == "bow" || v == "bare" ? "" : "‹", onBack, s, spec.Col("color", v == "bare" ? new Color(0, 0, 0, 0) : Palette.Button), 40);
             Ui.Size(b, s, s + 6);
             var label = b.GetComponentInChildren<Text>();
             Color fore = spec.Col("textColor", label.color);
@@ -695,8 +774,9 @@ namespace Game.Unity.UI
                 Layer(b.transform, "KitRing", Ring(Mathf.RoundToInt(s / 2f), 3), Palette.AccentLight, Image.Type.Sliced);
                 label.transform.SetAsLastSibling();
             }
-            else if (v == "bow")
+            else if (v == "bow" || v == "bare") // bare = 판 없이 활만 (제목과 어울리게)
             {
+                if (v == "bare") { img.sprite = null; img.color = new Color(0, 0, 0, 0); }
                 var icon = Ui.Rect(b.transform, "KitIcon");
                 icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);
                 icon.sizeDelta = new Vector2(s * 0.72f, s * 0.72f);
@@ -788,11 +868,11 @@ namespace Game.Unity.UI
                 foreach (var img in card.GetComponentsInChildren<Image>(true))
                     if (img.transform.parent != null && (img.name == "PicBack" || img.transform.name == "TroopPicture")) img.color = pb;
             }
-            string v = spec.Variant ?? "plain";
+            string v = spec.Variant ?? (spec.Has("art") ? "scene" : "plain");
             Color border = spec.Col("border", v == "grade" && grade.HasValue ? grade.Value : v == "strip" ? Palette.ButtonActive : Palette.AccentLight);
             float bw = spec.Num("borderWidth", v == "grade" ? 4 : 0);
             Remove(card, "KitStrip");
-            if (v == "scene")
+            if (v == "scene" || spec.Has("art"))
             {
                 var art = SceneOn(spec.Str("art", "scene.army"), bg != null ? bg.color : Palette.Card, 0.4f);
                 if (art != null)
@@ -854,6 +934,8 @@ namespace Game.Unity.UI
                 hl.childAlignment = TextAnchor.MiddleCenter;
             }
             float ch = h;
+            KitSlide slide = null;
+            int index = 0;
             if (v == "group")
             {
                 // 묶음: 칸들을 감싸는 둥근 띠 (바탕 + 테두리), 칸 사이 틈 없음
@@ -872,6 +954,16 @@ namespace Game.Unity.UI
                 gl.childAlignment = TextAnchor.MiddleLeft;
                 row = group;
                 ch = h - pad * 2;
+                // 미끄러지는 알약 (세그먼트 이동을 부드럽게, 2026-11-27 사용자)
+                var pill = Ui.Rect(group, "KitPill");
+                pill.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                pill.anchorMin = pill.anchorMax = pill.pivot = new Vector2(0.5f, 0.5f);
+                var pi = pill.gameObject.AddComponent<Image>();
+                pi.sprite = UiShapes.Rounded(Mathf.Max(2, Mathf.RoundToInt(ch / 2f))); pi.type = Image.Type.Sliced; pi.color = onBack; pi.raycastTarget = false;
+                pill.SetSiblingIndex(1);
+                pill.gameObject.SetActive(false);
+                slide = group.gameObject.AddComponent<KitSlide>();
+                slide.Pill = pill;
             }
             foreach (var it in items)
             {
@@ -883,7 +975,19 @@ namespace Game.Unity.UI
                 if (v == "art" || v == "button") { frame.sprite = UiShapes.Rounded(r); frame.type = Image.Type.Sliced; }
                 var b = cell.gameObject.AddComponent<Button>();
                 b.targetGraphic = frame;
-                b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); onSelect?.Invoke(item.id); });
+                int myIndex = index++;
+                if (slide != null)
+                {
+                    slide.Cells.Add(cell);
+                    if (item.id == selected) slide.Index = myIndex;
+                }
+                b.onClick.AddListener(() =>
+                {
+                    Sfx.Play("click", 0.5f);
+                    if (slide == null) { onSelect?.Invoke(item.id); return; }
+                    foreach (var kv in result) kv.Value.Item2(kv.Key == item.id);
+                    slide.MoveTo(myIndex, () => onSelect?.Invoke(item.id));
+                });
                 var fill = Ui.Fill(Ui.Rect(cell, "Fill"));
                 if (v == "art") { fill.offsetMin = new Vector2(4, 4); fill.offsetMax = new Vector2(-4, -4); }
                 var fillImg = fill.gameObject.AddComponent<Image>();
@@ -932,7 +1036,7 @@ namespace Game.Unity.UI
                 void Mark(bool on)
                 {
                     frame.color = v == "art" ? (on ? line : Palette.Line) : new Color(0, 0, 0, 0);
-                    fillImg.color = on ? onBack : v == "group" ? new Color(0, 0, 0, 0) : back;
+                    fillImg.color = v == "group" ? new Color(0, 0, 0, 0) : on ? onBack : back; // 묶음은 미끄러지는 알약이 고름 표시
                     t.color = on ? onText : offText;
                     under.gameObject.SetActive(on && v != "button" && v != "group");
                     if (art != null)
@@ -1052,5 +1156,39 @@ namespace Game.Unity.UI
             else rt.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, e);
             if (_group != null) _group.alpha = e;
         }
+    }
+    /// <summary>묶음 세그먼트의 고름 알약: 처음엔 고른 칸에, 누르면 새 칸으로 0.18초 미끄러진 뒤 고름 처리 (화면 시간).</summary>
+    public sealed class KitSlide : MonoBehaviour
+    {
+        public RectTransform Pill;
+        public readonly List<RectTransform> Cells = new List<RectTransform>();
+        public int Index = -1;
+        private int _from = -1;
+        private float _t0;
+        private Action _done;
+        private bool _placed;
+
+        public void MoveTo(int i, Action done)
+        {
+            if (_done != null) return;
+            if (i == Index || !_placed || i < 0 || i >= Cells.Count) { done?.Invoke(); return; }
+            _from = Index; Index = i; _t0 = Time.unscaledTime; _done = done;
+        }
+
+        private void LateUpdate()
+        {
+            if (Pill == null || Index < 0 || Index >= Cells.Count) return;
+            var to = Cells[Index];
+            if (to.rect.width <= 0f) return;
+            if (!_placed) { Place(to.localPosition, to.rect.size); Pill.gameObject.SetActive(true); _placed = true; return; }
+            if (_from < 0) return;
+            float k = Mathf.Clamp01((Time.unscaledTime - _t0) / 0.18f);
+            float e = 1f - (1f - k) * (1f - k);
+            var a = Cells[_from];
+            Place(Vector3.Lerp(a.localPosition, to.localPosition, e), Vector2.Lerp(a.rect.size, to.rect.size, e));
+            if (k >= 1f) { _from = -1; var d = _done; _done = null; d?.Invoke(); }
+        }
+
+        private void Place(Vector3 p, Vector2 size) { Pill.localPosition = p; Pill.sizeDelta = size; }
     }
 }

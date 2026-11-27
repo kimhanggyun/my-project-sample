@@ -21,7 +21,7 @@ namespace Game.Unity.UI
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0.5f);
             root.pivot = new Vector2(0.5f, 0.5f);
             root.sizeDelta = new Vector2(size, size);
-            var slots = CrowdFormations.Slots(formation, Dots, Fix.OneValue);
+            var slots = CrowdFormations.Slots(formation, Dots, Fix.OneValue, 12, CrowdFormations.DefaultRows); // 아이콘은 작은 길이로 (모양이 보이게, R-157)
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             foreach (var s in slots)
             {
