@@ -1116,7 +1116,12 @@ namespace Game.Battle.Model.Crowd
         public void SetDelegated(int army, bool on)
         {
             if (army < 0 || army >= Armies.Count) return;
-            Armies[army].Delegated = on;
+            var a = Armies[army];
+            bool was = a.Delegated;
+            a.Delegated = on;
+            // R-158 (2026-11-27 사용자): 위임을 끄면 그 자리에서 대기 — AI가 내린 진군 · 공격이 남아 계속 가지 않게.
+            // 직접 명령으로 끄는 곳(명령 줄 · 전장 누르기)은 끈 뒤에 명령을 내리므로 그 명령이 덮는다
+            if (was && !on) OrderHold(army);
         }
 
         /// <summary>한 부대가 예약해 둘 수 있는 경유 지점 수.</summary>
