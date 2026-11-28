@@ -773,6 +773,7 @@ namespace Game.Unity.Screens
         {
             var ctx = app.Context;
             var list = Ui.ScrollList(page, "Flags", 18, 25);
+            ScrollMemory.Keep(list, "territory.flags");
             Ui.Fill((RectTransform)list.parent.parent);
             if (!ctx.OnlineEnabled) { Ui.EmptyNote(list, ctx.T("ui.territory.needOnline")); return; }
             if (Owners == null)
