@@ -61,6 +61,8 @@ namespace Game.Data.Defs
         /// <summary>"core"(상성 순환 6종) 또는 "situational".</summary>
         public string Group { get; internal set; }
         public string Tier { get; internal set; }
+        /// <summary>새 전투(군중 전투) 진형 id (R-160): 편성 진형을 새 전투에서 쓸 때 · 편성 판 아이콘. 없으면 line.</summary>
+        public string Crowd { get; internal set; } = "line";
         /// <summary>칸 id → 장수 기준 위치.</summary>
         public IReadOnlyDictionary<string, SlotOffset> Slots { get; internal set; }
         /// <summary>진형 특성치 (formations.md 2장, R-72). 없으면 모두 0.</summary>

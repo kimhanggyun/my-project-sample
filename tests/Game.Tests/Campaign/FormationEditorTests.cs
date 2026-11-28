@@ -56,6 +56,9 @@ namespace Game.Tests.Campaign
             var added = ed.AddCorps();
             Assert.NotNull(added);
             Assert.False(ed.SetPick(0, "archer", 500));      // 군단마다 병종 하나
+            Assert.True(ed.SetTroop(0, "archer", 500));      // 병종 바꾸기 = 그 칸을 다른 병종으로 (R-159)
+            Assert.Equal(("archer", 500L), (ed.Draft[0].Picks.Single().UnitId, ed.Draft[0].Picks.Single().Troops));
+            Assert.True(ed.SetTroop(0, "infantry", 2000));
             Assert.True(ed.SetPick(1, "cavalry", 1000));
             Assert.Empty(ed.Errors());
             Assert.True(ed.Apply());

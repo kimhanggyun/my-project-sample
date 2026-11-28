@@ -854,6 +854,23 @@ namespace Game.Unity.Boot
                 yield return Shot("71i_battle_icons_centered", null, 0.3f); // 버튼 뒤 아이콘 가운데
             }
 
+            // 편성 새 방식 2단계 (R-159): 3 × 3 판 · 고른 군단 — 대장군으로 잠시 올려 자동 편성한 판 (찍은 뒤 되돌림)
+            {
+                int keepLv = Ctx.State.LordLevel;
+                Ctx.DiscardFormationDraft();
+                Game.Unity.Screens.FormationTabView.Selected = -1;
+                yield return Shot("73a_formation_board", () => new MainScreen("formation"), 0.3f);
+                Ctx.State.LordLevel = 21;
+                Ctx.Formation.AutoFill();
+                yield return Shot("73b_formation_board_full", () => new MainScreen("formation"), 0.3f);
+                Game.Unity.Screens.FormationTabView.Selected = 1;
+                Game.Unity.Screens.FormationTabView.OpenSheet = true;
+                yield return Shot("73c_formation_selected", () => new MainScreen("formation"), 0.3f);
+                Ctx.DiscardFormationDraft();
+                Ctx.State.LordLevel = keepLv;
+                Game.Unity.Screens.FormationTabView.Selected = -1;
+            }
+
             // UI 수정 3차 (2026-11-28): 테스트 탭 맵 분류 [야전 · 성새전 · 수상전]
             {
                 TestBattleTabView.MapCategory = "siege";

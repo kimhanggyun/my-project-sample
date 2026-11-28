@@ -130,6 +130,7 @@ namespace Game.Data.Defs
                     NameKey = JsonUtil.RequireString(f, "nameKey", "formations"),
                     Group = JsonUtil.RequireString(f, "group", "formations"),
                     Tier = JsonUtil.RequireString(f, "tier", "formations"),
+                    Crowd = (string)f["crowd"] ?? "line",
                     Slots = ReadSlots(f),
                     Stats = FormationStats.From(f["stats"] as JObject, "formations.stats"),
                 };
