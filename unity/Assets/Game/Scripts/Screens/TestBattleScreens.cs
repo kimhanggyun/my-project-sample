@@ -105,6 +105,20 @@ namespace Game.Unity.Screens
         /// <summary>샘플전투2 맵 (R-135, 48 × 80 — tools/crowd_maps.js로 만듦). 옛 전투 맵은 옛 전투 · 시험이 그대로 씀.</summary>
         public static readonly string[] Maps = { "crowd_plain", "crowd_highland", "crowd_gorge", "crowd_river", "crowd_marsh", "crowd_forest", "crowd_pass", "crowd_siege", "crowd_siege_plain", "crowd_siege_river", "crowd_siege_mountain" };
 
+        /// <summary>
+        /// 맵 분류 (2026-11-28 사용자: [야전 · 성새전 · 수상전]으로 나눠 고르기). 맵 데이터 battleType은 성 맵도 field라 여기서 나눔 (전투 규칙과 상관없음).
+        /// 수상전 맵은 아직 없음 → 그 분류는 빈 목록.
+        /// </summary>
+        public static readonly string[] MapCategories = { "field", "siege", "naval" };
+        public static string CategoryOf(string mapId) => mapId != null && mapId.StartsWith("crowd_siege") ? "siege" : "field";
+
+        /// <summary>고른 분류 (null = 지금 맵의 분류) · 화면을 다시 그려도 그 자리인 스크롤 (세로 · 분류마다 가로).</summary>
+        private static string _mapCat;
+        /// <summary>캡처 투어: 맵 분류 고르기 (null = 지금 맵의 분류).</summary>
+        internal static string MapCategory { set => _mapCat = value; }
+        private static float _scrollY = 1f;
+        private static readonly Dictionary<string, float> _mapScrollX = new Dictionary<string, float>();
+
         public static string MapName(Game.Unity.Boot.GameContext ctx, string id) => id == "plain" ? ctx.T("ui.test.map.plain") : ctx.T("map." + id);
 
         public void Build(GameApp app, RectTransform root)
@@ -123,6 +137,7 @@ namespace Game.Unity.Screens
             Ui.Clear(_root);
             var list = Ui.ScrollList(_root, "List", 14, 20);
             var scroll = Ui.Fill((RectTransform)list.parent.parent);
+            var vScroll = scroll.GetComponent<ScrollRect>();
             scroll.offsetMin = new Vector2(0f, StartBarHeight); // 아래는 [전투 시작] 자리 (늘 보임, 2026-11-21 사용자)
             InfoButton.Add(_root, T("ui.test.note"));
 
@@ -148,9 +163,17 @@ namespace Game.Unity.Screens
             var mapHead = Ui.Row(list, "MapHead", 64, 12);
             Ui.Size(Ui.Label(mapHead, T("ui.test.map"), Ui.FontBody), flexibleWidth: 1);
             Ui.Size(Ui.Button(mapHead, T("ui.test.view"), () => _app.Show(new MapViewScreen(TestBattleSetup.Map, TestBattleSetup.AllyDefends)), 64, Palette.Button, 24), width: 160);
+            // 맵 분류 [야전 · 성새전 · 수상전] (2026-11-28 사용자) — 소분류, 고른 분류의 맵만
+            string cat = _mapCat ?? CategoryOf(TestBattleSetup.Map);
+            var cats = new List<(string, string)>();
+            foreach (var c in MapCategories) cats.Add((c, T("situation." + c)));
+            Ui.MinorTabs(list, cats, cat, id => { _mapCat = id; Redraw(); });
             // 맵 카드 (R-133): 위 = 적 쪽 미리보기 + 이름
-            var maps = Ui.HScrollRow(list, "Maps", 196);
-            foreach (var m in Maps)
+            var shown = new List<string>();
+            foreach (var m in Maps) if (CategoryOf(m) == cat) shown.Add(m);
+            if (shown.Count == 0) Ui.EmptyNote(list, T("ui.test.noMaps", T("situation." + cat)), 196);
+            var maps = shown.Count == 0 ? null : Ui.HScrollRow(list, "Maps", 196);
+            foreach (var m in shown)
             {
                 string id = m;
                 var b = Ui.Button(maps, MapName(_app.Context, id), () => { TestBattleSetup.Map = id; TestBattleSetup.Save(); Redraw(); }, 180,
@@ -190,6 +213,28 @@ namespace Game.Unity.Screens
             var start = Ui.Button(bar, T("ui.test.start"), Start, StartBarHeight - 20f, Palette.ButtonActive, 32);
             Ui.Fill((RectTransform)start.transform);
             if (!ready) Ui.SetEnabled(start, false);
+
+            // 스크롤 자리 그대로 (2026-11-28 사용자: 맵을 누르면 줄이 맨 앞으로 돌아감 — 화면을 통째로 다시 그려서)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(list);
+            Canvas.ForceUpdateCanvases();
+            if (vScroll != null)
+            {
+                vScroll.verticalNormalizedPosition = _scrollY;
+                vScroll.onValueChanged.AddListener(v => _scrollY = v.y);
+            }
+            var hScroll = maps != null ? maps.GetComponentInParent<ScrollRect>() : null;
+            if (hScroll != null)
+            {
+                if (_mapScrollX.TryGetValue(cat, out var x)) hScroll.horizontalNormalizedPosition = x;
+                else
+                {
+                    // 처음: 고른 맵이 보이게
+                    int at = shown.IndexOf(TestBattleSetup.Map);
+                    hScroll.horizontalNormalizedPosition = at <= 0 || shown.Count <= 1 ? 0f : Mathf.Clamp01((float)at / (shown.Count - 1));
+                }
+                string key = cat;
+                hScroll.onValueChanged.AddListener(v => _mapScrollX[key] = v.x);
+            }
         }
 
         private const float StartBarHeight = 116f;

@@ -49,6 +49,7 @@ namespace Game.Unity.Screens
             if (promote != null && ctx.State.FindUnit(promote) != null) { TroopPromoteView.Build(app, root, promote, Amounts); return; }
 
             var list = Ui.ScrollList(root, "Units", (int)Spacing, 25);
+            ScrollMemory.Keep(list, "troops");
             Ui.Fill((RectTransform)list.parent.parent);
             int roots = 0;
             foreach (var u in ctx.State.Units) if (Depth(ctx, u) == 0) roots++;

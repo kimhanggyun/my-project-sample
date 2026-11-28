@@ -58,6 +58,9 @@ namespace Game.Unity.UI
 
         /// <summary>지금 보이는 중인지 (캡처 · 시험용).</summary>
         public static bool Visible => _view != null && _view.Shown;
+
+        /// <summary>로딩 중인지 (보이기 전 0.25초 포함) — 이 동안 뒤 화면 누름 · 뒤로 키를 막는다 (2026-11-28 사용자).</summary>
+        public static bool Busy => _view != null && _view.Busy;
     }
 
     /// <summary>로딩 겹침 화면: 어두운 바탕(누름 막기) + 가운데 카드의 도는 고리.</summary>
@@ -67,6 +70,9 @@ namespace Game.Unity.UI
         private int _next;
         private Image _dim;
         public bool Shown { get; private set; }
+        /// <summary>로딩 중 (보이기 전 포함): 보이지 않는 막이로 누름을 막는다.</summary>
+        public bool Busy { get; private set; }
+        private Color _dimColor;
         /// <summary>카드 색 = 밝은 한지 (2026-11-20 캡처: Palette.Card는 어두워 다른 화면과 안 맞음).</summary>
         private static readonly Color Paper = new Color(0.96f, 0.93f, 0.86f);
 
@@ -75,7 +81,8 @@ namespace Game.Unity.UI
         public void Build()
         {
             _dim = GetComponent<Image>();
-            _dim.raycastTarget = true; // 보이는 동안 뒤 화면 누름 막기
+            _dimColor = _dim.color;
+            _dim.raycastTarget = true; // 로딩 중 뒤 화면 누름 막기
             Show(false);
         }
 
@@ -186,7 +193,8 @@ namespace Game.Unity.UI
                 _builtVersion = UiKit.Version;
             }
             Shown = on;
-            _dim.enabled = on;
+            _dim.color = on ? _dimColor : new Color(0f, 0f, 0f, 0f); // 보이기 전(0.25초)엔 투명한 막이 — 누름만 막고 깜빡임 없음
+            _dim.enabled = on || Busy;
             for (int i = 0; i < transform.childCount; i++) transform.GetChild(i).gameObject.SetActive(on);
         }
 
@@ -201,8 +209,9 @@ namespace Game.Unity.UI
                 else if (kv.Value < oldest) oldest = kv.Value;
             }
             foreach (var id in expired) _started.Remove(id);
-            bool want = _started.Count > 0 && now - oldest >= Loading.ShowAfter;
-            if (want != Shown) Show(want);
+            bool busy = _started.Count > 0;
+            bool want = busy && now - oldest >= Loading.ShowAfter;
+            if (busy != Busy || want != Shown) { Busy = busy; Show(want); }
             transform.SetAsLastSibling(); // 확인 창 등 뒤에 붙는 것보다 늘 위
         }
     }

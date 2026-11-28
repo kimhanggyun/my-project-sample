@@ -39,7 +39,6 @@ namespace Game.Unity.Boot
                 ("03_terms", () => new TermsScreen(), 0f),
                 ("03b_status_update", () => new AppStatusScreen(new AppStatusResult { UpdateRequired = true }, StartupSteps.VersionCheck), 0f), // 버전 · 점검 (R-118, 2026-11-16)
                 ("03c_status_maintenance", () => new AppStatusScreen(new AppStatusResult { Maintenance = true, MessageKey = AppStatus.DefaultMaintenanceKey, MaintenanceEndsAtUnixSeconds = Ctx.Clock.UtcNow.ToUnixTimeSeconds() + 7200 }, StartupSteps.VersionCheck), 0f),
-                ("04_main_story", () => new MainScreen("story"), 0f),
                 ("05_main_general", () => new MainScreen("general"), 0f),
                 ("06_main_troop", () => new MainScreen("troop"), 0f),
                 ("06c_cosmetic", () => new Game.Unity.Screens.CosmeticScreen("infantry"), 0.3f), // 치장 1단계: 꾸미기 (기본)
@@ -64,8 +63,8 @@ namespace Game.Unity.Boot
                 ("08b_territory_mid", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 3; return new MainScreen("territory"); }, 0f), // 지도 바탕: 중간 줌 (한강)
                 ("08c_territory_far", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 6; return new MainScreen("territory"); }, 0f), // 멀리 줌 (서해 · 반도)
                 ("09_main_hiring", () => { Game.Unity.Screens.TerritoryTabView.Zoom = 1; HiringTabView.Tab = "hire"; return new MainScreen("hiring"); }, 2f), // 목록을 받아 온 뒤 찍기
-                ("10_step", () => new StepScreen(FirstStep()), 0f),
             };
+            if (IncludeOldBattle) shots.Add(("10_step", () => new StepScreen(FirstStep()), 0f)); // 스토리 스텝 (옛 전투 흐름)
             if (Ctx.State.Units.Count > 0) shots.Insert(6, ("06b_troop_promote", () => { TroopGrowthTabView.PreparePromote(Ctx.State.Units[0].UnitId); return new MainScreen("troop"); }, 0f)); // 시안 06 승급 화면
             if (Ctx.State.Units.Count > 0) shots.Add(("07d_disband", () => new DisbandUnitScreen(Ctx.State.Units[0].UnitId), 0f)); // 공통 타이틀 (2026-11-16)
             if (Ctx.State.Generals.Count > 0) shots.Add(("11_general", () => new GeneralScreen(Ctx.State.Generals[0].GeneralId), 0f));
@@ -83,14 +82,12 @@ namespace Game.Unity.Boot
             shots.Add(("14b_replays_shared", () => { ReplayListScreen.Tab = "shared"; return new ReplayListScreen(); }, 1f));
             shots.Add(("15b_profile", () => new ProfileScreen(), 0.5f));
             shots.Add(("22_main_practice", () => new MainScreen("practice"), 0f));
-            shots.Add(("23_main_sample", () => new MainScreen("sampleBattle"), 0f));
             shots.Add(("24_main_prisoner", () => new MainScreen("prisoner"), 0f));
             shots.Add(("25_mail", () => new MailScreen(null, null), 1f));
             shots.Add(("26_main_alliance", () => new MainScreen("alliance"), 1f));
             shots.Add(("27_main_shop", () => { ShopTabView.Tab = ShopTabView.Gold; return new MainScreen("shop"); }, 0f));
             shots.Add(("27b_shop_gem", () => { ShopTabView.Tab = ShopTabView.Gem; return new MainScreen("shop"); }, 0f)); // 상점 위 탭 (2026-11-16)
             shots.Add(("27c_shop_cash", () => { ShopTabView.Tab = ShopTabView.Cash; return new MainScreen("shop"); }, 0f));
-            shots.Add(("28_main_pvp", () => new MainScreen("pvp"), 0f));
 
             System.Action endLoading = null;
             shots.Add(("29_loading", () => { endLoading = Game.Unity.UI.Loading.Begin(); return new MainScreen("territory"); }, 0.6f)); // 공통 로딩 표시 (H5): 0.25초 뒤 보임
@@ -857,6 +854,16 @@ namespace Game.Unity.Boot
                 yield return Shot("71i_battle_icons_centered", null, 0.3f); // 버튼 뒤 아이콘 가운데
             }
 
+            // UI 수정 3차 (2026-11-28): 테스트 탭 맵 분류 [야전 · 성새전 · 수상전]
+            {
+                TestBattleTabView.MapCategory = "siege";
+                yield return Shot("72a_test_maps_siege", () => new MainScreen("test"), 0.3f);
+                TestBattleTabView.MapCategory = "naval";
+                yield return Shot("72b_test_maps_naval", () => new MainScreen("test"), 0.3f);
+                TestBattleTabView.MapCategory = null;
+                yield return Shot("72c_test_maps_field", () => new MainScreen("test"), 0.3f);
+            }
+
             // 화면 스타일 비교 (2026-11-27 사용자: 한지 기본 · 어두움 · 나전칠기 · 백자) — 개발 값은 빼고 데이터 값으로
             {
                 string keepStyle = UiStyle.Current;
@@ -879,7 +886,7 @@ namespace Game.Unity.Boot
                 _app.ApplyBackdrop();
             }
 
-            _app.ShowMain("story");
+            _app.ShowMain(); // 첫 사용 탭 (스토리는 숨김)
             Done = true;
             Debug.Log($"화면 캡처 {Saved.Count}장: {_folder}");
         }

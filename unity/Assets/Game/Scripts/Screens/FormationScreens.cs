@@ -31,6 +31,7 @@ namespace Game.Unity.Screens
             var ed = ctx.Formation;
             var rank = Army.Rank(ctx.Defs, ctx.State);
             var (header, body, footer) = Ui.PageLayout(root);
+            ScrollMemory.Keep(body, "formation." + (ed.Situation ?? ""));
 
             // ---- 고정 머리: 부대 관리 · 장수처럼 제목 줄 (2026-11-27 사용자 "편성 쪽은 타이틀이 안 보여") + 상황 세그먼트 (중분류, 꽉 참) ----
             var top = Ui.HeaderRow(header, ctx.T("ui.seg.formation"), ctx.T("ui.formation.count", ed.Draft.Count));
