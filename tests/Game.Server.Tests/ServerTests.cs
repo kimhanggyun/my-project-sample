@@ -399,7 +399,8 @@ namespace Game.Server.Tests
             var hired = new HireRules(defs).Resolve(new[] { new HireUse { ListingId = seen.Id, Version = seen.Version, Count = 500 } }, id => id == seen.Id ? seen : null, null, state, out var err);
             Assert.Null(err);
             var comps = state.Compositions.Select(Game.Campaign.Roster.FormationEditor.Copy).ToList();
-            comps[0].Picks.Add(new Game.Campaign.Roster.TroopPick { UnitId = HireRules.UnitIdOf(seen.Id), Troops = 500, Hired = true }); // 고용 부대는 계급 칸 밖 (army-v2.md 6장)
+            comps[0].Picks.Clear(); // R-159: 고용 부대는 그 군단의 병종을 대신한다
+            comps[0].Picks.Add(new Game.Campaign.Roster.TroopPick { UnitId = HireRules.UnitIdOf(seen.Id), Troops = 500, Hired = true });
             var plan = flow.Prepare(state, new SortieRequest { StepId = "step01", Seed = 6, Delegate = true, Hired = hired, Compositions = comps });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));
             var sim = new BattleSimulation(plan.Setup);
@@ -445,6 +446,7 @@ namespace Game.Server.Tests
             var bState = StrategyGameModule.FromJson(bSave.Json);
             var hired2 = new HireRules(defs).Resolve(new[] { new HireUse { ListingId = seen.Id, Version = seen.Version, Count = 500 } }, id => id == seen.Id ? seen : null, null, bState, out _);
             var comps2 = bState.Compositions.Select(Game.Campaign.Roster.FormationEditor.Copy).ToList();
+            comps2[0].Picks.Clear();
             comps2[0].Picks.Add(new Game.Campaign.Roster.TroopPick { UnitId = HireRules.UnitIdOf(seen.Id), Troops = 500, Hired = true });
             var plan2 = flow.Prepare(bState, new SortieRequest { StepId = "step01", Seed = 7, Delegate = true, Hired = hired2, Compositions = comps2 });
             var sim2 = new BattleSimulation(plan2.Setup);
