@@ -47,10 +47,10 @@ namespace Game.Tests.Campaign
                 foreach (var (u, n) in picks) c.Picks.Add(new Game.Campaign.Roster.TroopPick { UnitId = u, Troops = n });
                 s.Compositions.Add(c);
             }
-            // 군단마다 3칸 (대장군은 4칸 → 고용 부대를 넣을 빈 칸 하나)
-            Corps("general_a", "fishScale", "vanguard", ("infantry", 4000), ("spearman", 3000), ("cavalry", 2000));
-            Corps("general_b", "craneWing", "flank", ("infantry", 3000), ("cavalry", 4000), ("archer", 2000));
-            Corps("general_c", "square", "rear", ("infantry", 3500), ("spearman", 3000), ("archer", 4000));
+            // R-159: 군단마다 병종 하나 (대장군 = 군단 9개까지). 상성 시험이 쓰는 창병 · 보병 · 궁병 (합 26,500 — 예전 3칸 × 3군단 27,500과 비슷한 힘)
+            Corps("general_a", "fishScale", "vanguard", ("spearman", 8500));
+            Corps("general_b", "craneWing", "flank", ("infantry", 9000));
+            Corps("general_c", "square", "rear", ("archer", 9000));
             return s;
         }
     }
@@ -146,9 +146,11 @@ namespace Game.Tests.Campaign
             Assert.Contains(Flow().Prepare(state, new SortieRequest { StepId = "step01", Supply = 999_999_999 }).Errors, e => e.Contains("군량이 모자"));
             state.Generals[0].Status = GeneralStatus.SeriousInjury;
             Assert.Contains(Flow().Prepare(state, new SortieRequest { StepId = "step01" }).Errors, e => e.Contains("출전할 수 없는"));
-            // 계급의 출진 군단 수(대장군 3)를 넘는 군단은 출진 때 뒤에서부터 뺀다 (R-94)
+            // 계급의 출진 군단 수(천부장 3, R-159)를 넘는 군단은 출진 때 뒤에서부터 뺀다 (R-94)
             var four = new List<CorpsComposition>(Kit.Veteran().Compositions) { Kit.Veteran().Compositions[0] };
-            var plan4 = Flow().Prepare(Kit.Veteran(), new SortieRequest { StepId = "step01", Compositions = four });
+            var st4 = Kit.Veteran();
+            st4.LordLevel = 6;
+            var plan4 = Flow().Prepare(st4, new SortieRequest { StepId = "step01", Compositions = four });
             Assert.Equal(3, plan4.Setup.Corps.Count(c => c.Team == StoryFlow.PlayerTeam));
         }
 

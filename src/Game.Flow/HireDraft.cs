@@ -61,8 +61,9 @@ namespace Game.Flow
                 }
                 else
                 {
-                    // 고용 부대는 계급의 병종 칸 밖에 더한다 (진형 칸 6개까지, army-v2.md 6장)
-                    if (comp.Picks.Count >= Army.MaxPicksPerCorps) { error = "고용 부대를 넣을 빈 칸이 없습니다."; return (null, null); }
+                    // R-159: 한 군단 = 병종 하나 → 고용 부대는 그 군단의 병종을 대신한다 (내 병력은 이번 출진에서 빠짐). 한 군단에 고용 부대 하나
+                    if (comp.Picks.Exists(x => x.Hired)) { error = "한 군단에는 고용 부대를 하나만 넣을 수 있습니다."; return (null, null); }
+                    comp.Picks.Clear();
                     comp.Picks.Add(new TroopPick { UnitId = HireRules.UnitIdOf(l.Id), Troops = p.Count, Hired = true });
                     uses.Add(new HireUse { ListingId = l.Id, Version = l.Version, Count = p.Count });
                 }
@@ -92,7 +93,7 @@ namespace Game.Flow
             if (general == null) return 0;
             long cap = TroopCapCalculator.Cap(_defs.Balance, CorpsValidator.EffectiveStat(_defs, general, "leadership"));
             long used = 0;
-            foreach (var pk in comp.Picks) used += pk.Troops;
+            foreach (var pk in comp.Picks) if (pk.Hired) used += pk.Troops; // R-159: 고용 부대는 내 병종을 대신하므로 내 병력은 자리를 차지하지 않음
             return System.Math.Max(0, System.Math.Min(unitListing.Troops, cap - used));
         }
     }

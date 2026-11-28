@@ -55,7 +55,7 @@ namespace Game.Tests.Campaign
             Assert.False(gone); // 남의 것
         }
 
-        [Fact(DisplayName = "고용 고르기: 장수는 고른 군단의 지휘관으로, 부대는 첫 빈 칸에. 기본 인원은 등록 인원·장수 한도 남은 자리 중 작은 쪽")]
+        [Fact(DisplayName = "고용 고르기: 장수는 고른 군단의 지휘관으로, 부대는 그 군단의 병종을 대신 (R-159). 기본 인원은 등록 인원·장수 한도 중 작은 쪽")]
         public void DraftBuild()
         {
             var fake = new LocalOnlineService(Kit.D, Kit.Source, Kit.Clock());
@@ -63,7 +63,6 @@ namespace Game.Tests.Campaign
             var general = market.First(l => l.Kind == HireKinds.General && l.GeneralId == "enemy_general_04");
             var unit = market.First(l => l.Kind == HireKinds.Unit && l.TroopType == "cavalry");
             var state = Kit.Veteran();
-            state.Compositions[1].Picks.RemoveAt(state.Compositions[1].Picks.Count - 1); // 병종 칸 하나 비움 (대장군 4칸)
             var draft = new HireDraft(Kit.D);
 
             long room = draft.DefaultCount(state, "field", unit, 1);
@@ -73,18 +72,17 @@ namespace Game.Tests.Campaign
             var (comps, hired) = draft.Build(state, "field", "local", out var error);
             Assert.Null(error);
             Assert.Equal("enemy_general_04", comps[2].GeneralId);
-            Assert.Equal(HireRules.UnitIdOf(unit.Id), comps[1].Picks.Last().UnitId);
+            Assert.Equal(HireRules.UnitIdOf(unit.Id), Assert.Single(comps[1].Picks).UnitId); // R-159: 내 병종 대신 고용 부대 하나
             Assert.Equal(state.Compositions[2].Picks.Select(p => (p.UnitId, p.Troops)), comps[2].Picks.Select(p => (p.UnitId, p.Troops))); // 지휘관만 바뀜
             Assert.Equal(2, hired.Uses.Count);
             Assert.Equal("general_c", state.Compositions[2].GeneralId); // 세이브 편성은 그대로
 
-            // 빈 칸이 없는 군단 (u06 넣기 전 general_a 군단은 5칸 → 하나 더 넣으면 꽉 참)
+            // R-159: 한 군단에 고용 부대는 하나만
             var full = new HireDraft(Kit.D);
             full.Picks.Add(new HirePick { Listing = unit, CorpsIndex = 0, Count = 10 });
             full.Picks.Add(new HirePick { Listing = market.First(l => l.Kind == HireKinds.Unit && l.TroopType == "archer"), CorpsIndex = 0, Count = 10 });
-            for (int i = 0; i < 2; i++) full.Picks.Add(new HirePick { Listing = market.First(l => l.Kind == HireKinds.Unit && l.TroopType == "archer"), CorpsIndex = 0, Count = 10 }); // 자기 3칸 + 고용 4칸 > 진형 칸 6
             Assert.Null(full.Build(state, "field", "local", out var e2).compositions);
-            Assert.Contains("빈 칸", e2);
+            Assert.Contains("하나만", e2);
         }
 
         [Fact(DisplayName = "가짜 서버에서 고용 출진 → 같은 시장으로 재현해 반영된다")]

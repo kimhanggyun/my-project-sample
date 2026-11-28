@@ -62,11 +62,11 @@ namespace Game.Tests.Campaign
         public void AutoFill()
         {
             var s = StartingKitService.CreateNewGame(Kit.D);
-            s.LordLevel = 6; // 천부장: 군단 2 · 칸 2
+            s.LordLevel = 6; // 천부장: 군단 3 · 칸 1 (R-159)
             var ed = new FormationEditor(Kit.D, s);
             ed.AutoFill();
-            Assert.Equal(2, ed.Draft.Count);
-            Assert.All(ed.Draft, c => Assert.Equal(2, c.Picks.Count));
+            Assert.Equal(3, ed.Draft.Count);
+            Assert.All(ed.Draft, c => Assert.Single(c.Picks)); // R-159: 군단마다 병종 하나
             Assert.All(ed.Draft, c => Assert.True(c.BoardRow.HasValue && c.BoardCol.HasValue));
             Assert.Single(ed.Draft, c => c.Commander);
             Assert.Empty(ed.Errors());
@@ -78,13 +78,13 @@ namespace Game.Tests.Campaign
         public void AutoFillCorps()
         {
             var s = StartingKitService.CreateNewGame(Kit.D);
-            s.LordLevel = 6; // 천부장: 군단 2 · 칸 2
+            s.LordLevel = 6; // 천부장: 군단 3 · 칸 1 (R-159)
             var ed = new FormationEditor(Kit.D, s);
             ed.AutoFill();
             var other = ed.Draft[1].Picks.Select(p => (p.UnitId, p.Troops)).ToList();
             ed.Draft[0].Picks.Clear();
             ed.AutoFillCorps(0);
-            Assert.Equal(2, ed.Draft[0].Picks.Count);
+            Assert.Single(ed.Draft[0].Picks);
             Assert.True(ed.Troops(0) <= ed.Cap(0));
             Assert.Equal(other, ed.Draft[1].Picks.Select(p => (p.UnitId, p.Troops)).ToList());
             foreach (var u in s.Units) Assert.True(ed.Draft.SelectMany(c => c.Picks).Where(p => p.UnitId == u.UnitId).Sum(p => p.Troops) <= u.Troops);

@@ -113,7 +113,7 @@ namespace Game.Tests.Campaign
             Assert.Equal((4000L, 5000L, 8L), (inf.Troops, inf.Training.Raw, inf.Cohesion.FloorToLong())); // (0.6×3000 + 0.2×1000)/4000 = 0.5
             Assert.Equal("infantry", s.FindUnit("shieldbearer").ParentUnitId);
             Assert.Empty(comp.Slots);
-            Assert.Equal(new[] { ("infantry", 4000L), ("archer", 2000L) }, comp.Picks.Select(p => (p.UnitId, p.Troops)));
+            Assert.Equal(new[] { ("infantry", 4000L) }, comp.Picks.Select(p => (p.UnitId, p.Troops))); // R-159: 병종이 여럿이면 가장 많은 병종 하나만 (궁병 2000은 보유로)
             Assert.False(Army.Normalize(null, s)); // 두 번째는 할 일이 없다
 
             // 세이브를 읽으면 저절로 바뀐다

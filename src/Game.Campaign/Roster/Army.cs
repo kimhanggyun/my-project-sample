@@ -304,6 +304,32 @@ namespace Game.Campaign.Roster
             }
             Convert(s.Compositions);
             if (s.CompositionPresets != null) foreach (var kv in s.CompositionPresets) Convert(kv.Value);
+            if (OneTroopPerCorps(s)) changed = true;
+            return changed;
+        }
+
+        /// <summary>
+        /// R-159 세이브 바꾸기 (2026-11-28): 병종이 여럿인 군단은 인원이 가장 많은 병종 하나만 남긴다 (같으면 앞 칸). 뺀 병사는 묶음에 그대로 있으니 보유 병력으로 돌아간 셈.
+        /// 기본 · 상황별 편성 모두. 바꾼 것이 있으면 true.
+        /// </summary>
+        public static bool OneTroopPerCorps(CampaignState s)
+        {
+            bool changed = false;
+            void Fix1(List<CorpsComposition> comps)
+            {
+                if (comps == null) return;
+                foreach (var c in comps)
+                {
+                    if (c.Picks == null || c.Picks.Count <= 1) continue;
+                    TroopPick keep = null;
+                    foreach (var p in c.Picks) if (keep == null || p.Troops > keep.Troops) keep = p;
+                    c.Picks.Clear();
+                    c.Picks.Add(keep);
+                    changed = true;
+                }
+            }
+            Fix1(s.Compositions);
+            if (s.CompositionPresets != null) foreach (var kv in s.CompositionPresets) Fix1(kv.Value);
             return changed;
         }
     }

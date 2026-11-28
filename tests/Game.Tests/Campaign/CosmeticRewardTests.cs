@@ -17,6 +17,14 @@ namespace Game.Tests.Campaign
         private static CampaignState StartOf(string stepId)
         {
             var s = Kit.Veteran();
+            // R-159: 군단마다 병종 하나 → 옛 전투(스토리, 지금 숨김)에서 step06(군단 3 상한, 적 약 6만)을 이기려면 장수를 키워 통솔 한도까지 채움.
+            // 이 시험은 보상(치장)을 보는 것 — 새 전투 연결 뒤에는 그 전투로 다시
+            foreach (var (i, unit) in new[] { (0, "spearman"), (1, "infantry"), (2, "archer") })
+            {
+                s.FindGeneral(s.Compositions[i].GeneralId).StatGrowth["leadership"] = Game.Foundation.Math.Fix.FromInt(60);
+                Army.EnsurePool(Kit.D, s, unit).Troops = 20_000;
+                s.Compositions[i].Picks[0].Troops = 20_000;
+            }
             foreach (var id in Kit.D.StepIndex.Order) { if (id == stepId) break; if (!s.ClearedSteps.Contains(id)) s.ClearedSteps.Add(id); }
             s.ClearedSteps.Remove(stepId);
             return s;
@@ -117,6 +125,7 @@ namespace Game.Tests.Campaign
             var hired = rules.Resolve(new List<HireUse> { new HireUse { ListingId = "L1", Version = 1, Count = 500 } }, id => id == "L1" ? reg.Listing : null, "hirer", hirer, out var error);
             Assert.Null(error);
             var comps = hirer.Compositions.Select(FormationEditor.Copy).ToList();
+            comps[0].Picks.Clear(); // R-159: 고용 부대는 그 군단의 병종을 대신한다
             comps[0].Picks.Add(new TroopPick { UnitId = HireRules.UnitIdOf("L1"), Troops = 500, Hired = true });
             var plan = new StoryFlow(Kit.D, Kit.Source, Kit.Clock()).Prepare(hirer, new SortieRequest { StepId = "step01", Seed = 1, Hired = hired, Compositions = comps });
             Assert.True(plan.Ok, string.Join("\n", plan.Errors));

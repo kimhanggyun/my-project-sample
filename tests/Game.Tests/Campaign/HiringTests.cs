@@ -87,7 +87,8 @@ namespace Game.Tests.Campaign
         private static List<CorpsComposition> HiredComps(CampaignState hirer, string unitListing, string general)
         {
             var comps = hirer.Compositions.Select(FormationEditor.Copy).ToList();
-            comps[0].Picks.Add(new TroopPick { UnitId = HireRules.UnitIdOf(unitListing), Troops = 500, Hired = true }); // 고용 부대는 계급 칸 밖 (army-v2.md 6장)
+            comps[0].Picks.Clear(); // R-159: 고용 부대는 그 군단의 병종을 대신한다
+            comps[0].Picks.Add(new TroopPick { UnitId = HireRules.UnitIdOf(unitListing), Troops = 500, Hired = true });
             comps[2] = new CorpsComposition { GeneralId = general, Formation = "square", Role = "rear", Picks = { new TroopPick { UnitId = "infantry", Troops = 3500 } } };
             return comps;
         }

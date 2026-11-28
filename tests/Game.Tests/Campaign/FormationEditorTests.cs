@@ -27,21 +27,20 @@ namespace Game.Tests.Campaign
             Assert.True(ed.Apply());
             Assert.Equal(state.LearnedFormations.Last(), state.Compositions[0].Formation);
 
-            // 한도를 넘기면 저장 안 됨: 대장군(칸 4)에서 두 병종 15,000씩 = 30,000 > 통솔 한도(최고 20,000)
+            // 한도를 넘기면 저장 안 됨: 대장군에서 한 병종 30,000 > 통솔 한도(최고 20,000) (R-159: 군단마다 병종 하나)
             state.LordLevel = 21;
-            Army.Pool(state, "infantry").Troops = 15_000;
-            Army.Pool(state, "spearman").Troops = 15_000;
+            Army.Pool(state, "infantry").Troops = 30_000;
             var ed2 = new FormationEditor(Kit.D, state);
             ed2.SetFormation(0, state.LearnedFormations.First());
-            Assert.True(ed2.SetPick(0, "infantry", 15_000));
-            Assert.True(ed2.SetPick(0, "spearman", 15_000));
+            Assert.True(ed2.SetPick(0, "infantry", 30_000));
+            Assert.False(ed2.SetPick(0, "spearman", 100)); // 병종 둘째 칸은 없음
             Assert.True(ed2.Troops(0) > ed2.Cap(0));
             Assert.Contains(ed2.Errors(), e => e.Contains("한도"));
             Assert.False(ed2.Apply());
             Assert.Equal(state.LearnedFormations.Last(), state.Compositions[0].Formation); // 저장된 편성은 그대로
         }
 
-        [Fact(DisplayName = "R-94 계급이 군단 수·병종 칸 수를 정한다 (십부장 1·1, 천부장 2·2), 장수를 바꾸면 맞바꾼다")]
+        [Fact(DisplayName = "R-94 · R-159 계급이 군단 수를 정한다 (십부장 1, 천부장 3), 병종 칸은 늘 1, 장수를 바꾸면 맞바꾼다")]
         public void RankLimits()
         {
             var state = Fresh();
@@ -51,12 +50,12 @@ namespace Game.Tests.Campaign
             Assert.False(ed.SetPick(0, "archer", 500));       // 칸 1개뿐
             Assert.True(ed.SetPick(0, "infantry", 2000));     // 같은 병종은 인원만 바뀜
 
-            state.LordLevel = 6; // 천부장: 군단 2 · 칸 2
+            state.LordLevel = 6; // 천부장: 군단 3 · 칸 1 (R-159)
             ed = new FormationEditor(Kit.D, state);
-            Assert.Equal((2, 2), (ed.MaxCorps, ed.MaxPicks));
+            Assert.Equal((3, 1), (ed.MaxCorps, ed.MaxPicks));
             var added = ed.AddCorps();
             Assert.NotNull(added);
-            Assert.True(ed.SetPick(0, "archer", 500));
+            Assert.False(ed.SetPick(0, "archer", 500));      // 군단마다 병종 하나
             Assert.True(ed.SetPick(1, "cavalry", 1000));
             Assert.Empty(ed.Errors());
             Assert.True(ed.Apply());

@@ -42,6 +42,8 @@ namespace Game.Campaign.Roster
                     total += p.Troops;
                 }
                 if (c.Picks.Count == 0) errors.Add($"장수 '{c.GeneralId}' 군단: 병종 칸이 비어 있음.");
+                // R-159 (2026-11-28 사용자): 한 군단 = 장수 하나 + 병종 하나 (새 전투의 부대 하나). 고용 부대도 그 군단의 병종을 대신할 뿐 더하지 않는다
+                if (c.Picks.Count > 1) errors.Add($"장수 '{c.GeneralId}' 군단: 병종 {c.Picks.Count}가지 (한 군단에 병종 하나).");
                 long cap = TroopCapCalculator.Cap(defs.Balance, EffectiveStat(defs, general, "leadership"));
                 if (total > cap) errors.Add($"장수 '{c.GeneralId}' 군단 병력 {total}이 한도 {cap}를 넘음 ({total - cap} 초과).");
             }

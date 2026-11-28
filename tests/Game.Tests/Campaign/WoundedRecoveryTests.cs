@@ -64,18 +64,20 @@ namespace Game.Tests.Campaign
         [Fact(DisplayName = "R-61/R-94 보충: 편성에 적힌 병종 인원 합까지 (부상병 포함), 계급의 병종 최대 병력을 넘지 않는다")]
         public void RefillLevelsLowestFirst()
         {
-            var s = Kit.Veteran(); // 보병: 군단 셋에 4,000 + 3,000 + 3,500 = 10,500
+            var s = Kit.Veteran(); // R-159: 군단마다 병종 하나 → 세 군단 모두 보병 4,000 + 3,000 + 3,500 = 10,500
+            foreach (var (i, n) in new[] { (0, 4000L), (1, 3000L), (2, 3500L) }) s.Compositions[i].Picks[0] = new TroopPick { UnitId = "infantry", Troops = n };
             var inf = Army.Pool(s, "infantry");
             inf.Troops = 6000;
             inf.Wounded = 500;
             var svc = new TroopService(Kit.D);
             var plan = svc.RefillPlan(s).ToDictionary(p => p.Key, p => p.Value);
             Assert.Equal(10_500 - 6000 - 500, plan["infantry"]);
-            Assert.DoesNotContain("spearman", plan.Keys); // 이미 편성 인원만큼 있다
-            // 계급이 낮으면 병종 최대 병력까지만 (Lv6 천부장 8,000, 군단 2개만 셈 → 보병 7,000)
-            s.LordLevel = 6;
+            Assert.DoesNotContain("spearman", plan.Keys); // 편성에 없는 병종은 보충 없음
+            // 계급이 낮으면 병종 최대 병력까지만 (Lv3 백부장 5,000, 군단 2개만 셈 → 보병 7,000 → 5,000)
+            s.LordLevel = 3;
+            inf.Troops = 3000;
             plan = svc.RefillPlan(s).ToDictionary(p => p.Key, p => p.Value);
-            Assert.Equal(System.Math.Min(4000 + 3000, 8000) - 6500, plan["infantry"]);
+            Assert.Equal(System.Math.Min(4000 + 3000, 5000) - 3500, plan["infantry"]);
         }
 
         [Fact]
