@@ -241,7 +241,56 @@ namespace Game.Server.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await b.GetAsync(OnlineRoutes.SharedReplay(ServerSetup.DefaultGame, "nope"))).StatusCode);
         }
 
-[Fact(DisplayName = "R-113 공성전 준비: 서버가 시작 시각 기록, 수비자 우편에 알림, 다른 공격자는 busy, 준비 중 취소하면 알림도 사라짐, 준비 없이 낸 공성전은 거절")]
+[Fact(DisplayName = "R-163 · R-166 · R-167 깃발전 (서버): 맵 골라 꽂기 → 수비판 저장 (판 + 1) → 공격자가 기기에서 깃발전 → 서버가 명령 기록으로 다시 돌려 반영, 이기고 없애기면 깃발이 사라짐 · R-169 적 깃발 놓기는 마스터만")]
+        public async Task CrowdFlagBattle()
+        {
+            var attacker = await SignedIn();
+            var defender = await SignedIn();
+            const string here = "37.3012,127.3101";
+            var game = ServerSetup.DefaultGame;
+            var dSave = SaveJson.Read((await Read<CloudSave>(await defender.GetAsync(Save))).Json);
+            string dGen = dSave.CompositionsFor(null)[0].GeneralId;
+            var plant = await Read<PlantResponse>(await defender.PostAsync(OnlineRoutes.TerritoryPlant(game), Body(new PlantRequest { Location = here, GeneralId = dGen, MapId = "crowd_forest" })));
+            Assert.True(plant.Ok, plant.Reason);
+            Assert.Equal("crowd_forest", plant.Flag.MapId);
+            string flagKey = plant.Flag.RegionId;
+
+            var board = new DefenseBoard { Places = { new Game.Battle.Model.Crowd.CrowdBoardPlace { GeneralId = dGen, Row = 0, Col = 1, Stance = Game.Battle.Model.Crowd.CrowdStances.Guard } } };
+            var boardRes = await defender.PostAsync(OnlineRoutes.TerritoryBoard(game), Body(new FlagBoardRequest { FlagKey = flagKey, Board = board }));
+            Assert.True(boardRes.StatusCode == HttpStatusCode.OK, await boardRes.Content.ReadAsStringAsync());
+            var flag = (await Read<PlantResponse>(boardRes)).Flag;
+            Assert.Equal(2, flag.Defense.Version);
+            var notMine = await attacker.PostAsync(OnlineRoutes.TerritoryBoard(game), Body(new FlagBoardRequest { FlagKey = flagKey, Board = board }));
+            Assert.Equal((HttpStatusCode)422, notMine.StatusCode);
+
+            // 공격자: 준비 → 기기에서 깃발전 (모두 위임) → 제출 (이기면 없애기)
+            Assert.Equal(HttpStatusCode.OK, (await attacker.PostAsync(OnlineRoutes.TerritorySiege(game), Body(new SiegeRequest { FlagKey = flagKey, Location = here }))).StatusCode);
+            var source = new FileDataSource(DataRoot);
+            var defs = DefinitionSet.Load(source, "ancientwar");
+            var flow = new StoryFlow(defs, source, new ManualTimeProvider(Clock));
+            var aCloud = await Read<CloudSave>(await attacker.GetAsync(Save));
+            var aState = SaveJson.Read(aCloud.Json);
+            flow.Tick(aState);
+            var plan = flow.Prepare(aState, new SortieRequest { StepId = TerritoryBattles.StepIdOf(flagKey), Seed = 9, Delegate = true, Location = here, Defense = flag.Defense });
+            Assert.True(plan.Ok, string.Join("\n", plan.Errors));
+            var battle = FlagBattles.New(defs, source, FlagBattles.Setup(defs, source, plan, "crowd_forest"));
+            for (int t = 0; t < 3500 && !battle.IsOver; t++) battle.Step();
+            var sub = FlagBattles.SubmissionOf(plan, battle, aCloud.Revision, FlagActions.Remove);
+            var res = await attacker.PostAsync(Battles, Body(sub));
+            Assert.True(res.StatusCode == HttpStatusCode.OK, await res.Content.ReadAsStringAsync());
+            var v = await Read<BattleVerdict>(res);
+            Assert.True(v.Valid, v.Reason);
+            Assert.Equal(sub.ClaimedHash, v.Hash);
+            var owners = await Read<TerritoryResponse>(await defender.GetAsync(OnlineRoutes.Territory(game)));
+            bool won = v.Winner == StoryFlow.PlayerTeam;
+            Assert.Equal(!won, owners.Owners.Exists(o => o.RegionId == flagKey));
+
+            // 적 깃발 놓기: 마스터가 아니면 403
+            var seed = await attacker.PostAsync(OnlineRoutes.TerritoryDevSeed(game), Body(new DevSeedRequest { Location = here }));
+            Assert.Equal(HttpStatusCode.Forbidden, seed.StatusCode);
+        }
+
+        [Fact(DisplayName = "R-113 공성전 준비: 서버가 시작 시각 기록, 수비자 우편에 알림, 다른 공격자는 busy, 준비 중 취소하면 알림도 사라짐, 준비 없이 낸 공성전은 거절")]
         public async Task SiegePrepFlow()
         {
             var attacker = await SignedIn();

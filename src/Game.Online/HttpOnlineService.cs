@@ -204,6 +204,16 @@ namespace Game.Online
             _transport.Send("POST", OnlineRoutes.TerritoryRecall(_game), OnlineJson.Write(request), Token, (status, body) =>
                 done?.Invoke(status == 200 || status == 422 ? Parse<RecallResponse>(body) : null));
 
+        /// <summary>200 = 저장, 422 = 거절(까닭). 그 밖은 null.</summary>
+        public void SetFlagBoard(FlagBoardRequest request, Action<PlantResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryBoard(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 || status == 422 ? Parse<PlantResponse>(body) : null));
+
+        /// <summary>200 = 놓은 깃발들. 마스터가 아니면 403 → null.</summary>
+        public void DevSeedFlags(DevSeedRequest request, Action<TerritoryResponse> done) =>
+            _transport.Send("POST", OnlineRoutes.TerritoryDevSeed(_game), OnlineJson.Write(request), Token, (status, body) =>
+                done?.Invoke(status == 200 ? Parse<TerritoryResponse>(body) : null));
+
         /// <summary>200 = 준비 시작, 422 = 거절(까닭). 그 밖은 null.</summary>
         public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) =>
             _transport.Send("POST", OnlineRoutes.TerritorySiege(_game), OnlineJson.Write(request), Token, (status, body) =>

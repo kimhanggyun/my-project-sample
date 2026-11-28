@@ -65,6 +65,15 @@ namespace Game.Unity.Screens
 
         /// <summary>[닫기]로 돌아갈 메인 탭 (테스트 탭에서 열면 "test").</summary>
         private readonly string _returnTab;
+        /// <summary>
+        /// 영지 깃발전 (R-163 · R-166): 끝나면 (전투, take · remove) — 결과 창이 [깃발 뺏기][깃발 없애기] (지면 [결과 보내기]),
+        /// [다시]가 없고, [닫기] = 물러나기 (모두 후퇴시키고 끝까지 돌림 — 서버가 같은 기록으로 확인).
+        /// </summary>
+        public System.Action<CrowdBattle, string> Finish;
+        /// <summary>부대 이름 (영지: 캠페인 장수 이름). 없으면 성향 이름.</summary>
+        public System.Func<CrowdArmy, string> NameOf;
+        private bool Territory => Finish != null;
+        private bool _finished;
 
         /// <param name="speed">시작 배속 (1 · 2 · 4, 시험 탭에서 고름).</param>
         public SampleBattle2Screen(CrowdSetup setup = null, bool startNow = false, string returnTab = "test", int speed = 1)
@@ -82,7 +91,7 @@ namespace Game.Unity.Screens
         public override void Build()
         {
             var rules = CrowdRules.Load(Ctx.Data);
-            if (_setup.Seed <= 1) _setup.Seed = (ulong)Ctx.NewSeed();
+            if (_setup.Seed <= 1 && Finish == null) _setup.Seed = (ulong)Ctx.NewSeed(); // 영지 깃발전은 출진 준비의 시드 그대로 (서버 확인)
             _battle = NewBattle(rules);
             _tickSeconds = (float)rules.TickSeconds.ToDisplayDouble();
             _running = _startNow;
@@ -96,7 +105,7 @@ namespace Game.Unity.Screens
             Ui.Size(_pauseButton, width: 130);
             _speedButton = Ui.Button(top, "", NextSpeed, TopHeight, fontSize: 26);
             Ui.Size(_speedButton, width: 100);
-            Ui.Size(Ui.Button(top, T("ui.sample2.close"), () => App.ShowMain(_returnTab), TopHeight, fontSize: 26), width: 120);
+            Ui.Size(Ui.Button(top, T(Territory ? "ui.flagBattle.withdraw" : "ui.sample2.close"), CloseOrWithdraw, TopHeight, fontSize: 26), width: 120);
 
             App.SetBackdrop(false);
             _field = new CrowdField3D(_battle) {
@@ -580,7 +589,7 @@ namespace Game.Unity.Screens
         private void UseSkill(string skill)
         {
             if (_selected < 0) return;
-            if (skill == CrowdBattle.ArrowRain) { BeginPick("skill:" + skill); return; }
+            if (CrowdBattle.IsAreaSkill(skill)) { BeginPick("skill:" + skill); return; } // 화살비 · 화계 · 낙석: 지점 고르기
             if (!_battle.UseSkill(_selected, skill)) Toast.Show(T("ui.sample2.cantSkill"), bad: true);
             RefreshSkills();
         }
@@ -625,7 +634,7 @@ namespace Game.Unity.Screens
         private void CancelPick()
         {
             if (_pickMode == "queue" && _queued > 0)
-                foreach (var a in Chosen()) a.Waypoints.Clear();
+                foreach (var a in Chosen()) _battle.ClearWaypoints(a.Id); // 명령 기록에 남김 (R-166)
             EndPick();
         }
 
@@ -656,6 +665,7 @@ namespace Game.Unity.Screens
         /// </summary>
         private string GeneralLabel(CrowdArmy a)
         {
+            if (NameOf != null) { var n = NameOf(a); if (!string.IsNullOrEmpty(n)) return n; }
             string name = T("ui.crowd.general." + a.GeneralInfo.Preset);
             int same = 0, mine = 0;
             foreach (var o in _battle.Armies)
@@ -768,7 +778,14 @@ namespace Game.Unity.Screens
                 // 범위 스킬 (화살비): 누른 곳에 (사거리 밖이면 알림)
                 string sk = _pickMode.Substring(6);
                 bool used = _selected >= 0 && _battle.UseSkill(_selected, sk, point);
-                if (!used) Toast.Show(T("ui.sample2.outOfRange"), bad: true);
+                if (!used)
+                {
+                    // 화계는 숲 · 풀에만, 낙석은 높은 곳에서 낮은 곳으로만 (R-164) — 사거리 안인데 못 쓰면 그 까닭
+                    var def = _battle.SkillDef(sk);
+                    bool inRange = _selected >= 0 && def != null && (point - _battle.Armies[_selected].Centroid()).Length <= (def.Range ?? Fix.FromInt(14));
+                    string why = inRange && sk == CrowdBattle.FireAttack ? "ui.sample2.cantFireHere" : inRange && sk == CrowdBattle.Rockfall ? "ui.sample2.cantRockHere" : "ui.sample2.outOfRange";
+                    Toast.Show(T(why), bad: true);
+                }
                 EndPick();
                 return;
             }
@@ -854,7 +871,7 @@ namespace Game.Unity.Screens
             Fix pad = Fix.FromRatio(8, 10), padBack = Fix.FromInt(2); // 뒤쪽은 장수까지
             foreach (var a in _battle.Armies)
             {
-                if (!_battle.Standing(a)) continue;
+                if (!_battle.Standing(a) || _battle.HiddenFrom(a, CrowdBattle.Ally)) continue; // 매복 중인 적은 못 누름 (R-165)
                 var d = p - a.Centroid();
                 Fix lx = d.Dot(a.Right), ly = d.Dot(a.Facing);
                 if (lx < -(a.HalfWidth + pad) || lx > a.HalfWidth + pad || ly > a.HalfDepth + pad || ly < -(a.HalfDepth + padBack)) continue;
@@ -901,6 +918,12 @@ namespace Game.Unity.Screens
                     + " · " + T("ui.sample2.end." + _battle.EndReason) + "  " + head;
             else if (_paused) head = Ui.Colored(T("ui.sample2.paused"), Palette.Bad) + "  " + head;
             _status.text = head + "  " + T("ui.sample2.enemyMorale", System.Math.Max(0, (int)_battle.Commander(CrowdBattle.Enemy).Morale.FloorToLong()));
+            if (_battle.FlagPos.HasValue && !_battle.IsOver) // 깃발전 (R-163): 점령 % · 원 안 공격 / 수비 · 남은 시간 (끝나면 결과 창이 말함)
+            {
+                int left = Mathf.Max(0, Mathf.CeilToInt((float)(_battle.Rules.FlagMaxSeconds.ToDisplayDouble() - _battle.Tick * _battle.Rules.TickSeconds.ToDisplayDouble())));
+                string flag = T("ui.sample2.flag", Mathf.FloorToInt((float)_battle.FlagProgress.ToDisplayDouble()), _battle.FlagAttackersIn, _battle.FlagDefendersIn, left / 60, (left % 60).ToString("00"));
+                _status.text += "\n" + (_battle.FlagDefender == CrowdBattle.Ally ? Ui.Colored(flag, Palette.Bad) : flag);
+            }
             foreach (var kv in _corpsButtons)
             {
                 if (kv.Key < 0) continue;
@@ -955,8 +978,42 @@ namespace Game.Unity.Screens
             Ui.Label(_result, title, 44, TextAnchor.MiddleCenter, _battle.Winner == CrowdBattle.Ally ? Palette.Good : Palette.Bad);
             Ui.Label(_result, T("ui.sample2.end." + _battle.EndReason) + " · " + T("ui.sample2.resultCount", _battle.AliveCount(CrowdBattle.Ally), _battle.AliveCount(CrowdBattle.Enemy)),
                 24, TextAnchor.MiddleCenter, Palette.PromptText);
+            if (Territory)
+            {
+                // 깃발전 (R-163): 이기면 뺏기 · 없애기를 고르고, 지면 그대로 보냄
+                if (_battle.Winner == CrowdBattle.Ally)
+                {
+                    Ui.Label(_result, T("ui.flagBattle.choose"), 22, TextAnchor.MiddleCenter, Palette.PromptText);
+                    var row = Ui.Row(_result, "FlagAction", 84, 12);
+                    Ui.Size(Ui.PrimaryButton(row, T("ui.flagBattle.take"), () => Send(Game.Online.FlagActions.Take), 84, 28), 84, -1, -1, 1);
+                    Ui.Size(Ui.SecondaryButton(row, T("ui.flagBattle.remove"), () => Send(Game.Online.FlagActions.Remove), 84, 28), 84, -1, -1, 1);
+                }
+                else Ui.Button(_result, T("ui.flagBattle.send"), () => Send(Game.Online.FlagActions.Take), 84, Palette.ButtonActive, 28);
+                return;
+            }
             Ui.Button(_result, T("ui.sample2.result.again"), Again, 84, Palette.ButtonActive, 28);
             Ui.Button(_result, T(_returnTab == "test" ? "ui.sample2.result.backTest" : "ui.sample2.result.back"), () => App.ShowMain(_returnTab), 76, Palette.Button, 26);
+        }
+
+        /// <summary>[닫기]: 시험이면 돌아가기, 영지 깃발전이면 물러나기 (묻고, 모두 후퇴 → 끝까지).</summary>
+        private void CloseOrWithdraw()
+        {
+            if (!Territory) { App.ShowMain(_returnTab); return; }
+            if (_battle.IsOver) { ShowResult(); return; }
+            Ui.Confirm(Root, T("ui.flagBattle.withdraw"), T("ui.flagBattle.withdrawAsk"), T("ui.flagBattle.withdraw"), () =>
+            {
+                foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) if (_battle.Standing(a)) { _battle.SetDelegated(a.Id, false); _battle.OrderRetreat(a.Id); }
+                for (int i = 0; i < 20000 && !_battle.IsOver; i++) _battle.Step();
+                UpdateTexts();
+            }, (T("ui.common.cancel"), null));
+        }
+
+        /// <summary>영지 깃발전 결과 보내기 (한 번만).</summary>
+        private void Send(string flagAction)
+        {
+            if (_finished) return;
+            _finished = true;
+            Finish?.Invoke(_battle, flagAction);
         }
 
         /// <summary>같은 설정 · 새 시드로 다시 (바로 시작).</summary>
@@ -1146,6 +1203,61 @@ namespace Game.Unity.Screens
         }
 
         /// <summary>캡처 투어: 전장 한 곳으로 카메라.</summary>
+        /// <summary>캡처 투어: 진지 깃발로 카메라 (깃발전).</summary>
+        public void FocusFlagForTour(float distance)
+        {
+            if (!_battle.FlagPos.HasValue) return;
+            var p = _battle.FlagPos.Value;
+            FocusPointForTour((float)p.X.ToDisplayDouble(), (float)p.Y.ToDisplayDouble(), distance);
+        }
+
+        /// <summary>캡처 투어: 우리 부대 모두 위임 (깃발전 AI가 깃발로).</summary>
+        public void DelegateAllForTour() { foreach (var a in _battle.TeamArmies(CrowdBattle.Ally)) _battle.SetDelegated(a.Id, true); RecolorCommands(); }
+
+        /// <summary>캡처 투어: 우리 부대가 쓸 수 있는 곳 중 적에 가장 가까운 곳에 화계 · 낙석. 쓴 지점 (없으면 null).</summary>
+        public Vector2? AreaSkillForTour(string skill)
+        {
+            var t = _battle.Terrain;
+            if (t == null) return null;
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+            {
+                if (!a.SkillUses.ContainsKey(skill)) continue;
+                int foe = _battle.NearestEnemyArmy(a.Id);
+                var c = foe >= 0 ? _battle.Armies[foe].Centroid() : a.Centroid();
+                Vec best = c; Fix bd = Fix.FromInt(9999); bool found = false;
+                for (int r = 0; r < t.Map.Height; r++)
+                    for (int col = 0; col < t.Map.Width; col++)
+                    {
+                        var p = t.CellCenter(col, r);
+                        var d = (p - c).Length;
+                        if (d >= bd || !_battle.CanUseSkill(a.Id, skill, p)) continue;
+                        bd = d; best = p; found = true;
+                    }
+                if (found && _battle.UseSkill(a.Id, skill, best)) { UpdateTexts(); return new Vector2((float)best.X.ToDisplayDouble(), (float)best.Y.ToDisplayDouble()); }
+            }
+            return null;
+        }
+
+        /// <summary>캡처 투어: 깃발에 가장 가까운 우리 부대 (앞선 부대) 로 카메라.</summary>
+        public void FocusFrontForTour(float distance)
+        {
+            if (!_battle.FlagPos.HasValue) return;
+            var flag = _battle.FlagPos.Value;
+            CrowdArmy front = null; Fix fd = Fix.FromInt(99999);
+            foreach (var a in _battle.TeamArmies(CrowdBattle.Ally))
+            {
+                if (!_battle.Standing(a)) continue;
+                var d = (a.Centroid() - flag).Length;
+                if (d < fd) { fd = d; front = a; }
+            }
+            if (front == null) { FocusFlagForTour(distance); return; }
+            var p = front.Centroid();
+            FocusPointForTour((float)p.X.ToDisplayDouble(), (float)p.Y.ToDisplayDouble(), distance);
+        }
+
+        /// <summary>캡처 투어: 끝까지 돌리고 결과 창.</summary>
+        public void RunToEndForTour() { for (int i = 0; i < 20000 && !_battle.IsOver; i++) _battle.Step(); UpdateTexts(); }
+
         public void FocusPointForTour(float x, float y, float distance)
         {
             _field.Rig.LookAt(_field.ToWorld(new Vec(Fix.FromDecimal((decimal)x), Fix.FromDecimal((decimal)y))));

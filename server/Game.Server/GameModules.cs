@@ -75,6 +75,9 @@ namespace Game.Server
         PlantResponse PlantFlag(string accountId, PlantRequest request);
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         RecallResponse RecallFlag(string accountId, RecallRequest request);
+        PlantResponse SetFlagBoard(string accountId, FlagBoardRequest request);
+        /// <summary>마스터만 (R-169). 아니면 null.</summary>
+        TerritoryResponse DevSeedFlags(string accountId, DevSeedRequest request);
         /// <summary>공성전 준비 시작 · 준비 중 취소 (R-113).</summary>
         SiegeResponse StartSiege(string accountId, SiegeRequest request);
         bool CancelSiege(string accountId, string flagKey);
@@ -252,14 +255,17 @@ namespace Game.Server
                     ?? TerritoryFlags.CheckSiegeReady(_territory, owners, flagKey, accountId, Now)) != null) // 준비 1분 (R-113)
                 return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = save };
             var verdict = BattleVerifier.VerifySave(_defs, _source, save, s, Now, out var json, out var at, out var hired, id => _store.GetListing(Code, id), accountId,
-                _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, TerritoryScope.Keys(region), owners => TerritoryLedger.DefenseOf(owners, region)));
+                _store.HireLog(Code, accountId, Now), region => _store.WithTerritory(Code, TerritoryScope.Keys(region), owners => TerritoryLedger.DefenseOf(owners, region)),
+                region => _store.WithTerritory(Code, TerritoryScope.Keys(region), owners => FlagBattles.MapOf(_territory?.Flags, owners.TryGetValue(region ?? "", out var fo) ? fo : null)));
             if (!verdict.Valid) { verdict.Save = save; return verdict; }
             var (ok, current) = _store.PutSave(Code, accountId, save.Revision, json, at);
             if (!ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.StaleSave, Save = current };
             if (flagKey != null)
             {
                 var after = FromJson(json);
-                _store.WithTerritory(Code, TerritoryScope.Keys(flagKey), owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m), TakeAlert); return 0; });
+                // 하루 잃는 상한 (R-168): 잃은 주인 · 공격자의 다른 깃발도 같이
+                string loser = _store.WithTerritory(Code, TerritoryScope.Keys(flagKey), owners => owners.TryGetValue(flagKey, out var lf) ? lf.OwnerAccountId : null);
+                _store.WithTerritory(Code, TerritoryScope.Keys(flagKey).Or(TerritoryScope.Owner(loser)).Or(TerritoryScope.Owner(accountId)), owners => { TerritoryFlags.AfterSiege(_territory, _defs, owners, flagKey, verdict.Winner == StoryFlow.PlayerTeam, accountId, after, TerritoryFlags.AttackerGeneral(s, after), at, (who, m) => _store.AddMail(Code, who, m), TakeAlert, FlagActions.IsRemove(s.FlagAction)); return 0; });
             }
             else if (TerritoryBattles.Captures(s, verdict))
                 _store.WithTerritory(Code, TerritoryScope.Keys(TerritoryBattles.RegionOf(s.StepId)), owners => { TerritoryLedger.Capture(_territory, owners, TerritoryBattles.RegionOf(s.StepId), accountId, at, (who, m) => _store.AddMail(Code, who, m)); return 0; });
@@ -591,6 +597,17 @@ namespace Game.Server
         {
             var state = FromJson(LoadOrCreate(accountId).Json);
             return _store.WithTerritory(Code, TerritoryScope.Keys(req?.FlagKey), owners => TerritoryFlags.Recall(_territory, _defs, state, accountId, owners, req, Now, (who, m) => _store.AddMail(Code, who, m)));
+        }
+
+        public PlantResponse SetFlagBoard(string accountId, FlagBoardRequest req) =>
+            _store.WithTerritory(Code, TerritoryScope.Keys(req?.FlagKey), owners => TerritoryFlags.SetBoard(_territory, accountId, owners, req, Now));
+
+        public TerritoryResponse DevSeedFlags(string accountId, DevSeedRequest req)
+        {
+            if (!Masters.Contains(accountId) || _territory?.Flags == null || req == null || !Game.Foundation.Geo.GeoPoint.TryParse(req.Location, out var at)) return null;
+            var state = FromJson(LoadOrCreate(accountId).Json);
+            var made = _store.WithTerritory(Code, TerritoryScope.Near(_territory.Flags, at, 30000), owners => TerritoryFlags.DevSeed(_territory, _defs, state, owners, at, Now));
+            return new TerritoryResponse { Owners = made };
         }
 
         public MailListResponse CollectTerritory(string accountId, string regionId = null) =>

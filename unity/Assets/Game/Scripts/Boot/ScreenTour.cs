@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using Game.Battle.Model.Simulation;
 using Game.Flow;
+using Game.Foundation.Geo;
+using Game.Online;
+using Game.Services;
+using Game.Territory;
 using Game.Unity.Screens;
 using Game.Unity.UI;
 using UnityEngine;
@@ -879,6 +883,80 @@ namespace Game.Unity.Boot
                 yield return Shot("72b_test_maps_naval", () => new MainScreen("test"), 0.3f);
                 TestBattleTabView.MapCategory = null;
                 yield return Shot("72c_test_maps_field", () => new MainScreen("test"), 0.3f);
+            }
+
+            // 묶음 A 깃발전 (R-161 ~ R-169, 2026-11-28): 시험 탭 깃발전 · 화계 · 매복 · 함정 · 깃발 게이지 · 영지 결과 고르기 · 수비판 · 정찰 · 공격 화면
+            {
+                bool keepFlag = TestBattleSetup.FlagBattle; string keepTraps = TestBattleSetup.Traps;
+                TestBattleSetup.FlagBattle = true; TestBattleSetup.Traps = "both";
+                yield return Shot("74a_test_flag_mode", () => new MainScreen("test"), 0.3f);
+                TestBattleSetup.FlagBattle = keepFlag; TestBattleSetup.Traps = keepTraps;
+
+                var CU = (System.Func<int, int, string, int, bool, Game.Battle.Model.Crowd.CrowdUnitSpec>)((r, c, troop, n, cmd) => new Game.Battle.Model.Crowd.CrowdUnitSpec { Row = r, Col = c, Troop = troop, Count = n, Commander = cmd, Behavior = Game.Battle.Model.Crowd.CrowdUnitSpec.Behaviors.Delegate });
+                var fa = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { CU(0, 1, "infantry", 160, true), CU(0, 0, "cavalry", 80, false), CU(1, 1, "archer", 120, false) };
+                foreach (var u in fa) u.Behavior = Game.Battle.Model.Crowd.CrowdUnitSpec.Behaviors.Hold;
+                fa[2].General = "strategist";
+                var fe = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { CU(1, 1, "spearman", 140, true), CU(0, 0, "infantry", 100, false), CU(0, 2, "archer", 80, false) };
+                fe[1].Ambush = true;
+                var fsetup = new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = fa, EnemyUnits = fe, AllyAdvance = false, EnemyAdvance = false, Seed = 43, FlagBattle = true,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_forest") };
+                fsetup.Traps = TestBattleTabView.TrapsBefore(_app.Context, fsetup, Game.Battle.Model.Crowd.CrowdBattle.Enemy, "both");
+                var fb = new SampleBattle2Screen(fsetup, startNow: true);
+                yield return Shot("74b_flag_battle_start", () => fb, 0.5f);
+                fb.FocusFlagForTour(34f);
+                yield return Shot("74c_flag_camp", null, 0.3f); // 진지 깃발 · 원 (매복은 안 보임)
+                var fire = fb.AreaSkillForTour(Game.Battle.Model.Crowd.CrowdBattle.FireAttack);
+                if (fire.HasValue)
+                {
+                    fb.StepForTour(40);
+                    fb.FocusPointForTour(fire.Value.x, fire.Value.y, 26f);
+                    yield return Shot("74d_fire_spreads", null, 0.3f);
+                    fb.StepForTour(160);
+                    fb.FocusPointForTour(fire.Value.x, fire.Value.y, 26f);
+                    yield return Shot("74e_fire_burnt", null, 0.3f);
+                }
+                fb.DelegateAllForTour();
+                for (int k = 0; k < 4; k++) { fb.StepForTour(k == 0 ? 150 : 300); if (k < 2) fb.FocusFrontForTour(30f); else fb.FocusFlagForTour(30f); yield return Shot($"74f_flag_push_{k}", null, 0.2f); } // 앞선 부대 (함정 · 매복 드러남) → 깃발 (게이지)
+
+                // 영지 깃발전 결과: 이기면 [깃발 뺏기][깃발 없애기]
+                var wa = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { CU(0, 1, "infantry", 300, true), CU(0, 0, "cavalry", 200, false), CU(0, 2, "spearman", 200, false) };
+                var we = new System.Collections.Generic.List<Game.Battle.Model.Crowd.CrowdUnitSpec> { CU(1, 1, "infantry", 40, true) };
+                var tw = new SampleBattle2Screen(new Game.Battle.Model.Crowd.CrowdSetup { AllyUnits = wa, EnemyUnits = we, AllyAdvance = false, EnemyAdvance = false, Seed = 47, FlagBattle = true,
+                    Terrain = TestBattleTabView.TerrainOf(_app.Context, "crowd_plain") }, startNow: true, returnTab: "territory") { Finish = (b, act) => { } };
+                yield return Shot("74g_territory_flag_battle", () => tw, 0.4f);
+                tw.RunToEndForTour();
+                yield return Shot("74h_territory_result_choice", null, 0.6f);
+
+                // 수비판 · 남의 깃발 정찰 · 깃발 공격 화면
+                var comps = Ctx.State.CompositionsFor(null);
+                var gids = new System.Collections.Generic.List<string>();
+                foreach (var c in comps) if (c.GeneralId != null && gids.Count < 3) gids.Add(c.GeneralId);
+                GeoPoint here = FakeLocationService.Default;
+                var fdefs = Ctx.Territory.Flags;
+                var snap = TerritoryDefenses.SnapshotGenerals(Ctx.Defs, Ctx.State, gids, out _);
+                if (snap != null && gids.Count > 0)
+                {
+                    snap.Version = 2;
+                    snap.Board = new DefenseBoard
+                    {
+                        Places = { new Game.Battle.Model.Crowd.CrowdBoardPlace { GeneralId = gids[0], Row = 1, Col = 1, Stance = Game.Battle.Model.Crowd.CrowdStances.Guard } },
+                        Traps = { new BoardTrap { Kind = Game.Battle.Model.Crowd.CrowdTrapKinds.Pit, X = Game.Foundation.Math.Fix.FromInt(30), Y = Game.Foundation.Math.Fix.FromInt(64) } },
+                    };
+                    if (gids.Count > 1) snap.Board.Places.Add(new Game.Battle.Model.Crowd.CrowdBoardPlace { GeneralId = gids[1], Row = 0, Col = 0, Stance = Game.Battle.Model.Crowd.CrowdStances.Hold, Ambush = true });
+                    var mineFlag = new TerritoryOwner { RegionId = FlagDefs.KeyOf(fdefs.CellOf(here)), OwnerAccountId = Ctx.AccountId, GeneralIds = gids, GeneralId = gids[0], RadiusM = 3000, MapId = "crowd_forest", Defense = snap };
+                    yield return Shot("74i_defense_board", () => new Game.Unity.Screens.FlagBoardScreen(mineFlag), 0.4f);
+                    var rivalFlag = new TerritoryOwner { RegionId = FlagDefs.KeyOf(fdefs.CellOf(new GeoPoint(here.LatE6 + 6000, here.LonE6 + 2000))), OwnerAccountId = "bot-2", GeneralIds = gids, GeneralId = gids[0], RadiusM = 3000, MapId = "crowd_pass", Defense = snap };
+                    _app.Show(new MainScreen("territory"));
+                    yield return null;
+                    Game.Unity.Screens.TerritoryTabView.OtherFlagSheetForTour(_app, _app.CurrentRoot, rivalFlag);
+                    yield return Shot("74j_rival_flag_scout", null, 0.4f);
+                    // 공격 화면은 받아 둔 깃발 목록에서 주인 · 전장을 찾음 → 잠깐 넣었다 뺌
+                    var owners = Game.Unity.Screens.TerritoryTabView.Owners;
+                    bool added = owners != null && !owners.ContainsKey(rivalFlag.RegionId);
+                    if (added) owners[rivalFlag.RegionId] = rivalFlag;
+                    yield return Shot("74k_flag_sortie", () => new TerritorySortieScreen(rivalFlag.RegionId, here.ToString(), snap), 0.5f);
+                    if (added) owners.Remove(rivalFlag.RegionId);
+                }
             }
 
             // 화면 스타일 비교 (2026-11-27 사용자: 한지 기본 · 어두움 · 나전칠기 · 백자) — 개발 값은 빼고 데이터 값으로

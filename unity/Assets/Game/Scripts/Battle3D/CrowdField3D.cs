@@ -148,7 +148,126 @@ namespace Game.Unity.Battle3D
             var stoneM = Own(NewMaterial(new Color(0.5f, 0.49f, 0.46f)));
             stoneM.enableInstancing = true;
             _stoneBatch = new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { stoneM }, Matrix4x4.identity);
-            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs, _woodBatch, _stoneBatch }) _allBatches.Add(b);
+            // 깃발전 · 화계 · 함정 (R-163 ~ R-165): 불 (주황, 일렁임) · 탄 땅 (검게) · 깃발 천 (지키는 편 색) · 함정 (구덩이 어둡게 · 마름쇠 쇠빛)
+            _fireBatch = CubeBatch(new Color(1f, 0.5f, 0.12f));
+            _emberBatch = CubeBatch(new Color(0.98f, 0.82f, 0.3f));
+            _burntBatch = CubeBatch(new Color(0.16f, 0.14f, 0.12f));
+            _flagAllyBatch = CubeBatch(AllyColor);
+            _flagEnemyBatch = CubeBatch(EnemyColor);
+            _pitBatch = CubeBatch(new Color(0.2f, 0.15f, 0.1f));
+            _spikeBatch = CubeBatch(new Color(0.55f, 0.57f, 0.6f));
+            foreach (var b in new[] { _allyGeneral, _enemyGeneral, _allyLegs, _enemyLegs, _allyCavLegs, _enemyCavLegs, _arrowBatch, _allyHorseLegs, _enemyHorseLegs, _woodBatch, _stoneBatch,
+                _fireBatch, _emberBatch, _burntBatch, _flagAllyBatch, _flagEnemyBatch, _pitBatch, _spikeBatch }) _allBatches.Add(b);
+        }
+
+        private InstanceBatch _fireBatch, _emberBatch, _burntBatch, _flagAllyBatch, _flagEnemyBatch, _pitBatch, _spikeBatch;
+
+        private InstanceBatch CubeBatch(Color c)
+        {
+            var m = Own(NewMaterial(c));
+            m.enableInstancing = true;
+            return new InstanceBatch(Resources.GetBuiltinResource<Mesh>("Cube.fbx"), new[] { m }, Matrix4x4.identity);
+        }
+
+        /// <summary>
+        /// 깃발 · 불 · 탄 땅 · 떨어지는 돌 · 함정 (R-163 ~ R-165).
+        /// 함정은 우리 것은 늘, 적 것은 밟혀 드러난 뒤에만 (시야).
+        /// </summary>
+        private void DrawField(float now)
+        {
+            var t = _battle.Terrain;
+            if (t != null && (_battle.Burning.Count > 0 || _battle.BurntCells.Count > 0))
+            {
+                int w = t.Map.Width;
+                float cs = (float)t.CellSize.ToDisplayDouble();
+                foreach (int cell in _battle.BurntCells)
+                {
+                    var p = ToWorld(t.CellCenter(cell % w, cell / w));
+                    _burntBatch.Matrices.Add(Matrix4x4.TRS(p + Vector3.up * 0.03f, Quaternion.identity, new Vector3(cs, 0.04f, cs)));
+                }
+                // 칸마다 작은 불꽃 셋 (겉 주황 · 속 노랑), 칸 안 자리는 칸 번호로 흩음 — 칸 크기 상자는 너무 커 보임 (2026-11-28 캡처)
+                float tongue = Mathf.Min(0.45f, cs * 0.2f);
+                foreach (var kv in _battle.Burning)
+                {
+                    int cell = kv.Key;
+                    var p = ToWorld(t.CellCenter(cell % w, cell / w));
+                    for (int f = 0; f < 3; f++)
+                    {
+                        float ang = cell * 2.1f + f * 2.09f, off = cs * (0.18f + 0.1f * f);
+                        var q = p + new Vector3(Mathf.Cos(ang) * off, 0f, Mathf.Sin(ang) * off);
+                        float k = Mathf.Sin(now * (8f + f * 1.3f) + cell * 1.7f + f * 2f) * 0.5f + 0.5f; // 일렁임
+                        float h = 0.35f + 0.55f * k;
+                        var rot = Quaternion.Euler(0f, 45f + cell * 37f + f * 30f, 0f);
+                        _fireBatch.Matrices.Add(Matrix4x4.TRS(q + Vector3.up * (h * 0.5f), rot, new Vector3(tongue, h, tongue)));
+                        _emberBatch.Matrices.Add(Matrix4x4.TRS(q + Vector3.up * (h * 0.32f), rot, new Vector3(tongue * 0.55f, h * 0.62f, tongue * 0.55f)));
+                    }
+                }
+            }
+            // 떨어지는 돌: 떨어진 뒤 1초 동안 위에서 굴러 내려와 멈춤
+            float tickSec = (float)_battle.Rules.TickSeconds.ToDisplayDouble();
+            float rad = (float)_battle.Rules.RockRadius.ToDisplayDouble();
+            foreach (var (tick, at) in _battle.RockEvents)
+            {
+                float age = now - tick * tickSec;
+                if (age < 0f || age > 3f) continue;
+                var c = ToWorld(at);
+                for (int k = 0; k < 7; k++)
+                {
+                    float ang = k * 2.4f, r = rad * (0.25f + 0.11f * k);
+                    var land = c + new Vector3(Mathf.Cos(ang) * r, 0.25f, Mathf.Sin(ang) * r);
+                    float fall = Mathf.Clamp01(age / 0.45f);
+                    var p = land + Vector3.up * (6f * (1f - fall));
+                    _stoneBatch.Matrices.Add(Matrix4x4.TRS(p, Quaternion.Euler(k * 40f + age * 200f * (1f - fall), k * 70f, 0f), Vector3.one * (0.45f + 0.08f * (k % 3))));
+                }
+            }
+            // 함정
+            float tr = (float)_battle.Rules.TrapRadius.ToDisplayDouble();
+            foreach (var trap in _battle.Traps)
+            {
+                if (trap.Team != CrowdBattle.Ally && !trap.Revealed) continue;
+                var c = ToWorld(trap.Pos);
+                if (trap.Kind == CrowdTrapKinds.Pit)
+                    _pitBatch.Matrices.Add(Matrix4x4.TRS(c + Vector3.up * 0.02f, Quaternion.Euler(0f, 45f, 0f), new Vector3(tr * 1.6f, 0.05f, tr * 1.6f)));
+                else
+                    for (int k = 0; k < 9; k++)
+                    {
+                        var p = c + new Vector3((k % 3 - 1) * tr * 0.7f, 0.12f, (k / 3 - 1) * tr * 0.7f);
+                        _spikeBatch.Matrices.Add(Matrix4x4.TRS(p, Quaternion.Euler(45f, k * 30f, 45f), Vector3.one * 0.22f));
+                    }
+            }
+            // 진지 깃발 (R-163): 장대 + 천 (지키는 편 색), 바람에 살짝
+            if (_battle.FlagPos.HasValue)
+            {
+                var c = ToWorld(_battle.FlagPos.Value);
+                _woodBatch.Matrices.Add(Matrix4x4.TRS(c + Vector3.up * 2.2f, Quaternion.identity, new Vector3(0.12f, 4.4f, 0.12f)));
+                float wave = Mathf.Sin(now * 3f) * 8f;
+                var cloth = _battle.FlagDefender == CrowdBattle.Ally ? _flagAllyBatch : _flagEnemyBatch;
+                cloth.Matrices.Add(Matrix4x4.TRS(c + new Vector3(0.75f, 3.8f, 0f), Quaternion.Euler(0f, wave, 0f), new Vector3(1.4f, 0.9f, 0.05f)));
+            }
+        }
+
+        /// <summary>깃발 고리: 점령 게이지만큼 공격 편 색으로 채운 원 (반지름 flagRadius).</summary>
+        private LineRenderer _flagRing, _flagFill;
+
+        private void DrawFlagRing()
+        {
+            if (!_battle.FlagPos.HasValue) return;
+            if (_flagRing == null) { _flagRing = Ring("FlagRing", new Color(1f, 1f, 1f, 0.55f), 0.12f); _flagFill = Ring("FlagFill", new Color(1f, 0.85f, 0.25f), 0.22f); _flagFill.loop = false; }
+            var c = ToWorld(_battle.FlagPos.Value);
+            float r = (float)_battle.Rules.FlagRadius.ToDisplayDouble();
+            if (!_flagRing.gameObject.activeSelf) _flagRing.gameObject.SetActive(true);
+            Circle(_flagRing, c, r);
+            float p = Mathf.Clamp01((float)(_battle.FlagProgress.ToDisplayDouble() / 100.0));
+            _flagFill.gameObject.SetActive(p > 0.001f);
+            if (p <= 0.001f) return;
+            int n = Mathf.Max(2, Mathf.CeilToInt(RingSegments * p) + 1);
+            _flagFill.positionCount = n;
+            for (int i = 0; i < n; i++)
+            {
+                float a = Mathf.PI / 2f - i / (float)(n - 1) * p * Mathf.PI * 2f;
+                float px = c.x + Mathf.Cos(a) * r, pz = c.z + Mathf.Sin(a) * r;
+                _flagFill.SetPosition(i, new Vector3(px, Ground.StandHeight(px, pz) + 0.14f, pz));
+            }
         }
 
         /// <summary>규칙 (x, y) → 월드 (x, 0, y): 우리 편(작은 y)이 화면 아래, 적이 위.</summary>
@@ -281,6 +400,7 @@ namespace Game.Unity.Battle3D
                         : SoldierBatch(s, age < FlashSeconds ? 2 : s.Team, age < FlashSeconds ? 2 : 1)).Add(p, rot);
                     continue;
                 }
+                if (s.Team != CrowdBattle.Ally && _battle.Armies[s.Army].Hidden) continue; // 매복 중인 적은 안 보임 (R-165)
                 // 바라볼 방향: 치는 중이면 대상, 걸으면 걷는 쪽, 아니면 군 앞
                 Vector3 look = Vector3.zero;
                 bool attacking = s.LastAttackTick >= 0 && _battle.Tick - s.LastAttackTick < _battle.Rules.AttackTicks && (s.LastTargetId >= 0 || s.HitStructure);
@@ -394,8 +514,10 @@ namespace Game.Unity.Battle3D
             }
             DrawArrows(now, tickSec);
             DrawSiege(now);
+            DrawField(now);
             DrawDust(now, tickSec);
             DrawRings(alpha);
+            DrawFlagRing();
             // 흔들림: 카메라를 제자리로 맞춘 뒤 조금 흔든다 (금방 잦아듦)
             Rig.Refresh();
             if (_shake > 0.001f)
@@ -721,7 +843,7 @@ namespace Game.Unity.Battle3D
             float now = (_battle.Tick + alpha) * tickSec;
             foreach (var ev in _battle.SkillEvents)
             {
-                if (ev.Skill == CrowdBattle.ArrowRain)
+                if (CrowdBattle.IsAreaSkill(ev.Skill))
                 {
                     if (now > ev.LandTick * tickSec + 0.3f) continue;
                     var def = _battle.SkillDef(ev.Skill);

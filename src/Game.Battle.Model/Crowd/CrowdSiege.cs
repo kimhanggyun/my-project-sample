@@ -71,7 +71,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>공성 명령 (R-145). 고를 수 없는 명령이면 무시.</summary>
-        public void OrderSiege(int army, string task)
+        private void OrderSiegeCore(int army, string task)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             bool ok = false;

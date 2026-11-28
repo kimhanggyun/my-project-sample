@@ -215,6 +215,10 @@ namespace Game.Battle.Model.Crowd
         /// <summary>이번 틱 시작 때 살아 있는 병사 가운데 (옆 · 뒤 판정의 기준).</summary>
         public Vec TickCentroid;
         public int LastHitTick = -9999;
+        /// <summary>매복 (R-165): 전투 전 매복으로 놓은 부대 · 지금 적에게 안 보임.</summary>
+        public bool Ambush, Hidden;
+        /// <summary>바깥 이름 (CrowdUnitSpec.Key).</summary>
+        public string Key;
 
         public int AliveCount
         {
@@ -261,6 +265,12 @@ namespace Game.Battle.Model.Crowd
         public string General = "standard";
         /// <summary>시작 행동 (2026-11-23 사용자, 시험 탭 적 부대): hold 대기 (기본) · advance 진군 · delegate 위임 (AI가 지휘).</summary>
         public string Behavior = Behaviors.Hold;
+        /// <summary>매복 (R-165): 숲 · 풀에 놓이면 적이 가까이 오거나 먼저 칠 때까지 안 보임.</summary>
+        public bool Ambush;
+        /// <summary>장수 능력치 (없으면 성향 기본값) — 캠페인 장수로 싸울 때 (깃발전).</summary>
+        public int? Might, Intellect;
+        /// <summary>바깥 이름 (캠페인 군단 id 등, 결과를 돌려줄 때). 규칙은 읽지 않음.</summary>
+        public string Key;
 
         public static class Behaviors { public const string Hold = "hold", Advance = "advance", Delegate = "delegate"; }
 
@@ -294,6 +304,11 @@ namespace Game.Battle.Model.Crowd
         public ulong Seed = 1;
         /// <summary>지형 맵 (R-133). 없으면 평지 (fieldWidth × fieldDepth), 있으면 전장 크기 = 맵 크기 × mapCellSize, 배치는 맵의 시작 자리 기준.</summary>
         public CrowdTerrain Terrain;
+        /// <summary>깃발전 (R-163): 수비 편 총대장 시작 자리에 진지 깃발, 점령 · 시간 끝 = 수비 승.</summary>
+        public bool FlagBattle;
+        public int FlagDefender = CrowdBattle.Enemy;
+        /// <summary>전투 전 함정 (R-165).</summary>
+        public List<CrowdTrapSpec> Traps;
     }
 
     /// <summary>
@@ -415,6 +430,7 @@ namespace Game.Battle.Model.Crowd
                 if (a.StartBehavior == CrowdUnitSpec.Behaviors.Delegate) a.Delegated = true;
                 else if (a.StartBehavior == CrowdUnitSpec.Behaviors.Advance) OrderAdvance(a.Id);
             }
+            SetupField(setup); // 깃발 · 함정 · 매복 (R-163 · R-165), 여기서부터 명령 기록 (R-166)
         }
 
         public CrowdArmy Commander(int team)
@@ -589,8 +605,10 @@ namespace Game.Battle.Model.Crowd
                 int row = System.Math.Max(0, System.Math.Min(2, u.Row)), col = System.Math.Max(0, System.Math.Min(2, u.Col));
                 int count = System.Math.Max(1, System.Math.Min(Rules.GridMaxCount, u.Count));
                 var form = CrowdFormations.IsKnown(u.Formation) ? u.Formation : CrowdFormations.Line;
-                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops, Rules.TroopTuning), u.General);
+                var a = MakeArmy(team, CrowdUnitSpec.RowIds[row] + "_" + CrowdUnitSpec.ColIds[col], k == cmd, form, count, facing, CrowdTroop.Of(u.Troop, troops, Rules.TroopTuning), u.General, u.Might, u.Intellect);
                 a.StartBehavior = u.Behavior;
+                a.Key = u.Key;
+                a.Ambush = u.Ambush;
                 Fix back = _gridRowPitch * row;
                 a.Center = new Vec(mid + _gridColPitch * (col - 1), team == Ally ? frontY - back : frontY + back);
                 foreach (var s in a.Soldiers) s.Pos = a.SlotWorld(s.Slot);
@@ -902,10 +920,12 @@ namespace Game.Battle.Model.Crowd
         public Fix AptitudePp(CrowdArmy a) =>
             Rules.AptitudePp.TryGetValue(a.GeneralInfo.AptitudeOf(a.Troop.BaseId), out var pp) ? pp : Fix.Zero;
 
-        private CrowdArmy MakeArmy(int team, string place, bool commander, string formation, int count, Vec facing, CrowdTroop troop, string general = "standard")
+        private CrowdArmy MakeArmy(int team, string place, bool commander, string formation, int count, Vec facing, CrowdTroop troop, string general = "standard", int? might = null, int? intellect = null)
         {
             var a = new CrowdArmy { Id = Armies.Count, Team = team, Place = place, IsCommander = commander, Formation = formation, Facing = facing, StartCount = count, Troop = troop };
             a.GeneralInfo = GeneralFrom(general);
+            if (might.HasValue) a.GeneralInfo.Might = might.Value;         // 캠페인 장수 능력치 (깃발전, R-163)
+            if (intellect.HasValue) a.GeneralInfo.Intellect = intellect.Value;
             a.SpeedFactor = troop.Speed / Rules.BaseSpeedStat;
             a.Morale = Rules.MoraleStart;
             var slots = SoldierSlots(a, formation, count, out var hole);
@@ -944,7 +964,7 @@ namespace Game.Battle.Model.Crowd
         // ---- 명령 ----
 
         /// <summary>자동 행군 켜기 · 끄기 (R-136). 끄면 숲 · 좁은 길에서도 진형을 지킨다.</summary>
-        public void SetAutoMarch(int army, bool on)
+        private void SetAutoMarchCore(int army, bool on)
         {
             if (army < 0 || army >= Armies.Count) return;
             Armies[army].AutoMarch = on;
@@ -955,7 +975,7 @@ namespace Game.Battle.Model.Crowd
         /// 대열 바꾸기: 새 모양 자리를 병사들에게 다시 나눠 준다 (지금 위치의 좌우 순서를 지켜 서로 덜 엇갈리게).
         /// 병사는 다음 틱부터 새 자리로 걸어간다 (맞붙은 병사는 싸움을 계속).
         /// </summary>
-        public void SetFormation(int army, string formation)
+        private void SetFormationCore(int army, string formation)
         {
             if (!CrowdFormations.IsKnown(formation) || IsOver || army < 0 || army >= Armies.Count) return;
             var a = Armies[army];
@@ -985,7 +1005,7 @@ namespace Game.Battle.Model.Crowd
             Measure(a, slots);
         }
 
-        public void OrderHold(int army)
+        private void OrderHoldCore(int army)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
@@ -1032,7 +1052,7 @@ namespace Game.Battle.Model.Crowd
         /// 땅 한 곳으로 이동 (가면서 만나는 적과는 싸운다, 도착하면 제자리).
         /// append = true면 예약 (R-129): 지금 이동 중이면 그 뒤 경유 지점으로 붙이고, 아니면 바로 간다.
         /// </summary>
-        public void OrderMove(int army, Vec point, bool append = false, bool march = false)
+        private void OrderMoveCore(int army, Vec point, bool append, bool march)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
@@ -1054,7 +1074,7 @@ namespace Game.Battle.Model.Crowd
         /// <summary>
         /// 경로 이동 (R-132, 손으로 그린 길): 점들을 차례로 지나간다 (MaxPathPoints까지). thenAttack이 적 부대면 끝에 닿은 뒤 그 부대를 공격.
         /// </summary>
-        public void OrderPath(int army, IReadOnlyList<Vec> points, int thenAttack = -1)
+        private void OrderPathCore(int army, IReadOnlyList<Vec> points, int thenAttack)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading || points == null || points.Count == 0) return;
             var a = Armies[army];
@@ -1065,7 +1085,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>진군 (R-132): 진형을 지킨 채 적 쪽 끝으로 곧게 (만나는 적과 싸움, 가까워지면 돌격).</summary>
-        public void OrderAdvance(int army)
+        private void OrderAdvanceCore(int army)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
@@ -1075,7 +1095,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>후퇴 (R-132): 자기 쪽 끝(retreatMargin 안쪽)으로 대열 그대로 물러난다. 물러나는 동안은 등을 보인 것으로 친다 (앞에서 맞아도 뒤).</summary>
-        public void OrderRetreat(int army)
+        private void OrderRetreatCore(int army)
         {
             if (IsOver || army < 0 || army >= Armies.Count || !Armies[army].Leading) return;
             var a = Armies[army];
@@ -1094,7 +1114,7 @@ namespace Game.Battle.Model.Crowd
             var me = a.Centroid();
             foreach (var o in Armies)
             {
-                if (o.Team == a.Team || !Standing(o)) continue;
+                if (o.Team == a.Team || !Standing(o) || o.Hidden) continue;
                 Fix d = Vec.DistanceSquared(o.Centroid(), me);
                 if (best < 0 || d < bestD) { best = o.Id; bestD = d; }
             }
@@ -1102,7 +1122,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>근접 공격 (R-132): 가장 가까운 적 부대에게 붙는다 (궁병도 활 대신 칼). 적이 없으면 false.</summary>
-        public bool OrderAttackNearest(int army)
+        private bool OrderAttackNearestCore(int army)
         {
             int t = NearestEnemyArmy(army);
             if (t < 0) return false;
@@ -1113,7 +1133,7 @@ namespace Game.Battle.Model.Crowd
         }
 
         /// <summary>위임 켜기 · 끄기 (R-132). 켜면 다음 AI 차례부터 가까운 적을 공격 · 스킬을 쓴다.</summary>
-        public void SetDelegated(int army, bool on)
+        private void SetDelegatedCore(int army, bool on)
         {
             if (army < 0 || army >= Armies.Count) return;
             var a = Armies[army];
@@ -1128,7 +1148,7 @@ namespace Game.Battle.Model.Crowd
         public const int MaxWaypoints = 6;
 
         /// <summary>적 부대 공격 (그 부대 쪽으로 가서, 가까워지면 돌격 — 궁병은 사거리에서 멈춰 쏜다).</summary>
-        public void OrderAttack(int army, int target)
+        private void OrderAttackCore(int army, int target)
         {
             if (IsOver || army < 0 || army >= Armies.Count || target < 0 || target >= Armies.Count) return;
             var a = Armies[army];
@@ -1241,6 +1261,7 @@ namespace Game.Battle.Model.Crowd
         public void Step()
         {
             if (IsOver) return;
+            _stepping = true; // 이 안의 명령(AI)은 기록하지 않음 (R-166)
             Tick++;
             var r = Rules;
             Fix dt = r.TickSeconds;
@@ -1273,6 +1294,7 @@ namespace Game.Battle.Model.Crowd
                 var army = Armies[s.Army];
                 var troop = army.Troop;
                 Fix ground = TerrainSpeed(troop, s.Pos); // 지형 걸음 (R-133): 숲에 든 기병은 느려 대열이 흐트러진다
+                ground = ground * TrapSlow(s); // 마름쇠 (R-165)
                 Fix walkStep = r.MoveSpeed * army.SpeedFactor * MoveMult(army) * ground * dt;
                 Fix stepLen = army.Charging ? r.ChargeSpeed * army.SpeedFactor * MoveMult(army) * ground * dt : walkStep;
                 if (army.Wavering) { walkStep = walkStep * r.WaverSpeed; stepLen = stepLen * r.WaverSpeed; }
@@ -1380,6 +1402,8 @@ namespace Game.Battle.Model.Crowd
             // 2.4) 스킬: 적 AI 스킬, 화살비 떨어짐, 끝난 효과
             if (Tick % 10 == 5) AiSkills();
             StepSkills();
+            StepHazards(); // 불 · 떨어지는 돌 (R-164)
+            StepTraps();   // 함정 (R-165)
 
             // 2.5) 다음 위치끼리 겹친 것을 두 번 풀어 준다 (뒤에서 미는 병사가 앞 병사 속으로 파고들지 않게)
             for (int pass = 0; pass < RelaxPasses; pass++) Relax();
@@ -1467,6 +1491,7 @@ namespace Game.Battle.Model.Crowd
             }
             if (Ladders.Count > 0) FinishClimbs(); // 사다리 꼭대기에 닿은 병사 (R-145)
             UpdateMorale();
+            SpreadPanic(); // 공포 확산 (R-161)
             foreach (var a in Armies)
             {
                 var g = a.General;
@@ -1502,22 +1527,32 @@ namespace Game.Battle.Model.Crowd
                 if (!a.General.Alive && a.Order != CrowdOrders.Hold) { a.Order = CrowdOrders.Hold; a.Charging = false; } // 장수를 잃으면 제자리
             }
 
-            // 4) 끝: 총대장을 사로잡거나 (체력 0) 병사가 다 쓰러지면, 시간이 다 되면 남은 병사 많은 쪽
+            CheckCommanderFall(); // 총대장 쓰러짐 = 그 편 사기 (R-162)
+            UpdateAmbush();       // 매복 드러남 · 기습 (R-165)
+            UpdateFlag();         // 깃발 점령 (R-163)
+            _stepping = false;
+
+            // 4) 끝: 병사가 다 쓰러지거나 모두 무너지면 (총대장은 commanderDefeats일 때만, R-162), 깃발 점령 (R-163), 시간이 다 되면 남은 병사 많은 쪽 (깃발전이면 수비)
             // 모두 무너지면 RoutEndTicks 동안 도망치는 모습을 보인 뒤 끝 (바로 끝내면 무너진 줄 모름)
             for (int t = 0; t < 2; t++) { if (!AllRouted(t)) _allRoutedSince[t] = -1; else if (_allRoutedSince[t] < 0) _allRoutedSince[t] = Tick; }
-            bool allyOut = !Commander(Ally).General.Alive || AliveCount(Ally) == 0 || (_allRoutedSince[Ally] >= 0 && Tick - _allRoutedSince[Ally] >= r.RoutEndTicks);
-            bool enemyOut = !Commander(Enemy).General.Alive || AliveCount(Enemy) == 0 || (_allRoutedSince[Enemy] >= 0 && Tick - _allRoutedSince[Enemy] >= r.RoutEndTicks);
-            if (allyOut || enemyOut)
+            bool allyOut = (r.CommanderDefeats && !Commander(Ally).General.Alive) || AliveCount(Ally) == 0 || (_allRoutedSince[Ally] >= 0 && Tick - _allRoutedSince[Ally] >= r.RoutEndTicks);
+            bool enemyOut = (r.CommanderDefeats && !Commander(Enemy).General.Alive) || AliveCount(Enemy) == 0 || (_allRoutedSince[Enemy] >= 0 && Tick - _allRoutedSince[Enemy] >= r.RoutEndTicks);
+            if (FlagDefender >= 0 && FlagProgress >= Fix.FromInt(100))
+            {
+                Winner = 1 - FlagDefender;
+                EndReason = "flag";
+            }
+            else if (allyOut || enemyOut)
             {
                 Winner = allyOut && enemyOut ? -2 : allyOut ? Enemy : Ally;
                 int lt = allyOut ? Ally : Enemy;
                 var lg = Commander(lt).General;
-                EndReason = !lg.Alive ? (lg.FledTick >= 0 ? "generalFled" : "general") : AliveCount(lt) == 0 ? "wiped" : "routed"; // 총대장이 달아남 (R-138) · 사로잡음
+                EndReason = r.CommanderDefeats && !lg.Alive ? (lg.FledTick >= 0 ? "generalFled" : "general") : AliveCount(lt) == 0 ? "wiped" : "routed"; // 총대장이 달아남 (R-138) · 사로잡음
             }
-            else if (Tick >= r.MaxTicks)
+            else if (Tick >= MaxTicksNow)
             {
                 int a = AliveCount(Ally), e = AliveCount(Enemy);
-                Winner = a == e ? -2 : a > e ? Ally : Enemy;
+                Winner = FlagDefender >= 0 ? FlagDefender : a == e ? -2 : a > e ? Ally : Enemy; // 깃발전은 시간 끝 = 수비 승
                 EndReason = "time";
             }
         }
@@ -1692,6 +1727,7 @@ namespace Game.Battle.Model.Crowd
             {
                 if (!a.Leading || !AiControls(a)) continue;
                 if (AiSiege(a)) continue; // 공성 중엔 공성 명령 (R-145)
+                if (AiFlag(a)) continue;  // 깃발전: 공격은 깃발로, 수비는 깃발 둘레만 지킴 (R-163)
                 if (a.Order == CrowdOrders.Attack && a.OrderTarget >= 0 && Standing(Armies[a.OrderTarget])) continue;
                 int best = NearestEnemyArmy(a.Id);
                 if (best >= 0) OrderAttack(a.Id, best);
@@ -2150,7 +2186,7 @@ namespace Game.Battle.Model.Crowd
                     foreach (int j in list)
                     {
                         var o = Soldiers[j];
-                        if (o.Team == s.Team) continue;
+                        if (o.Team == s.Team || Armies[o.Army].Hidden) continue; // 매복 중인 적은 못 봄 (R-165)
                         Fix d2 = Vec.DistanceSquared(o.Pos, s.Pos);
                         if (d2 < bestD || (d2 == bestD && best >= 0 && j < best)) { bestD = d2; best = j; }
                     }

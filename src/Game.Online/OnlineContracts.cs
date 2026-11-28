@@ -80,6 +80,10 @@ namespace Game.Online
         public static string TerritoryPlant(string game) => Territory(game) + "/plant";
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public static string TerritoryRecall(string game) => Territory(game) + "/recall";
+        /// <summary>수비판 저장 (R-167).</summary>
+        public static string TerritoryBoard(string game) => Territory(game) + "/board";
+        /// <summary>개발 · 마스터: 둘레에 적 깃발 놓기 (R-169).</summary>
+        public static string TerritoryDevSeed(string game) => Territory(game) + "/devSeed";
         /// <summary>공성전 준비 시작 · 취소 (POST, R-113).</summary>
         public static string TerritorySiege(string game) => Territory(game) + "/siege";
         public static string TerritorySiegeCancel(string game) => Territory(game) + "/siege/cancel";
@@ -334,6 +338,20 @@ namespace Game.Online
         public string Location { get; set; }
         /// <summary>영토 전투: 상대한 수비 편성의 판 (0 = AI 수비군). 서버의 지금 판과 다르면 거절 (R-48).</summary>
         public long DefenseVersion { get; set; }
+        /// <summary>
+        /// 깃발전 (R-166): 병사 단위 전투의 명령 기록. 있으면 서버는 예전 전투 대신 깃발전을 다시 돌려 ClaimedHash · ClaimedTicks와 비교한다.
+        /// </summary>
+        public List<Game.Battle.Model.Crowd.CrowdCommand> CrowdCommands { get; set; }
+        /// <summary>깃발전에서 이기면 (R-163): take 깃발 뺏기 (내 깃발, 기본) · remove 깃발 없애기 (<see cref="FlagActions"/>).</summary>
+        public string FlagAction { get; set; }
+    }
+
+    /// <summary>깃발전 승리 뒤 (R-163): 뺏기 · 없애기.</summary>
+    public static class FlagActions
+    {
+        public const string Take = "take";
+        public const string Remove = "remove";
+        public static bool IsRemove(string a) => a == Remove;
     }
 
     /// <summary>지역 하나의 주인 (다른 유저의 위치는 담지 않는다, territory.md 4장).</summary>
@@ -364,6 +382,13 @@ namespace Game.Online
         /// <summary>공성전 준비 중인 공격자와 준비 시작 시각 (R-113, 없으면 null · 0). 서버가 기록한다.</summary>
         public string SiegeAttackerId { get; set; }
         public long SiegeStartedAtUnixSeconds { get; set; }
+        /// <summary>깃발전 전장 맵 (꽂을 때 고름, R-168). 없으면 flags.json maps의 첫째.</summary>
+        public string MapId { get; set; }
+        /// <summary>주인 계급 (꽂거나 뺏을 때의 군주 레벨, 계급 차 검사 R-168). 0 = 모름 (예전 깃발).</summary>
+        public int OwnerRank { get; set; }
+        /// <summary>주인이 이 날(UTC 일 번호)에 잃은 깃발 수 (하루 잃는 상한 R-168). 주인의 남은 깃발마다 같은 값.</summary>
+        public long LossDay { get; set; }
+        public int LossCount { get; set; }
     }
 
     /// <summary>연합 하나 (territory.md 6장, R-49). 한 계정은 한 연합에만.</summary>
@@ -444,6 +469,37 @@ namespace Game.Online
         public string OwnerAccountId { get; set; }
         public long RegisteredAtUnixSeconds { get; set; }
         public List<DefenseCorps> Corps { get; set; } = new List<DefenseCorps>();
+        /// <summary>수비판 (R-167): 군단 자리 · 자세 · 매복, 함정. 없으면 포진판 자리 · 지킴 · 함정 없음. 장수를 더하거나 회수해도 남는다.</summary>
+        public DefenseBoard Board { get; set; }
+    }
+
+    /// <summary>수비판 (R-167): 주인이 깃발전 수비를 미리 짠다 (주인은 오프라인 — AI가 이대로 싸움).</summary>
+    public sealed class DefenseBoard
+    {
+        public List<Game.Battle.Model.Crowd.CrowdBoardPlace> Places { get; set; } = new List<Game.Battle.Model.Crowd.CrowdBoardPlace>();
+        /// <summary>함정 (수비 쪽 기준 칸: 공격 쪽이 아래인 전장 좌표 그대로).</summary>
+        public List<BoardTrap> Traps { get; set; } = new List<BoardTrap>();
+    }
+
+    public sealed class BoardTrap
+    {
+        /// <summary>pit 구덩이 · slow 마름쇠.</summary>
+        public string Kind { get; set; }
+        public Game.Foundation.Math.Fix X { get; set; }
+        public Game.Foundation.Math.Fix Y { get; set; }
+    }
+
+    /// <summary>개발 · 마스터 적 깃발 놓기 (R-169): 이 위치 둘레에.</summary>
+    public sealed class DevSeedRequest
+    {
+        public string Location { get; set; }
+    }
+
+    /// <summary>수비판 저장 (R-167): 내 깃발 하나의 판.</summary>
+    public sealed class FlagBoardRequest
+    {
+        public string FlagKey { get; set; }
+        public DefenseBoard Board { get; set; }
     }
 
     public sealed class DefenseCorps
@@ -490,6 +546,8 @@ namespace Game.Online
         public List<string> GeneralIds { get; set; }
         /// <summary>있으면 새로 꽂지 않고 이 내 깃발에 장수를 더 보낸다 (추가 파견, R-115). 위치는 보지 않는다.</summary>
         public string FlagKey { get; set; }
+        /// <summary>깃발전 전장 (R-168, flags.json maps 중 하나). 없거나 모르는 맵이면 기본 맵.</summary>
+        public string MapId { get; set; }
     }
 
     public static class PlantReasons
@@ -509,6 +567,8 @@ namespace Game.Online
         public const string NoFlag = "noFlag";
         public const string NotMine = "notMine";
         public const string UnderSiege = "underSiege";
+        /// <summary>수비판 저장 (R-167): 판이 잘못됨 (모르는 장수 · 칸 · 자세 · 함정 수).</summary>
+        public const string BadBoard = "badBoard";
     }
 
     /// <summary>깃발에서 장수 회수 (R-109): 깃발 키, 회수할 장수들 (null = 모두). 모두 회수하면 깃발이 사라진다.</summary>
@@ -1096,6 +1156,10 @@ namespace Game.Online
         void PlantFlag(PlantRequest request, Action<PlantResponse> done);
         /// <summary>깃발에서 장수 회수 (R-109). 서버에 닿지 않으면 null.</summary>
         void RecallFlag(RecallRequest request, Action<RecallResponse> done);
+        /// <summary>내 깃발의 수비판 저장 (R-167). 서버에 닿지 않으면 null.</summary>
+        void SetFlagBoard(FlagBoardRequest request, Action<PlantResponse> done);
+        /// <summary>개발 · 마스터 (R-169): 내 위치 둘레에 시험용 적 깃발 몇 개. 마스터가 아니거나 닿지 않으면 null.</summary>
+        void DevSeedFlags(DevSeedRequest request, Action<TerritoryResponse> done);
         /// <summary>공성전 준비 시작 (R-113): 서버가 시각을 기록하고 수비자에게 알림 우편. 닿지 않으면 null.</summary>
         void StartSiege(SiegeRequest request, Action<SiegeResponse> done);
         /// <summary>준비 중 공격 취소: 되면 true, 아니면 false, 닿지 않으면 null.</summary>
@@ -1143,6 +1207,8 @@ namespace Game.Online
         public void RegisterDefense(DefenseRequest request, Action<DefenseResponse> done) => done?.Invoke(null);
         public void PlantFlag(PlantRequest request, Action<PlantResponse> done) => done?.Invoke(null);
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => done?.Invoke(null);
+        public void SetFlagBoard(FlagBoardRequest request, Action<PlantResponse> done) => done?.Invoke(null);
+        public void DevSeedFlags(DevSeedRequest request, Action<TerritoryResponse> done) => done?.Invoke(null);
         public void StartSiege(SiegeRequest request, Action<SiegeResponse> done) => done?.Invoke(null);
         public void CancelSiege(string flagKey, Action<bool?> done) => done?.Invoke(null);
         public void GetAlliances(Action<AllianceListResponse> done) => done?.Invoke(null);
