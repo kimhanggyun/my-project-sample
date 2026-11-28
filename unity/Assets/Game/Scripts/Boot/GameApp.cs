@@ -141,7 +141,7 @@ namespace Game.Unity.Boot
             if (_current == null) return;
             Context?.AddPlayTime(Time.unscaledDeltaTime);
             var kb = UnityEngine.InputSystem.Keyboard.current; // 안드로이드 뒤로 키 = Escape
-            if (kb != null && kb.escapeKey.wasPressedThisFrame) HandleBack();
+            if (kb != null && kb.escapeKey.wasPressedThisFrame && !Game.Unity.UI.Loading.Busy) HandleBack(); // 로딩 중엔 뒤로 키 무시 (2026-11-28 사용자)
             try { _current.Tick(Time.unscaledDeltaTime); }
             catch (Exception e)
             {

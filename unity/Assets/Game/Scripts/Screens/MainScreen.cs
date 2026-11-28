@@ -381,6 +381,7 @@ namespace Game.Unity.Screens
         {
             var ctx = app.Context;
             var list = Ui.ScrollList(root, "List", 22, 25);
+            ScrollMemory.Keep(list, "generals");
             Ui.Fill((RectTransform)list.parent.parent);
 
             var head = Ui.HeaderRow(list, ctx.T("ui.tab.general"), ctx.T("ui.generals.count", ctx.State.Generals.Count));

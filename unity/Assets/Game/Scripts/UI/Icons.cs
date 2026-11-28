@@ -122,6 +122,44 @@ namespace Game.Unity.UI
         }
     }
 
+    /// <summary>
+    /// 스크롤 자리 기억 (2026-11-28 사용자: 누르면 목록이 맨 앞 · 맨 위로 돌아감). 화면을 통째로 다시 그리는 목록(버튼마다 ShowMain)에 붙이면
+    /// 같은 key의 목록이 다시 생길 때 마지막 자리로 (앱이 켜져 있는 동안). 레이아웃이 끝난 뒤 한 번 맞춤.
+    /// </summary>
+    public sealed class ScrollMemory : MonoBehaviour
+    {
+        private static readonly Dictionary<string, Vector2> Saved = new Dictionary<string, Vector2>();
+        public string Key;
+        private ScrollRect _scroll;
+        private int _frames;
+
+        /// <summary>목록(ScrollList · HScrollRow가 돌려준 content)에 붙인다.</summary>
+        public static void Keep(RectTransform content, string key)
+        {
+            var sr = content != null ? content.GetComponentInParent<ScrollRect>() : null;
+            if (sr == null) return;
+            var m = sr.gameObject.GetComponent<ScrollMemory>() ?? sr.gameObject.AddComponent<ScrollMemory>();
+            m.Key = key;
+        }
+
+        private void Awake() { _scroll = GetComponent<ScrollRect>(); }
+
+        private void LateUpdate()
+        {
+            if (_scroll == null || Key == null) return;
+            if (_frames < 2)
+            {
+                // 두 프레임(레이아웃) 뒤 자리 맞춤, 그 뒤로는 기록만
+                if (++_frames == 2)
+                {
+                    if (Saved.TryGetValue(Key, out var p)) _scroll.normalizedPosition = p;
+                    _scroll.onValueChanged.AddListener(v => Saved[Key] = v);
+                }
+                return;
+            }
+        }
+    }
+
     public static class InfoButton
     {
         public const float Size = 64f;

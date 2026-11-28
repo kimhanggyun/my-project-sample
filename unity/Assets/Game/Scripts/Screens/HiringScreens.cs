@@ -37,6 +37,7 @@ namespace Game.Unity.Screens
                 return;
             }
             var (header, body, _) = Ui.PageLayout(root, 0);
+            ScrollMemory.Keep(body, "hiring." + _tab);
             Ui.MidTabs(header, new[] { ("hire", ctx.T("ui.merc.tab.hire")), ("mine", ctx.T("ui.merc.tab.mine")) }, _tab, id => { _tab = id; app.ShowMain("hiring"); }, infoGap: true);
             InfoButton.Add(root, ctx.T("ui.merc.note"));
             if (_tab == "hire") BuildHire(app, root, header, body);
