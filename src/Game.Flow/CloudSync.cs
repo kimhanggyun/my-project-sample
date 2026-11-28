@@ -350,12 +350,12 @@ namespace Game.Flow
                 || TerritoryFlags.CheckSiegeReady(TerritoryData, _owners, flagKey, AccountId, Now) != null))
             { done?.Invoke(new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie, Save = Copy(_save) }); return; }
             var v = BattleVerifier.VerifySave(_defs, _source, _save, s, Now, out var json, out var at, out var hired, FindListing, AccountId, _hireLog,
-                region => TerritoryLedger.DefenseOf(_owners, region));
+                region => TerritoryLedger.DefenseOf(_owners, region), region => FlagBattles.MapOf(TerritoryData?.Flags, _owners.TryGetValue(region ?? "", out var fo) ? fo : null));
             if (v.Valid) Keep(new CloudSave { Revision = _save.Revision + 1, Json = json, SavedAtUnixSeconds = at });
             if (v.Valid && flagKey != null)
             {
                 var after = SaveJson.Read(json);
-                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail, TakeAlert);
+                TerritoryFlags.AfterSiege(TerritoryData, _defs, _owners, flagKey, v.Winner == StoryFlow.PlayerTeam, AccountId, after, TerritoryFlags.AttackerGeneral(s, after), at, SendMail, TakeAlert, FlagActions.IsRemove(s.FlagAction));
             }
             else if (v.Valid && TerritoryBattles.Captures(s, v)) TerritoryLedger.Capture(TerritoryData, _owners, TerritoryBattles.RegionOf(s.StepId), AccountId, at, SendMail);
             if (v.Valid && hired != null)
@@ -562,6 +562,17 @@ namespace Game.Flow
         {
             LoadSave(_ => { });
             done?.Invoke(TerritoryFlags.Recall(TerritoryData, _defs, SaveJson.Read(_save.Json), AccountId, _owners, req, Now, (who, m) => SendMail(who, m)));
+        }
+
+        /// <summary>수비판 저장 (R-167).</summary>
+        public void SetFlagBoard(FlagBoardRequest req, Action<PlantResponse> done) => done?.Invoke(TerritoryFlags.SetBoard(TerritoryData, AccountId, _owners, req, Now));
+
+        /// <summary>개발 적 깃발 (R-169): 가짜 서버는 누구나 (개발용).</summary>
+        public void DevSeedFlags(DevSeedRequest req, Action<TerritoryResponse> done)
+        {
+            LoadSave(_ => { });
+            if (req == null || !Game.Foundation.Geo.GeoPoint.TryParse(req.Location, out var at)) { done?.Invoke(null); return; }
+            done?.Invoke(new TerritoryResponse { Owners = TerritoryFlags.DevSeed(TerritoryData, _defs, SaveJson.Read(_save.Json), _owners, at, Now) });
         }
 
         /// <summary>개발 · 시험용: 다른 유저의 깃발을 장부에 넣는다 (가짜 서버에는 나 말고 유저가 없으므로).</summary>

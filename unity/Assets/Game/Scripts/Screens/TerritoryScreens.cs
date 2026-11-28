@@ -333,10 +333,20 @@ namespace Game.Unity.Screens
                 var join = Ui.Button(filters, ctx.T("ui.terr.joinAlliance"), () => { AllianceChecked = false; app.ShowMain("alliance"); }, 50, new Color(0.24f, 0.48f, 0.25f), 20);
                 join.GetComponentInChildren<Text>().color = Color.white;
             }
-            if (ctx.Online is LocalOnlineService fakeSeed && Last != null && Last.Ok)
+            if ((ctx.Online is LocalOnlineService || ctx.IsMaster) && Last != null && Last.Ok)
             {
+                // 적 깃발 놓기 (R-169): 가짜 서버 · 마스터 계정 — 맵 셋 (평원 · 숲길 + 매복 · 함정 · 고개)
                 filters.sizeDelta = new Vector2(196, 4 * 50 + 3 * 6);
-                Ui.Button(filters, ctx.T("ui.terr.seed"), () => { SeedNearby(ctx, fakeSeed, center); app.ShowMain("territory"); }, 50, fontSize: 18);
+                Ui.Button(filters, ctx.T("ui.terr.seed"), () =>
+                {
+                    var end = Loading.Begin();
+                    ctx.DevSeedFlags(new DevSeedRequest { Location = center.ToString() }, r =>
+                    {
+                        Notice = r == null ? ctx.T("ui.hire.failed") : ctx.T("ui.terr.seeded", r.Owners.Count);
+                        NamesFetched = false;
+                        Reload(app, root, end);
+                    });
+                }, 50, fontSize: 18);
             }
             // 줌 버튼 · 줌 칩
             var zoomCol = Ui.Rect(map, "Zoom");
@@ -425,6 +435,9 @@ namespace Game.Unity.Screens
             return string.IsNullOrEmpty(name) ? "?" : name.Substring(0, 1);
         }
 
+        /// <summary>병력 어림 (정찰): 천 단위로 내려 "약 n천".</summary>
+        private static string Rough(long troops) => troops < 1000 ? "1천 미만" : "약 " + (troops / 1000).ToString("N0") + "천";
+
         private static string FormatKm(long m) => m >= 1000 ? (m / 1000f).ToString("0.#") + "km" : m + "m";
 
         private static string Pending(GameContext ctx, TerritoryOwner o)
@@ -433,23 +446,6 @@ namespace Game.Unity.Screens
             var parts = new List<string>();
             foreach (var kv in o.Pending) parts.Add(ctx.T("resource." + kv.Key) + " " + kv.Value.ToString("N0"));
             return ctx.T("ui.territory.pending", string.Join(" · ", parts));
-        }
-
-        /// <summary>가짜 서버 시험용: 내 위치 둘레에 다른 유저 깃발 몇 개 (주인 없는 계정, 수비 = 내 첫 군단 사본).</summary>
-        private static void SeedNearby(GameContext ctx, LocalOnlineService fake, GeoPoint center)
-        {
-            var flags = ctx.Territory.Flags;
-            var first = ctx.State.CompositionsFor(null);
-            if (first.Count == 0) return;
-            var def = TerritoryDefenses.SnapshotGeneral(ctx.Defs, ctx.State, first[0].GeneralId, out _);
-            if (def != null) def.Version = 1;
-            var spots = new (long dLat, long dLon, string who, long radius)[] { (6000, 2000, "rival-1", 2000), (-9000, 7000, "rival-2", 3000), (15000, -12000, "rival-3", 1000) };
-            foreach (var s in spots)
-            {
-                var cell = flags.CellOf(new GeoPoint(center.LatE6 + s.dLat, center.LonE6 + s.dLon));
-                fake.SeedFlag(new TerritoryOwner { RegionId = FlagDefs.KeyOf(cell), OwnerAccountId = s.who, GeneralId = first[0].GeneralId, RadiusM = s.radius, Defense = def, SinceUnixSeconds = ctx.Clock.UtcNow.ToUnixTimeSeconds(), CollectedUnixSeconds = ctx.Clock.UtcNow.ToUnixTimeSeconds() });
-            }
-            NamesFetched = false;
         }
 
         // ---- 지도 그림 조각 ----
@@ -479,6 +475,9 @@ namespace Game.Unity.Screens
         /// 지도에서 누른 자리에 깃발 꽂기 (R-96 · R-109): 기본 편성의 장수마다 체크 줄 (다른 깃발에 나간 · 출전 못 하는 장수는 못 고름), 1명 이상 → [깃발 꽂기].
         /// </summary>
         /// <param name="reinforceKey">있으면 새 깃발이 아니라 이 내 깃발에 장수 추가 파견 (R-115, 위치 필요 없음).</param>
+        /// <summary>꽂기 판에서 고른 깃발전 맵 (R-168).</summary>
+        private static string _plantMap;
+
         private static void OpenPlantSheet(GameApp app, RectTransform root, GeoPoint here, GeoPoint target, long radius, string reinforceKey = null)
         {
             var ctx = app.Context;
@@ -492,9 +491,17 @@ namespace Game.Unity.Screens
             _plantPick.RemoveAll(id => busyIds.Contains(id) || hereIds.Contains(id) || !comps.Exists(c => c.GeneralId == id));
             bool reinforce = reinforceKey != null;
             // 2026-11-27 새로 꾸밈: 장수 = 군단 미니 카드 가로 줄, 카드마다 + (고르기) · ✓ (고름). 못 나가는 장수는 흐리게 + 까닭
-            var (content, close) = Ui.BottomSheet(root, ctx.T(reinforce ? "ui.terr.reinforceTitle" : "ui.terr.plantHere"), 600);
+            var (content, close) = Ui.BottomSheet(root, ctx.T(reinforce ? "ui.terr.reinforceTitle" : "ui.terr.plantHere"), reinforce ? 600 : 920);
             Ui.Column(content, 12, 0);
             Ui.Label(content, reinforce ? ctx.T("ui.terr.reinforceNote") : ctx.T("ui.terr.plantHereNote", FormatKm(radius)), 22, TextAnchor.MiddleLeft, Palette.TextDim);
+            if (!reinforce)
+            {
+                // 깃발전 전장 (R-168, 2026-11-28 사용자): 꽂을 때 분류 [야전 · 성새전 · 수상전]에서 고름 — 나중에 바꾸기는 정하는 중
+                var fdm = ctx.Territory?.Flags;
+                if (_plantMap == null || fdm == null || !fdm.IsMap(_plantMap)) _plantMap = fdm?.DefaultMap ?? "crowd_plain";
+                Ui.Label(content, ctx.T("ui.terr.plantMap", FlagMaps.Name(ctx, _plantMap)), 22, TextAnchor.MiddleLeft, Palette.Text);
+                FlagMaps.Picker(ctx, content, _plantMap, id => { _plantMap = id; close(); OpenPlantSheet(app, root, here, target, radius); });
+            }
             var row = Ui.HScrollRow(content, "Generals", 236, 14, 6);
             Button go = null;
             void Refresh()
@@ -549,7 +556,7 @@ namespace Game.Unity.Screens
             go = Ui.PrimaryButton(content, ctx.T(reinforce ? "ui.terr.reinforceGo" : "ui.terr.plantGo", _plantPick.Count), () =>
             {
                 var req = reinforce ? new PlantRequest { FlagKey = reinforceKey, GeneralIds = new List<string>(_plantPick) }
-                    : new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick) };
+                    : new PlantRequest { Location = here.ToString(), Target = target.ToString(), GeneralIds = new List<string>(_plantPick), MapId = _plantMap };
                 close();
                 var end = Loading.Begin(); // 공통 로딩 (H5): 꽂기 → 장부 다시 받기까지
                 ctx.PlantFlag(req, r =>
@@ -571,7 +578,7 @@ namespace Game.Unity.Screens
             var fd = ctx.Territory?.Flags;
             long radius = TerritoryFlags.RadiusOf(ctx.Defs, ctx.State);
             bool canPlant = plantAt != null && Last != null && Last.Ok && fd != null && fd.Within(Last.Point, fd.CellOf(plantAt.Value), radius) && FlagDefs.KeyOf(fd.CellOf(plantAt.Value)) != flag.RegionId;
-            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 500 + (canPlant ? 90 : 0));
+            var (content, close) = Ui.BottomSheet(root, ctx.T("ui.terr.flagSheet", ids.Count), 600 + (canPlant ? 90 : 0));
             Ui.Column(content, 12, 0);
             FlagBody(app, root, content, flag, close, false);
             if (canPlant)
@@ -631,6 +638,17 @@ namespace Game.Unity.Screens
             var collect = Ui.PrimaryButton(inc, ctx.T("ui.terr.collectOne"), () => { close?.Invoke(); CollectOne(app, root, flagKey); }, 68, 26);
             Ui.Size(collect, 68, 210).flexibleWidth = 0;
             Ui.SetPrimaryEnabled(collect, any);
+            // 깃발전 전장 · 수비판 (R-167 · R-168): 맵 이름 + 미리보기, [수비판] = 자리 · 자세 · 매복 · 함정
+            var mapRow = Ui.Row(parent, "MapRow", 76, 12);
+            mapRow.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            string mapId = FlagBattles.MapOf(ctx.Territory?.Flags, flag);
+            FlagMaps.Thumb(ctx, mapRow, mapId, 44, 72);
+            var board = flag.Defense?.Board;
+            int traps = board?.Traps?.Count ?? 0, ambush = board?.Places?.FindAll(p => p.Ambush).Count ?? 0;
+            Ui.Size(Ui.Label(mapRow, ctx.T("ui.terr.flagMap", FlagMaps.Name(ctx, mapId)) + "\n" + ctx.T("ui.terr.flagBoardLine", ambush, traps), 22, TextAnchor.MiddleLeft, Palette.TextDim), 76, -1, -1, 1);
+            var boardBtn = Ui.SecondaryButton(mapRow, ctx.T("ui.defBoard.open"), () => { close?.Invoke(); app.Show(new FlagBoardScreen(flag)); }, 64, 24);
+            Ui.Size(boardBtn, 64, 190).flexibleWidth = 0;
+            if (flag.SiegeAttackerId != null) Ui.SetEnabled(boardBtn, false);
             // 나간 장수: 군단 카드 가로 줄, − 복귀 · + 파견 (2026-11-27 사용자 "회수 대신 + − 로 파견 · 복귀")
             Ui.Label(parent, ctx.T("ui.terr.generalsOut"), 22, TextAnchor.MiddleLeft, Palette.TextDim);
             var row = Ui.HScrollRow(parent, "Generals", 196, 14, 6);
@@ -722,6 +740,13 @@ namespace Game.Unity.Screens
                     Reload(app, root, end); // 바뀐 깃발 · 수입을 다시 받아 그린다
                 });
             });
+        }
+
+        /// <summary>캡처 투어: 남의 깃발 판 (정찰 대강 · 전장).</summary>
+        internal static void OtherFlagSheetForTour(GameApp app, RectTransform root, TerritoryOwner o)
+        {
+            GeoPoint here = Last != null && Last.Ok ? Last.Point : FakeLocationService.Default;
+            OpenOtherFlagSheet(app, root, o, here, false);
         }
 
         /// <summary>캡처 투어: 깃발 꽂기 판 (지금 위치 자리).</summary>
@@ -859,10 +884,16 @@ namespace Game.Unity.Screens
             var ctx = app.Context;
             long now = ctx.Clock.UtcNow.ToUnixTimeSeconds();
             string owner = ctx.DisplayName(o.OwnerAccountId) + (o.OwnerAllianceName != null ? "  [" + o.OwnerAllianceName + "]" : "");
-            var (content, close) = Ui.BottomSheet(root, owner, 420);
+            var (content, close) = Ui.BottomSheet(root, owner, 500);
             Ui.Column(content, 8, 0);
             long d = FlagDefs.TryParseKey(o.RegionId, out var cell) ? (long)Mathf.Sqrt(ctx.Territory.Flags.DistanceSquaredM(here, cell)) : 0;
-            Ui.Label(content, ctx.T("ui.terr.flagLine", GeneralNames(ctx, o), Troops(o).ToString("N0"), FormatKm(d)), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            // 정찰은 대강만 (R-165 시야, 2026-11-28 사용자): 장수 수 · 병력 어림 · 거리, 매복 · 함정은 안 보임
+            Ui.Label(content, ctx.T("ui.terr.flagScout", TerritoryFlags.GeneralsOf(o).Count, Rough(Troops(o)), FormatKm(d)), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+            var omap = Ui.Row(content, "Map", 76, 12);
+            omap.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            string oMapId = FlagBattles.MapOf(ctx.Territory?.Flags, o);
+            FlagMaps.Thumb(ctx, omap, oMapId, 44, 72);
+            Ui.Size(Ui.Label(omap, ctx.T("ui.terr.flagMap", FlagMaps.Name(ctx, oMapId)) + "\n" + ctx.T("ui.terr.flagRules"), 22, TextAnchor.MiddleLeft, Palette.TextDim), 76, -1, -1, 1);
             string loc = Last != null && Last.Ok ? Last.Point.ToString() : null;
             // 위치를 모르면 [공격]을 누를 때 동의 · 확인한 뒤 검사 (위치는 공격 · 꽂기 때만)
             string err = ally ? ctx.T("ui.terr.ally") : loc == null ? null
@@ -1079,14 +1110,36 @@ namespace Game.Unity.Screens
             string owner = null;
             if (TerritoryTabView.Owners != null && TerritoryTabView.Owners.TryGetValue(_regionId, out var flag)) owner = flag.OwnerAccountId;
             Ui.TitleBar(header, owner != null ? T("ui.sortie.siegeOf", Ctx.DisplayName(owner)) : T(step.NameKey), () => App.ShowMain("territory"));
-            SortiePrep.Tiles(Ctx, header, step);
+            bool flagBattle = FlagDefs.IsFlagKey(_regionId);
+            // 옛 전투 칸 (시간 · 날씨 · 바람)은 깃발전에 안 맞음 (5분 · 날씨 안 봄) → 깃발전은 전장 카드가 대신 (2026-11-28 캡처)
+            if (!flagBattle) SortiePrep.Tiles(Ctx, header, step);
             InfoButton.Add(Root, T("ui.sortie.siegeNote"));
 
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(false));
+            if (flagBattle)
+            {
+                // 깃발전 전장 (R-163 · R-168): 맵 미리보기 · 이름 · 이기는 법
+                var field = Ui.Card(body, "Field");
+                var fr = Ui.Row(field, "FieldRow", 120, 14);
+                fr.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+                TerritoryOwner fo = null;
+                if (TerritoryTabView.Owners != null) TerritoryTabView.Owners.TryGetValue(_regionId, out fo);
+                string mapId = FlagBattles.MapOf(Ctx.Territory?.Flags, fo);
+                FlagMaps.Thumb(Ctx, fr, mapId, 72, 118);
+                var ft = Ui.Label(fr, T("ui.sortie.flagField", FlagMaps.Name(Ctx, mapId)) + "\n" + T("ui.terr.flagRules"), 24, TextAnchor.MiddleLeft, Palette.Text);
+                Ui.Size(ft, 120, -1, -1, 1);
+            }
             var defense = Ui.Card(body, "Defense");
             SortiePrep.Info(Ctx, defense, "ui.sortie.info.defense");
             Ui.Label(defense, T(_defense != null ? "ui.territory.defenseOwnerTitle" : "ui.territory.defense"), 24, TextAnchor.MiddleLeft, Palette.TextDim);
-            if (plan.Setup != null) SortiePrep.Enemies(Ctx, defense, plan);
+            if (flagBattle && plan.Setup != null)
+            {
+                // 정찰은 대강만 (R-165 시야): 군단 수 · 병력 어림, 매복 · 함정은 모름
+                int corps = 0; long troops = 0;
+                foreach (var c in plan.Setup.Corps) if (c.Team != StoryFlow.PlayerTeam) { corps++; foreach (var u in c.Units) troops += u.Troops; }
+                Ui.Label(defense, T("ui.sortie.flagScout", corps, troops < 1000 ? "1천 미만" : "약 " + (troops / 1000).ToString("N0") + "천"), 24, TextAnchor.MiddleLeft, Palette.Text);
+            }
+            else if (plan.Setup != null) SortiePrep.Enemies(Ctx, defense, plan);
             // 수비 지원 (겹친 상대 깃발 = 전장 하루 뒤 · 연합원 = 늦게, territory-v2.md 2.5 — 지원 입장은 다음 단계)
             int overlap = 0;
             if (owner != null && TerritoryTabView.Owners != null)
@@ -1138,7 +1191,34 @@ namespace Game.Unity.Screens
             Ctx.Flow.Tick(Ctx.State); // 출진 시각 기준 시간 경과 (서버도 같은 시각으로 맞춘다, R-61)
             var plan = Ctx.Flow.Prepare(Ctx.State, Request(delegate_));
             if (!Ctx.Flow.Confirm(Ctx.State, plan)) { App.Show(new TerritorySortieScreen(_regionId, _location, _defense)); return; }
+            if (Game.Territory.FlagDefs.IsFlagKey(_regionId)) { FlagBattle(plan); return; } // 깃발 공성전 = 병사 단위 깃발전 (R-163)
             App.Show(new DialogueScreen(plan, "dialogue." + step.Id + ".start", !delegate_));
+        }
+
+        /// <summary>
+        /// 깃발전 (R-163 · R-166): 전장 = 깃발의 맵, 수비 = 주인의 수비판. 끝나면 결과 반영 (병력 손실 · 경험) + 명령 기록을 올려 서버가 확인.
+        /// </summary>
+        private void FlagBattle(SortiePlan plan)
+        {
+            TerritoryOwner flag = null;
+            if (TerritoryTabView.Owners != null) TerritoryTabView.Owners.TryGetValue(_regionId, out flag);
+            string map = FlagBattles.MapOf(Ctx.Territory?.Flags, flag);
+            var setup = FlagBattles.Setup(Ctx.Defs, Ctx.Data, plan, map);
+            var names = new Dictionary<string, string>();
+            foreach (var c in plan.Setup.Corps) if (c.General != null) names[c.Id] = Ctx.GeneralName(c.General.Id);
+            var screen = new SampleBattle2Screen(setup, startNow: true, returnTab: "territory", speed: 1)
+            {
+                NameOf = a => a.Key != null && names.TryGetValue(a.Key, out var n) ? n : null,
+            };
+            screen.Finish = (battle, action) =>
+            {
+                var result = FlagBattles.Result(battle, plan);
+                var report = Ctx.Flow.ApplyResult(Ctx.State, plan, result);
+                Ctx.Save();
+                if (!Ctx.OnlineEnabled) { App.Show(new ResultScreen(plan, result, report)); return; }
+                Ctx.SubmitFlagBattle(plan, battle, action, Loading.Wrap<SyncResult>(r => App.Show(new ResultScreen(plan, result, report, r?.Outcome))));
+            };
+            App.Show(screen);
         }
     }
 

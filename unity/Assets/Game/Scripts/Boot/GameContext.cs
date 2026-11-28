@@ -485,6 +485,19 @@ namespace Game.Unity.Boot
             });
         }
 
+        /// <summary>깃발전 뒤 (R-166): 명령 기록을 올린다 — 서버가 같은 출진 준비 · 기록으로 다시 돌려 확인. flagAction = take · remove (이겼을 때).</summary>
+        public void SubmitFlagBattle(SortiePlan plan, Game.Battle.Model.Crowd.CrowdBattle battle, string flagAction, Action<SyncResult> done)
+        {
+            if (!OnlineEnabled) { done?.Invoke(null); return; }
+            Link.Journal.Add(new JournalEntry { Battle = FlagBattles.SubmissionOf(plan, battle, Link.Revision, flagAction) });
+            WriteLink();
+            Flush(r =>
+            {
+                if (r != null) OnlineStatus = r.Outcome;
+                done?.Invoke(r);
+            });
+        }
+
         // ---- 고용·우편 (R-43, hiring.md) ----
         private HireDraft _hires;
         private string _hireStep;
@@ -736,6 +749,10 @@ namespace Game.Unity.Boot
 
         /// <summary>깃발에서 장수 회수 (R-109).</summary>
         public void RecallFlag(RecallRequest request, Action<RecallResponse> done) => Online.RecallFlag(request, done);
+        /// <summary>내 깃발 수비판 저장 (R-167).</summary>
+        public void SetFlagBoard(FlagBoardRequest request, Action<PlantResponse> done) => Online.SetFlagBoard(request, done);
+        /// <summary>개발 · 마스터 적 깃발 (R-169).</summary>
+        public void DevSeedFlags(DevSeedRequest request, Action<TerritoryResponse> done) => Online.DevSeedFlags(request, done);
 
         /// <summary>우편 받기 = 행동 mail.claim (서버가 우편이 있는지 확인하고 같은 규칙으로 더한다).</summary>
         public bool ClaimMail(Mail mail)

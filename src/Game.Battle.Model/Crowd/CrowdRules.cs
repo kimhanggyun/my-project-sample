@@ -219,6 +219,43 @@ namespace Game.Battle.Model.Crowd
         public int FormationFront { get; private set; }
         /// <summary>일자가 두꺼워지는 최대 줄 수 (R-157): 두툼 2배 · 더 두툼 3배, 넘으면 옆으로 넓어짐.</summary>
         public int FormationRows { get; private set; }
+        // ---- 깃발전 · 지형 위험 (R-161 ~ R-165, 2026-11-28) ----
+        public Fix PanicRange { get; private set; }
+        public Fix PanicSpread { get; private set; }
+        public int PanicCommandDampPct { get; private set; }
+        public Fix CommanderFallMorale { get; private set; }
+        public bool CommanderDefeats { get; private set; }
+        public Fix FlagRadius { get; private set; }
+        public int FlagMinAttackers { get; private set; }
+        public Fix FlagFillPerSec { get; private set; }
+        public Fix FlagFillPerTen { get; private set; }
+        public Fix FlagFillMax { get; private set; }
+        public Fix FlagDecayPerSec { get; private set; }
+        public Fix FlagMaxSeconds { get; private set; }
+        public Fix FlagAiEngageRange { get; private set; }
+        /// <summary>깃발전: 병사 1명 = 캠페인 병력 몇 명 (부대 병사 수 = 병력 ÷ 이것, 1 ~ gridMaxCount).</summary>
+        public int TroopsPerSoldier { get; private set; }
+        public Fix FlagGuardRange { get; private set; }
+        public System.Collections.Generic.ICollection<string> CoverTerrains { get; private set; } = new string[0];
+        public System.Collections.Generic.ICollection<string> FireTerrains { get; private set; } = new string[0];
+        public Fix AmbushRevealRange { get; private set; }
+        public Fix AmbushMorale { get; private set; }
+        public Fix FireStartRadius { get; private set; }
+        public Fix FireSpreadSeconds { get; private set; }
+        public Fix FireSpreadChance { get; private set; }
+        public Fix FireBurnSeconds { get; private set; }
+        /// <summary>불이 처음 붙은 곳에서 이 거리(m)까지만 번짐 — 숲 전체가 타지 않게 (2026-11-28 캡처: 20초에 숲이 다 탐).</summary>
+        public Fix FireSpreadRange { get; private set; }
+        public int FireDamage { get; private set; }
+        public Fix FireMorale { get; private set; }
+        public Fix RockRadius { get; private set; }
+        public int RockDamage { get; private set; }
+        public Fix RockMorale { get; private set; }
+        public Fix RockHeightMin { get; private set; }
+        public Fix TrapRadius { get; private set; }
+        public int TrapPitDamage { get; private set; }
+        public Fix TrapPitMorale { get; private set; }
+        public Fix TrapSlowPct { get; private set; }
         public int SkillGapTicks => System.Math.Max(1, (int)(SkillGapSeconds / TickSeconds).RoundToLong());
         public int RoutEndTicks => System.Math.Max(1, (int)(RoutEndSeconds / TickSeconds).RoundToLong());
         public int EncircleTicks => System.Math.Max(1, (int)(EncircleSeconds / TickSeconds).RoundToLong());
@@ -365,6 +402,40 @@ namespace Game.Battle.Model.Crowd
                 GridMaxCount = (int)JsonUtil.RequireLong(o, "gridMaxCount", c),
                 FormationFront = (int)JsonUtil.RequireLong(o, "formationFront", c),
                 FormationRows = (int)JsonUtil.RequireLong(o, "formationRows", c),
+                PanicRange = JsonUtil.RequireFix(o, "panicRange", c),
+                PanicSpread = JsonUtil.RequireFix(o, "panicSpread", c),
+                PanicCommandDampPct = (int)JsonUtil.RequireLong(o, "panicCommandDampPct", c),
+                CommanderFallMorale = JsonUtil.RequireFix(o, "commanderFallMorale", c),
+                CommanderDefeats = (bool?)o["commanderDefeats"] ?? false,
+                FlagRadius = JsonUtil.RequireFix(o, "flagRadius", c),
+                FlagMinAttackers = (int)JsonUtil.RequireLong(o, "flagMinAttackers", c),
+                FlagFillPerSec = JsonUtil.RequireFix(o, "flagFillPerSec", c),
+                FlagFillPerTen = JsonUtil.RequireFix(o, "flagFillPerTen", c),
+                FlagFillMax = JsonUtil.RequireFix(o, "flagFillMax", c),
+                FlagDecayPerSec = JsonUtil.RequireFix(o, "flagDecayPerSec", c),
+                FlagMaxSeconds = JsonUtil.RequireFix(o, "flagMaxSeconds", c),
+                FlagAiEngageRange = JsonUtil.RequireFix(o, "flagAiEngageRange", c),
+                TroopsPerSoldier = (int)JsonUtil.RequireLong(o, "troopsPerSoldier", c),
+                FlagGuardRange = JsonUtil.RequireFix(o, "flagGuardRange", c),
+                CoverTerrains = JsonUtil.StringList(o, "coverTerrains"),
+                FireTerrains = JsonUtil.StringList(o, "fireTerrains"),
+                AmbushRevealRange = JsonUtil.RequireFix(o, "ambushRevealRange", c),
+                AmbushMorale = JsonUtil.RequireFix(o, "ambushMorale", c),
+                FireStartRadius = JsonUtil.RequireFix(o, "fireStartRadius", c),
+                FireSpreadSeconds = JsonUtil.RequireFix(o, "fireSpreadSeconds", c),
+                FireSpreadChance = JsonUtil.RequireFix(o, "fireSpreadChance", c),
+                FireBurnSeconds = JsonUtil.RequireFix(o, "fireBurnSeconds", c),
+                FireSpreadRange = JsonUtil.RequireFix(o, "fireSpreadRange", c),
+                FireDamage = (int)JsonUtil.RequireLong(o, "fireDamage", c),
+                FireMorale = JsonUtil.RequireFix(o, "fireMorale", c),
+                RockRadius = JsonUtil.RequireFix(o, "rockRadius", c),
+                RockDamage = (int)JsonUtil.RequireLong(o, "rockDamage", c),
+                RockMorale = JsonUtil.RequireFix(o, "rockMorale", c),
+                RockHeightMin = JsonUtil.RequireFix(o, "rockHeightMin", c),
+                TrapRadius = JsonUtil.RequireFix(o, "trapRadius", c),
+                TrapPitDamage = (int)JsonUtil.RequireLong(o, "trapPitDamage", c),
+                TrapPitMorale = JsonUtil.RequireFix(o, "trapPitMorale", c),
+                TrapSlowPct = JsonUtil.RequireFix(o, "trapSlowPct", c),
             };
             var rec = new System.Collections.Generic.Dictionary<string, string>();
             foreach (var p in JsonUtil.RequireObject(o, "recommendedFormation", c).Properties())

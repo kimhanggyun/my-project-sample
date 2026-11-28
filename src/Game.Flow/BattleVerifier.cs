@@ -16,10 +16,14 @@ namespace Game.Flow
     public sealed class BattleVerifier
     {
         private readonly StoryFlow _flow;
+        private readonly IDataSource _source;
+        private readonly DefinitionSet _defs;
 
         public BattleVerifier(DefinitionSet defs, IDataSource source, ITimeProvider time)
         {
             _flow = new StoryFlow(defs, source, time);
+            _source = source;
+            _defs = defs;
         }
 
         /// <summary>
@@ -31,7 +35,7 @@ namespace Game.Flow
         /// <param name="hired">맞으면 고용 내역 (서버가 등록자 보상을 만든다). 고용이 없으면 null.</param>
         public static BattleVerdict VerifySave(DefinitionSet defs, IDataSource source, CloudSave save, BattleSubmission s, long nowUnixSeconds, out string json, out long at,
             out HiredForces hired, System.Func<string, HireListing> findListing = null, string accountId = null, IReadOnlyList<HireLogEntry> hireLog = null,
-            System.Func<string, TerritoryDefense> findDefense = null)
+            System.Func<string, TerritoryDefense> findDefense = null, System.Func<string, string> findMap = null)
         {
             json = null;
             hired = null;
@@ -55,7 +59,8 @@ namespace Game.Flow
                 if ((defense?.Version ?? 0) != s.DefenseVersion) { hired = null; return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie }; }
             }
             var clock = new ManualTimeProvider(System.DateTimeOffset.FromUnixTimeSeconds(at));
-            var v = new BattleVerifier(defs, source, clock).VerifyAndApply(state, s, hired, defense, out _);
+            string mapId = s.CrowdCommands != null ? findMap?.Invoke(TerritoryBattles.RegionOf(s.StepId)) : null; // 깃발전 전장은 서버 장부의 깃발 맵 (R-168)
+            var v = new BattleVerifier(defs, source, clock).VerifyAndApply(state, s, hired, defense, mapId, out _);
             if (!v.Valid) hired = null;
             if (v.Valid) json = SaveJson.Write(state);
             at = System.Math.Min(at, nowUnixSeconds);
@@ -83,7 +88,10 @@ namespace Game.Flow
 
         public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, out BattleReport report) => VerifyAndApply(state, s, hired, null, out report);
 
-        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, TerritoryDefense defense, out BattleReport report)
+        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, TerritoryDefense defense, out BattleReport report) =>
+            VerifyAndApply(state, s, hired, defense, null, out report);
+
+        public BattleVerdict VerifyAndApply(CampaignState state, BattleSubmission s, HiredForces hired, TerritoryDefense defense, string mapId, out BattleReport report)
         {
             report = null;
             // 출진 시각(시계) 기준 시간 경과: 기기도 출진 직전에 같은 처리를 한다 (부상 회복·부상병 자연 회복, R-61)
@@ -93,7 +101,20 @@ namespace Game.Flow
             catch (System.Exception) { return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie }; }
             if (!plan.Ok) return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
 
-            var result = BattleSimulation.Run(plan.Setup, s.Commands);
+            BattleResult result;
+            if (s.CrowdCommands != null)
+            {
+                // 깃발전 (R-166): 영지 공성전만, 같은 설정 · 명령 기록으로 병사 단위 전투를 다시 돌린다
+                if (!TerritoryBattles.IsTerritoryStep(s.StepId) || !Game.Territory.FlagDefs.IsFlagKey(TerritoryBattles.RegionOf(s.StepId)))
+                    return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie };
+                var fd = TerritoryBattles.TryLoad(_source)?.Flags;
+                string map = fd != null && fd.IsMap(mapId) ? mapId : fd?.DefaultMap ?? "crowd_plain";
+                Game.Battle.Model.Crowd.CrowdBattle crowd;
+                try { crowd = FlagBattles.Replay(_defs, _source, FlagBattles.Setup(_defs, _source, plan, map), s.CrowdCommands, s.ClaimedTicks); }
+                catch (System.Exception) { return new BattleVerdict { Valid = false, Reason = VerdictReasons.BadSortie }; }
+                result = FlagBattles.Result(crowd, plan);
+            }
+            else result = BattleSimulation.Run(plan.Setup, s.Commands);
             var verdict = new BattleVerdict { Hash = result.StateHash.ToString("x16"), Ticks = result.Ticks, Winner = result.Winner };
             if (verdict.Hash != s.ClaimedHash || verdict.Ticks != s.ClaimedTicks)
             {

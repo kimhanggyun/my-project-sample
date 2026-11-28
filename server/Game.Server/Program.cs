@@ -250,6 +250,24 @@ app.MapPost("/v1/games/{game}/territory/recall", async (string game, HttpRequest
         return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
     });
 });
+app.MapPost("/v1/games/{game}/territory/board", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<FlagBoardRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.SetFlagBoard(id, body);
+        return res.Ok ? Json(res) : Json(res, StatusCodes.Status422UnprocessableEntity);
+    });
+});
+app.MapPost("/v1/games/{game}/territory/devSeed", async (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
+{
+    var body = await Body<DevSeedRequest>(req);
+    return InGame(req, p, r, game, Now(), (id, g) =>
+    {
+        var res = g.DevSeedFlags(id, body);
+        return res != null ? Json(res) : Results.StatusCode(StatusCodes.Status403Forbidden);
+    });
+});
 // 연합 (R-49)
 app.MapGet("/v1/games/{game}/alliances", (string game, HttpRequest req, IPlatformStore p, GameRegistry r) =>
     InGame(req, p, r, game, Now(), (id, g) => Json(g.Alliances(id))));

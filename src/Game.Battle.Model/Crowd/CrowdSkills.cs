@@ -29,7 +29,9 @@ namespace Game.Battle.Model.Crowd
     {
         public const string WarCry = "warCry", Rally = "rally", HoldTheLine = "holdTheLine", ForcedMarch = "forcedMarch", ArrowRain = "arrowRain";
         /// <summary>샘플전투2가 지금 아는 스킬 (부대에 주는 순서).</summary>
-        public static readonly string[] KnownSkills = { WarCry, Rally, HoldTheLine, ForcedMarch, ArrowRain };
+        public static readonly string[] KnownSkills = { WarCry, Rally, HoldTheLine, ForcedMarch, ArrowRain, FireAttack, Rockfall };
+        /// <summary>지점을 고르는 스킬 (화살비 · 화계 · 낙석).</summary>
+        public static bool IsAreaSkill(string id) => id == ArrowRain || id == FireAttack || id == Rockfall;
 
         private IReadOnlyDictionary<string, SkillDef> _skills;
         /// <summary>스킬 사용 기록 (화면 연출, 오래된 것은 지움).</summary>
@@ -48,9 +50,26 @@ namespace Game.Battle.Model.Crowd
                 {
                     if (!skills.TryGetValue(id, out var def)) continue;
                     if (id == ArrowRain && !a.Troop.Ranged) continue;
+                    if (!MeetsIntellect(a, def)) continue; // 화계 · 낙석: 지력 조건 (requires)
                     a.SkillUses[id] = def.UsesPerBattle;
                 }
             }
+        }
+
+        private static bool MeetsIntellect(CrowdArmy a, SkillDef def)
+        {
+            if (def.Requires == null || a.GeneralInfo == null) return true;
+            foreach (var q in def.Requires)
+                if (q.Stat == "intellect" && Fix.FromInt(a.GeneralInfo.Intellect) < q.Min) return false;
+            return true;
+        }
+
+        /// <summary>그 자리 둘레에 우리 편 병사가 있나 (AI 화계).</summary>
+        private bool FriendsNear(int team, Vec p, Fix range)
+        {
+            Fix r2 = range * range;
+            foreach (var s in Soldiers) if (s.Alive && s.Team == team && Vec.DistanceSquared(s.Pos, p) <= r2) return true;
+            return false;
         }
 
         public SkillDef SkillDef(string id) => _skills != null && _skills.TryGetValue(id, out var d) ? d : null;
@@ -63,20 +82,22 @@ namespace Game.Battle.Model.Crowd
             var def = SkillDef(skill);
             if (def == null || !a.Leading || !a.SkillUses.TryGetValue(skill, out var left) || left <= 0) return false;
             if (Tick - a.LastSkillTick < SkillGapTicksFor(a)) return false; // 지력이 높으면 자주 (R-144)
-            if (skill == ArrowRain)
+            if (IsAreaSkill(skill))
             {
                 if (point == null) return true; // 지점은 아직 (고르는 중)
                 Fix range = def.Range ?? Fix.FromInt(14);
                 if ((point.Value - a.Centroid()).Length > range) return false;
+                if (skill == FireAttack && !CanFire(point.Value)) return false; // 숲 · 풀만 탐 (R-164)
+                if (skill == Rockfall && !CanRock(a, point.Value)) return false; // 높은 곳에서 낮은 곳으로만
             }
             return true;
         }
 
         /// <summary>스킬을 쓴다 (못 쓰면 false). 범위 스킬은 point가 필요.</summary>
-        public bool UseSkill(int army, string skill, Vec? point = null)
+        private bool UseSkillCore(int army, string skill, Vec? point)
         {
             if (!CanUseSkill(army, skill, point)) return false;
-            if (skill == ArrowRain && point == null) return false;
+            if (IsAreaSkill(skill) && point == null) return false;
             var a = Armies[army];
             var def = SkillDef(skill);
             a.SkillUses[skill]--;
@@ -120,6 +141,13 @@ namespace Game.Battle.Model.Crowd
                         a.MoveBuffPct = e.Fix("movePct");
                         a.MarchEndMorale = e.Fix("endMorale");
                         a.MarchUntil = Tick + Ticks(e.Fix("durationSec"));
+                        break;
+                    case "ignite": // 화계 (R-164): 그 둘레 숲 · 풀 칸에 불 (옛 전투의 바람 · 날씨 조건은 보지 않음)
+                        Ignite(point.Value);
+                        break;
+                    case "rockfall": // 낙석 (R-164): telegraphSec 뒤 떨어짐
+                        ev.LandTick = Tick + Ticks(def.TelegraphSec);
+                        _pendingRocks.Add((army, point.Value, ev.LandTick));
                         break;
                     case "areaDamage":
                         ev.LandTick = Tick + Ticks(def.TelegraphSec);
@@ -205,10 +233,14 @@ namespace Game.Battle.Model.Crowd
                 bool engaged = a.LastHitTick >= Tick - 5;
                 if (engaged && UseSkill(a.Id, WarCry)) continue;
                 if (engaged && a.Morale <= Fix.FromInt(60) && UseSkill(a.Id, HoldTheLine)) continue;
-                if (a.SkillUses.ContainsKey(ArrowRain))
+                int tgt = NearestEnemyArmy(a.Id);
+                if (tgt >= 0)
                 {
-                    int t = NearestEnemyArmy(a.Id);
-                    if (t >= 0) UseSkill(a.Id, ArrowRain, Armies[t].Centroid());
+                    var at = Armies[tgt].Centroid();
+                    // 낙석 · 화계 (R-164): 쓸 수 있는 자리면, 화계는 그 둘레에 우리 병사가 없을 때만 (자기 매복 부대를 태우지 않게)
+                    if (a.SkillUses.ContainsKey(Rockfall) && UseSkill(a.Id, Rockfall, at)) continue;
+                    if (a.SkillUses.ContainsKey(FireAttack) && !FriendsNear(a.Team, at, Rules.FireStartRadius * 3) && UseSkill(a.Id, FireAttack, at)) continue;
+                    if (a.SkillUses.ContainsKey(ArrowRain)) UseSkill(a.Id, ArrowRain, at);
                 }
             }
         }

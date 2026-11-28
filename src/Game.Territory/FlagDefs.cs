@@ -28,6 +28,16 @@ namespace Game.Territory
         public IReadOnlyDictionary<string, long> IncomePerHour { get; private set; }
         /// <summary>공성전 전투 틀 (스텝 형식).</summary>
         public JObject Battle { get; private set; }
+        /// <summary>꽂을 때 고르는 깃발전 전장 (첫째가 기본, R-168).</summary>
+        public IReadOnlyList<string> Maps { get; private set; } = new List<string> { "crowd_plain" };
+        public string DefaultMap => Maps.Count > 0 ? Maps[0] : "crowd_plain";
+        public bool IsMap(string id) { if (id == null) return false; foreach (var m in Maps) if (m == id) return true; return false; }
+        /// <summary>수비판 함정 최대 수 (R-167).</summary>
+        public int BoardTrapsMax { get; private set; } = 4;
+        /// <summary>한 주인이 하루(UTC)에 잃는 깃발 최대 (0 = 끝 없음, R-168).</summary>
+        public int DailyLossCap { get; private set; }
+        /// <summary>공격자 계급 − 깃발 주인 계급이 이보다 크면 칠 수 없음 (0 = 끝 없음, R-168).</summary>
+        public int RankGapMax { get; private set; }
 
         public static FlagDefs Load(IDataSource source)
         {
@@ -43,7 +53,16 @@ namespace Game.Territory
                 SiegePrepSeconds = o.Value<long?>("siegePrepSeconds") ?? 0,
                 SiegeWindowSeconds = (o.Value<long?>("siegeWindowMinutes") ?? 30) * 60,
                 Battle = JsonUtil.RequireObject(o, "battle", File),
+                BoardTrapsMax = (int)(o.Value<long?>("boardTrapsMax") ?? 4),
+                DailyLossCap = (int)(o.Value<long?>("dailyLossCap") ?? 0),
+                RankGapMax = (int)(o.Value<long?>("rankGapMax") ?? 0),
             };
+            if (o["maps"] is JArray maps && maps.Count > 0)
+            {
+                var ml = new List<string>();
+                foreach (var m in maps) ml.Add((string)m);
+                d.Maps = ml;
+            }
             var inc = new Dictionary<string, long>();
             foreach (var p in (o["incomePerHour"] as JObject ?? new JObject()).Properties())
             {

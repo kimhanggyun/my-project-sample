@@ -1204,8 +1204,9 @@ namespace Game.Tests.Battle
             Assert.True(a.GeneralEscaping);
             Assert.True(a.General.FledTick >= 0, "general fled");
             Assert.True(a.General.DiedTick < 0); // 쓰러진 게 아니라 빠져나감
-            Assert.Equal(CrowdBattle.Enemy, b.Winner);
-            Assert.Equal("generalFled", b.EndReason); // 총대장이 달아남 (사로잡음과 다름)
+            // R-162 (2026-11-28 사용자): 총대장은 패배 조건이 아님 — 빠져나가면 그 편 사기만 꺾임
+            Assert.True(b.CommanderFell(CrowdBattle.Ally));
+            Assert.NotEqual("generalFled", b.EndReason);
         }
 
         [Fact]

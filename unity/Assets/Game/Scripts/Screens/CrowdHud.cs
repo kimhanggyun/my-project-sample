@@ -128,7 +128,7 @@ namespace Game.Unity.Screens
             foreach (var a in _battle.Armies)
             {
                 var t = _tags[a.Id];
-                bool show = _battle.Standing(a);
+                bool show = _battle.Standing(a) && !_battle.HiddenFrom(a, CrowdBattle.Ally); // 매복 중인 적 이름표도 숨김 (R-165)
                 Vector3 sp = Vector3.zero;
                 if (show)
                 {
