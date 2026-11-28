@@ -23,18 +23,40 @@ namespace Game.Unity.Screens
         /// <summary>군단 편성(포진판) 페이지를 보고 있나.</summary>
         internal static bool BoardOpen;
 
+        /// <summary>고른 군단 (판에서 누른 칸, 앱이 켜져 있는 동안). 없으면 총대장 · 첫 군단.</summary>
+        private static int _sel = -1;
+        /// <summary>다시 그린 뒤 고른 군단 판을 다시 연다 (판 안에서 값을 바꿀 때).</summary>
+        private static bool _openSheet;
+        /// <summary>캡처 투어: 다음 그리기에 고른 군단 판을 연다.</summary>
+        internal static bool OpenSheet { set => _openSheet = value; }
+        /// <summary>캡처 투어: 고른 군단 (-1 = 총대장 · 첫 군단).</summary>
+        internal static int Selected { set => _sel = value; }
+
+        /// <summary>
+        /// 편성 (2026-11-28 R-159 · 편성 새 방식 2단계): 위 = 제목 · 상황 · 계급 · 보유 병력 줄, 가운데 = 3 × 3 판 (앞 · 가운데 · 뒤 × 왼 · 가운데 · 오른),
+        /// 칸마다 군단 카드 (장수 · 병종 그림 · 인원 · 진형 아이콘 · ★), 아래 = 고른 군단 (장수 · 병종 · 인원 · 진형 · ★ · 자동 · 빼기).
+        /// 빈 칸을 누르면 그 자리에 군단 (계급 군단 수까지), 군단을 끌어 다른 칸으로 옮기고 판 밖으로 끌면 뺀다. 보유 병력 카드를 누르면 고른 군단의 병종으로.
+        /// </summary>
         public void Build(GameApp app, RectTransform root)
         {
             UiStyle.Page = "formation";
-            if (BoardOpen) { CorpsBoardView.Build(app, root); return; }
             var ctx = app.Context;
             var ed = ctx.Formation;
             var rank = Army.Rank(ctx.Defs, ctx.State);
+            if (_sel >= ed.Draft.Count) _sel = -1;
+            if (_sel < 0 && ed.Draft.Count > 0) { _sel = ed.Draft.FindIndex(c => c.Commander); if (_sel < 0) _sel = 0; }
+            // 자리가 없는 군단(예전 편성 · 새 군단)은 기본 자리부터 채워 보인다 (앞 가운데 → 가운데 왼 · 오른 → …)
+            var spots = new[] { (0, 1), (1, 0), (1, 2), (0, 0), (0, 2), (2, 1), (1, 1), (2, 0), (2, 2) };
+            for (int i = 0; i < ed.Draft.Count; i++)
+                if (!ed.Draft[i].BoardRow.HasValue || !ed.Draft[i].BoardCol.HasValue)
+                    foreach (var sp in spots)
+                        if (!ed.Draft.Exists(c => c.BoardRow == sp.Item1 && c.BoardCol == sp.Item2)) { ed.SetBoard(i, sp.Item1, sp.Item2); break; }
+
             var (header, body, footer) = Ui.PageLayout(root);
             ScrollMemory.Keep(body, "formation." + (ed.Situation ?? ""));
 
-            // ---- 고정 머리: 부대 관리 · 장수처럼 제목 줄 (2026-11-27 사용자 "편성 쪽은 타이틀이 안 보여") + 상황 세그먼트 (중분류, 꽉 참) ----
-            var top = Ui.HeaderRow(header, ctx.T("ui.seg.formation"), ctx.T("ui.formation.count", ed.Draft.Count));
+            // ---- 고정 머리: 제목 줄 · 상황 세그먼트 · 계급 · 보유 병력 ----
+            var top = Ui.HeaderRow(header, ctx.T("ui.seg.formation"), ctx.T("ui.formation.countOf", ed.Draft.Count, rank.Corps));
             var tabs = new List<(string, string)> { ("", ctx.T("ui.formation.default")) };
             foreach (var s in ctx.Defs.Campaign.FormationSituations) tabs.Add((s, ctx.T("situation." + s)));
             var copy = Ui.SecondaryButton(top, ctx.T("ui.formation.copy") + " ▾", null, 70, 26);
@@ -51,16 +73,12 @@ namespace Game.Unity.Screens
                 }
                 Ui.PickMenu(root, copyRt, 360, items.ToArray());
             });
-            var boardBtn = Ui.SecondaryButton(top, ctx.T("ui.formation.board") + " ›", () => { BoardOpen = true; app.ShowMain("formation"); }, 70, 26);
-            Ui.Size(boardBtn, 70, 210).flexibleWidth = 0;
+            Ui.Size(Ui.SecondaryButton(top, ctx.T("ui.formation.autoAll"), () => { ed.AutoFill(); _sel = -1; app.ShowMain("formation"); }, 70, 26), 70, 170).flexibleWidth = 0;
             Ui.Size(Ui.Rect(top, "InfoGap"), 70, 66).flexibleWidth = 0;
             InfoButton.Add(root, ctx.T("ui.formation.note"));
-            Ui.MidTabs(header, tabs, ed.Situation ?? "", id => Leave(app, () => { ctx.SelectFormationSituation(id == "" ? null : id); app.ShowMain("formation"); }));
-
-            int usedPicks = 0;
-            foreach (var c in ed.Draft) usedPicks = Mathf.Max(usedPicks, Army.OwnPicks(c));
-            Ui.RankBar(ctx, header, root, ed.Draft.Count, usedPicks);
-            Ui.Size(Ui.Label(header, ctx.T("ui.formation.troopsHeader"), 22, TextAnchor.MiddleLeft, Palette.TextDim), 30);
+            Ui.MidTabs(header, tabs, ed.Situation ?? "", id => Leave(app, () => { ctx.SelectFormationSituation(id == "" ? null : id); _sel = -1; app.ShowMain("formation"); }));
+            Ui.RankBar(ctx, header, root, ed.Draft.Count, ed.Draft.Count > 0 ? 1 : 0);
+            Ui.Size(Ui.Label(header, ctx.T("ui.formation.troopsHeaderBoard"), 22, TextAnchor.MiddleLeft, Palette.TextDim), 30);
             var troopsRow = Ui.HScrollRow(header, "Troops", 170, 10, 6);
             foreach (var u in ctx.State.Units)
             {
@@ -70,15 +88,34 @@ namespace Game.Unity.Screens
                 if (u.Troops <= 0 && used <= 0) continue;
                 string unitId = u.UnitId;
                 Ui.MiniCard(ctx, troopsRow, u.TroopType, null, TroopName(ctx, u.TroopType), left.ToString("N0") + " / " + u.Troops.ToString("N0"),
-                    left < 0 ? Ui.MiniState.Warn : left == 0 ? Ui.MiniState.Dim : Ui.MiniState.Normal, () => QuickAdd(app, unitId, left));
+                    left < 0 ? Ui.MiniState.Warn : left == 0 ? Ui.MiniState.Dim : Ui.MiniState.Normal, () => UseTroop(app, unitId));
             }
             Ui.MoreHint((RectTransform)troopsRow.parent.parent, 170, Palette.Background);
 
-            // ---- 군단 카드 ----
+            // ---- 3 × 3 판 ----
+            var targets = new DropTargets<(int row, int col)>();
+            var cells = Ui.DropGrid(body, 3, 3, 336, 236, ctx.T("ui.board.front"));
+            for (int r = 0; r < 3; r++)
+                for (int k = 0; k < 3; k++)
+                {
+                    int row = r, col = k;
+                    targets.Add(cells[r, k], (r, k));
+                    if (ed.Draft.Exists(c => c.BoardRow == r && c.BoardCol == k)) continue;
+                    EmptyCell(app, cells[r, k], ctx.T("ui.board.spot." + r + k), ed.Draft.Count < rank.Corps, () => AddAt(app, row, col));
+                }
             var errors = ed.Errors();
-            for (int i = 0; i < ed.Draft.Count; i++) CorpsCard(app, root, body, i, errors);
-            if (ed.Draft.Count < rank.Corps && ed.FreeGenerals().Count > 0)
-                Ui.SecondaryButton(body, ctx.T("ui.formation.addCorps"), () => { ed.AddCorps(); app.ShowMain("formation"); }, 90, 28);
+            for (int i = 0; i < ed.Draft.Count; i++)
+            {
+                var c = ed.Draft[i];
+                var cell = cells[Mathf.Clamp(c.BoardRow ?? 0, 0, 2), Mathf.Clamp(c.BoardCol ?? 0, 0, 2)];
+                bool warn = errors.Exists(e => e.Contains("'" + c.GeneralId + "'"));
+                CorpsCell(app, root, cell, i, warn, targets);
+            }
+            Ui.Hint(body, ctx.T("ui.formation.boardHint"), 54);
+
+            // ---- 고른 군단: 군단 칸을 누르면 아래에서 올라오는 판 (판을 가리지 않게, 2026-11-28 캡처) ----
+            if (_openSheet && _sel >= 0 && _sel < ed.Draft.Count) SelectedSheet(app, root, _sel);
+            _openSheet = false;
             var moreCorps = NextRankWith(ctx, r => r.Corps > rank.Corps);
             if (moreCorps != null)
                 Ui.ListRow(body, "@lock", Palette.TextDim, ctx.T("ui.formation.lockedCorps", rank.Corps + 1, ctx.T("rank." + moreCorps.Id), moreCorps.MinLevel), null, null, dim: true, height: 84);
@@ -86,7 +123,7 @@ namespace Game.Unity.Screens
             if (errors.Count > 0) Ui.ErrorLine(body, errors[0] + (errors.Count > 1 ? ctx.T("ui.formation.moreErrors", errors.Count - 1) : ""), 60);
 
             // ---- 고정 아래 ----
-            var revert = Ui.SecondaryButton(footer, ctx.T("ui.formation.revert"), () => { ctx.DiscardFormationDraft(); app.ShowMain("formation"); }, 92, 28);
+            var revert = Ui.SecondaryButton(footer, ctx.T("ui.formation.revert"), () => { ctx.DiscardFormationDraft(); _sel = -1; app.ShowMain("formation"); }, 92, 28);
             Ui.SetEnabled(revert, ed.Changed() && ed.HasPreset);
             var save = Ui.PrimaryButton(footer, ctx.T("ui.formation.save"), () => Save(app), 92, 32);
             Ui.SetPrimaryEnabled(save, errors.Count == 0 && ed.Changed());
@@ -99,88 +136,245 @@ namespace Game.Unity.Screens
             return null;
         }
 
-        /// <summary>미니 카드 누름: 펼친 첫 군단에 그 병종 칸을 넣는다 (남은 인원·통솔 한도 안에서).</summary>
-        private static void QuickAdd(GameApp app, string unitId, long left)
+        /// <summary>빈 칸: 아군 색 아주 옅게 + 얇은 테두리, 가운데 + (군단을 더 만들 수 없으면 흐리게), 위에 자리 이름.</summary>
+        private static void EmptyCell(GameApp app, RectTransform cell, string spot, bool canAdd, System.Action add)
+        {
+            var team = Palette.Ally;
+            var img = cell.GetComponent<Image>();
+            if (img != null) img.color = new Color(team.r, team.g, team.b, canAdd ? 0.10f : 0.05f);
+            var ring = Ui.Fill(Ui.Rect(cell, "Ring"));
+            var ri = ring.gameObject.AddComponent<Image>();
+            ri.sprite = UiKit.Ring(12, 3); ri.type = Image.Type.Sliced; ri.fillCenter = false; ri.raycastTarget = false;
+            ri.color = new Color(team.r, team.g, team.b, canAdd ? 0.35f : 0.15f);
+            var sp = Ui.Label(Ui.Place(Ui.Rect(cell, "Spot"), 10, 6, 300, 28), spot, 18, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Fill(sp.rectTransform);
+            var plus = Ui.Label(cell, "+", 64, TextAnchor.MiddleCenter, new Color(team.r, team.g, team.b, canAdd ? 0.8f : 0.3f));
+            Ui.Fill(plus.rectTransform);
+            plus.raycastTarget = false;
+            var b = cell.gameObject.AddComponent<Button>();
+            b.targetGraphic = img;
+            b.onClick.AddListener(() => { Sfx.Play("click", 0.5f); add(); });
+        }
+
+        /// <summary>빈 칸 누름: 그 자리에 첫 빈 장수로 군단을 만들고 (남은 병력이 가장 많은 병종 · 통솔 한도까지) 고른다. 계급 군단 수가 차면 알림.</summary>
+        private static void AddAt(GameApp app, int row, int col)
         {
             var ctx = app.Context;
             var ed = ctx.Formation;
-            for (int i = 0; i < ed.Draft.Count; i++)
+            var rank = Army.Rank(ctx.Defs, ctx.State);
+            if (ed.Draft.Count >= rank.Corps)
             {
-                if (Collapsed.Contains(i)) continue;
-                long room = ed.Cap(i) - ed.Troops(i);
-                var have = ed.Draft[i].Picks.Find(p => p.UnitId == unitId);
-                long n = System.Math.Min(System.Math.Max(0, left), room) + (have?.Troops ?? 0);
-                if (n > 0 && ed.SetPick(i, unitId, n)) { app.ShowMain("formation"); return; }
+                var more = NextRankWith(ctx, r => r.Corps > rank.Corps);
+                Toast.Show(more == null ? ctx.T("ui.board.fullMax", ed.Draft.Count, rank.Corps) : ctx.T("ui.board.full", ed.Draft.Count, rank.Corps, ctx.T("rank." + more.Id), more.MinLevel, more.Corps), bad: true);
+                return;
             }
-            Toast.Show(ctx.T("ui.formation.quickAddFailed"), bad: true);
+            var made = ed.AddCorps();
+            if (made == null) { Toast.Show(ctx.T("ui.formation.noFreeGeneral"), bad: true); return; }
+            int index = ed.Draft.Count - 1;
+            ed.SetBoard(index, row, col);
+            ed.AutoFillCorps(index);
+            _sel = index;
             app.ShowMain("formation");
         }
 
-        private static void CorpsCard(GameApp app, RectTransform root, RectTransform body, int index, List<string> errors)
+        /// <summary>보유 병력 카드 누름: 고른 군단의 병종을 그 병종으로 (남은 인원 · 통솔 한도까지). 고른 군단이 없으면 알림.</summary>
+        private static void UseTroop(GameApp app, string unitId)
+        {
+            var ctx = app.Context;
+            var ed = ctx.Formation;
+            if (_sel < 0 || _sel >= ed.Draft.Count) { Toast.Show(ctx.T("ui.formation.pickCellFirst"), bad: true); return; }
+            long most = MostFor(ctx, _sel, unitId);
+            if (most <= 0) { Toast.Show(ctx.T("ui.formation.quickAddFailed"), bad: true); return; }
+            ed.SetTroop(_sel, unitId, most);
+            app.ShowMain("formation");
+        }
+
+        /// <summary>그 군단에 그 병종을 넣을 수 있는 최대 (다른 군단이 쓰고 남은 병력 · 통솔 한도).</summary>
+        private static long MostFor(GameContext ctx, int index, string unitId)
+        {
+            var ed = ctx.Formation;
+            var u = ctx.State.FindUnit(unitId);
+            long free = (u?.Troops ?? 0) - ed.UsedElsewhere(index, unitId);
+            return System.Math.Max(0, System.Math.Min(free, ed.Cap(index)));
+        }
+
+        /// <summary>판의 군단 칸: 장수 초상 · 이름 · Lv / 병종 그림 · 병종 · 인원 / 진형 아이콘 / ★. 누르면 고름, 끌면 옮김 (판 밖 = 빼기).</summary>
+        private static void CorpsCell(GameApp app, RectTransform root, RectTransform cell, int index, bool warn, DropTargets<(int row, int col)> targets)
         {
             var ctx = app.Context;
             var ed = ctx.Formation;
             var c = ed.Draft[index];
-            var rank = Army.Rank(ctx.Defs, ctx.State);
-            long troops = ed.Troops(index), cap = ed.Cap(index);
-            bool warn = troops > cap || errors.Exists(e => e.Contains("'" + c.GeneralId + "'"));
-            bool expanded = !Collapsed.Contains(index);
-            var (head, cbody) = Ui.CollapsibleCard(body, "Corps" + index, expanded, () => { if (!Collapsed.Remove(index)) Collapsed.Add(index); app.ShowMain("formation"); }, warn);
+            bool sel = index == _sel;
+            bool commander = c.Commander || (index == 0 && !ed.Draft.Exists(x => x.Commander));
+            var card = Ui.Rect(cell, "Corps");
+            Ui.Fill(card);
+            var bg = Ui.Background(card, sel ? Palette.CellOn : Palette.Card);
+            Ui.Round(bg);
+            if (sel || warn)
+            {
+                var ring = Ui.Fill(Ui.Rect(card, "SelRing"));
+                var ri = ring.gameObject.AddComponent<Image>();
+                ri.sprite = UiKit.Ring(Mathf.Max(4, Mathf.RoundToInt(UiStyle.CornerRadius)), 5); ri.type = Image.Type.Sliced; ri.fillCenter = false; ri.raycastTarget = false;
+                ri.color = warn ? Palette.Bad : Palette.Good;
+            }
+            var btn = card.gameObject.AddComponent<Button>();
+            btn.targetGraphic = bg;
+            btn.onClick.AddListener(() => { Sfx.Play("click", 0.5f); _sel = index; _openSheet = true; app.ShowMain("formation"); });
 
-            var pr = new Portrait(head, expanded ? 90 : 76);
+            // 위: 초상 · 이름 · Lv (초상은 칸 왼쪽 위 상자에 맞춤 — 이름과 겹치지 않게)
+            var prBox = Ui.Place(Ui.Rect(card, "PortraitBox"), 10, 8, 66, 66);
+            var pr = new Portrait(prBox, 62);
+            pr.Rect.anchorMin = pr.Rect.anchorMax = new Vector2(0.5f, 0.5f);
+            pr.Rect.sizeDelta = new Vector2(62f, 62f);
             pr.Show(c.GeneralId, ctx.GeneralName(c.GeneralId), Palette.Ally);
             var g = ctx.State.FindGeneral(c.GeneralId);
-            var texts = Ui.Rect(head, "Texts");
-            Ui.Size(texts, 90, -1, -1, 1);
-            Ui.Column(texts, 0, 0);
-            string spot = c.BoardRow.HasValue ? ctx.T("ui.board.spot." + c.BoardRow + c.BoardCol) : "";
-            Ui.Label(texts, ctx.T("ui.formation.corpsNo", index + 1) + (c.Commander || (index == 0 && !ed.Draft.Exists(x => x.Commander)) ? " · ★ " + ctx.T("ui.board.commander") : "") + (spot != "" ? " · " + spot : ""), 22, TextAnchor.MiddleLeft, Palette.TextDim);
-            var nameT = Ui.Label(texts, ctx.GeneralName(c.GeneralId) + "  " + Ui.Colored("Lv." + (g?.Level ?? 1), Palette.TextDim), 32);
-            nameT.fontStyle = FontStyle.Bold;
-            if (!expanded)
+            var n = Ui.Label(Ui.Place(Ui.Rect(card, "Name"), 84, 10, 190, 34), (commander ? "★ " : "") + ctx.GeneralName(c.GeneralId), 24);
+            n.fontStyle = FontStyle.Bold;
+            n.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Ui.Fill(n.rectTransform);
+            var lv = Ui.Label(Ui.Place(Ui.Rect(card, "Lv"), 84, 44, 190, 26), "Lv." + (g?.Level ?? 1) + " · " + ctx.T("role." + Army.RoleOf(c)), 18, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Fill(lv.rectTransform);
+            // 오른쪽 위: 진형 아이콘 (새 전투 진형)
+            ctx.Defs.Formations.TryGetValue(c.Formation ?? "", out var fdef);
+            var ic = FormationIcon.Add(card, fdef?.Crowd ?? "line", Palette.Enemy, 46f, 4f);
+            ic.anchorMin = ic.anchorMax = new Vector2(1f, 1f);
+            ic.pivot = new Vector2(1f, 1f);
+            ic.anchoredPosition = new Vector2(-10f, -10f);
+            // 아래: 병종 그림 · 병종 · 인원
+            var pick = c.Picks.Count > 0 ? c.Picks[0] : null;
+            var u = pick != null ? ctx.State.FindUnit(pick.UnitId) : null;
+            string troopType = u?.TroopType ?? pick?.UnitId;
+            if (troopType != null) Ui.Place(Ui.TroopPicture(ctx, card, troopType, 120), 10, 84, 120, 140);
+            var tn = Ui.Label(Ui.Place(Ui.Rect(card, "Troop"), 138, 96, 180, 34), troopType == null ? ctx.T("ui.formation.noTroop") : TroopName(ctx, troopType) + (pick != null && pick.Hired ? " " + ctx.T("ui.formation.hired") : ""), 24, TextAnchor.MiddleLeft, troopType == null ? Palette.Bad : Palette.Text);
+            Ui.Fill(tn.rectTransform);
+            long troops = ed.Troops(index), cap = ed.Cap(index);
+            var cnt = Ui.Label(Ui.Place(Ui.Rect(card, "Count"), 138, 132, 190, 40), troops.ToString("N0"), 34, TextAnchor.MiddleLeft, troops > cap ? Palette.Bad : Palette.Text);
+            cnt.fontStyle = FontStyle.Bold;
+            Ui.Fill(cnt.rectTransform);
+            var capT = Ui.Label(Ui.Place(Ui.Rect(card, "Cap"), 138, 172, 190, 28), "/ " + cap.ToString("N0"), 18, TextAnchor.MiddleLeft, Palette.TextDim);
+            Ui.Fill(capT.rectTransform);
+            foreach (var gph in card.GetComponentsInChildren<Graphic>()) if (gph != bg) gph.raycastTarget = false;
+            var d = card.gameObject.AddComponent<DragItem>();
+            d.Payload = "c|" + index;
+            d.GhostParent = root;
+            d.Dropped += (pl, screen) =>
             {
-                var parts = new List<string>();
-                foreach (var p in c.Picks) { var u = ctx.State.FindUnit(p.UnitId); parts.Add((u == null ? p.UnitId : TroopName(ctx, u.TroopType)) + " " + p.Troops.ToString("N0")); }
-                Ui.Label(texts, FormationName(ctx, c.Formation) + " · " + ctx.T("role." + Army.RoleOf(c)) + "  " + string.Join(" + ", parts), 24, TextAnchor.MiddleLeft, Palette.TextDim);
+                if (targets.Find(screen, out var to)) ed.SetBoard(index, to.row, to.col);
+                else { ed.RemoveCorps(index); _sel = -1; } // 판 밖 = 빼기
+                app.ShowMain("formation");
+            };
+        }
+
+        /// <summary>고른 군단 판 (아래에서 올라옴): 장수 [바꾸기 ▾] · ★ / 병종 그림 · 병종 [바꾸기 ▾] · 남은 / − 인원 + [최대] / 진형 아이콘 · 이름 [진형 ▾] / [자동] [빼기].</summary>
+        private static void SelectedSheet(GameApp app, RectTransform root, int index)
+        {
+            var ctx = app.Context;
+            var ed = ctx.Formation;
+            var c = ed.Draft[index];
+            bool commander = c.Commander || (index == 0 && !ed.Draft.Exists(x => x.Commander));
+            var (card, close) = Ui.BottomSheet(root, ctx.T("ui.formation.selected", ctx.T("ui.board.spot." + c.BoardRow + c.BoardCol)), 610);
+            Ui.Column(card, 12, 0);
+            // 판 안에서 값을 바꾸면 화면을 다시 그리고 이 판을 다시 연다
+            void Reopen() { _openSheet = true; app.ShowMain("formation"); }
+
+            // 장수
+            var gRow = Ui.Row(card, "General", 90, 12);
+            gRow.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            var pr = new Portrait(gRow, 80);
+            pr.Show(c.GeneralId, ctx.GeneralName(c.GeneralId), Palette.Ally);
+            var g = ctx.State.FindGeneral(c.GeneralId);
+            var gn = Ui.Label(gRow, ctx.GeneralName(c.GeneralId) + "  " + Ui.Colored("Lv." + (g?.Level ?? 1), Palette.TextDim), 32);
+            gn.fontStyle = FontStyle.Bold;
+            Ui.Size(gn, 90, -1, -1, 1);
+            var change = Ui.SecondaryButton(gRow, ctx.T("ui.formation.changeGeneral") + " ▾", null, 70, 24);
+            Ui.Size(change, 70, 190).flexibleWidth = 0;
+            var changeRt = (RectTransform)change.transform;
+            change.onClick.AddListener(() =>
+            {
+                var items = new List<(string, string, bool, System.Action)>();
+                foreach (var gs in ctx.State.Generals)
+                {
+                    string gid = gs.GeneralId;
+                    if (gid == c.GeneralId || !GeneralStatus.CanDeploy(gs.Status)) continue;
+                    int there = ed.Draft.FindIndex(x => x.GeneralId == gid);
+                    items.Add((ctx.GeneralName(gid), there >= 0 ? ctx.T("ui.formation.swapWith", ctx.T("ui.formation.corpsNo", there + 1)) : null, true, () => { ed.SetGeneral(index, gid); Reopen(); }));
+                }
+                if (items.Count == 0) { Toast.Show(ctx.T("ui.formation.noFreeGeneral"), bad: true); return; }
+                Ui.PickMenu(root, changeRt, 420, items.ToArray());
+            });
+            var star = commander ? Ui.PrimaryButton(gRow, "★ " + ctx.T("ui.board.commander"), () => { }, 70, 24) : Ui.SecondaryButton(gRow, "☆ " + ctx.T("ui.board.commander"), () => { ed.SetCommander(index); Reopen(); }, 70, 24);
+            Ui.Size(star, 70, 170).flexibleWidth = 0;
+
+            // 병종
+            var pick = c.Picks.Count > 0 ? c.Picks[0] : null;
+            var u = pick != null ? ctx.State.FindUnit(pick.UnitId) : null;
+            var tRow = Ui.Row(card, "Troop", 120, 12);
+            tRow.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            if (u != null || pick != null) Ui.TroopPicture(ctx, tRow, u?.TroopType ?? pick.UnitId, 110);
+            var tcol = Ui.Rect(tRow, "TroopText");
+            Ui.Size(tcol, 110, -1, -1, 1);
+            Ui.Column(tcol, 2, 0).childAlignment = TextAnchor.MiddleLeft;
+            var tn = Ui.Label(tcol, pick == null ? ctx.T("ui.formation.noTroop") : (u == null ? pick.UnitId : TroopName(ctx, u.TroopType)) + (pick.Hired ? " " + ctx.T("ui.formation.hired") : ""), 30);
+            tn.fontStyle = FontStyle.Bold;
+            long most = pick != null && !pick.Hired ? MostFor(ctx, index, pick.UnitId) : 0;
+            if (pick != null && u != null)
+            {
+                long free = u.Troops - ed.UsedElsewhere(index, pick.UnitId);
+                Ui.Label(tcol, ctx.T("ui.formation.left", (free - pick.Troops).ToString("N0")) + "  ·  " + ctx.T("ui.formation.supplyPerDay", SupplyPerDay(ctx, c).ToString("N0")), 22, TextAnchor.MiddleLeft, free - pick.Troops < 0 ? Palette.Bad : Palette.TextDim);
             }
-            var right = Ui.Rect(head, "Right");
-            Ui.Size(right, 90, 260).flexibleWidth = 0;
-            Ui.Column(right, 0, 0);
-            Ui.Label(right, troops.ToString("N0") + " / " + cap.ToString("N0"), 24, TextAnchor.MiddleRight, troops > cap ? Palette.Bad : Palette.Text);
-            Ui.Label(right, ctx.T("ui.formation.supplyPerDay", SupplyPerDay(ctx, c).ToString("N0")), 22, TextAnchor.MiddleRight, Palette.TextDim);
-            if (!expanded) return;
+            var tchange = Ui.SecondaryButton(tRow, ctx.T("ui.formation.changeTroop") + " ▾", null, 70, 24);
+            Ui.Size(tchange, 70, 190).flexibleWidth = 0;
+            var tchangeRt = (RectTransform)tchange.transform;
+            tchange.onClick.AddListener(() =>
+            {
+                var items = new List<(string, string, bool, System.Action)>();
+                foreach (var unit in ctx.State.Units)
+                {
+                    string uid = unit.UnitId;
+                    long m = MostFor(ctx, index, uid);
+                    if (unit.Troops <= 0) continue;
+                    items.Add((TroopName(ctx, unit.TroopType), m.ToString("N0"), m > 0, () => { ed.SetTroop(index, uid, m); Reopen(); }));
+                }
+                Ui.PickMenu(root, tchangeRt, 420, items.ToArray());
+            });
 
-            // 진형 · 역할
-            var formRow = Ui.Row(cbody, "Form", 62, 10);
-            var fr = formRow.GetComponent<HorizontalLayoutGroup>();
-            fr.childForceExpandWidth = false;
-            fr.childAlignment = TextAnchor.MiddleLeft;
-            Ui.Size(Ui.SecondaryButton(formRow, FormationName(ctx, c.Formation) + " ▾", () => FormationPicker(app, root, index), 62, 28), 62, 220).flexibleWidth = 0;
-            Ui.Size(Ui.Label(formRow, ctx.T("ui.formation.roleFromBoard", ctx.T("role." + Army.RoleOf(c))), 24, TextAnchor.MiddleLeft, Palette.TextDim), 62, -1, -1, 1);
-            Ui.Size(Ui.SecondaryButton(formRow, ctx.T("ui.formation.autoCorps"), () => { ed.AutoFillCorps(index); app.ShowMain("formation"); }, 62, 24), 62, 150).flexibleWidth = 0; // 이 군단만 자동 편성
+            // 인원: − 숫자 + [최대]
+            if (pick != null && !pick.Hired)
+            {
+                string unitId = pick.UnitId;
+                var row = Ui.Row(card, "Count", 64, 8);
+                row.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+                void Set(long v) { ed.SetTroop(index, unitId, System.Math.Max(1, System.Math.Min(most, v))); Reopen(); }
+                var minus = Ui.Styled(Ui.SecondaryButton(row, "−", () => Set(pick.Troops - Step), 60, 30), "button.small");
+                Ui.Size(minus, 60, 70).flexibleWidth = 0;
+                RepeatButton.Add(minus, () => Set(pick.Troops - Step * 5));
+                var num = Ui.SecondaryButton(row, pick.Troops.ToString("N0"), () => NumberInput(app, root, index, unitId, pick.Troops, most), 60, 30);
+                Ui.Size(num, 60, 180).flexibleWidth = 0;
+                num.GetComponentInChildren<Text>().fontStyle = FontStyle.Bold;
+                var plus = Ui.Styled(Ui.SecondaryButton(row, "+", () => Set(pick.Troops + Step), 60, 30), "button.small");
+                Ui.Size(plus, 60, 70).flexibleWidth = 0;
+                RepeatButton.Add(plus, () => Set(pick.Troops + Step * 5));
+                Ui.Size(Ui.Styled(Ui.SecondaryButton(row, ctx.T("ui.formation.max"), () => Set(most), 60, 24), "button.small"), 60, 110).flexibleWidth = 0;
+                Ui.Size(Ui.Rect(row, "Gap"), 60, -1, -1, 1);
+                long troops = ed.Troops(index), cap = ed.Cap(index);
+                Ui.Size(Ui.Label(row, ctx.T("ui.formation.capOf", cap.ToString("N0")), 22, TextAnchor.MiddleRight, troops > cap ? Palette.Bad : Palette.TextDim), 60, 260).flexibleWidth = 0;
+            }
 
-            // 진형 미리보기 + 병종 칸
-            var mid = Ui.Row(cbody, "Mid", 10, 14);
-            var mh = mid.GetComponent<HorizontalLayoutGroup>();
-            mh.childForceExpandWidth = false;
-            mh.childForceExpandHeight = false;
-            mh.childAlignment = TextAnchor.UpperLeft;
-            mid.GetComponent<LayoutElement>().minHeight = mid.GetComponent<LayoutElement>().preferredHeight = -1;
-            var picks = new List<(string, string, long)>();
-            foreach (var p in c.Picks) { var u = ctx.State.FindUnit(p.UnitId); if (u != null) picks.Add((p.UnitId, u.TroopType, p.Troops)); }
-            Ui.FormationPreview(ctx, mid, c.Formation, Army.Layout(ctx.Defs, picks), 380, 320, () => FormationPicker(app, root, index));
-            var pickCol = Ui.Rect(mid, "Picks");
-            Ui.Size(pickCol, -1, -1, -1, 1);
-            Ui.Column(pickCol, 10, 0);
-            foreach (var p in c.Picks.ToArray()) PickRow(app, root, pickCol, index, p);
-            if (Army.OwnPicks(c) < rank.Slots)
-                Ui.SecondaryButton(pickCol, ctx.T("ui.formation.addPick"), () => app.Show(new UnitPickerScreen(index, null)), 90, 26);
-            var moreSlots = NextRankWith(ctx, r => r.Slots > rank.Slots);
-            if (moreSlots != null)
-                Ui.ListRow(pickCol, "@lock", Palette.TextDim, ctx.T("ui.formation.lockedPick", rank.Slots + 1, ctx.T("rank." + moreSlots.Id), moreSlots.MinLevel), null, null, dim: true, height: 70);
+            // 진형 (새 전투 진형 아이콘 + 이름) · 역할
+            var fRow = Ui.Row(card, "Form", 70, 12);
+            fRow.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            ctx.Defs.Formations.TryGetValue(c.Formation ?? "", out var fdef);
+            var iconBox = Ui.Rect(fRow, "FormIcon");
+            Ui.Size(iconBox, 60, 60).flexibleWidth = 0;
+            Ui.Fill(FormationIcon.Add(iconBox, fdef?.Crowd ?? "line", Palette.Enemy, 56f, 5f));
+            Ui.Size(Ui.Label(fRow, FormationName(ctx, c.Formation) + "  " + Ui.Colored(ctx.T("ui.formation.roleFromBoard", ctx.T("role." + Army.RoleOf(c))), Palette.TextDim), 26), 70, -1, -1, 1);
+            Ui.Size(Ui.SecondaryButton(fRow, ctx.T("ui.formation.changeForm") + " ▾", () => { close(); FormationPicker(app, root, index); }, 64, 24), 64, 190).flexibleWidth = 0;
 
-            long max = System.Math.Max(1, cap);
-            Ui.GaugeRow(cbody, ctx.T("ui.formation.corpsTroops"), (float)troops / max, troops > cap ? Palette.Bad : new Color(0.247f, 0.435f, 0.69f), troops.ToString("N0") + " / " + cap.ToString("N0"), barWidth: 560);
+            // 자동 · 빼기 · 닫기
+            var aRow = Ui.Row(card, "Actions", 72, 12);
+            Ui.Size(Ui.SecondaryButton(aRow, ctx.T("ui.formation.autoCorps"), () => { ed.AutoFillCorps(index); Reopen(); }, 72, 26), 72, -1, -1, 1);
+            Ui.Size(Ui.SecondaryButton(aRow, "✕ " + ctx.T("ui.formation.removeCorps"), () => { close(); ed.RemoveCorps(index); _sel = -1; app.ShowMain("formation"); }, 72, 26), 72, -1, -1, 1);
+            Ui.Size(Ui.PrimaryButton(aRow, ctx.T("ui.common.close"), close, 72, 26), 72, -1, -1, 1);
         }
 
         private static long SupplyPerDay(GameContext ctx, CorpsComposition c)
@@ -192,55 +386,6 @@ namespace Game.Unity.Screens
                 if (u != null && ctx.Defs.TroopTypes.TryGetValue(u.TroopType, out var t)) d += p.Troops * t.SupplyPerDay;
             }
             return d;
-        }
-
-        /// <summary>병종 칸 한 줄: 병종 그림 · 이름 · 남은 · [−] 인원 [+] [최대] [빼기]. 길게 누르면 빨리, 인원을 누르면 직접 입력.</summary>
-        private static void PickRow(GameApp app, RectTransform root, RectTransform parent, int index, TroopPick p)
-        {
-            var ctx = app.Context;
-            var ed = ctx.Formation;
-            var u = ctx.State.FindUnit(p.UnitId);
-            string unitId = p.UnitId;
-            long free = (u?.Troops ?? 0) - ed.UsedElsewhere(index, unitId);
-            long room = ed.Cap(index) - ed.Troops(index) + p.Troops;
-            long most = System.Math.Max(0, System.Math.Min(free, room));
-            var card = Ui.Rect(parent, "Pick");
-            Ui.Size(card, 136);
-            Ui.Round(Ui.Background(card, Palette.Card));
-            Ui.Strip(card);
-            Ui.Place(Ui.TroopPicture(ctx, card, u?.TroopType ?? unitId, 104), 12, 16, 104, 104);
-            // 빼기: 병종 그림 위 반투명 "−" (2026-11-15, [빼기] 버튼 대신)
-            var off = Ui.Place(Ui.Rect(card, "Remove"), 76, 10, 46, 46);
-            var offImg = Ui.Background(off, new Color(0.69f, 0.23f, 0.18f, 0.72f));
-            offImg.sprite = UiShapes.Circle;
-            var offT = Ui.Label(off, "−", 34, TextAnchor.MiddleCenter, Color.white);
-            offT.fontStyle = FontStyle.Bold;
-            offT.raycastTarget = false;
-            Ui.Fill(offT.rectTransform);
-            var offB = off.gameObject.AddComponent<Button>();
-            offB.targetGraphic = offImg;
-            offB.onClick.AddListener(() => { ed.SetPick(index, unitId, 0); app.ShowMain("formation"); });
-            var name = Ui.Label(Ui.Place(Ui.Rect(card, "Name"), 128, 8, 220, 44), (u == null ? unitId : TroopName(ctx, u.TroopType)) + (p.Hired ? " " + ctx.T("ui.formation.hired") : ""), 28);
-            name.fontStyle = FontStyle.Bold;
-            Ui.Fill(name.rectTransform);
-            var leftT = Ui.Label(Ui.Place(Ui.Rect(card, "Left"), 300, 8, 260, 44), ctx.T("ui.formation.left", (free - p.Troops).ToString("N0")), 22, TextAnchor.MiddleRight, free - p.Troops < 0 ? Palette.Bad : Palette.TextDim);
-            Ui.Fill(leftT.rectTransform);
-            var row = Ui.Place(Ui.Rect(card, "Controls"), 128, 66, 440, 56);
-            var h = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            h.spacing = 6;
-            h.childControlWidth = h.childControlHeight = true;
-            h.childForceExpandWidth = h.childForceExpandHeight = false;
-            void Set(long v) { ed.SetPick(index, unitId, System.Math.Max(1, System.Math.Min(most, v))); app.ShowMain("formation"); }
-            var minus = Ui.Styled(Ui.SecondaryButton(row, "−", () => Set(p.Troops - Step), 56, 30), "button.small");
-            Ui.Size(minus, 56, 56).flexibleWidth = 0;
-            RepeatButton.Add(minus, () => Set(p.Troops - Step * 5));
-            var num = Ui.SecondaryButton(row, p.Troops.ToString("N0"), () => NumberInput(app, root, index, unitId, p.Troops, most), 56, 28);
-            Ui.Size(num, 56, 120).flexibleWidth = 0;
-            num.GetComponentInChildren<Text>().fontStyle = FontStyle.Bold;
-            var plus = Ui.Styled(Ui.SecondaryButton(row, "+", () => Set(p.Troops + Step), 56, 30), "button.small");
-            Ui.Size(plus, 56, 56).flexibleWidth = 0;
-            RepeatButton.Add(plus, () => Set(p.Troops + Step * 5));
-            Ui.Size(Ui.Styled(Ui.SecondaryButton(row, ctx.T("ui.formation.max"), () => Set(most), 56, 22), "button.small"), 56, 82).flexibleWidth = 0;
         }
 
         /// <summary>인원 직접 입력 (아래 판).</summary>
@@ -256,8 +401,8 @@ namespace Game.Unity.Screens
             {
                 long.TryParse(input.text, out var v);
                 close();
-                ctx.Formation.SetPick(index, unitId, System.Math.Max(0, System.Math.Min(most, v)));
-                app.ShowMain("formation");
+                ctx.Formation.SetTroop(index, unitId, System.Math.Max(1, System.Math.Min(most, v)));
+                _openSheet = true; app.ShowMain("formation");
             }, 92, 30);
         }
 
@@ -288,7 +433,7 @@ namespace Game.Unity.Screens
                 if (now) { var o = card.gameObject.AddComponent<Outline>(); o.effectColor = Palette.ButtonActive; o.effectDistance = new Vector2(4, -4); }
                 var b = card.gameObject.AddComponent<Button>();
                 b.targetGraphic = bg;
-                b.onClick.AddListener(() => { close(); ed.SetFormation(index, id); app.ShowMain("formation"); });
+                b.onClick.AddListener(() => { close(); ed.SetFormation(index, id); _openSheet = true; app.ShowMain("formation"); });
                 Ui.Column(card, 6, 12);
                 Ui.FormationPreview(ctx, card, id, layout, 306, 290, null).GetComponent<Image>().raycastTarget = false;
                 var n = Ui.Label(card, FormationName(ctx, id), 38);
@@ -339,130 +484,6 @@ namespace Game.Unity.Screens
 
         internal static string FormationName(GameContext ctx, string id) => id != null && ctx.Defs.Formations.TryGetValue(id, out FormationDef f) ? ctx.T(f.NameKey) : id;
         internal static string TroopName(GameContext ctx, string id) => ctx.Defs.TroopTypes.TryGetValue(id ?? "", out var t) ? ctx.T(t.NameKey) : id;
-    }
-
-    /// <summary>
-    /// 군단 편성 (시안 07 두 번째 페이지, R-95): 위 장수 미니 카드(놓인 장수는 흐림 + "제n군", 상태 띠) · 3×3 포진판 (앞 선봉 · 가운데 측면 · 뒤 후위).
-    /// 장수를 칸에 끌어 놓으면 군단이 생기고(계급 군단 수까지), 군단 카드를 다른 칸으로 끌면 자리를 바꾸고, 판 밖으로 끌면 뺀다. 군단 카드를 누르면 ★ 총대장.
-    /// </summary>
-    internal static class CorpsBoardView
-    {
-
-        public static void Build(GameApp app, RectTransform root)
-        {
-            var ctx = app.Context;
-            var ed = ctx.Formation;
-            var rank = Army.Rank(ctx.Defs, ctx.State);
-            // 자리가 없는 군단(예전 편성·새 군단)은 기본 자리부터 채워 보인다 (앞 가운데 → 가운데 왼·오른 → …)
-            var spots = new[] { (0, 1), (1, 0), (1, 2), (0, 0), (0, 2), (2, 1), (1, 1), (2, 0), (2, 2) };
-            for (int i = 0; i < ed.Draft.Count; i++)
-                if (!ed.Draft[i].BoardRow.HasValue || !ed.Draft[i].BoardCol.HasValue)
-                    foreach (var sp in spots)
-                        if (!ed.Draft.Exists(c => c.BoardRow == sp.Item1 && c.BoardCol == sp.Item2)) { ed.SetBoard(i, sp.Item1, sp.Item2); break; }
-            var (header, body, footer) = Ui.PageLayout(root);
-            // 공통 타이틀 (군대 탭 안이라 뒤로 없음, 나가기는 아래 [완료])
-            var top = Ui.TitleBar(header, ctx.T("ui.board.title"), null, infoGap: false);
-            Ui.Label(top, ctx.T("ui.board.count", ed.Draft.Count, rank.Corps, ctx.T("rank." + rank.Id)), 24, TextAnchor.MiddleRight, Palette.TextDim);
-            Ui.Size(Ui.Label(header, ctx.T("ui.board.generals"), 22, TextAnchor.MiddleLeft, Palette.TextDim), 30);
-
-            var targets = new DropTargets<(int row, int col)>();
-            // 장수 미니 카드 (여러 줄로 감싼다 — 끌기와 가로 스크롤이 부딪히지 않게)
-            var gens = Ui.Rect(header, "Generals");
-            var gl = gens.gameObject.AddComponent<GridLayoutGroup>();
-            gl.cellSize = new Vector2(150, 178);
-            gl.spacing = new Vector2(10, 10);
-            gl.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            gl.constraintCount = 6;
-            foreach (var g in ctx.State.Generals)
-            {
-                int at = ed.Draft.FindIndex(c => c.GeneralId == g.GeneralId);
-                bool deploy = GeneralStatus.CanDeploy(g.Status);
-                string status = g.Status == GeneralStatus.Available ? null : ctx.T("ui.generals." + g.Status) + (deploy ? "" : " · " + ctx.T("ui.board.cannot"));
-                Color sc = g.Status == GeneralStatus.LightInjury ? new Color(0.851f, 0.651f, 0.18f) : g.Status == GeneralStatus.SeriousInjury ? new Color(0.851f, 0.463f, 0.18f) : new Color(0.69f, 0.227f, 0.18f);
-                var b = Ui.MiniCard(ctx, gens, null, g.GeneralId, ctx.GeneralName(g.GeneralId), "Lv." + g.Level, at >= 0 || !deploy ? Ui.MiniState.Dim : Ui.MiniState.Normal, null,
-                    at >= 0 ? ctx.T("ui.formation.corpsNo", at + 1) : null, status, sc, 150, 178);
-                if (at < 0 && deploy) Draggable(app, root, (RectTransform)b.transform, "g|" + g.GeneralId, targets);
-            }
-
-            var cells = Ui.DropGrid(body, 3, 3, 320, 250, ctx.T("ui.board.front"));
-            for (int r = 0; r < 3; r++)
-                for (int k = 0; k < 3; k++)
-                {
-                    targets.Add(cells[r, k], (r, k));
-                    if (k == 0) { var rl = Ui.Label(Ui.Place(Ui.Rect(cells[r, k], "RowName"), 6, 2, 300, 26), ctx.T("ui.board.row." + r), 18, TextAnchor.MiddleLeft, Palette.TextDim); Ui.Fill(rl.rectTransform); }
-                }
-            for (int i = 0; i < ed.Draft.Count; i++)
-            {
-                var c = ed.Draft[i];
-                if (!c.BoardRow.HasValue || !c.BoardCol.HasValue) continue;
-                var cell = cells[Mathf.Clamp(c.BoardRow.Value, 0, 2), Mathf.Clamp(c.BoardCol.Value, 0, 2)];
-                int index = i;
-                var card = Ui.Rect(cell, "Corps");
-                Ui.Fill(card);
-                var bg = Ui.Background(card, Palette.Card);
-                Ui.Round(bg);
-                var btn = card.gameObject.AddComponent<Button>();
-                btn.targetGraphic = bg;
-                btn.onClick.AddListener(() => { ed.SetCommander(index); app.ShowMain("formation"); });
-                var pr = new Portrait(card, 100);
-                pr.Rect.anchorMin = pr.Rect.anchorMax = new Vector2(0, 0.5f);
-                pr.Rect.anchoredPosition = new Vector2(70, -6);
-                pr.Show(c.GeneralId, ctx.GeneralName(c.GeneralId), Palette.Ally);
-                if (c.Commander || (index == 0 && !ed.Draft.Exists(x => x.Commander))) { var tag = Ui.Place(Ui.Rect(card, "Star"), 10, 8, 130, 32); var ti = Ui.Background(tag, new Color(0.788f, 0.588f, 0.169f)); ti.sprite = UiShapes.Rounded(10); ti.type = Image.Type.Sliced; var tt = Ui.Label(tag, "★ " + ctx.T("ui.board.commander"), 20, TextAnchor.MiddleCenter, Ui.OnAccent); Ui.Fill(tt.rectTransform); }
-                var n = Ui.Label(Ui.Place(Ui.Rect(card, "Name"), 130, 50, 170, 40), ctx.GeneralName(c.GeneralId), 28);
-                n.fontStyle = FontStyle.Bold;
-                Ui.Fill(n.rectTransform);
-                var parts = new List<string>();
-                foreach (var p in c.Picks) { var u = ctx.State.FindUnit(p.UnitId); parts.Add(u == null ? p.UnitId : FormationTabView.TroopName(ctx, u.TroopType)); }
-                var sub = Ui.Label(Ui.Place(Ui.Rect(card, "Sub"), 130, 92, 170, 120), ctx.T("ui.formation.corpsNo", index + 1) + " · " + ctx.T("role." + Army.RoleOf(c)) + "\n" + string.Join("·", parts) + " " + ed.Troops(index).ToString("N0"), 20, TextAnchor.UpperLeft, Palette.TextDim);
-                Ui.Fill(sub.rectTransform);
-                foreach (var gph in card.GetComponentsInChildren<Graphic>()) if (gph != bg) gph.raycastTarget = false;
-                Draggable(app, root, card, "c|" + index, targets);
-            }
-            Ui.Hint(body, ctx.T("ui.board.hint"), 60);
-            Ui.PrimaryButton(footer, ctx.T("ui.board.done"), () => { FormationTabView.BoardOpen = false; app.ShowMain("formation"); }, 92, 32);
-        }
-
-        private static void Draggable(GameApp app, RectTransform root, RectTransform rt, string payload, DropTargets<(int row, int col)> targets)
-        {
-            var d = rt.gameObject.AddComponent<DragItem>();
-            d.Payload = payload;
-            d.GhostParent = root;
-            d.Dropped += (pl, screen) => Drop(app, pl, screen, targets);
-        }
-
-        private static void Drop(GameApp app, string payload, Vector2 screen, DropTargets<(int row, int col)> targets)
-        {
-            var ctx = app.Context;
-            var ed = ctx.Formation;
-            var p = payload.Split('|');
-            bool onBoard = targets.Find(screen, out var to);
-            if (p[0] == "c")
-            {
-                int index = int.Parse(p[1]);
-                if (onBoard) ed.SetBoard(index, to.row, to.col);
-                else ed.RemoveCorps(index); // 판 밖 = 빼기
-            }
-            else if (onBoard)
-            {
-                string gid = p[1];
-                int there = ed.Draft.FindIndex(c => c.BoardRow == to.row && c.BoardCol == to.col);
-                if (there >= 0) ed.SetGeneral(there, gid); // 그 칸의 군단 장수를 바꾼다
-                else
-                {
-                    var made = ed.AddCorps(gid);
-                    if (made == null)
-                    {
-                        var rank = Army.Rank(ctx.Defs, ctx.State);
-                        RankDef more = null;
-                        foreach (var r in ctx.Defs.Campaign.Ranks) if (r.MinLevel > ctx.State.LordLevel && r.Corps > rank.Corps) { more = r; break; }
-                        Toast.Show(more == null ? ctx.T("ui.board.fullMax", ed.Draft.Count, rank.Corps) : ctx.T("ui.board.full", ed.Draft.Count, rank.Corps, ctx.T("rank." + more.Id), more.MinLevel, more.Corps), bad: true);
-                    }
-                    else ed.SetBoard(ed.Draft.Count - 1, to.row, to.col);
-                }
-            }
-            app.ShowMain("formation");
-        }
     }
 
     /// <summary>군단 하나 편집: 장수·진형·역할, 소부대 칸 6개.</summary>

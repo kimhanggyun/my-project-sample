@@ -1,8 +1,8 @@
 {
-  "_comment": "상성표는 docs/design/content/formations.md 4.1과 같다. wins = 공격 진형이 유리한 상대. slots = 장수(중앙) 기준 소부대 자리 (칸, y는 앞쪽).",
+  "_comment": "crowd = 새 전투(군중 전투) 진형 id (2026-11-28 R-160: 편성 진형 → 새 전투 진형, 편성 판 아이콘 · 출진 연결). 상성표는 docs/design/content/formations.md 4.1과 같다. wins = 공격 진형이 유리한 상대. slots = 장수(중앙) 기준 소부대 자리 (칸, y는 앞쪽).",
   "formations": [
     {
-      "id": "square",
+      "id": "square", "crowd": "thick",
       "nameKey": "formation.square",
       "group": "situational",
       "tier": "basic",
@@ -37,7 +37,7 @@
       }
     },
     {
-      "id": "column",
+      "id": "column", "crowd": "column",
       "nameKey": "formation.column",
       "group": "situational",
       "tier": "basic",
@@ -76,7 +76,7 @@
       }
     },
     {
-      "id": "line",
+      "id": "line", "crowd": "line",
       "nameKey": "formation.line",
       "group": "situational",
       "tier": "beginner",
@@ -114,7 +114,7 @@
       }
     },
     {
-      "id": "loose",
+      "id": "loose", "crowd": "loose",
       "nameKey": "formation.loose",
       "group": "situational",
       "tier": "intermediate",
@@ -152,7 +152,7 @@
       }
     },
     {
-      "id": "fishScale",
+      "id": "fishScale", "crowd": "thicker",
       "nameKey": "formation.fishScale",
       "group": "core",
       "tier": "beginner",
@@ -191,7 +191,7 @@
       }
     },
     {
-      "id": "craneWing",
+      "id": "craneWing", "crowd": "vee",
       "nameKey": "formation.craneWing",
       "group": "core",
       "tier": "beginner",
@@ -228,7 +228,7 @@
       }
     },
     {
-      "id": "arrowhead",
+      "id": "arrowhead", "crowd": "wedge",
       "nameKey": "formation.arrowhead",
       "group": "core",
       "tier": "advanced",
@@ -268,7 +268,7 @@
       }
     },
     {
-      "id": "circle",
+      "id": "circle", "crowd": "circle",
       "nameKey": "formation.circle",
       "group": "core",
       "tier": "intermediate",
@@ -308,7 +308,7 @@
       }
     },
     {
-      "id": "echelon",
+      "id": "echelon", "crowd": "echelonL",
       "nameKey": "formation.echelon",
       "group": "core",
       "tier": "intermediate",
@@ -346,7 +346,7 @@
       }
     },
     {
-      "id": "crescent",
+      "id": "crescent", "crowd": "split",
       "nameKey": "formation.crescent",
       "group": "core",
       "tier": "advanced",

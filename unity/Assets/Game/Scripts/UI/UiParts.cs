@@ -1275,7 +1275,7 @@ namespace Game.Unity.UI
             Fill(sum.rectTransform);
             if (next != null)
             {
-                var nt = Label(Place(Rect(bar, "Next"), 640, 10, 370, 40), ctx.T("ui.rank.nextShort", ctx.T("rank." + next.Id), next.MinLevel, next.Slots), 22, TextAnchor.MiddleRight, Palette.TextDim);
+                var nt = Label(Place(Rect(bar, "Next"), 640, 10, 370, 40), ctx.T("ui.rank.nextShort", ctx.T("rank." + next.Id), next.MinLevel, next.Corps), 22, TextAnchor.MiddleRight, Palette.TextDim);
                 Fill(nt.rectTransform);
             }
             return bar;

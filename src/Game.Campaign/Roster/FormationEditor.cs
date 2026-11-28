@@ -193,6 +193,20 @@ namespace Game.Campaign.Roster
             return true;
         }
 
+        /// <summary>
+        /// 군단의 병종 정하기 (R-159, 한 군단 = 병종 하나): 내 병종 칸을 그 병종 troops명으로 바꾼다 (다른 병종이던 칸은 뺌). 0 이하면 칸을 비운다.
+        /// 고용 부대 칸이 있으면 바꾸지 않는다 (false). 합이 묶음 병력 · 통솔 한도를 넘으면 검사 R-5가 막는다.
+        /// </summary>
+        public bool SetTroop(int index, string unitId, long troops)
+        {
+            if (index < 0 || index >= Draft.Count) return false;
+            var c = Draft[index];
+            if (c.Picks.Exists(p => p.Hired)) return false;
+            c.Picks.Clear();
+            if (troops > 0) c.Picks.Add(new TroopPick { UnitId = unitId, Troops = troops });
+            return true;
+        }
+
         /// <summary>그 병종을 다른 군단들이 이미 쓰는 인원 (index 군단 빼고).</summary>
         public long UsedElsewhere(int index, string unitId)
         {

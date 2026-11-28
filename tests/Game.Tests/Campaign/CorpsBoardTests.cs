@@ -90,6 +90,15 @@ namespace Game.Tests.Campaign
             foreach (var u in s.Units) Assert.True(ed.Draft.SelectMany(c => c.Picks).Where(p => p.UnitId == u.UnitId).Sum(p => p.Troops) <= u.Troops);
         }
 
+        [Fact(DisplayName = "R-160 편성 진형마다 새 전투 진형 (formations.json crowd)이 있고, 새 전투가 아는 진형이다")]
+        public void FormationsMapToCrowd()
+        {
+            foreach (var f in Kit.D.Formations.Values)
+                Assert.Contains(f.Crowd, Game.Battle.Model.Crowd.CrowdFormations.All);
+            Assert.Equal("vee", Kit.D.Formations["craneWing"].Crowd);
+            Assert.Equal("thick", Kit.D.Formations["square"].Crowd);
+        }
+
         [Fact(DisplayName = "R-95 편성 복사: 지금 편성(검사 통과)을 다른 상황의 편성으로")]
         public void CopyTo()
         {
